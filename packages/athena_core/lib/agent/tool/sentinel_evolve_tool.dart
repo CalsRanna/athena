@@ -89,7 +89,7 @@ class SentinelEvolveTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -103,13 +103,15 @@ class SentinelEvolveTool extends Tool {
     // 查找原 sentinel
     final original = await _repository.getSentinelByName(sentinelName);
     if (original == null) {
-      return 'Error: Sentinel "$sentinelName" not found. '
-          'Check the name spelling. Run sentinel_list to see available '
-          'sentinels.';
+      return ToolExecutionResult.error(
+        'Error: Sentinel "$sentinelName" not found. '
+        'Check the name spelling. Run sentinel_list to see available '
+        'sentinels.',
+      );
     }
 
     if (newPrompt.trim().isEmpty) {
-      return 'Error: new_prompt must not be empty.';
+      return ToolExecutionResult.error('Error: new_prompt must not be empty.');
     }
 
     // 内置 sentinel 不允许改名（判据在实体上：预设角色全部锁定名字）。
@@ -120,9 +122,11 @@ class SentinelEvolveTool extends Tool {
           ? newName
           : original.name;
       if (requestedName != original.name) {
-        return 'Error: The built-in "${original.name}" sentinel cannot be '
-            'renamed. You can improve its prompt, description, and tags, '
-            'but the name must remain "${original.name}".';
+        return ToolExecutionResult.error(
+          'Error: The built-in "${original.name}" sentinel cannot be '
+          'renamed. You can improve its prompt, description, and tags, '
+          'but the name must remain "${original.name}".',
+        );
       }
     }
 
@@ -135,8 +139,10 @@ class SentinelEvolveTool extends Tool {
       if (effectiveName != original.name) {
         final conflict = await _repository.getSentinelByName(effectiveName);
         if (conflict != null && conflict.id != original.id) {
-          return 'Error: A different sentinel named "$effectiveName" already '
-              'exists. Choose a different name.';
+          return ToolExecutionResult.error(
+            'Error: A different sentinel named "$effectiveName" already '
+            'exists. Choose a different name.',
+          );
         }
       }
 
@@ -178,14 +184,16 @@ class SentinelEvolveTool extends Tool {
         newPrompt: newPrompt,
       );
 
-      return 'Sentinel evolved successfully!\n'
-          'Updated "$sentinelName"'
-          '${effectiveName != sentinelName ? ' → "$effectiveName"' : ''}.\n\n'
-          '$changeReport\n\n'
-          'The sentinel has been updated in place. '
-          'The changes take effect immediately in the current chat.';
+      return ToolExecutionResult.success(
+        'Sentinel evolved successfully!\n'
+        'Updated "$sentinelName"'
+        '${effectiveName != sentinelName ? ' → "$effectiveName"' : ''}.\n\n'
+        '$changeReport\n\n'
+        'The sentinel has been updated in place. '
+        'The changes take effect immediately in the current chat.',
+      );
     } catch (e) {
-      return 'Error updating sentinel: $e';
+      return ToolExecutionResult.error('Error updating sentinel: $e');
     }
   }
 

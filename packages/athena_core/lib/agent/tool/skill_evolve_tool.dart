@@ -70,7 +70,7 @@ class SkillEvolveTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -79,16 +79,31 @@ class SkillEvolveTool extends Tool {
     final description = args['description'] as String? ?? '';
     final body = args['body'] as String;
 
+    if (action != 'create' && action != 'update') {
+      return ToolExecutionResult.error(
+        'Error: Unknown action "$action". Use "create" or "update".',
+      );
+    }
+
     if (!SkillLoader.isValidSkillName(skillName)) {
-      return 'Error: Invalid skill name "$skillName". '
-          'Use kebab-case, max 64 chars, no special characters or path separators.';
+      return ToolExecutionResult.error(
+        'Error: Invalid skill name "$skillName". '
+        'Use kebab-case, max 64 chars, no special characters or path separators.',
+      );
     }
 
     if (action == 'update') {
       final existing = _skillRegistry.get(skillName);
       if (existing == null) {
-        return 'Error: Skill "$skillName" not found. '
-            'Use action "create" to create a new skill, or check the name spelling.';
+        return ToolExecutionResult.error(
+          'Error: Skill "$skillName" not found. '
+          'Use action "create" to create a new skill, or check the name spelling.',
+        );
+      }
+      if (existing.isBuiltin) {
+        return ToolExecutionResult.error(
+          'Error: Built-in skills cannot be updated.',
+        );
       }
       return _writeSkill(
         skillName: skillName,
@@ -101,12 +116,16 @@ class SkillEvolveTool extends Tool {
     }
 
     if (_skillRegistry.get(skillName) != null) {
-      return 'Error: Skill "$skillName" already exists. '
-          'Use action "update" to modify it, or choose a different name.';
+      return ToolExecutionResult.error(
+        'Error: Skill "$skillName" already exists. '
+        'Use action "update" to modify it, or choose a different name.',
+      );
     }
 
     if (description.isEmpty) {
-      return 'Error: description is required when creating a new skill.';
+      return ToolExecutionResult.error(
+        'Error: description is required when creating a new skill.',
+      );
     }
 
     final home =
@@ -124,7 +143,7 @@ class SkillEvolveTool extends Tool {
     );
   }
 
-  String _writeSkill({
+  ToolExecutionResult _writeSkill({
     required String skillName,
     required String description,
     required String body,
@@ -142,11 +161,13 @@ class SkillEvolveTool extends Tool {
 
       _skillRegistry.reloadSkill(skillName, targetDir);
 
-      return 'Successfully created/updated skill "$skillName" at $skillFile.\n'
-          'The skill is now available for use in future conversations. '
-          'You can invoke it with the "skill" tool when needed.';
+      return ToolExecutionResult.success(
+        'Successfully created/updated skill "$skillName" at $skillFile.\n'
+        'The skill is now available for use in future conversations. '
+        'You can invoke it with the "skill" tool when needed.',
+      );
     } catch (e) {
-      return 'Error writing skill file: $e';
+      return ToolExecutionResult.error('Error writing skill file: $e');
     }
   }
 }

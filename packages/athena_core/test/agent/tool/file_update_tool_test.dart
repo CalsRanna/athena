@@ -108,6 +108,42 @@ void main() {
   });
 
   group('删除与失败路径', () {
+    test(
+      'LF multiline input matches CRLF without changing surrounding bytes',
+      () async {
+        final file = writeFile(
+          'crlf.txt',
+          'before\nalpha\r\nbeta\r\nafter\r\n',
+        );
+        await update(file, oldString: 'alpha\nbeta', newString: 'one\ntwo');
+        expect(file.readAsStringSync(), 'before\none\r\ntwo\r\nafter\r\n');
+      },
+    );
+
+    test('deleting whole CRLF lines does not leave blank lines', () async {
+      final file = writeFile('crlf-delete.txt', 'keep\r\nremove\r\nlast\r\n');
+      await update(file, oldString: 'remove', newString: '');
+      expect(file.readAsStringSync(), 'keep\r\nlast\r\n');
+    });
+
+    test(
+      'replace_all deletes every whole line and keeps partial-line newlines',
+      () async {
+        final file = writeFile(
+          'delete-all.txt',
+          'remove\r\nkeep\r\nremove\r\n',
+        );
+        await update(
+          file,
+          oldString: 'remove',
+          newString: '',
+          replaceAll: true,
+        );
+        expect(file.readAsStringSync(), 'keep\r\n');
+        await update(file, oldString: 'eep', newString: '');
+        expect(file.readAsStringSync(), 'k\r\n');
+      },
+    );
     test('删除整行时吃掉它留下的换行（沿用既有行为）', () async {
       final file = writeFile('del.md', 'keep\nremove\nlast\n');
 

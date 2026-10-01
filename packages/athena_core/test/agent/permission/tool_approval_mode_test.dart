@@ -269,20 +269,27 @@ void main() {
 /// 复用真实 shell 的权限与并行配置,执行替身避免启动本机进程。
 class _StubBashTool extends BashShellTool {
   @override
-  Future<String> executeCancellable(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
-  }) async => 'shell executed';
+  }) async => const ToolExecutionResult.success('shell executed');
 }
 
 class _StubFileReadTool extends FileReadTool {
+  @override
+  Future<ToolExecutionResult> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) => executeResult(args, onUpdate: onUpdate);
+
   int executions = 0;
   int _active = 0;
   int maxConcurrent = 0;
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -291,7 +298,7 @@ class _StubFileReadTool extends FileReadTool {
     if (_active > maxConcurrent) maxConcurrent = _active;
     await Future<void>.delayed(const Duration(milliseconds: 10));
     _active--;
-    return 'file content';
+    return const ToolExecutionResult.success('file content');
   }
 }
 

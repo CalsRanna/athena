@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/tool/shell_runner.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -41,6 +42,56 @@ void main() {
       "printf '\\nTAIL_MARKER\\n'";
 
   group('未越界：输出逐字完整', () {
+    test('nonzero exit codes produce structured execution errors', () async {
+      final result = await runShellProcessResult(
+        executable: 'sh',
+        arguments: ['-c', 'printf failed; exit 7'],
+        workdir: root,
+        timeoutSeconds: 5,
+      );
+      expect(result.status, ToolResultStatus.executionError);
+      expect(result.exitCode, 7);
+    });
+
+    test(
+      'timeout kills a TERM-resistant child even when its parent exits first',
+      () async {
+        final childFile = File('$root/child.pid');
+        addTearDown(() {
+          if (childFile.existsSync()) {
+            try {
+              Process.killPid(
+                int.parse(childFile.readAsStringSync().trim()),
+                ProcessSignal.sigkill,
+              );
+            } catch (_) {}
+          }
+        });
+        final result = await runShellProcess(
+          executable: '/bin/sh',
+          arguments: [
+            '-c',
+            r'''sh -c 'trap "" TERM; echo $$ > child.pid; exec sleep 60' & wait''',
+          ],
+          workdir: root,
+          timeoutSeconds: 1,
+        );
+        final childPid = int.parse(childFile.readAsStringSync().trim());
+        final remaining = await Process.run('ps', [
+          '-p',
+          '$childPid',
+          '-o',
+          'stat=',
+        ]);
+        expect(result, contains('timed out'));
+        expect(
+          remaining.exitCode != 0 ||
+              remaining.stdout.toString().trim().startsWith('Z'),
+          isTrue,
+        );
+      },
+      skip: Platform.isWindows,
+    );
     test('小输出原样返回，不出现截断标记', () async {
       final result = await run("printf 'HELLO\\n'");
 

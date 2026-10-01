@@ -108,33 +108,33 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
 
   /// 没有注入提问通道时的兜底（移动端 / 未配置 onElicit / 子代理）。
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) async => noChannelMessage;
+  }) async => const ToolExecutionResult.success(noChannelMessage);
 
   @override
-  Future<String> executeWithElicit(
+  Future<ToolExecutionResult> executeWithElicit(
     Map<String, dynamic> args, {
     required ElicitChannel channel,
     void Function(String)? onUpdate,
   }) async {
     final parsed = _parseQuestions(args);
-    if (parsed.error != null) return parsed.error!;
+    if (parsed.error != null) return ToolExecutionResult.error(parsed.error!);
 
     final questions = parsed.questions!;
-    if (!channel.available) return noChannelMessage;
+    if (!channel.available) {
+      return ToolExecutionResult.success(noChannelMessage);
+    }
 
     final answers = await channel.ask(questions);
-    if (answers == null || answers.isEmpty) return noAnswerMessage;
-    return _formatAnswers(questions, answers);
+    if (answers == null || answers.isEmpty) {
+      return ToolExecutionResult.success(noAnswerMessage);
+    }
+    return ToolExecutionResult.success(_formatAnswers(questions, answers));
   }
 
-  /// 本地校验嵌套形状。
-  ///
-  /// 引擎的 `SchemaValidator` 只看顶层必填与类型（不递归 items、也不认
-  /// minItems/maxItems），所以「1-4 问、每问 2-4 选、header ≤12」由这里兜住；
-  /// schema 里的同类关键字只用于提示模型，不构成保证。
+  // 工具也可被宿主直接调用，仍保留动作级校验，不依赖引擎分发。
   ({List<ElicitQuestion>? questions, String? error}) _parseQuestions(
     Map<String, dynamic> args,
   ) {

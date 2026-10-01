@@ -82,19 +82,19 @@ class PowerShellShellTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) => _execute(args, onUpdate: onUpdate);
 
   @override
-  Future<String> executeCancellable(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
-  Future<String> _execute(
+  Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     Future<void>? cancelSignal,
@@ -111,7 +111,9 @@ class PowerShellShellTool extends Tool implements CancellableTool {
     if (args['background'] == true) {
       final tasks = _tasks;
       if (tasks == null) {
-        return 'Error: background tasks are not available in this host.';
+        return ToolExecutionResult.error(
+          'Error: background tasks are not available in this host.',
+        );
       }
       return startBackgroundShellTask(
         tasks: tasks,
@@ -123,7 +125,7 @@ class PowerShellShellTool extends Tool implements CancellableTool {
       );
     }
 
-    final result = await runShellProcess(
+    final result = await runShellProcessResult(
       executable: 'powershell.exe',
       arguments: ['-Command', command],
       workdir: workdir,

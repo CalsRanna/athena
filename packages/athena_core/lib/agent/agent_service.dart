@@ -354,25 +354,30 @@ class AgentService {
       args[toolBackgroundDisabledKey] = true;
     }
 
-    String rawResult;
+    late String rawResult;
     var status = ToolResultStatus.success;
     try {
+      ToolExecutionResult? execution;
       if (tool == null) {
         rawResult = 'Error: Unknown tool "${toolCall.function.name}"';
         status = ToolResultStatus.executionError;
       } else if (elicitChannel != null && tool is ElicitChannelAware) {
         // 通道随 run 传入（工具集是长生命周期单例，通道不是）
-        rawResult = await (tool as ElicitChannelAware).executeWithElicit(
+        execution = await (tool as ElicitChannelAware).executeWithElicit(
           args,
           channel: elicitChannel,
         );
       } else if (cancelToken != null && tool is CancellableTool) {
-        rawResult = await (tool as CancellableTool).executeCancellable(
+        execution = await (tool as CancellableTool).executeCancellable(
           args,
           cancelSignal: cancelToken.whenCancelled,
         );
       } else {
-        rawResult = await tool.execute(args);
+        execution = await tool.executeResult(args);
+      }
+      if (execution != null) {
+        rawResult = execution.text;
+        status = execution.status;
       }
     } on CancelledException {
       rethrow;
@@ -381,12 +386,9 @@ class AgentService {
       // 交还模型，而不是冒泡终止整个 run；并行组里的 Future.any 同样受益。
       LoggerUtil.w('tool ${toolCall.function.name} threw: $e');
       rawResult = 'Error: Tool "${toolCall.function.name}" failed: $e';
-    }
-    cancelToken?.throwIfCancelled();
-
-    if (rawResult.trimLeft().startsWith('Error')) {
       status = ToolResultStatus.executionError;
     }
+    cancelToken?.throwIfCancelled();
 
     return result(rawResult, status);
   }

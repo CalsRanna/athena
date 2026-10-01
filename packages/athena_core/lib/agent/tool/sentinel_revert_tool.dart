@@ -63,7 +63,7 @@ class SentinelRevertTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -74,9 +74,11 @@ class SentinelRevertTool extends Tool {
     // 查找当前 sentinel
     final original = await _repository.getSentinelByName(sentinelName);
     if (original == null) {
-      return 'Error: Sentinel "$sentinelName" not found. '
-          'Check the name spelling. Available sentinels can be listed in the '
-          'settings.';
+      return ToolExecutionResult.error(
+        'Error: Sentinel "$sentinelName" not found. '
+        'Check the name spelling. Available sentinels can be listed in the '
+        'settings.',
+      );
     }
 
     // 确定目标快照：显式指定或取最近一条
@@ -86,17 +88,21 @@ class SentinelRevertTool extends Tool {
     } else {
       final metas = await _historyStore.list(original);
       if (metas.isEmpty) {
-        return 'Error: No history snapshots found for "$sentinelName". '
-            'Revert is only possible after at least one sentinel_evolve '
-            'change.';
+        return ToolExecutionResult.error(
+          'Error: No history snapshots found for "$sentinelName". '
+          'Revert is only possible after at least one sentinel_evolve '
+          'change.',
+        );
       }
       targetId = metas.first.id;
     }
 
     final target = await _historyStore.load(original, targetId);
     if (target == null) {
-      return 'Error: Snapshot "$targetId" not found or corrupt. '
-          'Use a snapshot_id listed in the history.';
+      return ToolExecutionResult.error(
+        'Error: Snapshot "$targetId" not found or corrupt. '
+        'Use a snapshot_id listed in the history.',
+      );
     }
 
     try {
@@ -104,8 +110,10 @@ class SentinelRevertTool extends Tool {
       if (target.name != original.name) {
         final conflict = await _repository.getSentinelByName(target.name);
         if (conflict != null && conflict.id != original.id) {
-          return 'Error: Cannot revert to snapshot "$targetId": another '
-              'sentinel named "${target.name}" already exists.';
+          return ToolExecutionResult.error(
+            'Error: Cannot revert to snapshot "$targetId": another '
+            'sentinel named "${target.name}" already exists.',
+          );
         }
       }
 
@@ -133,12 +141,14 @@ class SentinelRevertTool extends Tool {
         originalPrompt: original.prompt,
         restoredPrompt: restored.prompt,
       );
-      return 'Sentinel reverted successfully!\n'
-          'Restored "$sentinelName" to snapshot "$targetId".\n\n'
-          '$changeNote\n\n'
-          'The changes take effect immediately in the current chat.';
+      return ToolExecutionResult.success(
+        'Sentinel reverted successfully!\n'
+        'Restored "$sentinelName" to snapshot "$targetId".\n\n'
+        '$changeNote\n\n'
+        'The changes take effect immediately in the current chat.',
+      );
     } catch (e) {
-      return 'Error reverting sentinel: $e';
+      return ToolExecutionResult.error('Error reverting sentinel: $e');
     }
   }
 

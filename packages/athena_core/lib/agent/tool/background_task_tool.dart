@@ -56,13 +56,15 @@ class BackgroundTaskTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
     final chatId = args[toolChatIdKey];
     if (chatId is! String) {
-      return 'Error: background tasks require a session context.';
+      return ToolExecutionResult.error(
+        'Error: background tasks require a session context.',
+      );
     }
 
     final action = (args['action'] as String?)?.trim().toLowerCase() ?? 'list';
@@ -73,24 +75,28 @@ class BackgroundTaskTool extends Tool {
         return _list(chatId);
       case 'read':
         if (taskId == null || taskId.isEmpty) {
-          return 'Error: "read" requires task_id.';
+          return ToolExecutionResult.error('Error: "read" requires task_id.');
         }
         return _read(chatId, taskId, args);
       case 'stop':
         if (taskId == null || taskId.isEmpty) {
-          return 'Error: "stop" requires task_id.';
+          return ToolExecutionResult.error('Error: "stop" requires task_id.');
         }
         return _stop(chatId, taskId);
       default:
-        return 'Error: unknown action "$action". Use "list", "read" or "stop".';
+        return ToolExecutionResult.error(
+          'Error: unknown action "$action". Use "list", "read" or "stop".',
+        );
     }
   }
 
-  String _list(String chatId) {
+  ToolExecutionResult _list(String chatId) {
     final all = tasks.tasksOf(chatId);
     if (all.isEmpty) {
-      return 'No background tasks in this session. Start one with '
-          'bash(command: "...", background: true).';
+      return ToolExecutionResult.success(
+        'No background tasks in this session. Start one with '
+        'bash(command: "...", background: true).',
+      );
     }
     final buffer = StringBuffer('[background tasks in this session]\n');
     for (final task in all) {
@@ -99,14 +105,20 @@ class BackgroundTaskTool extends Tool {
     buffer.write(
       'Read one with background_task(action="read", task_id="<id>").',
     );
-    return buffer.toString();
+    return ToolExecutionResult.success(buffer.toString());
   }
 
-  String _read(String chatId, String taskId, Map<String, dynamic> args) {
+  ToolExecutionResult _read(
+    String chatId,
+    String taskId,
+    Map<String, dynamic> args,
+  ) {
     final task = tasks.task(taskId, chatId: chatId);
     if (task == null) {
-      return 'Error: no background task "$taskId" in this session. '
-          'Use background_task(action="list") to see available ids.';
+      return ToolExecutionResult.error(
+        'Error: no background task "$taskId" in this session. '
+        'Use background_task(action="list") to see available ids.',
+      );
     }
 
     final offset = args['offset'] as int? ?? 0;
@@ -129,25 +141,31 @@ class BackgroundTaskTool extends Tool {
       buffer.writeln('End of task output.');
     }
     buffer.write('\n${page.text}');
-    return buffer.toString();
+    return ToolExecutionResult.success(buffer.toString());
   }
 
-  Future<String> _stop(String chatId, String taskId) async {
+  Future<ToolExecutionResult> _stop(String chatId, String taskId) async {
     final task = tasks.task(taskId, chatId: chatId);
     if (task == null) {
-      return 'Error: no background task "$taskId" in this session. '
-          'Use background_task(action="list") to see available ids.';
+      return ToolExecutionResult.error(
+        'Error: no background task "$taskId" in this session. '
+        'Use background_task(action="list") to see available ids.',
+      );
     }
     if (!task.isRunning) {
-      return '[background task ${task.id}: ${task.statusLine}]\n'
-          'It is not running, nothing to stop. Output is still readable with '
-          'background_task(action="read", task_id="${task.id}").';
+      return ToolExecutionResult.success(
+        '[background task ${task.id}: ${task.statusLine}]\n'
+        'It is not running, nothing to stop. Output is still readable with '
+        'background_task(action="read", task_id="${task.id}").',
+      );
     }
     await tasks.stop(taskId, chatId: chatId);
-    return '[background task ${task.id} stopped]\n'
-        '${task.statusLine}\n'
-        'The process tree was terminated; the output produced so far is kept '
-        'and can be read with background_task(action="read", '
-        'task_id="${task.id}").';
+    return ToolExecutionResult.success(
+      '[background task ${task.id} stopped]\n'
+      '${task.statusLine}\n'
+      'The process tree was terminated; the output produced so far is kept '
+      'and can be read with background_task(action="read", '
+      'task_id="${task.id}").',
+    );
   }
 }

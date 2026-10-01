@@ -39,19 +39,23 @@ class SentinelGetTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
     final name = (args['sentinel_name'] as String?)?.trim() ?? '';
     if (name.isEmpty) {
-      return 'Error: sentinel_name must not be empty.';
+      return ToolExecutionResult.error(
+        'Error: sentinel_name must not be empty.',
+      );
     }
 
     final sentinel = await _repository.getSentinelByName(name);
     if (sentinel == null) {
-      return 'Error: Sentinel "$name" not found. '
-          'Run sentinel_list to see available sentinels.';
+      return ToolExecutionResult.error(
+        'Error: Sentinel "$name" not found. '
+        'Run sentinel_list to see available sentinels.',
+      );
     }
 
     final buffer = StringBuffer();
@@ -67,6 +71,6 @@ class SentinelGetTool extends Tool {
     buffer.writeln();
     buffer.writeln('**Prompt:**');
     buffer.writeln(sentinel.prompt.isEmpty ? '(empty)' : sentinel.prompt);
-    return buffer.toString();
+    return ToolExecutionResult.success(buffer.toString());
   }
 }

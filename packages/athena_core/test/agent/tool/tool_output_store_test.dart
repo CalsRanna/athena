@@ -23,6 +23,39 @@ void main() {
   }
 
   group('落盘成功时行为不变', () {
+    for (final disk in [false, true]) {
+      test(
+        'Unicode pagination and checkpoints agree with original text (disk=$disk)',
+        () async {
+          final store = ToolOutputStore(
+            directory: disk ? Directory('$root/outputs') : null,
+          );
+          final text = '\uFEFF${'A😀中文' * 6000}';
+          final id = await store.save(text);
+          final all = text.runes.toList();
+          for (final offset in [0, 4090, 8190, 16000, 24000, 4096]) {
+            final page = await store.read(id, offset: offset, limit: 20);
+            expect(page.text, String.fromCharCodes(all.skip(offset).take(20)));
+            expect(page.nextOffset, offset + page.text.runes.length);
+          }
+        },
+      );
+    }
+
+    test(
+      'two stores can atomically save the same output concurrently',
+      () async {
+        final directory = Directory('$root/outputs');
+        final first = ToolOutputStore(directory: directory);
+        final second = ToolOutputStore(directory: directory);
+        final ids = await Future.wait([
+          first.save(longText()),
+          second.save(longText()),
+        ]);
+        expect(ids[0], ids[1]);
+        expect((await second.read(ids.first, limit: 10)).text, 'a' * 10);
+      },
+    );
     test('超长输出转存并给出可读回的引用', () async {
       final store = ToolOutputStore(directory: Directory('$root/outputs'));
 

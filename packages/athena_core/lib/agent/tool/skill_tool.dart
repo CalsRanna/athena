@@ -6,7 +6,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/text_file_reader.dart';
 import 'package:path/path.dart' as p;
 
-class SkillTool extends Tool {
+class SkillTool extends Tool implements CancellableTool {
+  final TextFileReader _reader = TextFileReader();
   final SkillRegistry _registry;
 
   SkillTool(this._registry);
@@ -58,14 +59,26 @@ class SkillTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
+  }) => _execute(args);
+
+  @override
+  Future<ToolExecutionResult> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) => _execute(args, cancelSignal: cancelSignal);
+
+  Future<ToolExecutionResult> _execute(
+    Map<String, dynamic> args, {
+    Future<void>? cancelSignal,
   }) async {
     final name = args['name'] as String;
     final skill = _registry.get(name);
     if (skill == null) {
-      return 'Error: Skill "$name" not found.';
+      return ToolExecutionResult.error('Error: Skill "$name" not found.');
     }
     final resource = args['resource'] as String?;
     if (resource != null) {
@@ -74,10 +87,13 @@ class SkillTool extends Tool {
         resource,
         offset: args['offset'] as int? ?? 0,
         limit: args['limit'] as int? ?? 200,
+        cancelSignal: cancelSignal,
       );
     }
     if (args['offset'] != null || args['limit'] != null) {
-      return 'Error: offset and limit require a resource path.';
+      return ToolExecutionResult.error(
+        'Error: offset and limit require a resource path.',
+      );
     }
     _registry.pushContext(name);
     final buffer = StringBuffer();
@@ -100,27 +116,34 @@ class SkillTool extends Tool {
     buffer.writeln();
     buffer.writeln('Instructions:');
     buffer.writeln(skill.body);
-    return buffer.toString();
+    return ToolExecutionResult.success(buffer.toString());
   }
 
-  Future<String> _readResource(
+  Future<ToolExecutionResult> _readResource(
     Skill skill,
     String resource, {
     required int offset,
     required int limit,
+    Future<void>? cancelSignal,
   }) async {
     if (skill.isBuiltin) {
-      return 'Error: Built-in skill "${skill.name}" has no resource directory.';
+      return ToolExecutionResult.error(
+        'Error: Built-in skill "${skill.name}" has no resource directory.',
+      );
     }
     if (resource.isEmpty ||
         resource.contains('\u0000') ||
         p.posix.isAbsolute(resource) ||
         p.windows.rootPrefix(resource).isNotEmpty ||
         RegExp(r'^[A-Za-z]:').hasMatch(resource)) {
-      return 'Error: resource must be a non-empty relative file path.';
+      return ToolExecutionResult.error(
+        'Error: resource must be a non-empty relative file path.',
+      );
     }
     if (offset < 0 || limit < 1 || limit > TextFileReader.maxReturnLines) {
-      return 'Error: offset must be non-negative and limit must be 1-2000.';
+      return ToolExecutionResult.error(
+        'Error: offset must be non-negative and limit must be 1-2000.',
+      );
     }
 
     try {
@@ -128,26 +151,39 @@ class SkillTool extends Tool {
       // Accept either separator style for resources on all supported platforms.
       final path = p.normalize(p.joinAll([root, ...p.windows.split(resource)]));
       if (!p.isWithin(root, path)) {
-        return 'Error: Resource must stay inside the skill directory.';
+        return ToolExecutionResult.error(
+          'Error: Resource must stay inside the skill directory.',
+        );
       }
       final resolved = await File(path).resolveSymbolicLinks();
       if (!p.isWithin(root, resolved)) {
-        return 'Error: Resource resolves outside the skill directory.';
+        return ToolExecutionResult.error(
+          'Error: Resource resolves outside the skill directory.',
+        );
       }
       if (await FileSystemEntity.type(resolved) != FileSystemEntityType.file) {
-        return 'Error: Resource must be a text file.';
+        return ToolExecutionResult.error(
+          'Error: Resource must be a text file.',
+        );
       }
-      final content = await TextFileReader().read(
+      final content = await _reader.read(
         File(resolved),
         offset: offset,
         limit: limit,
+        cancelSignal: cancelSignal,
       );
-      return 'Skill: ${skill.name}\nResource: $resource\nPath: $resolved\n\n$content';
+      return ToolExecutionResult.success(
+        'Skill: ${skill.name}\nResource: $resource\nPath: $resolved\n\n$content',
+      );
     } on FileSystemException catch (error) {
-      return 'Error: Cannot read resource "$resource" for skill "${skill.name}": '
-          '${error.message}';
+      return ToolExecutionResult.error(
+        'Error: Cannot read resource "$resource" for skill "${skill.name}": '
+        '${error.message}',
+      );
     } on FormatException {
-      return 'Error: Skill resources must be UTF-8 text files.';
+      return ToolExecutionResult.error(
+        'Error: Skill resources must be UTF-8 text files.',
+      );
     }
   }
 }

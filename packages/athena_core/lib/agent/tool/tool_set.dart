@@ -68,48 +68,24 @@ ToolRegistry buildToolRegistry({
 
   // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
   // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
-  if (isMobile) {
-    registry.registerAll([
-      WebFetchTool(),
-      WebSearchTool(settings: settings),
-      SkillTool(skillRegistry),
-      SkillEvolveTool(skillRegistry: skillRegistry, homeDir: mobileHomeDir),
-      ExperienceLearnTool(repository: experienceRepository),
-      ExperienceRecallTool(repository: experienceRepository),
-      SentinelListTool(repository: sentinelRepository),
-      SentinelGetTool(repository: sentinelRepository),
-      SentinelEvolveTool(
-        repository: sentinelRepository,
-        historyStore: historyStore,
-        onChanged: onSentinelChanged,
-      ),
-      SentinelRevertTool(
-        repository: sentinelRepository,
-        historyStore: historyStore,
-        onChanged: onSentinelChanged,
-      ),
-    ]);
-    return registry;
-  }
-
   registry.registerAll([
-    FileReadTool(),
-    FileWriteTool(),
-    FileUpdateTool(),
-    // bash 与 powershell 按操作系统互斥，运行时只存在一个
-    PlatformUtil.isWindows
-        ? PowerShellShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks)
-        : BashShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks),
-    // 后台任务的查看/读取/停止入口，与 shell 的 background=true 成对出现：
-    // 只注册 shell 而不注册它，模型就无法取回后台命令的结果。
-    BackgroundTaskTool(tasks),
-    // 交互工具：向用户提结构化问题（宿主提问卡片承载，永不触发审批弹窗）。
-    // 移动端暂无对应的提问卡片，故只在桌面端注册。
-    AskUserQuestionTool(),
+    if (!isMobile) ...[
+      FileReadTool(),
+      FileWriteTool(),
+      FileUpdateTool(),
+      PlatformUtil.isWindows
+          ? PowerShellShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks)
+          : BashShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks),
+      BackgroundTaskTool(tasks),
+      AskUserQuestionTool(),
+    ],
     WebFetchTool(),
     WebSearchTool(settings: settings),
     SkillTool(skillRegistry),
-    SkillEvolveTool(skillRegistry: skillRegistry),
+    SkillEvolveTool(
+      skillRegistry: skillRegistry,
+      homeDir: isMobile ? mobileHomeDir : null,
+    ),
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
     SentinelListTool(repository: sentinelRepository),

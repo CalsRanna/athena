@@ -33,13 +33,13 @@ class SentinelListTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
     final sentinels = await _repository.getAllSentinels();
     if (sentinels.isEmpty) {
-      return 'No sentinels found.';
+      return ToolExecutionResult.success('No sentinels found.');
     }
     final sorted = List<SentinelEntity>.from(sentinels)
       ..sort((a, b) => a.name.compareTo(b.name));
@@ -64,7 +64,7 @@ class SentinelListTool extends Tool {
       'Use sentinel_get <name> to view the full prompt of a '
       'specific sentinel.',
     );
-    return buffer.toString();
+    return ToolExecutionResult.success(buffer.toString());
   }
 
   /// 折叠为单行（description 可能含换行）。

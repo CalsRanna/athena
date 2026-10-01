@@ -39,19 +39,19 @@ class WebSearchTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) => _execute(args, onUpdate: onUpdate);
 
   @override
-  Future<String> executeCancellable(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
-  Future<String> _execute(
+  Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     Future<void>? cancelSignal,
@@ -60,14 +60,18 @@ class WebSearchTool extends Tool implements CancellableTool {
 
     final settings = _settings;
     if (settings == null) {
-      return 'Error: Brave Search API key store not configured.';
+      return ToolExecutionResult.error(
+        'Error: Brave Search API key store not configured.',
+      );
     }
     final apiKey = await settings.loadBraveApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      return 'Error: Brave Search API key not configured. '
-          'Set it in settings with key '
-          '"${UserSettingsStore.braveApiKeyKey}". '
-          'Get a free key at https://brave.com/search/api/';
+      return ToolExecutionResult.error(
+        'Error: Brave Search API key not configured. '
+        'Set it in settings with key '
+        '"${UserSettingsStore.braveApiKeyKey}". '
+        'Get a free key at https://brave.com/search/api/',
+      );
     }
 
     final uri = Uri.https('api.search.brave.com', '/res/v1/web/search', {
@@ -78,34 +82,31 @@ class WebSearchTool extends Tool implements CancellableTool {
     var cancelled = false;
     try {
       final client = http.Client();
-      var completed = false;
-      if (cancelSignal != null) {
-        unawaited(
-          cancelSignal.then((_) {
-            cancelled = true;
-            if (!completed) client.close();
-          }),
-        );
-      }
       http.Response response;
       try {
-        response = await client
-            .get(
-              uri,
-              headers: {
-                'Accept': 'application/json',
-                'Accept-Encoding': 'gzip',
-                'X-Subscription-Token': apiKey,
-              },
-            )
-            .timeout(_defaultTimeout);
+        response = await Future.any<http.Response>([
+          client.get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'Accept-Encoding': 'gzip',
+              'X-Subscription-Token': apiKey,
+            },
+          ),
+          if (cancelSignal != null)
+            cancelSignal.then<http.Response>((_) {
+              cancelled = true;
+              throw const CancelledException();
+            }),
+        ]).timeout(_defaultTimeout);
       } finally {
-        completed = true;
         client.close();
       }
 
       if (response.statusCode != 200) {
-        return 'Error: Brave Search returned ${response.statusCode}: ${response.body}';
+        return ToolExecutionResult.error(
+          'Error: Brave Search returned ${response.statusCode}: ${response.body}',
+        );
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -113,7 +114,7 @@ class WebSearchTool extends Tool implements CancellableTool {
       final results = web?['results'] as List<dynamic>?;
 
       if (results == null || results.isEmpty) {
-        return 'No results found for "$query".';
+        return ToolExecutionResult.success('No results found for "$query".');
       }
 
       final buffer = StringBuffer();
@@ -129,13 +130,15 @@ class WebSearchTool extends Tool implements CancellableTool {
         }
         buffer.writeln();
       }
-      return buffer.toString().trim();
+      return ToolExecutionResult.success(buffer.toString().trim());
     } on http.ClientException catch (e) {
       if (cancelled) throw const CancelledException();
-      return 'Error: Search request failed: ${e.message}';
+      return ToolExecutionResult.error(
+        'Error: Search request failed: ${e.message}',
+      );
     } catch (e) {
       if (cancelled) throw const CancelledException();
-      return 'Error: $e';
+      return ToolExecutionResult.error('Error: $e');
     }
   }
 }

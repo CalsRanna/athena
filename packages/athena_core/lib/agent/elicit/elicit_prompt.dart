@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 
 /// 一个选项：标签 + 一句话说明。
 ///
@@ -96,7 +97,7 @@ class ElicitChannel {
 /// 因此按调用传入而非构造注入——同 `CancellableTool` 处理取消信号的方式。
 /// 这样多个 run 并发时各自持有自己的通道，不会互相串台。
 abstract interface class ElicitChannelAware {
-  Future<String> executeWithElicit(
+  Future<ToolExecutionResult> executeWithElicit(
     Map<String, dynamic> args, {
     required ElicitChannel channel,
     void Function(String partialResult)? onUpdate,

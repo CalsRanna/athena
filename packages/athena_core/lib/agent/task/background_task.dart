@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:athena_core/agent/tool/shell_runner.dart' as shell;
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
+import 'package:athena_core/util/capped_text_buffer.dart';
 import 'package:path/path.dart' as p;
 
 /// 后台任务状态。
@@ -38,7 +39,7 @@ bool shouldReportTaskCompletion(BackgroundTask task) =>
 
 /// 一个后台任务：命令、进程、持续累积的输出与终态。
 ///
-/// 输出保留在内存中直到任务被清理，**停止任务不丢已产生的输出**——
+/// 输出有界保留头尾、超额时显式标记丢弃；**停止任务不丢保留的输出**——
 /// 这是「取消即杀」能被接受的前提：杀掉的是进程，不是证据。
 class BackgroundTask {
   BackgroundTask({
@@ -65,48 +66,36 @@ class BackgroundTask {
 
   Process? _process;
 
-  final StringBuffer _stdout = StringBuffer();
-  final StringBuffer _stderr = StringBuffer();
+  final CappedTextBuffer _stdout = CappedTextBuffer();
+  final CappedTextBuffer _stderr = CappedTextBuffer();
 
   bool get isRunning => status == BackgroundTaskStatus.running;
 
-  int get outputLength => _stdout.length + _stderr.length;
+  int get outputLength =>
+      _outputChunks.fold(0, (sum, chunk) => sum + chunk.characters);
 
   Duration get elapsed => (finishedAt ?? DateTime.now()).difference(startedAt);
 
   /// 与前台 shell 结果同一格式：stdout 在前，stderr 单独成段。
-  String get output {
-    final buffer = StringBuffer(_stdout.toString());
-    final stderr = _stderr.toString();
-    if (stderr.isNotEmpty) {
-      if (buffer.isNotEmpty && !buffer.toString().endsWith('\n')) {
-        buffer.writeln();
+  String get output => _outputChunks.map((chunk) => chunk.text).join();
+
+  Iterable<TextChunk> get _outputChunks sync* {
+    yield* _stdout.chunks;
+    if (!_stderr.isEmpty) {
+      if (!_stdout.isEmpty && !_stdout.endsWithNewline) {
+        yield const TextChunk('\n', 1);
       }
-      buffer.writeln('[stderr]');
-      buffer.write(stderr);
+      yield const TextChunk('[stderr]\n', 9);
+      yield* _stderr.chunks;
     }
-    return buffer.toString();
   }
 
-  /// 分页读取（按 Unicode 码点计数，与 tool_output_read 同一口径）。
+  /// Offsets count Unicode code points in the retained output, including notices.
   ({String text, int nextOffset, bool hasMore}) page({
     int offset = 0,
     required int limit,
-  }) {
-    final text = output;
-    final runes = text.runes;
-    final total = runes.length;
-    if (offset >= total) {
-      return (text: '', nextOffset: total, hasMore: false);
-    }
-    final take = runes.skip(offset).take(limit).toList();
-    final next = offset + take.length;
-    return (
-      text: String.fromCharCodes(take),
-      nextOffset: next,
-      hasMore: next < total,
-    );
-  }
+  }) =>
+      CappedTextBuffer.readChunks(_outputChunks, offset: offset, limit: limit);
 
   /// 状态行：任务列表与工具结果都用它，保证口径一致。
   String get statusLine {
@@ -134,9 +123,9 @@ class BackgroundTask {
     _process = process;
   }
 
-  void _appendStdout(String chunk) => _stdout.write(chunk);
+  void _appendStdout(String chunk) => _stdout.add(chunk);
 
-  void _appendStderr(String chunk) => _stderr.write(chunk);
+  void _appendStderr(String chunk) => _stderr.add(chunk);
 }
 
 /// 后台任务登记表。
@@ -347,6 +336,7 @@ class BackgroundTaskService {
   }
 
   void _onExit(BackgroundTask task, int? code, {Object? error}) {
+    final drain = _drains.remove(task.id);
     if (!task.isRunning) return;
     task.exitCode = code;
     final status = error != null
@@ -354,7 +344,6 @@ class BackgroundTaskService {
         : (code == 0
               ? BackgroundTaskStatus.completed
               : BackgroundTaskStatus.failed);
-    final drain = _drains.remove(task.id);
     if (drain == null) {
       _finish(task, status);
       unawaited(_writeOrphanState());

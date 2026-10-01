@@ -9,6 +9,9 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:meta/meta.dart';
 
 class WebFetchTool extends Tool implements CancellableTool {
+  WebFetchTool({Duration timeout = _defaultTimeout}) : _timeout = timeout;
+
+  final Duration _timeout;
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
 
@@ -64,19 +67,19 @@ class WebFetchTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) => _execute(args, onUpdate: onUpdate);
 
   @override
-  Future<String> executeCancellable(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
-  Future<String> _execute(
+  Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     Future<void>? cancelSignal,
@@ -93,186 +96,169 @@ class WebFetchTool extends Tool implements CancellableTool {
 
     final uri = Uri.tryParse(url);
     if (uri == null) {
-      return 'Error: Invalid URL: $url';
+      return ToolExecutionResult.error('Error: Invalid URL: $url');
     }
     if (uri.scheme != 'http' && uri.scheme != 'https') {
-      return 'Error: Only http and https URLs are allowed';
+      return ToolExecutionResult.error(
+        'Error: Only http and https URLs are allowed',
+      );
     }
+    final client = HttpClient();
     var cancelled = false;
     try {
-      final methodUpper = method.toUpperCase();
-      if (methodUpper != 'GET' && methodUpper != 'POST') {
-        return 'Error: Unsupported method: $method';
-      }
-
-      final client = HttpClient();
-      var completed = false;
-      if (cancelSignal != null) {
-        unawaited(
-          cancelSignal.then((_) {
+      // 整次请求共用一个截止时间，包含重定向排空和响应体；关闭 client 只负责
+      // 资源清理，取消还必须直接赢得竞速，不能依赖底层流一定会抛错。
+      return await Future.any<ToolExecutionResult>([
+        _fetch(client, uri, method.toUpperCase(), headers, body, format),
+        if (cancelSignal != null)
+          cancelSignal.then<ToolExecutionResult>((_) {
             cancelled = true;
-            if (!completed) client.close(force: true);
+            throw const CancelledException();
           }),
-        );
-      }
-      late HttpClientResponse response;
-      try {
-        var currentUri = uri;
-        var currentMethod = methodUpper;
-        var redirects = 0;
-        while (true) {
-          final blocked = blockedReason(currentUri);
-          if (blocked != null) {
-            completed = true;
-            client.close();
-            return 'Error: Blocked: $blocked ($url)';
-          }
-          final request = await client
-              .openUrl(currentMethod, currentUri)
-              .timeout(_defaultTimeout);
-          // Dart 3.12 起 followRedirects 是 request 级属性（HttpClient 级
-          // 配置已移除）。关闭自动跟跳、手动跟随，保证每一跳都重新做
-          // 字面量地址校验（package:http 的 IOClient 无法关闭跟跳）。
-          request.followRedirects = false;
-          headers.forEach(request.headers.add);
-          if (currentMethod == 'POST' && body != null) {
-            final bytes = utf8.encode(body);
-            request.contentLength = bytes.length;
-            request.add(bytes);
-          }
-          response = await request.close().timeout(_defaultTimeout);
-          if (response.statusCode >= 300 && response.statusCode < 400) {
-            final location = response.headers.value('location');
-            await response.drain<void>();
-            if (location == null || redirects >= _maxRedirects) {
-              break; // 无跳转目标或超限：把当前 3xx 响应当最终响应返回
-            }
-            final nextUri = currentUri.resolve(location);
-            // 跨 origin 的跳转不在工具内部跟随：权限只审过首个 URL 的
-            // origin，自定义 headers（Authorization 等）也不能带到别的站点。
-            // 交还模型用新 URL 重新调用，让新 origin 走一遍审批。
-            if (nextUri.origin != currentUri.origin) {
-              completed = true;
-              client.close();
-              return 'Status: ${response.statusCode}\n'
-                  'Redirect: $nextUri\n\n'
-                  'The server redirected to a different origin. The redirect '
-                  'was not followed; call web_fetch again with the URL above '
-                  'if you want its content.';
-            }
-            currentUri = nextUri;
-            redirects++;
-            // 301/302/303 按惯例转 GET（丢弃 body）；307/308 保留原方法
-            if (response.statusCode != 307 && response.statusCode != 308) {
-              currentMethod = 'GET';
-            }
-            continue;
-          }
-          break;
-        }
-      } catch (_) {
-        completed = true;
-        client.close();
-        rethrow;
-      }
-
-      // 流式读取响应体：超过上限即停止接收，避免超大文件
-      // （如数百 MB 的下载链接）被整个缓冲进内存。
-      final bodyBytes = BytesBuilder(copy: false);
-      var overLimit = false;
-      try {
-        await for (final chunk in response.timeout(_defaultTimeout)) {
-          if (bodyBytes.length >= _maxResponseBytes) {
-            overLimit = true;
-            break;
-          }
-          final remaining = _maxResponseBytes - bodyBytes.length;
-          bodyBytes.add(
-            chunk.length <= remaining ? chunk : chunk.sublist(0, remaining),
-          );
-        }
-      } finally {
-        completed = true;
-        client.close(force: cancelled);
-      }
-
-      // dart:io 无 content-length 时为 -1
-      final knownTotal = response.contentLength;
-      final tooLarge =
-          (knownTotal > 0 ? knownTotal : bodyBytes.length) >
-              _maxResponseBytes ||
-          overLimit;
-      final raw = _decodeBody(
-        bodyBytes.toBytes(),
-        response.headers.value('content-type'),
-      );
-
-      // Markdown 模式且响应看起来像 HTML 时才转换
-      final contentType = response.headers.value('content-type') ?? '';
-      final looksLikeHtml =
-          contentType.contains('text/html') || _hasHtmlTags(raw);
-
-      final output = (format == 'markdown' && looksLikeHtml)
-          ? htmlToMarkdown(raw)
-          : raw;
-
-      final result = StringBuffer();
-      result.writeln('Status: ${response.statusCode}');
-      if (response.reasonPhrase.isNotEmpty) {
-        result.writeln('Reason: ${response.reasonPhrase}');
-      }
-      result.writeln(
-        'Content-Type: ${contentType.isNotEmpty ? contentType : '(unknown)'}',
-      );
-      result.writeln();
-
-      if (tooLarge) {
-        result.writeln(output);
-        result.writeln();
-        final totalNote = knownTotal > 0
-            ? '${knownTotal ~/ 1024}KB'
-            : '>${_maxResponseBytes ~/ 1024}KB';
-        result.writeln(
-          '[Response truncated: limit ${_maxResponseBytes ~/ 1024}KB / '
-          '$totalNote total]',
-        );
-        result.writeln(
-          'Hint: to reduce payload, use a more specific URL or API '
-          'endpoint, add query parameters to filter results, or retry '
-          'with Accept-Encoding: gzip if the server supports it.',
-        );
-      } else {
-        result.write(output);
-      }
-
-      return result.toString();
-    } on SocketException catch (e) {
-      if (cancelled) throw const CancelledException();
-      return 'Error: Request failed: ${e.message}';
-    } on HttpException catch (e) {
-      if (cancelled) throw const CancelledException();
-      return 'Error: Request failed: ${e.message}';
-    } on TimeoutException catch (e) {
-      if (cancelled) throw const CancelledException();
-      return 'Error: Request timed out: ${e.message}';
+      ]).timeout(_timeout);
+    } on CancelledException {
+      rethrow;
     } catch (e) {
       if (cancelled) throw const CancelledException();
-      return 'Error: $e';
+      return ToolExecutionResult.error('Error: Request failed: $e');
+    } finally {
+      client.close(force: true);
     }
   }
 
-  /// 按响应 Content-Type 的 charset 解码响应体；未指定时用 latin1
-  /// （与 http 包 Response.body 的默认行为一致）。
-  static String _decodeBody(List<int> bytes, String? contentType) {
-    final match = contentType == null
+  Future<ToolExecutionResult> _fetch(
+    HttpClient client,
+    Uri uri,
+    String method,
+    Map<String, String> headers,
+    String? body,
+    String format,
+  ) async {
+    if (method != 'GET' && method != 'POST') {
+      return ToolExecutionResult.error('Error: Unsupported method: $method');
+    }
+    var currentUri = uri;
+    var currentMethod = method;
+    var redirects = 0;
+    late HttpClientResponse response;
+    while (true) {
+      final blocked = blockedReason(currentUri);
+      if (blocked != null) {
+        return ToolExecutionResult.error('Error: Blocked: $blocked ($uri)');
+      }
+      final request = await client.openUrl(currentMethod, currentUri);
+      request.followRedirects = false;
+      headers.forEach(request.headers.add);
+      if (currentMethod == 'POST' && body != null) {
+        final bytes = utf8.encode(body);
+        request.contentLength = bytes.length;
+        request.add(bytes);
+      }
+      response = await request.close();
+      if (!const [301, 302, 303, 307, 308].contains(response.statusCode)) break;
+      final location = response.headers.value('location');
+      // 要返回的响应必须留给下面的读取器；单订阅流排空后不能再次读取。
+      if (location == null || redirects >= _maxRedirects) break;
+      final nextUri = currentUri.resolve(location);
+      if (nextUri.origin != currentUri.origin) {
+        return ToolExecutionResult.success(
+          'Status: ${response.statusCode}\nRedirect: $nextUri\n\n'
+          'The server redirected to a different origin. The redirect '
+          'was not followed; call web_fetch again with the URL above '
+          'if you want its content.',
+        );
+      }
+      await response.drain<void>();
+      currentUri = nextUri;
+      redirects++;
+      if (response.statusCode != 307 && response.statusCode != 308) {
+        currentMethod = 'GET';
+      }
+    }
+
+    final bodyBytes = BytesBuilder(copy: false);
+    var overLimit = false;
+    await for (final chunk in response) {
+      final remaining = _maxResponseBytes - bodyBytes.length;
+      if (chunk.length > remaining) {
+        bodyBytes.add(chunk.sublist(0, remaining));
+        overLimit = true;
+        break;
+      }
+      bodyBytes.add(chunk);
+    }
+    final knownTotal = response.contentLength;
+    final tooLarge = overLimit || knownTotal > _maxResponseBytes;
+    final contentType = response.headers.value('content-type') ?? '';
+    final raw = _decodeBody(
+      bodyBytes.takeBytes(),
+      contentType,
+      truncated: tooLarge,
+    );
+    final looksLikeHtml =
+        contentType.toLowerCase().contains('text/html') || _hasHtmlTags(raw);
+    final output = format == 'markdown' && looksLikeHtml
+        ? htmlToMarkdown(raw, pageUrl: currentUri)
+        : raw;
+    final result = StringBuffer()
+      ..writeln('Status: ${response.statusCode}')
+      ..writeln('Reason: ${response.reasonPhrase}')
+      ..writeln(
+        'Content-Type: ${contentType.isEmpty ? '(unknown)' : contentType}',
+      )
+      ..writeln()
+      ..write(output);
+    if (tooLarge) {
+      result.writeln(
+        '\n\n[Response truncated: limit ${_maxResponseBytes ~/ 1024}KB]',
+      );
+      result.write(
+        'Use a more specific URL or API endpoint to retrieve missing content.',
+      );
+    }
+    return ToolExecutionResult.success(result.toString());
+  }
+
+  static String _decodeBody(
+    List<int> bytes,
+    String contentType, {
+    required bool truncated,
+  }) {
+    final charset = contentType.isEmpty
         ? null
-        : RegExp(
-            r'charset=([\w-]+)',
-            caseSensitive: false,
-          ).firstMatch(contentType);
-    final encoding = match != null ? Encoding.getByName(match[1]!) : null;
-    // 各具体 codec 的 allowMalformed 默认均为 true，无需显式传入。
-    return (encoding ?? latin1).decode(bytes);
+        : ContentType.parse(contentType).charset;
+    final encoding = charset == null ? null : Encoding.getByName(charset);
+    if (charset != null && encoding == null) {
+      throw UnsupportedError('Unsupported response charset: $charset');
+    }
+    if (encoding != null && encoding != utf8) return encoding.decode(bytes);
+    // UTF-8 是常见页面/API 的默认编码。字节截断只去掉末尾不完整的码点，
+    // 中间的非法数据仍明确报错，不能用 allowMalformed 静默替换整份内容。
+    var end = bytes.length;
+    if (truncated && end > 0) {
+      var start = end - 1;
+      while (start > 0 && bytes[start] & 0xC0 == 0x80) {
+        start--;
+      }
+      final first = bytes[start];
+      final expected = first & 0xE0 == 0xC0
+          ? 2
+          : first & 0xF0 == 0xE0
+          ? 3
+          : first & 0xF8 == 0xF0
+          ? 4
+          : 1;
+      if (end - start < expected) end = start;
+    }
+    final selected = bytes.sublist(0, end);
+    try {
+      return utf8.decode(selected);
+    } on FormatException {
+      if (encoding != null || contentType.toLowerCase().contains('json')) {
+        rethrow;
+      }
+      return latin1.decode(bytes);
+    }
   }
 
   /// 简单试探：检测文本是否包含 HTML 标签。

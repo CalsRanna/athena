@@ -1,5 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:collection';
+
+import 'package:athena_core/util/cancellable_stream.dart';
+import 'package:athena_core/util/atomic_file_write.dart';
 
 import 'package:athena_core/util/logger_util.dart';
 import 'package:crypto/crypto.dart';
@@ -14,6 +18,7 @@ class ToolOutputStore {
   final Map<String, String> _memory = {};
   final Map<String, Future<void>> _writes = {};
   final Map<String, String> _references = {};
+  final LinkedHashMap<String, _OutputIndex> _indexes = LinkedHashMap();
 
   static const inlineLimit = 24000;
   static const previewLimit = 2000;
@@ -31,9 +36,7 @@ class ToolOutputStore {
         await directory!.create(recursive: true);
         final file = File(p.join(directory!.path, '$id.txt'));
         if (!await file.exists()) {
-          final temporary = File('${file.path}.tmp');
-          await temporary.writeAsBytes(bytes, flush: true);
-          await temporary.rename(file.path);
+          await replaceFileContent(file, text);
         }
       });
       try {
@@ -125,6 +128,7 @@ class ToolOutputStore {
     String id, {
     int offset = 0,
     int limit = 6000,
+    Future<void>? cancelSignal,
   }) async {
     if (!_validId.hasMatch(id)) throw ArgumentError('Invalid output_id');
     if (offset < 0 || limit < 1 || limit > pageLimit) {
@@ -132,22 +136,48 @@ class ToolOutputStore {
     }
     final pending = _writes[id];
     if (pending != null) await pending;
-    final Stream<String> chunks;
+    var index = _indexes.remove(id);
+    final String? memory;
+    final File? file;
     if (directory == null) {
-      final text = _memory[id];
-      if (text == null) throw StateError('Saved output not found: $id');
-      chunks = Stream.value(text);
+      memory = _memory[id];
+      file = null;
+      if (memory == null) throw StateError('Saved output not found: $id');
+      index ??= _OutputIndex(null);
     } else {
-      final file = File(p.join(directory!.path, '$id.txt'));
+      memory = null;
+      file = File(p.join(directory!.path, '$id.txt'));
       if (!await file.exists()) throw StateError('Saved output not found: $id');
-      chunks = file.openRead().transform(utf8.decoder);
+      final stat = await file.stat();
+      if (index == null || !index.matches(stat)) index = _OutputIndex(stat);
     }
-    // Do not split lines: a single minified JSON line may contain megabytes.
-    final characters = await chunks
-        .expand((chunk) => chunk.runes)
-        .skip(offset)
-        .take(limit + 1)
-        .toList();
+    _indexes[id] = index;
+    if (_indexes.length > 32) _indexes.remove(_indexes.keys.first);
+    final checkpoint = index.checkpoint(offset);
+    final chunks = file == null
+        ? _memoryChunks(memory!, checkpoint.position)
+        : _fileChunks(file, checkpoint.position);
+    var current = checkpoint.characters;
+    var position = checkpoint.position;
+    final characters = <int>[];
+    outer:
+    await for (final chunk in cancellableStream(chunks, cancelSignal)) {
+      for (final rune in chunk.runes) {
+        index.add(current, position);
+        if (current >= offset) characters.add(rune);
+        current++;
+        position += file == null
+            ? (rune > 0xFFFF ? 2 : 1)
+            : rune < 0x80
+            ? 1
+            : rune < 0x800
+            ? 2
+            : rune < 0x10000
+            ? 3
+            : 4;
+        if (characters.length > limit) break outer;
+      }
+    }
     final hasMore = characters.length > limit;
     if (hasMore) characters.removeLast();
     return ToolOutputPage(
@@ -155,6 +185,34 @@ class ToolOutputStore {
       nextOffset: offset + characters.length,
       hasMore: hasMore,
     );
+  }
+
+  Stream<String> _memoryChunks(String text, int start) async* {
+    while (start < text.length) {
+      var end = (start + 16384).clamp(start, text.length);
+      if (end < text.length &&
+          text.codeUnitAt(end - 1) >= 0xD800 &&
+          text.codeUnitAt(end - 1) <= 0xDBFF) {
+        end--;
+      }
+      yield text.substring(start, end);
+      start = end;
+    }
+  }
+
+  Stream<String> _fileChunks(File file, int start) async* {
+    final prefix = await file
+        .openRead(start, start + 3)
+        .expand((chunk) => chunk)
+        .toList();
+    // utf8.decoder 会消费开头的 BOM，保存的工具文本却可能本来就含这个字符。
+    if (prefix.length == 3 &&
+        prefix[0] == 0xEF &&
+        prefix[1] == 0xBB &&
+        prefix[2] == 0xBF) {
+      yield '\uFEFF';
+    }
+    yield* file.openRead(start).transform(utf8.decoder);
   }
 }
 
@@ -168,4 +226,43 @@ class ToolOutputPage {
   final String text;
   final int nextOffset;
   final bool hasMore;
+}
+
+class _OutputIndex {
+  _OutputIndex(this.stat);
+  final FileStat? stat;
+  int stride = 4096;
+  final List<({int characters, int position})> points = [
+    (characters: 0, position: 0),
+  ];
+
+  bool matches(FileStat other) =>
+      stat?.size == other.size &&
+      stat?.modified == other.modified &&
+      stat?.changed == other.changed;
+
+  void add(int characters, int position) {
+    if (characters <= points.last.characters || characters % stride != 0) {
+      return;
+    }
+    points.add((characters: characters, position: position));
+    if (points.length > 4096) {
+      stride *= 2;
+      points.removeWhere((point) => point.characters % stride != 0);
+    }
+  }
+
+  ({int characters, int position}) checkpoint(int offset) {
+    var low = 0;
+    var high = points.length;
+    while (low + 1 < high) {
+      final middle = (low + high) ~/ 2;
+      if (points[middle].characters <= offset) {
+        low = middle;
+      } else {
+        high = middle;
+      }
+    }
+    return points[low];
+  }
 }

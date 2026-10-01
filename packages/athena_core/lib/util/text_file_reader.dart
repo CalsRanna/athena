@@ -1,58 +1,138 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:collection';
+
+import 'package:athena_core/util/cancellable_stream.dart';
 
 // Callers validate file access before using this shared pagination reader.
 class TextFileReader {
   static const _streamThreshold = 5 * 1024 * 1024;
   static const maxReturnLines = 2000;
 
-  Future<String> read(File file, {int offset = 0, int? limit}) async {
-    final fileSize = await file.length();
+  final LinkedHashMap<String, _LineIndex> _indexes = LinkedHashMap();
 
-    if (fileSize < _streamThreshold) {
-      return _readSmall(file, offset, limit);
-    } else {
-      return _readLarge(file, offset, limit, fileSize);
-    }
-  }
-
-  /// Small file: read all at once, simple and fast.
-  Future<String> _readSmall(File file, int offset, int? limit) async {
-    final lines = await file.readAsLines();
-    final total = lines.length;
-    final start = offset.clamp(0, total);
-    final effectiveLimit = (limit ?? total).clamp(0, maxReturnLines);
-    final end = (start + effectiveLimit).clamp(start, total);
-    final selected = lines.sublist(start, end);
-
-    return _formatOutput(selected, start, total, offset, limit);
-  }
-
-  /// Large file: streaming read + pre-scan line count, to avoid memory explosion.
-  Future<String> _readLarge(
-    File file,
-    int offset,
+  Future<String> read(
+    File file, {
+    int offset = 0,
     int? limit,
-    int fileSize,
-  ) async {
-    // First pass: count newlines (pure byte scan, no string allocation, very fast).
-    final total = await _countLines(file);
-
-    // Second pass: stream-read the required line range.
-    final start = offset.clamp(0, total);
-    final effectiveLimit = (limit ?? total).clamp(0, maxReturnLines);
-    final end = (start + effectiveLimit).clamp(start, total);
-
-    final selected = await _streamLines(file, start, end);
-
-    return _formatOutput(
-      selected,
+    Future<void>? cancelSignal,
+  }) async {
+    final stat = await file.stat();
+    if (stat.size < _streamThreshold) {
+      final lines = await cancellableStream(
+        file.openRead().transform(utf8.decoder).transform(const LineSplitter()),
+        cancelSignal,
+      ).toList();
+      final start = offset.clamp(0, lines.length);
+      final end = (start + (limit ?? lines.length).clamp(0, maxReturnLines))
+          .clamp(start, lines.length);
+      return _formatOutput(
+        lines.sublist(start, end),
+        start,
+        lines.length,
+        offset,
+        limit,
+      );
+    }
+    var index = _indexes.remove(file.path);
+    if (index == null || !index.matches(stat)) {
+      index = await _buildIndex(file, stat, cancelSignal);
+    }
+    _indexes[file.path] = index;
+    if (_indexes.length > 8) _indexes.remove(_indexes.keys.first);
+    final start = offset.clamp(0, index.total);
+    final end = (start + (limit ?? index.total).clamp(0, maxReturnLines)).clamp(
       start,
-      total,
+      index.total,
+    );
+    final checkpoint = index.checkpoint(start);
+    final lines = <String>[];
+    if (end > start) {
+      var current = checkpoint.line;
+      final stream = file
+          .openRead(checkpoint.byte)
+          .transform(utf8.decoder)
+          .transform(const LineSplitter());
+      await for (final line in cancellableStream(stream, cancelSignal)) {
+        if (current >= start) lines.add(line);
+        if (++current >= end) break;
+      }
+    }
+    if (!index.matches(await file.stat())) {
+      _indexes.remove(file.path);
+      throw FileSystemException(
+        'File changed while reading; read it again',
+        file.path,
+      );
+    }
+    return _formatOutput(
+      lines,
+      start,
+      index.total,
       offset,
       limit,
-      fileSize: fileSize,
+      fileSize: stat.size,
     );
+  }
+
+  Future<_LineIndex> _buildIndex(
+    File file,
+    FileStat stat,
+    Future<void>? cancelSignal,
+  ) async {
+    final index = _LineIndex(stat);
+    var position = 0;
+    var pendingCr = false;
+    var lastBoundary = 0;
+    void boundary(int byte) {
+      index.total++;
+      lastBoundary = byte;
+      if (index.total % index.stride == 0) {
+        index.points.add((line: index.total, byte: byte));
+        if (index.points.length > 4096) {
+          index.stride *= 2;
+          index.points.removeWhere((point) => point.line % index.stride != 0);
+        }
+      }
+    }
+
+    await for (final chunk in cancellableStream(
+      file.openRead(),
+      cancelSignal,
+    )) {
+      for (final byte in chunk) {
+        if (pendingCr) {
+          boundary(position + (byte == 0x0A ? 1 : 0));
+          pendingCr = false;
+          if (byte == 0x0A) {
+            position++;
+            continue;
+          }
+        }
+        if (byte == 0x0D) {
+          pendingCr = true;
+        } else if (byte == 0x0A) {
+          boundary(position + 1);
+        }
+        position++;
+        // LineSplitter 需要攒完整一行；行数上限挡不住超大的单行 JSON。
+        if (position - lastBoundary > 1 << 20) {
+          throw FileSystemException(
+            'A line exceeds the 1MiB read limit; use a narrower shell command',
+            file.path,
+          );
+        }
+      }
+    }
+    if (pendingCr) boundary(position);
+    if (position > lastBoundary) index.total++;
+    if (!index.matches(await file.stat())) {
+      throw FileSystemException(
+        'File changed while indexing; read it again',
+        file.path,
+      );
+    }
+    return index;
   }
 
   /// Format output: line number prefix + header statistics.
@@ -96,45 +176,6 @@ class TextFileReader {
     return buffer.toString();
   }
 
-  /// Count newlines by scanning file bytes (streaming, no string allocation,
-  /// single pass — 不重复打开文件，也不混入同步 IO)。
-  Future<int> _countLines(File file) async {
-    var count = 0;
-    var bytesRead = 0;
-    var lastByte = -1;
-    await for (final chunk in file.openRead()) {
-      bytesRead += chunk.length;
-      for (final byte in chunk) {
-        if (byte == 0x0A) count++; // \n
-        lastByte = byte;
-      }
-    }
-    // 非空且不以 \n 结尾：末尾无换行的一行也要计入。
-    if (bytesRead == 0) return 0; // 空文件
-    if (lastByte != 0x0A) count++;
-    return count;
-  }
-
-  /// Stream-read the specified line range [start, end).
-  Future<List<String>> _streamLines(File file, int start, int end) async {
-    final lines = <String>[];
-    var lineIndex = 0;
-    final stream = file
-        .openRead()
-        .transform(utf8.decoder)
-        .transform(const LineSplitter());
-
-    await for (final line in stream) {
-      if (lineIndex >= end) break;
-      if (lineIndex >= start) {
-        lines.add(line);
-      }
-      lineIndex++;
-    }
-
-    return lines;
-  }
-
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
@@ -142,5 +183,32 @@ class TextFileReader {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+  }
+}
+
+class _LineIndex {
+  _LineIndex(this.stat);
+  final FileStat stat;
+  int total = 0;
+  int stride = 256;
+  final List<({int line, int byte})> points = [(line: 0, byte: 0)];
+
+  bool matches(FileStat other) =>
+      stat.size == other.size &&
+      stat.modified == other.modified &&
+      stat.changed == other.changed;
+
+  ({int line, int byte}) checkpoint(int line) {
+    var low = 0;
+    var high = points.length;
+    while (low + 1 < high) {
+      final middle = (low + high) ~/ 2;
+      if (points[middle].line <= line) {
+        low = middle;
+      } else {
+        high = middle;
+      }
+    }
+    return points[low];
   }
 }

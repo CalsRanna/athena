@@ -5,15 +5,22 @@ import 'package:html/parser.dart' as html_parser;
 ///
 /// 保留标题、链接、列表、代码块等结构信息，同时剥离无意义的
 /// 样式/脚本标签和冗余空白，大幅减少 token 消耗。
-String htmlToMarkdown(String html) {
+String htmlToMarkdown(String html, {Uri? pageUrl}) {
   final document = html_parser.parse(html);
   final buffer = StringBuffer();
-  _walk(document.body ?? document, buffer, _Context());
+  final baseHref = document.querySelector('base[href]')?.attributes['href'];
+  final declaredBase = baseHref == null ? null : Uri.tryParse(baseHref);
+  final baseUrl = declaredBase == null
+      ? pageUrl
+      : pageUrl?.resolveUri(declaredBase) ?? declaredBase;
+  _walk(document.body ?? document, buffer, _Context(baseUrl));
   return _collapseBlankLines(buffer.toString());
 }
 
 /// 遍历上下文：跟踪列表编号和嵌套深度。
 class _Context {
+  _Context(this.baseUrl);
+  final Uri? baseUrl;
   int olCounter = 0;
   int indentLevel = 0;
 }
@@ -158,7 +165,7 @@ void _walk(Node node, StringBuffer buffer, _Context ctx) {
       if (href != null && href.isNotEmpty && !href.startsWith('#')) {
         buffer.write('[');
         _walkChildren(children, buffer, ctx);
-        buffer.write(']($href)');
+        buffer.write('](${_resolveUrl(href, ctx)})');
       } else {
         // 空链接或锚点：只保留文本
         _walkChildren(children, buffer, ctx);
@@ -167,7 +174,7 @@ void _walk(Node node, StringBuffer buffer, _Context ctx) {
     // ---- 图片 ----
     case 'img':
       if (src != null && src.isNotEmpty) {
-        final resolved = _resolveUrl(src, node);
+        final resolved = _resolveUrl(src, ctx);
         buffer.write('![${alt ?? ''}]($resolved)');
       }
 
@@ -191,9 +198,21 @@ void _walk(Node node, StringBuffer buffer, _Context ctx) {
         buffer.write('`');
       }
     case 'pre':
-      buffer.writeln('\n```');
-      _walkChildren(children, buffer, ctx);
-      buffer.writeln('```\n');
+      // HTML parser 已解码实体；代码里的缩进、空行与字面实体不能再清洗。
+      final code = node.text;
+      final longestFence = RegExp(r'`+')
+          .allMatches(code)
+          .fold<int>(
+            2,
+            (longest, match) => match.group(0)!.length > longest
+                ? match.group(0)!.length
+                : longest,
+          );
+      final fence = '`' * (longestFence + 1);
+      buffer.writeln('\n$fence');
+      buffer.write(code);
+      if (!code.endsWith('\n')) buffer.writeln();
+      buffer.writeln('$fence\n');
     case 'del':
     case 's':
       buffer.write('~~');
@@ -292,29 +311,9 @@ void _walkChildren(List<Node> children, StringBuffer buffer, _Context ctx) {
   }
 }
 
-/// 写入文本节点，合并空白并解码常见 HTML 实体。
+/// 普通文本只折叠空白，不丢节点边界上的词间空格。
 void _writeText(StringBuffer buffer, String text) {
-  var cleaned = text
-      .replaceAll('\u00A0', ' ') // non-breaking space
-      .replaceAll('\u200B', '') // zero-width space
-      .replaceAll('\u2003', ' ') // em space
-      .replaceAll('\u2002', ' ') // en space
-      .replaceAll('\t', ' ')
-      .replaceAll(RegExp(r' {2,}'), ' ')
-      .replaceAll('&amp;', '&')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&quot;', '"')
-      .replaceAll('&apos;', "'")
-      .replaceAll('&#39;', "'")
-      .replaceAll('&nbsp;', ' ');
-
-  // 统一去除前导/尾随空白（各标签内的空白保留由 _walk 按需调用控制）
-  cleaned = cleaned.trim();
-
-  if (cleaned.isNotEmpty) {
-    buffer.write(cleaned);
-  }
+  buffer.write(text.replaceAll('\u200B', '').replaceAll(RegExp(r'\s+'), ' '));
 }
 
 /// 判断 [node] 是否在 <pre> 内部。
@@ -329,7 +328,25 @@ bool _isInsidePre(Node node) {
 
 /// 合并连续空行，最多保留一个空行。
 String _collapseBlankLines(String text) {
-  return text.replaceAll(RegExp(r'\n{3,}'), '\n\n').trim();
+  final lines = <String>[];
+  String? fence;
+  var blankLines = 0;
+  for (final line in text.split('\n')) {
+    final marker = RegExp(r'^`{3,}$').hasMatch(line) ? line : null;
+    if (fence != null) {
+      lines.add(line);
+      if (marker == fence) fence = null;
+      continue;
+    }
+    if (marker != null) fence = marker;
+    if (line.trim().isEmpty) {
+      if (++blankLines <= 1) lines.add('');
+    } else {
+      blankLines = 0;
+      lines.add(line);
+    }
+  }
+  return lines.join('\n').trim();
 }
 
 /// 提取属性值（不区分大小写）。
@@ -345,24 +362,9 @@ String? _attr(Element element, String name) {
   return null;
 }
 
-/// 将相对路径解析为绝对 URL（基于 base 标签或页面 URL）。
-String _resolveUrl(String src, Element node) {
-  if (src.startsWith('http://') || src.startsWith('https://')) {
-    return src;
-  }
-  // 尝试从 <base> 标签获取基础 URL
-  var base = '';
-  Element? current = node.parent;
-  while (current != null) {
-    if (current.localName?.toLowerCase() == 'base') {
-      base = _attr(current, 'href') ?? '';
-      break;
-    }
-    current = current.parent;
-  }
-  if (base.isNotEmpty && !base.endsWith('/')) {
-    base = base.substring(0, base.lastIndexOf('/') + 1);
-  }
-  // 在无完整 base 时返回原路径
-  return '$base$src';
+/// 相对链接与图片使用文档的 base 或最终页面 URL。
+String _resolveUrl(String value, _Context ctx) {
+  final uri = Uri.tryParse(value);
+  if (uri == null || ctx.baseUrl == null) return value;
+  return ctx.baseUrl!.resolveUri(uri).toString();
 }

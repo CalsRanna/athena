@@ -63,14 +63,45 @@ void main() {
 
     await expectLater(execute(), throwsA(isA<CancelledException>()));
   });
+
+  test('normal output beginning with Error remains successful', () async {
+    tool.error = null;
+    tool.output = const ToolExecutionResult.success(
+      'Error catalog: reference text',
+    );
+    final result = await execute();
+    expect(result.status, ToolResultStatus.success);
+    expect(result.rawResult, startsWith('Error catalog'));
+  });
+
+  test('explicit failure is recorded regardless of its text prefix', () async {
+    tool.error = null;
+    tool.output = const ToolExecutionResult.error(
+      'command failed',
+      exitCode: 7,
+    );
+    final result = await execute();
+    expect(result.status, ToolResultStatus.executionError);
+  });
 }
 
 class _ThrowingFileReadTool extends FileReadTool {
-  Object error = StateError('unset');
-
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) async => throw error;
+    required Future<void> cancelSignal,
+  }) => executeResult(args, onUpdate: onUpdate);
+
+  Object? error = StateError('unset');
+  ToolExecutionResult output = const ToolExecutionResult.success('content');
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
+    if (error != null) throw error!;
+    return output;
+  }
 }

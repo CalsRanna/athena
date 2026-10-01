@@ -1,3 +1,8 @@
+import 'package:athena_core/agent/tool/tool_result.dart';
+
+export 'package:athena_core/agent/tool/tool_result.dart'
+    show ToolExecutionResult;
+
 /// Reserved display metadata, removed before permission checks and execution.
 const toolCallDescriptionKey = 'call_description';
 
@@ -49,10 +54,16 @@ abstract class Tool {
   ///
   /// [onUpdate] 可选的进度回调，用于流式产出部分结果（如 shell 实时 stdout）。
   /// 实现应确保回调在工具返回后不再被调用。
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String partialResult)? onUpdate,
   });
+
+  /// Text-only entry point for callers that do not need execution status.
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String partialResult)? onUpdate,
+  }) async => (await executeResult(args, onUpdate: onUpdate)).text;
 }
 
 /// 可在 run 停止时主动释放外部资源的工具。
@@ -60,7 +71,7 @@ abstract class Tool {
 /// 单独建模，避免所有短暂的本地工具都被迫实现取消参数。Shell、网络请求等
 /// 可能长时间阻塞的工具实现此接口，由 Agent 在执行时传入 run 的取消信号。
 abstract interface class CancellableTool {
-  Future<String> executeCancellable(
+  Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String partialResult)? onUpdate,
     required Future<void> cancelSignal,

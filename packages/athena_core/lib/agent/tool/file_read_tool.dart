@@ -4,7 +4,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 import 'package:athena_core/util/text_file_reader.dart';
 
-class FileReadTool extends Tool {
+class FileReadTool extends Tool implements CancellableTool {
+  final TextFileReader _reader = TextFileReader();
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
 
@@ -52,9 +53,21 @@ class FileReadTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
+  }) => _execute(args);
+
+  @override
+  Future<ToolExecutionResult> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) => _execute(args, cancelSignal: cancelSignal);
+
+  Future<ToolExecutionResult> _execute(
+    Map<String, dynamic> args, {
+    Future<void>? cancelSignal,
   }) async {
     final path = args['path'] as String;
     final offset = args['offset'] as int? ?? 0;
@@ -66,10 +79,12 @@ class FileReadTool extends Tool {
     // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
     // 能确定目标，否则拒绝。
     final unresolved = unresolvablePathError(path);
-    if (unresolved != null) return unresolved;
+    if (unresolved != null) return ToolExecutionResult.error(unresolved);
 
     final changed = realPathChangedSinceApproval(path);
-    if (changed != null) return symlinkChangedError(path, changed);
+    if (changed != null) {
+      return ToolExecutionResult.error(symlinkChangedError(path, changed));
+    }
     final normalized = normalizePathForMatch(path);
     if (isSensitivePath(normalized)) {
       // 硬拦，与 protectedWritePathError 同一口径。原文案写的是
@@ -79,17 +94,26 @@ class FileReadTool extends Tool {
       // 注意别把这条读成「凭据读不出来」：bash 里的 `cat ~/.ssh/id_rsa` 归
       // 审批管，用户会看到具体命令并自己决定。file_read 没有按路径默认弹审批的
       // 机制，所以这里直接拒绝；两者是刻意的差异，不是漏洞。
-      return 'Error: Blocked: reading credential or Athena data paths '
-          '($path) is not allowed regardless of approval, because the contents '
-          'would enter the conversation context. Ask the user to provide the '
-          'specific value you need instead.';
+      return ToolExecutionResult.error(
+        'Error: Blocked: reading credential or Athena data paths '
+        '($path) is not allowed regardless of approval, because the contents '
+        'would enter the conversation context. Ask the user to provide the '
+        'specific value you need instead.',
+      );
     }
 
     final file = File(normalized);
     if (!await file.exists()) {
-      return 'Error: File not found: $path';
+      return ToolExecutionResult.error('Error: File not found: $path');
     }
 
-    return TextFileReader().read(file, offset: offset, limit: limit);
+    return ToolExecutionResult.success(
+      await _reader.read(
+        file,
+        offset: offset,
+        limit: limit,
+        cancelSignal: cancelSignal,
+      ),
+    );
   }
 }

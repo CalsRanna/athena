@@ -31,7 +31,7 @@ class FileWriteTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -44,19 +44,23 @@ class FileWriteTool extends Tool {
     // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
     // 能确定目标，否则拒绝。
     final unresolved = unresolvablePathError(path);
-    if (unresolved != null) return unresolved;
+    if (unresolved != null) return ToolExecutionResult.error(unresolved);
 
     final changed = realPathChangedSinceApproval(path);
-    if (changed != null) return symlinkChangedError(path, changed);
+    if (changed != null) {
+      return ToolExecutionResult.error(symlinkChangedError(path, changed));
+    }
     final normalized = normalizePathForMatch(path);
     if (isProtectedWritePath(normalized)) {
-      return protectedWritePathError(path);
+      return ToolExecutionResult.error(protectedWritePathError(path));
     }
 
     // 原子替换，且不跟随最后一段符号链接：审批到这里之间目标若被换成链接，
     // 直接写会改坏链接指向的文件（见 replaceFileContent）
     await replaceFileContent(File(normalized), content);
 
-    return 'Successfully wrote ${content.length} bytes to $path';
+    return ToolExecutionResult.success(
+      'Successfully wrote ${content.length} bytes to $path',
+    );
   }
 }

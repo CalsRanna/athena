@@ -51,6 +51,28 @@ void main() {
   }
 
   group('BackgroundTaskService', () {
+    test(
+      'large background output is bounded, reports loss and stays pageable',
+      () async {
+        final tasks = service();
+        addTearDown(tasks.dispose);
+        final task = await start(
+          tasks,
+          command:
+              "printf 'HEAD\\n'; head -c 4194304 /dev/zero | tr '\\0' x; printf '\\nTAIL\\n'",
+        );
+        await waitForTask(task);
+        expect(task.status, BackgroundTaskStatus.completed);
+        expect(task.outputLength, lessThan(2 * 1024 * 1024 + 1024));
+        expect(task.output, contains('characters dropped'));
+        expect(task.page(limit: 10).text, startsWith('HEAD'));
+        expect(
+          task.page(offset: task.outputLength - 10, limit: 10).text,
+          contains('TAIL'),
+        );
+      },
+      skip: isWindows,
+    );
     test('start 立即返回，不等待进程结束', () async {
       final tasks = service();
       final task = await start(tasks, command: 'echo first; sleep 30');

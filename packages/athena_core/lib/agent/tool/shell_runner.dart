@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:path/path.dart' as p;
 
 /// Shell 工具共享配置：默认与最大超时（秒）。
@@ -173,38 +174,7 @@ Future<void> terminateShellProcessTreeByPid(int pid) async {
     return;
   }
 
-  final descendants = await _unixDescendantPids(pid);
-  for (final child in descendants.reversed) {
-    try {
-      Process.killPid(child, ProcessSignal.sigterm);
-    } catch (_) {
-      // 已退出。
-    }
-  }
-  var alive = true;
-  try {
-    alive = Process.killPid(pid, ProcessSignal.sigterm);
-  } catch (_) {
-    alive = false;
-  }
-  if (!alive) return;
-  await Future<void>.delayed(const Duration(seconds: 1));
-  try {
-    // 仍在运行（忽略 SIGTERM 的构建进程）时强杀。
-    if (Process.killPid(pid, ProcessSignal.sigterm)) {
-      final remaining = await _unixDescendantPids(pid);
-      for (final child in remaining.reversed) {
-        try {
-          Process.killPid(child, ProcessSignal.sigkill);
-        } catch (_) {
-          // 已退出。
-        }
-      }
-      Process.killPid(pid, ProcessSignal.sigkill);
-    }
-  } catch (_) {
-    // 已退出。
-  }
+  await _terminateUnixTree(pid);
 }
 
 /// 用 [Process.start] 跑一个 shell 进程，对超时主动 kill。
@@ -213,6 +183,26 @@ Future<void> terminateShellProcessTreeByPid(int pid) async {
 /// 继续跑成为孤儿——这里会显式 [Process.kill]，并在错误信息里告诉 LLM 这是
 /// 超时、可以传更大的 timeout 重试。
 Future<String> runShellProcess({
+  required String executable,
+  required List<String> arguments,
+  required String workdir,
+  required int timeoutSeconds,
+  Future<void>? cancelSignal,
+  String? command,
+  bool clamped = false,
+  int? requestedTimeout,
+}) async => (await runShellProcessResult(
+  executable: executable,
+  arguments: arguments,
+  workdir: workdir,
+  timeoutSeconds: timeoutSeconds,
+  cancelSignal: cancelSignal,
+  command: command,
+  clamped: clamped,
+  requestedTimeout: requestedTimeout,
+)).text;
+
+Future<ToolExecutionResult> runShellProcessResult({
   required String executable,
   required List<String> arguments,
   required String workdir,
@@ -231,7 +221,7 @@ Future<String> runShellProcess({
       environment: _buildEnvironment(),
     );
   } catch (e) {
-    return 'Error launching command: $e';
+    return ToolExecutionResult.error('Error launching command: $e');
   }
 
   // 两个流各用一份带上限的捕获器。为什么必须有上限、为什么被截断后仍要
@@ -250,20 +240,22 @@ Future<String> runShellProcess({
   var timedOut = false;
   var cancelled = false;
   int? exitCode;
+  final timeout = Completer<({bool cancelled, int? exitCode, bool timedOut})>();
+  final timer = Timer(Duration(seconds: timeoutSeconds), () {
+    timeout.complete((cancelled: false, exitCode: null, timedOut: true));
+  });
   final outcome =
       await Future.any<({bool cancelled, int? exitCode, bool timedOut})>([
         process.exitCode.then(
           (code) => (cancelled: false, exitCode: code, timedOut: false),
         ),
-        Future.delayed(
-          Duration(seconds: timeoutSeconds),
-          () => (cancelled: false, exitCode: null, timedOut: true),
-        ),
+        timeout.future,
         if (cancelSignal != null)
           cancelSignal.then(
             (_) => (cancelled: true, exitCode: null, timedOut: false),
           ),
       ]);
+  timer.cancel();
   exitCode = outcome.exitCode;
   timedOut = outcome.timedOut;
   cancelled = outcome.cancelled;
@@ -312,82 +304,111 @@ Future<String> runShellProcess({
     _writeCaptured(buffer, stderrCapture);
   }
   buffer.writeln('[exit code: $exitCode]');
-  return buffer.toString();
+  final text = buffer.toString();
+  return timedOut || exitCode != 0
+      ? ToolExecutionResult.error(text, exitCode: exitCode)
+      : ToolExecutionResult.success(text, exitCode: exitCode);
 }
 
 /// 终止 shell 及其子进程。Windows 用 taskkill /T；Unix 先通过 ps 快照收集
 /// 后代 PID，再从叶子到根发送信号，避免只杀 shell 留下构建/测试孤儿进程。
 Future<int> _terminateProcessTree(Process process) async {
-  await _signalProcessTree(process, force: false);
-  try {
-    return await process.exitCode.timeout(const Duration(seconds: 1));
-  } on TimeoutException {
-    await _signalProcessTree(process, force: true);
-    try {
-      return await process.exitCode.timeout(const Duration(seconds: 1));
-    } catch (_) {
-      return -1;
-    }
-  }
-}
-
-Future<void> _signalProcessTree(Process process, {required bool force}) async {
   if (Platform.isWindows) {
     try {
       await Process.run('taskkill', [
         '/PID',
         '${process.pid}',
         '/T',
-        if (force) '/F',
-      ]).timeout(const Duration(seconds: 1));
+        '/F',
+      ]).timeout(const Duration(seconds: 2));
     } catch (_) {
       process.kill();
     }
-    return;
+  } else {
+    await _terminateUnixTree(process.pid);
   }
-
-  final descendants = await _unixDescendantPids(process.pid);
-  final signal = force ? ProcessSignal.sigkill : ProcessSignal.sigterm;
-  for (final pid in descendants.reversed) {
-    try {
-      Process.killPid(pid, signal);
-    } catch (_) {
-      // 进程可能已自行退出；继续处理剩余进程。
-    }
+  try {
+    return await process.exitCode.timeout(const Duration(seconds: 1));
+  } on TimeoutException {
+    // ps 不可用时仍有 Process 句柄可准确终止根进程。
+    process.kill(ProcessSignal.sigkill);
+    return process.exitCode.timeout(
+      const Duration(seconds: 1),
+      onTimeout: () => -1,
+    );
   }
-  process.kill(signal);
 }
 
-Future<List<int>> _unixDescendantPids(int rootPid) async {
+Future<void> _terminateUnixTree(int rootPid) async {
+  final before = await _unixProcessSnapshot();
+  final descendants = <_ProcessIdentity>[];
+  final pending = <int>[rootPid];
+  while (pending.isNotEmpty) {
+    final parent = pending.removeLast();
+    for (final child in before.values.where((p) => p.parentPid == parent)) {
+      descendants.add(child);
+      pending.add(child.pid);
+    }
+  }
+  final targets = [
+    ...descendants.reversed,
+    if (before[rootPid] case final root?) root,
+  ];
+  for (final target in targets) {
+    _killPid(target.pid, ProcessSignal.sigterm);
+  }
+  if (!before.containsKey(rootPid)) _killPid(rootPid, ProcessSignal.sigterm);
+  // 根 shell 先退出会让后代被收养，第二次沿根查树就找不到它们。保留首次
+  // 快照，并在强杀前核对启动时间，既清理顽固后代也避免 PID 复用误杀。
+  await Future<void>.delayed(const Duration(seconds: 1));
+  final after = await _unixProcessSnapshot();
+  for (final target in targets) {
+    if (after[target.pid]?.started == target.started) {
+      _killPid(target.pid, ProcessSignal.sigkill);
+    }
+  }
+}
+
+void _killPid(int pid, ProcessSignal signal) {
+  try {
+    Process.killPid(pid, signal);
+  } catch (_) {
+    // 已自行退出，继续清理其它已确认的进程。
+  }
+}
+
+Future<Map<int, _ProcessIdentity>> _unixProcessSnapshot() async {
   try {
     final result = await Process.run('ps', [
       '-axo',
-      'pid=,ppid=',
+      'pid=,ppid=,lstart=',
     ]).timeout(const Duration(seconds: 1));
-    if (result.exitCode != 0) return const [];
-
-    final childrenByParent = <int, List<int>>{};
+    if (result.exitCode != 0) return {};
+    final snapshot = <int, _ProcessIdentity>{};
     for (final line in result.stdout.toString().split('\n')) {
       final columns = line.trim().split(RegExp(r'\s+'));
-      if (columns.length < 2) continue;
+      if (columns.length < 7) continue;
       final pid = int.tryParse(columns[0]);
-      final parent = int.tryParse(columns[1]);
-      if (pid == null || parent == null) continue;
-      childrenByParent.putIfAbsent(parent, () => []).add(pid);
+      final parentPid = int.tryParse(columns[1]);
+      if (pid != null && parentPid != null) {
+        snapshot[pid] = _ProcessIdentity(
+          pid,
+          parentPid,
+          columns.skip(2).join(' '),
+        );
+      }
     }
-
-    final descendants = <int>[];
-    final pending = <int>[rootPid];
-    while (pending.isNotEmpty) {
-      final parent = pending.removeLast();
-      final children = childrenByParent[parent] ?? const <int>[];
-      descendants.addAll(children);
-      pending.addAll(children);
-    }
-    return descendants;
+    return snapshot;
   } catch (_) {
-    return const [];
+    return {};
   }
+}
+
+class _ProcessIdentity {
+  const _ProcessIdentity(this.pid, this.parentPid, this.started);
+  final int pid;
+  final int parentPid;
+  final String started;
 }
 
 /// 按 [ShellOutputPolicy] 的额度累积一路输出：未越界时逐字完整，越界后只留

@@ -105,7 +105,7 @@ class ExperienceLearnTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -123,30 +123,40 @@ class ExperienceLearnTool extends Tool {
         .toList();
 
     if (!const ['create', 'update', 'archive'].contains(action)) {
-      return 'Error: Unknown action "$action". Use "create", "update", or '
-          '"archive".';
+      return ToolExecutionResult.error(
+        'Error: Unknown action "$action". Use "create", "update", or '
+        '"archive".',
+      );
     }
 
     try {
       if (action == 'create') {
         if (experienceId != null && experienceId.isNotEmpty) {
-          return 'Error: experience_id must be omitted when action is "create". '
-              'Use action "update" to modify an existing experience.';
+          return ToolExecutionResult.error(
+            'Error: experience_id must be omitted when action is "create". '
+            'Use action "update" to modify an existing experience.',
+          );
         }
         if (lesson.trim().isEmpty) {
-          return 'Error: lesson must not be empty when creating an experience.';
+          return ToolExecutionResult.error(
+            'Error: lesson must not be empty when creating an experience.',
+          );
         }
         if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
-          return 'Error: lesson must not exceed '
-              '${ExperienceEntity.maxLessonLength} characters. Put supporting '
-              'detail in context.';
+          return ToolExecutionResult.error(
+            'Error: lesson must not exceed '
+            '${ExperienceEntity.maxLessonLength} characters. Put supporting '
+            'detail in context.',
+          );
         }
         final normalizedLesson = lesson.trim().toLowerCase();
         final existing = await _repository.listForSentinel(sentinelId);
         for (final item in existing) {
           if (item.lesson.trim().toLowerCase() == normalizedLesson) {
-            return 'Experience already exists (id: ${item.id}, '
-                'scope: ${item.scope}). No duplicate was created.';
+            return ToolExecutionResult.success(
+              'Experience already exists (id: ${item.id}, '
+              'scope: ${item.scope}). No duplicate was created.',
+            );
           }
         }
         final entity = await _repository.save(
@@ -157,20 +167,26 @@ class ExperienceLearnTool extends Tool {
           scope: scope ?? 'self',
           sentinelId: sentinelId,
         );
-        return 'Experience recorded successfully (id: ${entity.id}, '
-            'scope: ${entity.scope}). '
-            'This knowledge will be available in future conversations.';
+        return ToolExecutionResult.success(
+          'Experience recorded successfully (id: ${entity.id}, '
+          'scope: ${entity.scope}). '
+          'This knowledge will be available in future conversations.',
+        );
       }
 
       if (experienceId == null || experienceId.isEmpty) {
-        return 'Error: experience_id is required for action "$action".';
+        return ToolExecutionResult.error(
+          'Error: experience_id is required for action "$action".',
+        );
       }
 
       if (action == 'update') {
         if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
-          return 'Error: lesson must not exceed '
-              '${ExperienceEntity.maxLessonLength} characters. Put supporting '
-              'detail in context.';
+          return ToolExecutionResult.error(
+            'Error: lesson must not exceed '
+            '${ExperienceEntity.maxLessonLength} characters. Put supporting '
+            'detail in context.',
+          );
         }
         final updated = await _repository.update(
           sentinelId: sentinelId,
@@ -181,11 +197,15 @@ class ExperienceLearnTool extends Tool {
           scope: scope,
         );
         if (updated == null) {
-          return 'Error: Experience "$experienceId" not found. It may belong '
-              'to a different Sentinel or have been deleted.';
+          return ToolExecutionResult.error(
+            'Error: Experience "$experienceId" not found. It may belong '
+            'to a different Sentinel or have been deleted.',
+          );
         }
-        return 'Experience updated successfully (id: ${updated.id}, '
-            'scope: ${updated.scope}).';
+        return ToolExecutionResult.success(
+          'Experience updated successfully (id: ${updated.id}, '
+          'scope: ${updated.scope}).',
+        );
       }
 
       // action == 'archive'
@@ -195,14 +215,18 @@ class ExperienceLearnTool extends Tool {
         status: ExperienceEntity.statusArchived,
       );
       if (archived == null) {
-        return 'Error: Experience "$experienceId" not found. It may belong '
-            'to a different Sentinel or have been deleted.';
+        return ToolExecutionResult.error(
+          'Error: Experience "$experienceId" not found. It may belong '
+          'to a different Sentinel or have been deleted.',
+        );
       }
-      return 'Experience archived (id: ${archived.id}). It will no longer '
-          'appear in experience_recall results by default, but remains '
-          'stored as a record.';
+      return ToolExecutionResult.success(
+        'Experience archived (id: ${archived.id}). It will no longer '
+        'appear in experience_recall results by default, but remains '
+        'stored as a record.',
+      );
     } catch (e) {
-      return 'Error $action experience: $e';
+      return ToolExecutionResult.error('Error $action experience: $e');
     }
   }
 }
@@ -269,7 +293,7 @@ class ExperienceRecallTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
@@ -303,10 +327,12 @@ class ExperienceRecallTool extends Tool {
                   ));
 
       if (results.isEmpty) {
-        return query.isEmpty
-            ? 'No active experiences recorded yet. Use experience_learn to '
-                  'start building your knowledge base.'
-            : 'No active experiences found matching "$query".';
+        return ToolExecutionResult.success(
+          query.isEmpty
+              ? 'No active experiences recorded yet. Use experience_learn to '
+                    'start building your knowledge base.'
+              : 'No active experiences found matching "$query".',
+        );
       }
 
       final buffer = StringBuffer();
@@ -337,9 +363,9 @@ class ExperienceRecallTool extends Tool {
         buffer.writeln();
       }
 
-      return buffer.toString().trim();
+      return ToolExecutionResult.success(buffer.toString().trim());
     } catch (e) {
-      return 'Error recalling experiences: $e';
+      return ToolExecutionResult.error('Error recalling experiences: $e');
     }
   }
 

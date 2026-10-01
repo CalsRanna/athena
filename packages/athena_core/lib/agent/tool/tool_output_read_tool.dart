@@ -1,8 +1,9 @@
 import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 
 /// Reads only saved tool results, including on mobile without filesystem tools.
-class ToolOutputReadTool extends Tool {
+class ToolOutputReadTool extends Tool implements CancellableTool {
   ToolOutputReadTool(this.store);
 
   final ToolOutputStore store;
@@ -41,9 +42,21 @@ class ToolOutputReadTool extends Tool {
   };
 
   @override
-  Future<String> execute(
+  Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
+  }) => _execute(args);
+
+  @override
+  Future<ToolExecutionResult> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) => _execute(args, cancelSignal: cancelSignal);
+
+  Future<ToolExecutionResult> _execute(
+    Map<String, dynamic> args, {
+    Future<void>? cancelSignal,
   }) async {
     final id = args['output_id'] as String;
     final offset = args['offset'] as int? ?? 0;
@@ -52,15 +65,22 @@ class ToolOutputReadTool extends Tool {
         id,
         offset: offset,
         limit: args['limit'] as int? ?? 6000,
+        cancelSignal: cancelSignal,
       );
       final next = page.hasMore
           ? 'Continue with tool_output_read(output_id="$id", '
                 'offset=${page.nextOffset}, limit=6000).'
           : 'End of saved output.';
-      return '[characters $offset-${page.nextOffset}, end exclusive]\n'
-          '$next\n\n${page.text}';
+      return ToolExecutionResult.success(
+        '[characters $offset-${page.nextOffset}, end exclusive]\n'
+        '$next\n\n${page.text}',
+      );
+    } on CancelledException {
+      rethrow;
     } catch (e) {
-      return 'Error: Unable to read saved output: $e';
+      return ToolExecutionResult.error(
+        'Error: Unable to read saved output: $e',
+      );
     }
   }
 }

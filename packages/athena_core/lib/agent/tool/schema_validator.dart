@@ -1,11 +1,6 @@
 /// 基于工具 JSON Schema 做基本参数校验。
 ///
-/// 支持的校验维度：
-/// - required 字段存在性
-/// - 基础类型匹配（string / number / integer / boolean / array / object）
-///
-/// 不支持：nested object, oneOf/anyOf, pattern, enum 等复杂约束。
-/// 这些由 LLM 自行保证，此处仅做安全兜底。
+/// 只实现内置工具实际使用的约束；嵌套对象和数组同样递归校验。
 abstract final class SchemaValidator {
   /// 校验 [args] 是否匹配 [parameters] JSON Schema。
   ///
@@ -14,31 +9,78 @@ abstract final class SchemaValidator {
     Map<String, dynamic> parameters,
     Map<String, dynamic> args,
   ) {
-    final required = _extractRequired(parameters);
-    if (required.isNotEmpty) {
-      for (final field in required) {
-        if (!args.containsKey(field)) {
-          return 'Missing required parameter: "$field"';
+    return _validateValue('', args, parameters);
+  }
+
+  static String? _validateValue(
+    String name,
+    dynamic value,
+    Map<String, dynamic> schema,
+  ) {
+    final typeError = _checkType(name, value, schema);
+    if (typeError != null) return typeError;
+    final choices = schema['enum'] as List?;
+    if (choices != null && !choices.contains(value)) {
+      return 'Parameter "$name" must be one of ${choices.join(', ')}';
+    }
+    if (value is num) {
+      final minimum = schema['minimum'] as num?;
+      final maximum = schema['maximum'] as num?;
+      if (minimum != null && value < minimum) {
+        return 'Parameter "$name" must be >= $minimum';
+      }
+      if (maximum != null && value > maximum) {
+        return 'Parameter "$name" must be <= $maximum';
+      }
+    }
+    if (value is String) {
+      final length = value.runes.length;
+      final min = schema['minLength'] as int?;
+      final max = schema['maxLength'] as int?;
+      if (min != null && length < min || max != null && length > max) {
+        return 'Parameter "$name" has an invalid string length ($length)';
+      }
+    }
+    if (value is Map<String, dynamic>) {
+      for (final field in _extractRequired(schema)) {
+        if (!value.containsKey(field)) {
+          return 'Missing required parameter: "${name.isEmpty ? field : '$name.$field'}"';
+        }
+      }
+      final properties = schema['properties'] as Map<String, dynamic>?;
+      if (properties != null) {
+        for (final entry in value.entries) {
+          final child = properties[entry.key] as Map<String, dynamic>?;
+          if (child == null) {
+            if (schema['additionalProperties'] == false) {
+              return 'Unknown parameter: "${entry.key}"';
+            }
+            continue;
+          }
+          final error = _validateValue(
+            name.isEmpty ? entry.key : '$name.${entry.key}',
+            entry.value,
+            child,
+          );
+          if (error != null) return error;
         }
       }
     }
-
-    final properties = parameters['properties'] as Map<String, dynamic>?;
-    if (properties == null) return null;
-
-    for (final entry in properties.entries) {
-      final propName = entry.key;
-      final propSchema = entry.value as Map<String, dynamic>?;
-      if (propSchema == null) continue;
-
-      final value = args[propName];
-      // optional field, already checked for required
-      if (value == null) continue;
-
-      final error = _checkType(propName, value, propSchema);
-      if (error != null) return error;
+    if (value is List) {
+      final min = schema['minItems'] as int?;
+      final max = schema['maxItems'] as int?;
+      if (min != null && value.length < min ||
+          max != null && value.length > max) {
+        return 'Parameter "$name" has an invalid array length (${value.length})';
+      }
+      final items = schema['items'] as Map<String, dynamic>?;
+      if (items != null) {
+        for (final (index, item) in value.indexed) {
+          final error = _validateValue('$name[$index]', item, items);
+          if (error != null) return error;
+        }
+      }
     }
-
     return null;
   }
 

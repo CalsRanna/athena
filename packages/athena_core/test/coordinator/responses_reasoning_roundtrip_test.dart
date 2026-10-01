@@ -375,11 +375,11 @@ class _Echo extends agent.Tool {
     'required': ['value'],
   };
   @override
-  Future<String> execute(
+  Future<agent.ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String partialResult)? onUpdate,
   }) async {
     values.add(args['value'] as String);
-    return 'ok';
+    return const agent.ToolExecutionResult.success('ok');
   }
 }
