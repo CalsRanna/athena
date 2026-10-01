@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/context_budget.dart';
 import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/conversation_summary.dart';
@@ -91,7 +92,14 @@ class ConversationCompactor {
             includeReasoning: model.reasoning,
           ),
       ];
-      final allowance = min(4096, max(128, model.contextWindow ~/ 10));
+      // 摘要必须小于它替换掉的内容，否则提交前的守卫（`after >= beforeTokens`）
+      // 会拒绝这次压缩，表现为"第一次压缩必定失败、等下一轮历史长大才成功"。
+      // 模型给的绝对上限（min(4096, 窗口/10)）对短历史来说太大了。
+      final allowance = _summaryAllowance(
+        groups,
+        request.budget,
+        model.contextWindow,
+      );
       final summary = await _summarize(
         groups,
         request,
@@ -141,6 +149,12 @@ class ConversationCompactor {
       }
       yield ContextCompactionUpdate(step, messages: candidate);
     } catch (error) {
+      // 失败原因原本只落在卡片里（用户不展开就看不到，事后无从追溯）；
+      // 记一条日志，至少要能回答"卡在哪一步、为什么"。
+      LoggerUtil.w(
+        'Compact: ${token.isCancelled ? 'cancelled' : 'failed'} '
+        'during ${step.phase.name} (before=${step.beforeTokens}): $error',
+      );
       step = step.copyWith(
         phase: token.isCancelled
             ? CompactionPhase.cancelled
@@ -158,6 +172,22 @@ class ConversationCompactor {
       }
       yield ContextCompactionUpdate(step);
     }
+  }
+
+  /// 摘要长度上限（token 估算口径）：模型给的绝对上限与覆盖内容的 1/4 取小。
+  ///
+  /// 取 1/4 是为了让替换真的节省上下文（摘要自身也占上下文，留 4 倍收缩比
+  /// 才划算）。历史很大时 1/4 远超绝对上限，行为与只有绝对上限时一致。
+  int _summaryAllowance(
+    List<List<ChatMessage>> groups,
+    ContextBudget budget,
+    int contextWindow,
+  ) {
+    final cap = min(4096, max(128, contextWindow ~/ 10));
+    final covered = budget.estimate([
+      for (final group in groups) ...group,
+    ], null);
+    return min(cap, max(128, covered ~/ 4));
   }
 
   Future<String> _summarize(

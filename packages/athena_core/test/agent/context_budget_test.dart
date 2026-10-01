@@ -20,19 +20,60 @@ void main() {
   group('估算校准', () {
     final messages = [ChatMessage.user('hello world ' * 50)];
 
-    test('按真实 prompt_tokens 向上校准，只增不减', () {
+    test('按真实 prompt_tokens 双向校准', () {
       final budget = ContextBudget(100000);
       final base = budget.estimate(messages, null);
 
+      // 估算偏小（真实用量是估算的 2 倍）：抬高。
       budget.observe(promptTokens: base * 2, messages: messages, tools: null);
-      final doubled = budget.estimate(messages, null);
-      expect(doubled, closeTo(base * 2, 1));
+      expect(budget.estimate(messages, null), closeTo(base * 2, 1));
 
-      budget.observe(promptTokens: base ~/ 4, messages: messages, tools: null);
+      // 估算偏大：字节/2 的启发式对英文与 JSON 约高估 2 倍（实测工具 schema
+      // 2.48 倍），必须拉回来——只增不减会让压缩在指示器还不到 80% 时就触发。
+      budget.observe(promptTokens: base ~/ 2, messages: messages, tools: null);
+      expect(budget.estimate(messages, null), closeTo(base / 2, 1));
+    });
+
+    test('离谱的观察值被钳制，不会把校准甩成任意倍数', () {
+      final budget = ContextBudget(100000);
+      final base = budget.estimate(messages, null);
+
+      budget.observe(promptTokens: 1, messages: messages, tools: null);
+      expect(budget.estimate(messages, null), closeTo(base / 4, 1));
+
+      budget.observe(
+        promptTokens: base * 1000,
+        messages: messages,
+        tools: null,
+      );
+      expect(budget.estimate(messages, null), closeTo(base * 4, 1));
+    });
+
+    test('带 calibrationKey 时校准跨实例复用，不污染其他模型', () {
+      final first = ContextBudget(100000, calibrationKey: 'calibration-a');
+      final base = first.estimate(messages, null);
+      first.observe(promptTokens: base ~/ 2, messages: messages, tools: null);
+
       expect(
-        budget.estimate(messages, null),
-        doubled,
-        reason: '低估才危险：一次偏低的用量不能把校准拉回去',
+        ContextBudget(
+          100000,
+          calibrationKey: 'calibration-a',
+        ).estimate(messages, null),
+        closeTo(base / 2, 1),
+        reason: '同一个模型的下一轮 run 不该从保守高估重新学起',
+      );
+      expect(
+        ContextBudget(
+          100000,
+          calibrationKey: 'calibration-b',
+        ).estimate(messages, null),
+        closeTo(base, 1),
+        reason: '不同模型的口径不能互相污染',
+      );
+      expect(
+        ContextBudget(100000).estimate(messages, null),
+        closeTo(base, 1),
+        reason: '没有 key 的实例各自独立',
       );
     });
 

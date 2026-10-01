@@ -723,7 +723,12 @@ class _AgentLoop {
        _chat = chat,
        _provider = provider,
        _model = model,
-       _budget = ContextBudget(model.contextWindow),
+       _budget = ContextBudget(
+         model.contextWindow,
+         // 校准跟着模型走（同一个模型的 tokenizer 口径固定）：跨 run 复用，
+         // 否则每轮 run 的第一个请求又回到约 2 倍高估，压缩照样提前触发。
+         calibrationKey: model.id ?? '${model.providerId}:${model.modelId}',
+       ),
        _runtimeMessageIndex = runtimeMessageIndex,
        _runtimePrompt = runtimePrompt,
        _projectMessageIndex = projectMessageIndex,
