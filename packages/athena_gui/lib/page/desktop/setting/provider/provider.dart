@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/api_format_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
@@ -45,7 +44,6 @@ class _DesktopSettingProviderPageState
     extends State<DesktopSettingProviderPage> {
   final modelViewModel = GetIt.instance<ModelViewModel>();
   final providerViewModel = GetIt.instance<ProviderViewModel>();
-  final catalogService = GetIt.instance<ModelCatalogService>();
 
   /// 正在查看的 provider；null 表示停在列表。
   String? openId;
@@ -53,7 +51,6 @@ class _DesktopSettingProviderPageState
   final nameController = TextEditingController();
   final keyController = TextEditingController();
   final urlController = TextEditingController();
-  DateTime? lastSyncedAt;
 
   @override
   void initState() {
@@ -72,9 +69,6 @@ class _DesktopSettingProviderPageState
   Future<void> _initState() async {
     await providerViewModel.initSignals();
     await modelViewModel.initSignals();
-    final syncedAt = await catalogService.lastSyncedAt();
-    if (!mounted) return;
-    setState(() => lastSyncedAt = syncedAt);
   }
 
   @override
@@ -214,7 +208,7 @@ class _DesktopSettingProviderPageState
     const what =
         'Refreshes the preset providers and their models. Models you added '
         'yourself are kept.';
-    final syncedAt = lastSyncedAt;
+    final syncedAt = providerViewModel.lastSyncedAt.value;
     if (syncedAt == null) return '$what Never synced.';
     return '$what Last synced ${_relative(syncedAt)}.';
   }
@@ -649,24 +643,19 @@ class _DesktopSettingProviderPageState
 
   /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
   Future<void> syncFromModelsDev() async {
+    if (providerViewModel.isSyncing.value) return;
     AthenaDialog.loading();
-    try {
-      final result = await catalogService.syncIfNeeded(force: true);
-      await providerViewModel.initSignals();
-      await modelViewModel.initSignals();
-      final syncedAt = await catalogService.lastSyncedAt();
-      if (!mounted) return;
-      AthenaDialog.dismiss();
-      setState(() => lastSyncedAt = syncedAt);
-      AthenaDialog.success(
-        'Synced: +${result.createdProviders} providers, '
-        '+${result.createdModels} models, ${result.updatedModels} updated, '
-        '${result.removedModels} removed',
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AthenaDialog.dismiss();
-      AthenaDialog.error('Sync failed: $e');
+    final result = await providerViewModel.syncCatalog();
+    if (!mounted) return;
+    AthenaDialog.dismiss();
+    if (result == null) {
+      AthenaDialog.error('Sync failed: ${providerViewModel.error.value}');
+      return;
     }
+    AthenaDialog.success(
+      'Synced: +${result.createdProviders} providers, '
+      '+${result.createdModels} models, ${result.updatedModels} updated, '
+      '${result.removedModels} removed',
+    );
   }
 }

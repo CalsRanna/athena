@@ -171,11 +171,9 @@ class ModelViewModel {
     }
   }
 
-  /// 删除某个 provider 名下的全部模型（删 provider 时级联调用）。
-  ///
-  /// 调用方负责 loading / 错误展示；这里只维护本地列表。
-  Future<void> deleteModelsOfProvider(String providerId) async {
-    await _repository.deleteModelsByProviderId(providerId);
+  /// Removes models from local state after their provider has been deleted.
+  void removeModelsOfProvider(String providerId) {
+    // 持久化模型已随 provider 文件删除，这里只同步前端状态。
     models.value = models.value
         .where((m) => m.providerId != providerId)
         .toList();

@@ -135,12 +135,17 @@ class ChatCompletionsService {
     String value, {
     required ProviderEntity provider,
     required ModelEntity model,
+    Future<void>? cancelSignal,
   }) async* {
     final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: [ChatMessage.system(_namingPrompt), ChatMessage.user(value)],
     );
-    final stream = _llmClient.stream(provider: provider, request: request);
+    final stream = _llmClient.stream(
+      provider: provider,
+      request: request,
+      cancelSignal: cancelSignal,
+    );
     await for (final chunk in stream) {
       if (chunk.choices == null || chunk.choices!.isEmpty) continue;
       yield chunk.choices!.first.delta.content ?? '';

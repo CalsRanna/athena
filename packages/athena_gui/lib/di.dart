@@ -153,6 +153,7 @@ abstract final class DI {
       () => ProviderViewModel(
         repository: getIt<ProviderRepository>(),
         modelViewModel: getIt<ModelViewModel>(),
+        catalogService: getIt<ModelCatalogService>(),
       ),
     );
 

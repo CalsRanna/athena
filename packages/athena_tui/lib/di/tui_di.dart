@@ -165,7 +165,7 @@ class TuiDi {
     userSettings = storage.userSettings;
     providerRepo = storage.providerRepository;
     sentinelRepo = storage.sentinelRepository;
-    experienceRepo = ExperienceRepository();
+    experienceRepo = ExperienceRepository(homeDir: _homeDir);
 
     // ── Agent 基础 ──
     agentSettings = AgentSettings(store: userSettings);
@@ -176,7 +176,7 @@ class TuiDi {
       ),
     );
     skillRegistry = SkillRegistry();
-    skillRegistry.loadAll();
+    skillRegistry.loadAll(homeDir: _homeDir);
     skillRegistry.registerBuiltin(kSelfEvolveSkill);
 
     // ── 工具 ──

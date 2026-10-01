@@ -1,10 +1,8 @@
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -56,7 +54,11 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     );
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
-      children: [syncButton, const SizedBox(width: 8), addButton],
+      children: [
+        syncButton,
+        const SizedBox(width: AthenaSpace.sm),
+        addButton,
+      ],
     );
     return Watch((context) {
       return AthenaScaffold(
@@ -72,24 +74,20 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
   Future<void> syncFromModelsDev(BuildContext context) async {
+    if (viewModel.isSyncing.value) return;
     AthenaDialog.loading();
-    try {
-      final service = GetIt.instance<ModelCatalogService>();
-      final result = await service.syncIfNeeded(force: true);
-      await viewModel.initSignals();
-      await GetIt.instance<ModelViewModel>().initSignals();
-      if (!context.mounted) return;
-      AthenaDialog.dismiss();
-      AthenaDialog.success(
-        'models.dev synced: +${result.createdProviders} providers, '
-        '+${result.createdModels} models, ${result.updatedModels} updated, '
-        '${result.removedModels} removed',
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      AthenaDialog.dismiss();
-      AthenaDialog.error('Sync failed: $e');
+    final result = await viewModel.syncCatalog();
+    if (!context.mounted) return;
+    AthenaDialog.dismiss();
+    if (result == null) {
+      AthenaDialog.error('Sync failed: ${viewModel.error.value}');
+      return;
     }
+    AthenaDialog.success(
+      'models.dev synced: +${result.createdProviders} providers, '
+      '+${result.createdModels} models, ${result.updatedModels} updated, '
+      '${result.removedModels} removed',
+    );
   }
 
   Widget _buildBody(BuildContext context) {
@@ -107,7 +105,10 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthenaSpace.lg,
+        vertical: AthenaSpace.sm,
+      ),
       child: divider,
     );
   }
@@ -128,7 +129,7 @@ class _ProviderListTile extends StatelessWidget {
     );
     final titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
-      if (provider.enabled) const SizedBox(width: 8),
+      if (provider.enabled) const SizedBox(width: AthenaSpace.sm),
       if (provider.enabled)
         Icon(
           LucideIcons.toggleRight,
@@ -159,7 +160,7 @@ class _ProviderListTile extends StatelessWidget {
       children: columnChildren,
     );
     final padding = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AthenaSpace.lg),
       child: column,
     );
     return GestureDetector(
@@ -196,7 +197,7 @@ class _ProviderListTile extends StatelessWidget {
     final children = [enableTile, if (!provider.isPreset) deleteTile];
     final column = Column(mainAxisSize: MainAxisSize.min, children: children);
     final padding = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: AthenaSpace.lg),
       child: column,
     );
     AthenaDialog.show(SafeArea(child: padding));

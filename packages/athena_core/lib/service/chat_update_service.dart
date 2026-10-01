@@ -26,11 +26,13 @@ class ChatUpdateService {
     String firstUserMessage, {
     required ProviderEntity provider,
     required ModelEntity model,
+    Future<void>? cancelSignal,
   }) async* {
     final stream = _chatService.getTitle(
       firstUserMessage,
       provider: provider,
       model: model,
+      cancelSignal: cancelSignal,
     );
     yield* stream;
   }

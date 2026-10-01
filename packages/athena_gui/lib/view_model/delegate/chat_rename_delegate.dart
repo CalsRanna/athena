@@ -33,22 +33,27 @@ class ChatRenameDelegate {
   }) async {
     if (chat.id == null) return null;
 
+    // 同一会话重新发起时，旧流不能再更新标题或清理新任务的取消入口。
+    _tokens[chat.id]?.cancel();
     final token = CancelToken();
     _tokens[chat.id!] = token;
 
     try {
       final chatMessages = await _messageRepo.getMessagesByChatId(chat.id!);
+      token.throwIfCancelled();
       final firstUserMessage = chatMessages
           .where((m) => m.role == 'user')
           .firstOrNull;
       if (firstUserMessage == null) return null;
 
       final model = await _modelRepo.getModelById(chat.modelId);
+      token.throwIfCancelled();
       if (model == null) return null;
 
       final provider = await _supportService.getProviderForModel(
         model.providerId,
       );
+      token.throwIfCancelled();
       if (provider == null) return null;
 
       final titleBuffer = StringBuffer();
@@ -56,6 +61,7 @@ class ChatRenameDelegate {
         firstUserMessage.content,
         provider: provider,
         model: model,
+        cancelSignal: token.whenCancelled,
       );
 
       await for (final chunk in stream) {
@@ -72,7 +78,7 @@ class ChatRenameDelegate {
     } catch (_) {
       return null;
     } finally {
-      _tokens.remove(chat.id);
+      if (identical(_tokens[chat.id], token)) _tokens.remove(chat.id);
     }
   }
 

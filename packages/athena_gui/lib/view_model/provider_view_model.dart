@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
@@ -8,16 +9,22 @@ import 'package:signals/signals.dart';
 class ProviderViewModel {
   final ProviderRepository _repository;
   final ModelViewModel _modelViewModel;
+  final ModelCatalogService _catalogService;
+  Future<CatalogSyncResult?>? _syncOperation;
 
   ProviderViewModel({
     required ProviderRepository repository,
     required ModelViewModel modelViewModel,
+    required ModelCatalogService catalogService,
   }) : _repository = repository,
-       _modelViewModel = modelViewModel;
+       _modelViewModel = modelViewModel,
+       _catalogService = catalogService;
 
   // Signals 状态
   final providers = listSignal<ProviderEntity>([]);
   final isLoading = signal(false);
+  final isSyncing = signal(false);
+  final lastSyncedAt = signal<DateTime?>(null);
   final error = signal<String?>(null);
 
   // Computed signals
@@ -34,10 +41,42 @@ class ProviderViewModel {
     error.value = null;
     try {
       providers.value = await _repository.getAllProviders();
+      lastSyncedAt.value = await _catalogService.lastSyncedAt();
     } catch (e) {
       error.value = e.toString();
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Synchronizes the catalog and refreshes both provider and model state.
+  Future<CatalogSyncResult?> syncCatalog() => _syncOperation ??= _syncCatalog()
+      .whenComplete(() => _syncOperation = null);
+
+  Future<CatalogSyncResult?> _syncCatalog() async {
+    isSyncing.value = true;
+    error.value = null;
+    try {
+      final result = await _catalogService.syncIfNeeded(force: true);
+      await initSignals();
+      if (error.value != null) return null;
+      await _modelViewModel.initSignals();
+      // 两个 initSignals 都将异常写入 signal，不抛出；不能据此误报同步成功。
+      if (_modelViewModel.error.value != null) {
+        error.value = _modelViewModel.error.value;
+        return null;
+      }
+      // 离线时沿用目录服务的缓存回退，显示缓存真实时间；没有缓存则不是成功。
+      if (lastSyncedAt.value == null) {
+        error.value = 'No model catalog is available. Please try again.';
+        return null;
+      }
+      return result;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    } finally {
+      isSyncing.value = false;
     }
   }
 
@@ -98,9 +137,8 @@ class ProviderViewModel {
       providers.value = providers.value
           .where((p) => p.id != provider.id)
           .toList();
-      // 模型随 provider 一起删：留在 models.json 里的孤儿模型选不到、也请求
-      // 不通，引用它们的会话会报「Provider not found」
-      await _modelViewModel.deleteModelsOfProvider(provider.id!);
+      // Provider 文件包含它的模型，持久化删除已完成；这里只移除本地列表项。
+      _modelViewModel.removeModelsOfProvider(provider.id!);
       await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
