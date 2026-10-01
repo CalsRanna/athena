@@ -313,4 +313,80 @@ void main() {
     expect(last.step.coveredMessageIds, [only.id]);
     expect(last.messages, hasLength(2), reason: '系统块 + 摘要，没有尾部原文');
   });
+
+  test('摘要超出长度上限时截断，而不是让整次压缩作废', () async {
+    final budget = ContextBudget(window);
+    final only = await store('user', 'a' * 20000);
+    final placeholder = await store('assistant', '');
+
+    // 模型无视目标长度，回了一份十倍长的摘要。
+    final service = _FakeSummaryService('b' * 20000);
+    final updates = await compactUpdates(
+      [ChatMessage.system('s' * 60000), ChatMessage.user('a' * 20000)],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    expect(last.step.coveredMessageIds, [only.id]);
+    final injected =
+        (last.messages![1] as UserMessage).content as UserTextContent;
+    expect(injected.text, contains('[truncated]'));
+    expect(injected.text.length, lessThan(20000), reason: '超长摘要裁短后才进入上下文');
+    expect(last.step.afterTokens, lessThan(last.step.beforeTokens));
+  });
+
+  test('摘要里的 <analysis> 草稿不进上下文，只注入 <summary> 块', () async {
+    final budget = ContextBudget(window);
+    final only = await store('user', 'a' * 20000);
+    final placeholder = await store('assistant', '');
+
+    final service = _FakeSummaryService(
+      '<analysis>按时间顺序梳理：这段草稿不该进上下文。</analysis>\n'
+      '<summary>## 用户目标与最新请求\n把压缩链路做对</summary>',
+    );
+    final updates = await compactUpdates(
+      [ChatMessage.system('s' * 60000), ChatMessage.user('a' * 20000)],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    expect(last.step.coveredMessageIds, [only.id]);
+    final injected =
+        ((last.messages![1] as UserMessage).content as UserTextContent).text;
+    expect(injected, contains('## 用户目标与最新请求'));
+    expect(injected, isNot(contains('这段草稿')));
+
+    // 提示词本身按小节组织，并要求先写草稿。
+    final prompt = (service.requests.single.first as SystemMessage).content;
+    expect(prompt, contains('<analysis>'));
+    expect(prompt, contains('## 当前进展与未完成工作'));
+  });
+
+  test('模型没按格式输出时保留内容，不因格式不符丢摘要', () async {
+    final budget = ContextBudget(window);
+    await store('user', 'a' * 20000);
+    final placeholder = await store('assistant', '');
+
+    final service = _FakeSummaryService(
+      '<analysis>只有草稿，没有 summary 块</analysis>',
+    );
+    final updates = await compactUpdates(
+      [ChatMessage.system('s' * 60000), ChatMessage.user('a' * 20000)],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    final injected =
+        ((last.messages![1] as UserMessage).content as UserTextContent).text;
+    expect(injected, contains('只有草稿'));
+  });
 }

@@ -795,6 +795,13 @@ class _AgentLoop {
   var _termination = AgentRunTermination.completed;
   var _reflectionAttempted = false;
 
+  /// 本 run 内是否已有一次压缩没能完成。
+  ///
+  /// 失败后不再自动压缩：同一个 run 里历史只多一条助手消息，同样的输入只会得到
+  /// 同样的结果，而每次尝试都要把整段历史再发给摘要模型一次（长历史下这是最贵的
+  /// 请求）。失败原因留在压缩卡片里；用户下一条消息就是新 run，标志随之重置。
+  var _compactionFailed = false;
+
   /// 执行整个 run：单层工具迭代循环，结束后触发反思并产出 outcome。
   ///
   /// 运行中输入不在此层处理：协调层（AgentRunCoordinator）把运行中收到
@@ -841,14 +848,16 @@ class _AgentLoop {
     }
   }
 
-  /// 超限兜底的前置条件：会话按自动档管理上下文、宿主提供了压缩回调、错误确实是
-  /// "输入太长"，且本轮还没有任何流式产出。
+  /// 超限兜底的前置条件：会话按自动档管理上下文、宿主提供了压缩回调、本 run 还没有
+  /// 压缩失败过、错误确实是"输入太长"，且本轮还没有任何流式产出。
   ///
   /// 已经流给用户的内容收不回来——重试会把新响应接在旧文字后面——所以有产出时
-  /// 保持原样抛错，由上层如实结束这一轮。
+  /// 保持原样抛错，由上层如实结束这一轮。压缩失败过也不再兜底：失败过的压缩不会
+  /// 因为重发同样的历史而成功。
   bool _canRecoverFromOverflow(Object error, _TurnState st) =>
       _chat.retention == -1 &&
       _onCompact != null &&
+      !_compactionFailed &&
       st.accumulator.content.isEmpty &&
       st.accumulator.reasoning.isEmpty &&
       st.accumulator.reasoningContent.isEmpty &&
@@ -862,6 +871,7 @@ class _AgentLoop {
   Stream<AgentEvent> _compactNow(List<Tool>? tools) async* {
     final onCompact = _onCompact;
     if (onCompact == null) return;
+    CompactionStep? last;
     await for (final update in onCompact(
       ContextCompactionRequest(
         messages: List.of(_messages),
@@ -871,6 +881,7 @@ class _AgentLoop {
         cancelToken: _token,
       ),
     )) {
+      last = update.step;
       if (update.messages != null) {
         _messages
           ..clear()
@@ -879,6 +890,10 @@ class _AgentLoop {
         _unacknowledgedBackgroundTaskIds.clear();
       }
       yield AgentCompactionEvent(update.step);
+    }
+    if (last != null && last.phase != CompactionPhase.completed) {
+      _compactionFailed = true;
+      LoggerUtil.w('Compact: 本 run 不再自动压缩（上一次停在 ${last.phase.name}）');
     }
     _token.throwIfCancelled();
   }
@@ -896,6 +911,7 @@ class _AgentLoop {
     final tools = _service._buildTools();
     if (_chat.retention == -1 &&
         _onCompact != null &&
+        !_compactionFailed &&
         _budget.shouldCompact(_messages, tools)) {
       yield* _compactNow(tools);
     }
