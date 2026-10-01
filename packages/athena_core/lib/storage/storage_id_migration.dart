@@ -71,15 +71,19 @@ class StorageIdMigration {
   final LockRegistry _locks;
   final _ids = LegacyIdMap();
 
-  File get versionFile => File(p.join(root.path, 'storage_version.json'));
+  File get versionFile => File(p.join(root.path, '.storage_version'));
+
+  /// 迁移标记一度是非隐藏的 `storage_version.json`；见 [_readVersionState]。
+  File get _legacyVersionFile =>
+      File(p.join(root.path, 'storage_version.json'));
   Directory get _work => Directory(p.join(root.path, '.id-migration-v2'));
   Directory get _backup => Directory(p.join(root.path, 'backups', 'ids-v1'));
   File get _journal => File(p.join(_work.path, 'ready.json'));
 
   Future<Map<String, String>>
   run() => withFileLock(_locks.named('storage-migration'), () async {
-    if (await versionFile.exists()) {
-      final state = jsonDecode(await versionFile.readAsString()) as Map;
+    final state = await _readVersionState();
+    if (state != null) {
       if (state['version'] != version) {
         throw StateError('Unsupported storage version: ${state['version']}');
       }
@@ -108,6 +112,23 @@ class StorageIdMigration {
     await _work.delete(recursive: true);
     return models;
   });
+
+  /// 读已落盘的版本状态；没有标记返回 null（= 首次升级）。
+  ///
+  /// 旧版本把标记写成非隐藏的 `storage_version.json`，改成隐藏文件名后必须仍
+  /// 认得它：否则已迁移的老用户找不到标记，会在成品数据上重跑一遍 ID 迁移
+  /// （重写全部会话文件，且解析不了的行会被丢弃）。认下之后原地改名，两边就
+  /// 只剩一个名字。
+  Future<Map?> _readVersionState() async {
+    if (await versionFile.exists()) {
+      return jsonDecode(await versionFile.readAsString()) as Map;
+    }
+    final legacy = _legacyVersionFile;
+    if (!await legacy.exists()) return null;
+    final state = jsonDecode(await legacy.readAsString()) as Map;
+    await legacy.rename(versionFile.path);
+    return state;
+  }
 
   File _file(String key) {
     if (key == '@settings') return settingFile;

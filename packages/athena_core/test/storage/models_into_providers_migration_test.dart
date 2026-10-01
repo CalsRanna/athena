@@ -18,7 +18,7 @@ void main() {
     // 一个一个文件
     await storage.root.create(recursive: true);
     await File(
-      p.join(storage.root.path, 'storage_version.json'),
+      p.join(storage.root.path, '.storage_version'),
     ).writeAsString('{"version": 2, "legacy_model_ids": {}}');
   });
   tearDown(() => temp.delete(recursive: true));

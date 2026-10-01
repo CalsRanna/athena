@@ -384,6 +384,28 @@ providers:
     expect(appended.seq, 6);
   });
 
+  test('旧版 storage_version.json 被认作已完成迁移，并原地改名', () async {
+    final state = {
+      'version': StorageIdMigration.version,
+      'legacy_model_ids': {'3': 'id-3'},
+    };
+    await write('storage_version.json', state);
+    await storage.load();
+    expect(storage.legacyModelIds, {'3': 'id-3'});
+    expect(
+      await File(p.join(storage.root.path, 'storage_version.json')).exists(),
+      isFalse,
+    );
+    expect(
+      jsonDecode(
+        await File(
+          p.join(storage.root.path, '.storage_version'),
+        ).readAsString(),
+      ),
+      state,
+    );
+  });
+
   test('歧义的重复 ID 中止迁移，原始文件与备份完整保留', () async {
     final data = [
       {'id': 1, 'name': 'a'},
@@ -393,7 +415,7 @@ providers:
     await expectLater(storage.load(), throwsFormatException);
     expect(jsonDecode(await storage.modelsFile.readAsString()), data);
     expect(
-      await File(p.join(storage.root.path, 'storage_version.json')).exists(),
+      await File(p.join(storage.root.path, '.storage_version')).exists(),
       isFalse,
     );
     expect(

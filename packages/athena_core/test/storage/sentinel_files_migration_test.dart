@@ -16,7 +16,7 @@ void main() {
     storage = FileStorage(root: Directory(p.join(temp.path, '.athena')));
     await storage.root.create(recursive: true);
     await File(
-      p.join(storage.root.path, 'storage_version.json'),
+      p.join(storage.root.path, '.storage_version'),
     ).writeAsString('{"version": 2, "legacy_model_ids": {}}');
   });
   tearDown(() => temp.delete(recursive: true));

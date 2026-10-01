@@ -22,14 +22,14 @@ void main() {
   /// 把目录标成「整数 id 迁移已完成」,于是 [storage.load] 只跑本次的
   /// provider 文件迁移、原样读到用户手写的 YAML。
   ///
-  /// 真实升级路径就是这样:老用户升级到带本迁移的版本时,`storage_version.json`
+  /// 真实升级路径就是这样:老用户升级到带本迁移的版本时,ID 迁移标记
   /// 已经存在(整数 id 迁移是更早的一次发布做的),ID 迁移直接跳过,不会把
   /// setting.yaml 重写成 JSON。不写这一步的话,拿到的 setting.yaml 已被 ID
   /// 迁移转成 JSON——测的就不是用户真实的那份文件了。
   Future<void> skipIdMigration() async {
     await storage.root.create(recursive: true);
     await File(
-      p.join(storage.root.path, 'storage_version.json'),
+      p.join(storage.root.path, '.storage_version'),
     ).writeAsString('{"version": 2, "legacy_model_ids": {}}');
   }
 

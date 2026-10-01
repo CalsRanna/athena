@@ -26,7 +26,8 @@ import 'package:path/path.dart' as p;
 ///                            # 消息 responses_state 保存 Responses 推理续接状态
 ///                            # 消息 messages_state 保存 Messages thinking/signature 及请求前缀指纹
 ///                            # chat_completions_state 保存兼容端原生推理/拒答；completion_details 保存停止与用量明细
-///   storage_version.json      # 格式版本与旧模型 ID 映射（GUI 偏好迁移用）
+///   .storage_version          # 格式版本与旧模型 ID 映射（GUI 偏好迁移用；
+///                            # 旧名 storage_version.json 启动时改名过来）
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
 ///   setting.yaml              # 用户配置:两个前端共用(GUI 与 TUI 的界面偏好
 ///                            # + core 的 brave API key / Agent 迭代上限)
