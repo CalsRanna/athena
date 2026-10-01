@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/widget/settings/form_actions.dart';
+import 'package:athena_gui/widget/settings/form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -41,7 +41,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       DesktopSettingFormField(
         label: 'Name',
         error: error,
@@ -77,11 +77,11 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       return;
     }
     if (widget.provider != null) {
-      var copiedProvider = widget.provider!.copyWith(name: name);
+      final copiedProvider = widget.provider!.copyWith(name: name);
       await viewModel.updateProvider(copiedProvider);
       if (mounted) widget.onStored?.call(copiedProvider);
     } else {
-      var newProvider = ProviderEntity(
+      final newProvider = ProviderEntity(
         enabled: true,
         name: name,
         baseUrl: '',
@@ -92,71 +92,5 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       if (created != null && mounted) widget.onStored?.call(created);
     }
     if (mounted) AthenaDialog.dismiss();
-  }
-}
-
-/// 设置表单对话框里的一项：标签在上、控件在下（表单是纵向的，
-/// 不是「左标签右输入」的两列）。
-class DesktopSettingFormField extends StatelessWidget {
-  final String label;
-  final String? hint;
-  final String? error;
-  final Widget child;
-  const DesktopSettingFormField({
-    super.key,
-    required this.label,
-    this.hint,
-    this.error,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var labelStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      fontWeight: AthenaSettings.rowLabelWeight,
-      height: AthenaFontSize.bodyHeight,
-    );
-    var hintStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
-    var errorStyle = AthenaTextStyle.caption.copyWith(color: colors.dangerText);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(label, style: labelStyle),
-        const SizedBox(height: 6),
-        child,
-        if (error != null) ...[
-          const SizedBox(height: 4),
-          Text(error!, style: errorStyle),
-        ] else if (hint != null) ...[
-          const SizedBox(height: 4),
-          Text(hint!, style: hintStyle),
-        ],
-      ],
-    );
-  }
-}
-
-/// 表单对话框底部的 Cancel / Confirm。
-class DesktopSettingFormActions extends StatelessWidget {
-  final VoidCallback? onCancel;
-  final VoidCallback? onConfirm;
-  final String confirmLabel;
-  const DesktopSettingFormActions({
-    super.key,
-    this.onCancel,
-    this.onConfirm,
-    this.confirmLabel = 'Save',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AthenaDialogActions(
-      onCancel: onCancel,
-      onConfirm: onConfirm,
-      confirmLabel: confirmLabel,
-    );
   }
 }

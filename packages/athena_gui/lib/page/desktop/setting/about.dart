@@ -40,18 +40,18 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameStyle = TextStyle(
+    final nameStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.headingFontSize,
       fontWeight: FontWeight.w600,
       height: AthenaFontSize.titleHeight,
     );
-    var taglineStyle = TextStyle(
+    final taglineStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaSettings.rowDescriptionHeight,
     );
-    var mark = ClipRRect(
+    final mark = ClipRRect(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       child: Image.asset(
         'asset/image/launcher_icon_ios_512x512.jpg',
@@ -60,7 +60,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
         filterQuality: FilterQuality.medium,
       ),
     );
-    var identity = Row(
+    final identity = Row(
       children: [
         mark,
         const SizedBox(width: AthenaSpace.lg),
@@ -76,7 +76,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
         ),
       ],
     );
-    var versionLabel = version.isEmpty
+    final versionLabel = version.isEmpty
         ? 'Loading…'
         : buildNumber.isEmpty
         ? version
@@ -124,7 +124,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
   }
 
   Future<void> _loadVersion() async {
-    var packageInfo = await PackageInfo.fromPlatform();
+    final packageInfo = await PackageInfo.fromPlatform();
     if (!mounted) return;
     setState(() {
       version = packageInfo.version;

@@ -16,7 +16,7 @@ class SectionTitle extends StatelessWidget {
       color: colors.textPrimary,
       fontWeight: FontWeight.w500,
     );
-    var children = [
+    final children = [
       Expanded(child: Text(title, style: textStyle)),
       if (onTap != null)
         AthenaIconButton(icon: AthenaIcons.forward, onTap: onTap),

@@ -53,7 +53,7 @@ class ChatStoreService {
     ApprovalMode approvalMode = ApprovalMode.defaultMode,
   }) async {
     final now = DateTime.now();
-    var chat = ChatEntity(
+    final chat = ChatEntity(
       title: 'New Chat',
       modelId: model.id!,
       sentinelId: sentinel.id,

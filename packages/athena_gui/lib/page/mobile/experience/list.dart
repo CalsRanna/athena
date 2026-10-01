@@ -41,12 +41,12 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var all = viewModel.experiences.value;
-      var experiences = scopeFilter == null
+      final all = viewModel.experiences.value;
+      final experiences = scopeFilter == null
           ? all
           : all.where((e) => e.scope == scopeFilter).toList();
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: const Text('Experiences')),
+        appBar: const AthenaAppBar(title: Text('Experiences')),
         body: Column(
           children: [
             _buildFilterBar(context),
@@ -58,7 +58,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   }
 
   Widget _buildFilterBar(BuildContext context) {
-    var children = [
+    final children = [
       AthenaTagButton.small(
         selected: scopeFilter == null,
         onTap: () => setState(() => scopeFilter = null),
@@ -86,7 +86,9 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (experiences.isEmpty) {
-      var textStyle = AthenaTextStyle.body.copyWith(color: colors.textPrimary);
+      final textStyle = AthenaTextStyle.body.copyWith(
+        color: colors.textPrimary,
+      );
       return Center(child: Text('No experiences yet', style: textStyle));
     }
     return MasonryGridView.count(
@@ -95,9 +97,9 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
       mainAxisSpacing: 8,
       itemCount: experiences.length,
       itemBuilder: (context, index) {
-        var experience = experiences[index];
-        var isArchived = experience.status == ExperienceEntity.statusArchived;
-        var owner = viewModel.ownerLabel(experience);
+        final experience = experiences[index];
+        final isArchived = experience.status == ExperienceEntity.statusArchived;
+        final owner = viewModel.ownerLabel(experience);
         return MobileGridTile(
           title: experience.lesson,
           subtitle: '$owner · ${_formatDate(experience.createdAt)}',
@@ -118,8 +120,8 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
 
   void openBottomSheet(BuildContext context, ExperienceEntity experience) {
     HapticFeedback.heavyImpact();
-    var isArchived = experience.status == ExperienceEntity.statusArchived;
-    var statusTile = AthenaBottomSheetTile(
+    final isArchived = experience.status == ExperienceEntity.statusArchived;
+    final statusTile = AthenaBottomSheetTile(
       title: isArchived ? 'Restore' : 'Archive',
       onTap: () {
         AthenaDialog.dismiss();
@@ -130,19 +132,19 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
         }
       },
     );
-    var deleteTile = AthenaBottomSheetTile(
+    final deleteTile = AthenaBottomSheetTile(
       leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () async {
         AthenaDialog.dismiss();
-        var result = await AthenaDialog.confirm('Delete this experience?');
+        final result = await AthenaDialog.confirm('Delete this experience?');
         if (result != true) return;
         await viewModel.deleteExperience(experience);
       },
     );
-    var children = [statusTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [statusTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );

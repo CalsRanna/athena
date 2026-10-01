@@ -15,7 +15,7 @@ class AthenaRouter extends RootStackRouter {
 
   @override
   List<AutoRoute> get routes {
-    var desktopSettingChildren = [
+    final desktopSettingChildren = [
       DesktopRoute(page: DesktopSettingProviderRoute.page),
       DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
       DesktopRoute(page: DesktopSettingSentinelRoute.page),
@@ -27,7 +27,7 @@ class AthenaRouter extends RootStackRouter {
     ];
     // 设置是**非透明**路由：它自己画遮罩与居中面板，浮在应用之上
     // （设置面板后面能看见会话）。
-    var desktopSettingRoute = DesktopRoute(
+    final desktopSettingRoute = DesktopRoute(
       children: desktopSettingChildren,
       page: DesktopSettingRoute.page,
       opaque: false,

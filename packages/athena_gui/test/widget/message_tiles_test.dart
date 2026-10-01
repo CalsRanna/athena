@@ -36,14 +36,16 @@ void main() {
     bool streaming = true,
   }) => tester.pumpWidget(
     MaterialApp(
-      theme: buildAthenaThemeData(AthenaColorMode.light),
+      theme: buildAthenaThemeData(
+        AthenaColorMode.light,
+      ).copyWith(platform: TargetPlatform.macOS),
       home: Scaffold(
         body: CustomScrollView(
           slivers: [
             MessageCardListSliver(
               messages: messages,
               loading: streaming,
-              sentinel: SentinelEntity(name: 'Athena'),
+              sentinel: const SentinelEntity(name: 'Athena'),
             ),
           ],
         ),

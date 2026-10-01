@@ -95,7 +95,7 @@ lib/
 
 ## 4. 注释
 
-**注释语言**：设计说明与「为什么」用中文；契约注释、错误文案、下发给模型的提示词用英文。这条界线是严格执行的——错误文案与提示词是产品行为的一部分，中英混用会影响模型表现与用户理解。**所有 `throw` 出来的异常文本一律英文**（`StateError` / `UnsupportedError` / `FormatException` / `ArgumentError` 都算），哪怕它看起来只是内部不变量——这类消息可能不经翻译直接成为用户看到的 run 错误（见 §5）。中文只出现在注释与日志里。
+**语言约定**：设计说明与「为什么」用中文；契约注释、错误文案、工具描述与参数说明用英文。**代码维护的所有系统提示词一律用中文**，包括内置角色、运行环境、技能与记忆目录、进化指导、压缩摘要、反思、权限审核及标题 / 元数据生成。工具名、协议字段、JSON 键名和枚举值保留原文；用户编写的角色提示词、技能、记忆及项目约定不自动翻译。**所有 `throw` 出来的异常文本一律英文**（`StateError` / `UnsupportedError` / `FormatException` / `ArgumentError` 都算），哪怕它看起来只是内部不变量——这类消息可能不经翻译直接成为用户看到的 run 错误（见 §5）。中文可以出现在注释、日志与系统提示词里。
 
 **写什么**：
 
@@ -113,7 +113,7 @@ lib/
 
 - **工具抛出的异常不冒泡**。工具内部异常（读到非 UTF-8 文件、写入无权限目录……）转成 `'Error: ...'` 文本作为工具结果交还模型，让模型自己纠正，而不是终止整个 run
 - **损失必须显式**。适配器遇到无法映射的请求字段、无法表达的响应内容时抛 `UnsupportedError` / `FormatException` / `StateError`，**不静默丢弃**。宁可让调用方收到明确失败，也不要让用户看到「看起来成功了」的错误结果
-- **错误文案一律英文**。`StateError` / `UnsupportedError` / `FormatException` / `ArgumentError` 的文本，以及工具返回的 `'Error: ...'`，都用英文。这些消息可能不经翻译直接冒到用户面前（例：`onCompact` 的回调抛异常时 `agent_service.dart` 不 catch，它就成了 run 错误）。中文只用在注释与日志里
+- **错误文案一律英文**。`StateError` / `UnsupportedError` / `FormatException` / `ArgumentError` 的文本，以及工具返回的 `'Error: ...'`，都用英文。这些消息可能不经翻译直接冒到用户面前（例：`onCompact` 的回调抛异常时 `agent_service.dart` 不 catch，它就成了 run 错误）。系统提示词使用中文，见 §4
 - **取消优先于报错**。捕获异常时先 `throwIfCancelled()` 再 rethrow，避免取消被底层错误掩盖
 - **异步等待必须有取消出口**。任何等待用户或网络的 `Future` 都要与取消信号竞速（`Future.any`），保证等待绝不挂死
 
@@ -217,7 +217,7 @@ GUI 由 tag 触发三平台构建与 `tapster publish`，流程见 [README.md](R
 
 ## 11. 编码风格速查
 
-- 用 `const` 构造与 `final` 字段；能用 `switch` 表达式表达的分支不要写成 `if/else` 链
+- 用 `const` 构造与 `final` 字段；不重新赋值的局部变量与单例引用用 `final`，常量上下文中的构造与声明用 `const`，由共享 lint 约束。能用 `switch` 表达式表达的分支不要写成 `if/else` 链
 - 集合操作优先（`map` / `where` / `fold`），不手写索引循环
 - 一个文件放一个**主**类，并把它承担不了的小件（同族的 sealed 子类、纯值对象、token 常量类、同一处私有的伴生类）留在同文件；工具类用 `abstract final class` 防止实例化与继承
   - 判断标准是「这个类能不能独立站住」，不是数量。`run_event.dart` 里 13 个 sealed 事件子类、`athena_tokens.dart` 里 8 个 token 类都刻意留在一起——拆开只会让调用方多跑几个 import

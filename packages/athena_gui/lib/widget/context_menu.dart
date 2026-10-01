@@ -28,14 +28,14 @@ class DesktopContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var menu = _buildMenu(context);
+    final menu = _buildMenu(context);
     // 菜单按 [offset] 定位后再收敛到窗口内（四边各留 8）：设置面板里的
     // 行尾菜单、靠近窗底的选择菜单都可能越界，越界就整体平移回来。
-    var positioned = CustomSingleChildLayout(
+    final positioned = CustomSingleChildLayout(
       delegate: _ContextMenuLayoutDelegate(offset: offset, upward: upward),
       child: menu,
     );
-    var children = [const SizedBox.expand(), positioned];
+    final children = [const SizedBox.expand(), positioned];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTap: dismissContextMenu,
@@ -50,17 +50,17 @@ class DesktopContextMenu extends StatelessWidget {
 
   Widget _buildMenu(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaRadius.menu),
       boxShadow: AthenaShadow.overlay(colors.shadow),
     );
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       foregroundDecoration: Theme.of(context).brightness == Brightness.dark
           ? BoxDecoration(
@@ -105,10 +105,10 @@ class _ContextMenuLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    var x = offset.dx;
-    var y = upward ? offset.dy - childSize.height : offset.dy;
-    var maxX = math.max(_margin, size.width - childSize.width - _margin);
-    var maxY = math.max(_margin, size.height - childSize.height - _margin);
+    final x = offset.dx;
+    final y = upward ? offset.dy - childSize.height : offset.dy;
+    final maxX = math.max(_margin, size.width - childSize.width - _margin);
+    final maxY = math.max(_margin, size.height - childSize.height - _margin);
     return Offset(x.clamp(_margin, maxX), y.clamp(_margin, maxY));
   }
 
@@ -132,7 +132,7 @@ class DesktopContextMenuConfiguration extends InheritedWidget {
   }
 
   static double widthOf(BuildContext context) {
-    var widget = context
+    final widget = context
         .dependOnInheritedWidgetOfExactType<DesktopContextMenuConfiguration>();
     return widget!.width;
   }
@@ -197,16 +197,16 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 浮层不在 Material 之下，文字样式要写全（含 decoration）。
-    var textColor = !widget.enabled || widget.muted
+    final textColor = !widget.enabled || widget.muted
         ? colors.textSecondary
         : widget.danger
         ? colors.dangerText
         : colors.textPrimary;
-    var textStyle = AthenaTextStyle.row.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: textColor,
       decoration: TextDecoration.none,
     );
-    var width = DesktopContextMenuConfiguration.widthOf(context);
+    final width = DesktopContextMenuConfiguration.widthOf(context);
     Widget label = Text(
       widget.text,
       maxLines: 1,
@@ -225,7 +225,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       );
     }
     // 两行条目：标题 `row`、说明 `caption`，间距 2。
-    Widget textBlock = widget.description == null
+    final Widget textBlock = widget.description == null
         ? label
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +246,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
           );
     // 选择项的勾选槽位**常驻**（选中与否都占 16）：否则说明文字会随选中
     // 状态换行。调用方给的 [trailing] 原样贴边，与既有菜单一致。
-    var selected = widget.selected;
+    final selected = widget.selected;
     Widget? trailing = widget.trailing;
     if (trailing == null && selected != null) {
       trailing = Padding(
@@ -264,7 +264,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       );
     }
     // 没有图标和尾部时保持纯文字，右键菜单不受影响。
-    Widget content = widget.icon == null && trailing == null
+    final Widget content = widget.icon == null && trailing == null
         ? textBlock
         : Row(
             children: [
@@ -280,7 +280,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
               if (trailing != null) trailing,
             ],
           );
-    var tile = AthenaHover(
+    final tile = AthenaHover(
       enabled: widget.enabled,
       cursor: widget.enabled
           ? SystemMouseCursors.click
@@ -322,7 +322,7 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.row.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
     );
@@ -372,17 +372,19 @@ class _DesktopContextMenuTileWithSubmenuState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textColor = widget.enabled ? colors.textPrimary : colors.textSecondary;
-    var textStyle = AthenaTextStyle.row.copyWith(
+    final textColor = widget.enabled
+        ? colors.textPrimary
+        : colors.textSecondary;
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: textColor,
       decoration: TextDecoration.none,
     );
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.row),
       color: hover && widget.enabled ? colors.surfaceHover : null,
     );
-    var width = DesktopContextMenuConfiguration.widthOf(context);
-    var row = Row(
+    final width = DesktopContextMenuConfiguration.widthOf(context);
+    final row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(widget.text, style: textStyle),
@@ -393,14 +395,14 @@ class _DesktopContextMenuTileWithSubmenuState
         ),
       ],
     );
-    var container = Container(
+    final container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       width: width,
       child: row,
     );
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       cursor: widget.enabled
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
@@ -442,17 +444,17 @@ class _DesktopContextMenuTileWithSubmenuState
     final width = DesktopContextMenuConfiguration.widthOf(context);
 
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaRadius.menu),
       boxShadow: AthenaShadow.overlay(colors.shadow),
     );
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: widget.submenuItems,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       foregroundDecoration: Theme.of(context).brightness == Brightness.dark
           ? BoxDecoration(
@@ -502,7 +504,7 @@ class _DesktopContextMenuTileWithSubmenuState
 class DesktopContextMenuManager {
   OverlayEntry? _entry;
   void Function()? _onDismissed;
-  static DesktopContextMenuManager instance = DesktopContextMenuManager();
+  static final DesktopContextMenuManager instance = DesktopContextMenuManager();
 
   /// [onDismissed] 在菜单以任何方式关掉时回调一次——点外面、选中条目、
   /// 被下一个菜单顶掉——供触发它的控件复位"展开中"状态。
@@ -524,7 +526,7 @@ class DesktopContextMenuManager {
   void dismiss() {
     _entry?.remove();
     _entry = null;
-    var callback = _onDismissed;
+    final callback = _onDismissed;
     _onDismissed = null;
     callback?.call();
   }
@@ -578,7 +580,7 @@ class DesktopContextMenuGroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var width = DesktopContextMenuConfiguration.widthOf(context);
+    final width = DesktopContextMenuConfiguration.widthOf(context);
     return Container(
       width: width,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -603,7 +605,7 @@ class DesktopContextMenuSeparator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var width = DesktopContextMenuConfiguration.widthOf(context);
+    final width = DesktopContextMenuConfiguration.widthOf(context);
     return Container(
       width: width,
       height: 1,

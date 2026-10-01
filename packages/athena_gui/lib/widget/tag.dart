@@ -30,11 +30,11 @@ class AthenaTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = base.copyWith(
+    final textStyle = base.copyWith(
       color: selected ? colors.textPrimary : colors.textSecondary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
     );
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: selected ? colors.surfaceSelected : colors.surfaceDeep,
       border: Border.all(color: selected ? colors.borderStrong : colors.border),
       borderRadius: BorderRadius.circular(AthenaRadius.pill),
@@ -80,9 +80,11 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var selected = widget.selected;
-    var foregroundColor = selected ? colors.textPrimary : colors.textSecondary;
-    var child = DefaultTextStyle.merge(
+    final selected = widget.selected;
+    final foregroundColor = selected
+        ? colors.textPrimary
+        : colors.textSecondary;
+    final child = DefaultTextStyle.merge(
       style: AthenaTextStyle.label.copyWith(
         color: foregroundColor,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
@@ -163,7 +165,7 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var foreground = widget.onTap == null
+    final foreground = widget.onTap == null
         ? colors.textWeak
         : colors.textSecondary;
     // 上下文 chip 可能叠在次级容器上，hover 用前景色 5% 叠加，

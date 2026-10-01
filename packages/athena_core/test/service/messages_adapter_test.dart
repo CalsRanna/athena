@@ -67,8 +67,8 @@ void main() {
             ChatMessage.user('第一句'),
             ChatMessage.user('第二句'),
             ChatMessage.system('中途提醒'),
-            AssistantMessage(content: '回答'),
-            AssistantMessage(content: '补充'),
+            const AssistantMessage(content: '回答'),
+            const AssistantMessage(content: '补充'),
           ],
         ),
       );
@@ -87,7 +87,7 @@ void main() {
         chatRequest(
           messages: [
             ChatMessage.user('列出文件'),
-            AssistantMessage(
+            const AssistantMessage(
               content: '好的',
               toolCalls: [
                 ToolCall(
@@ -116,7 +116,7 @@ void main() {
       final request = toMessageRequest(
         chatRequest(
           messages: [
-            AssistantMessage(
+            const AssistantMessage(
               content: null,
               toolCalls: [
                 ToolCall(
@@ -136,7 +136,9 @@ void main() {
     test('tool 结果变成 user 消息里的 tool_result block', () {
       final request = toMessageRequest(
         chatRequest(
-          messages: [ToolMessage(toolCallId: 'call_1', content: 'file_a')],
+          messages: [
+            const ToolMessage(toolCallId: 'call_1', content: 'file_a'),
+          ],
         ),
       );
 
@@ -181,9 +183,9 @@ void main() {
       final request = toMessageRequest(
         chatRequest(
           messages: [
-            UserMessage(
+            const UserMessage(
               content: UserPartsContent([
-                const ImageContentPart(url: 'data:image/png;base64,AAAA'),
+                ImageContentPart(url: 'data:image/png;base64,AAAA'),
               ]),
             ),
           ],
@@ -202,10 +204,10 @@ void main() {
       final request = toMessageRequest(
         chatRequest(
           messages: [
-            UserMessage(
+            const UserMessage(
               content: UserPartsContent([
-                const TextContentPart(text: ''),
-                const ImageContentPart(url: 'data:image/png;base64,AAAA'),
+                TextContentPart(text: ''),
+                ImageContentPart(url: 'data:image/png;base64,AAAA'),
               ]),
             ),
           ],
@@ -222,9 +224,9 @@ void main() {
       final request = toMessageRequest(
         chatRequest(
           messages: [
-            UserMessage(
+            const UserMessage(
               content: UserPartsContent([
-                const ImageContentPart(url: 'https://example.com/a.png'),
+                ImageContentPart(url: 'https://example.com/a.png'),
               ]),
             ),
           ],
@@ -241,9 +243,9 @@ void main() {
         () => toMessageRequest(
           chatRequest(
             messages: [
-              UserMessage(
+              const UserMessage(
                 content: UserPartsContent([
-                  const ImageContentPart(url: 'data:image/svg+xml,%3Csvg/%3E'),
+                  ImageContentPart(url: 'data:image/svg+xml,%3Csvg/%3E'),
                 ]),
               ),
             ],
@@ -256,9 +258,9 @@ void main() {
       expect(
         () => toMessageRequest(
           chatRequest(
-            responseFormat: JsonSchemaResponseFormat(
+            responseFormat: const JsonSchemaResponseFormat(
               name: 'out',
-              schema: const {'type': 'object'},
+              schema: {'type': 'object'},
             ),
           ),
         ),

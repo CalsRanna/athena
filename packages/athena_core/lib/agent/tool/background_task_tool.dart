@@ -62,7 +62,7 @@ class BackgroundTaskTool extends Tool {
   }) async {
     final chatId = args[toolChatIdKey];
     if (chatId is! String) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: background tasks require a session context.',
       );
     }
@@ -75,12 +75,16 @@ class BackgroundTaskTool extends Tool {
         return _list(chatId);
       case 'read':
         if (taskId == null || taskId.isEmpty) {
-          return ToolExecutionResult.error('Error: "read" requires task_id.');
+          return const ToolExecutionResult.error(
+            'Error: "read" requires task_id.',
+          );
         }
         return _read(chatId, taskId, args);
       case 'stop':
         if (taskId == null || taskId.isEmpty) {
-          return ToolExecutionResult.error('Error: "stop" requires task_id.');
+          return const ToolExecutionResult.error(
+            'Error: "stop" requires task_id.',
+          );
         }
         return _stop(chatId, taskId);
       default:
@@ -93,7 +97,7 @@ class BackgroundTaskTool extends Tool {
   ToolExecutionResult _list(String chatId) {
     final all = tasks.tasksOf(chatId);
     if (all.isEmpty) {
-      return ToolExecutionResult.success(
+      return const ToolExecutionResult.success(
         'No background tasks in this session. Start one with '
         'bash(command: "...", background: true).',
       );

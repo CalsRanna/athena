@@ -91,7 +91,7 @@ class SkillTool extends Tool implements CancellableTool {
       );
     }
     if (args['offset'] != null || args['limit'] != null) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: offset and limit require a resource path.',
       );
     }
@@ -136,12 +136,12 @@ class SkillTool extends Tool implements CancellableTool {
         p.posix.isAbsolute(resource) ||
         p.windows.rootPrefix(resource).isNotEmpty ||
         RegExp(r'^[A-Za-z]:').hasMatch(resource)) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: resource must be a non-empty relative file path.',
       );
     }
     if (offset < 0 || limit < 1 || limit > TextFileReader.maxReturnLines) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: offset must be non-negative and limit must be 1-2000.',
       );
     }
@@ -151,18 +151,18 @@ class SkillTool extends Tool implements CancellableTool {
       // Accept either separator style for resources on all supported platforms.
       final path = p.normalize(p.joinAll([root, ...p.windows.split(resource)]));
       if (!p.isWithin(root, path)) {
-        return ToolExecutionResult.error(
+        return const ToolExecutionResult.error(
           'Error: Resource must stay inside the skill directory.',
         );
       }
       final resolved = await File(path).resolveSymbolicLinks();
       if (!p.isWithin(root, resolved)) {
-        return ToolExecutionResult.error(
+        return const ToolExecutionResult.error(
           'Error: Resource resolves outside the skill directory.',
         );
       }
       if (await FileSystemEntity.type(resolved) != FileSystemEntityType.file) {
-        return ToolExecutionResult.error(
+        return const ToolExecutionResult.error(
           'Error: Resource must be a text file.',
         );
       }
@@ -181,7 +181,7 @@ class SkillTool extends Tool implements CancellableTool {
         '${error.message}',
       );
     } on FormatException {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: Skill resources must be UTF-8 text files.',
       );
     }

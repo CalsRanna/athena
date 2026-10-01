@@ -68,7 +68,7 @@ class DesktopSettingPage extends StatefulWidget {
 
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   static final groups = <_SettingGroup>[
-    _SettingGroup('Settings', [
+    const _SettingGroup('Settings', [
       _SettingEntry(
         SettingSection.provider,
         'Providers',
@@ -88,7 +88,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         keywords: ['iterations', 'retries', 'brave', 'web search'],
       ),
     ]),
-    _SettingGroup('Customize', [
+    const _SettingGroup('Customize', [
       _SettingEntry(
         SettingSection.sentinel,
         'Sentinels',
@@ -108,7 +108,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         keywords: ['lesson', 'memory', 'archive'],
       ),
     ]),
-    _SettingGroup('Desktop app', [
+    const _SettingGroup('Desktop app', [
       _SettingEntry(
         SettingSection.general,
         'General',
@@ -161,20 +161,20 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildNav(BuildContext context) {
-    var search = AthenaSettingsSearchField(
+    final search = AthenaSettingsSearchField(
       controller: searchController,
       onChanged: _handleSearch,
     );
-    var children = [search, ..._buildGroups(context)];
+    final children = [search, ..._buildGroups(context)];
     return AthenaSettingsNav(children: children);
   }
 
   List<Widget> _buildGroups(BuildContext context) {
-    var visible = <Widget>[];
+    final visible = <Widget>[];
     for (final group in groups) {
-      var entries = group.entries.where(_matches).toList();
+      final entries = group.entries.where(_matches).toList();
       if (entries.isEmpty) continue;
-      var items = [
+      final items = [
         for (final entry in entries)
           AthenaSettingsNavItem(
             active: entry.section == section,
@@ -191,7 +191,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   Widget _buildNoResult(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.fontSizeForEmptySearch,
       height: AthenaFontSize.bodyHeight,
@@ -251,7 +251,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   void openSection(SettingSection section) {
     if (section == this.section) return;
     setState(() => this.section = section);
-    var route = switch (section) {
+    final route = switch (section) {
       SettingSection.provider => const DesktopSettingProviderRoute(),
       SettingSection.defaultModel => const DesktopSettingDefaultModelRoute(),
       SettingSection.agent => const DesktopSettingAgentRoute(),

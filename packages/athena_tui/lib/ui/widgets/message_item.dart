@@ -54,7 +54,7 @@ class MessageItem extends StatelessComponent {
     final isSystem = message.role == 'system' || message.role == 'summary';
 
     // 正文卡片边框颜色与样式由消息类型决定
-    var borderColor = isUser
+    final borderColor = isUser
         ? AthenaCardColors.user
         : isSystem
         ? AthenaCardColors.system

@@ -29,9 +29,9 @@ class CommandSuggestions extends StatelessComponent {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1),
-            child: const Text(
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 1),
+            child: Text(
               ' 命令提示(Tab 补全) ',
               style: TextStyle(
                 color: AthenaColors.info,

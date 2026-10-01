@@ -161,7 +161,7 @@ class ModelCatalogService {
       if (selected.isEmpty) continue;
 
       // ---- provider:匹配已有,不存在则创建 ----
-      var provider = await _providerRepository.getPresetProviderByName(
+      final provider = await _providerRepository.getPresetProviderByName(
         config.localName,
       );
       final providerId =

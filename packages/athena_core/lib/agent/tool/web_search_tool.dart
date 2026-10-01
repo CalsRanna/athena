@@ -60,13 +60,13 @@ class WebSearchTool extends Tool implements CancellableTool {
 
     final settings = _settings;
     if (settings == null) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: Brave Search API key store not configured.',
       );
     }
     final apiKey = await settings.loadBraveApiKey();
     if (apiKey == null || apiKey.isEmpty) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: Brave Search API key not configured. '
         'Set it in settings with key '
         '"${UserSettingsStore.braveApiKeyKey}". '

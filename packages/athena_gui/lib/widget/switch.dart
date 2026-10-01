@@ -17,11 +17,11 @@ class AthenaSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var outerDecoration = BoxDecoration(
+    final outerDecoration = BoxDecoration(
       color: value ? colors.accent : colors.switchTrackOff,
       borderRadius: BorderRadius.circular(AthenaRadius.control),
     );
-    var knob = Container(
+    final knob = Container(
       decoration: BoxDecoration(
         color: value ? colors.textOnAccent : colors.switchKnob,
         shape: BoxShape.circle,
@@ -29,7 +29,7 @@ class AthenaSwitch extends StatelessWidget {
       height: _knob,
       width: _knob,
     );
-    var animatedContainer = AnimatedContainer(
+    final animatedContainer = AnimatedContainer(
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
       decoration: outerDecoration,
       duration: AthenaMotion.hover,
@@ -38,7 +38,7 @@ class AthenaSwitch extends StatelessWidget {
       width: _trackWidth,
       child: knob,
     );
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: animatedContainer,
     );

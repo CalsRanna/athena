@@ -121,7 +121,7 @@ void main() {
   /// 点侧栏里某条对话（等价于用户点它）：走页面注册的 onSelected，因此也会带上
   /// 页面的草稿换槽。
   Future<void> tapChatRow(WidgetTester tester, String title) async {
-    var row = find.descendant(
+    final row = find.descendant(
       of: find.byType(DesktopChatListView),
       matching: find.text(title),
     );
@@ -132,7 +132,7 @@ void main() {
 
   /// 点侧栏的 "New chat" 行（顶栏标题在草稿态也是 'New chat'，按侧栏子树定位）。
   Future<void> tapSidebarNewChat(WidgetTester tester) async {
-    var newChat = find.descendant(
+    final newChat = find.descendant(
       of: find.byType(DesktopChatListView),
       matching: find.text('New chat'),
     );

@@ -16,14 +16,14 @@ class MobileSentinelSelectDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var sentinels = sentinelViewModel.sentinels.value;
+      final sentinels = sentinelViewModel.sentinels.value;
       return _buildData(sentinels);
     });
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {
     return ListView(
-      padding: EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       shrinkWrap: true,
       children: [
         AthenaBottomSheetTile(

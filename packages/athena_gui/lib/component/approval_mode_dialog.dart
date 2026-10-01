@@ -49,7 +49,7 @@ class _MobileApprovalModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var labelStyle = AthenaTextStyle.row.copyWith(
+    final labelStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
     );

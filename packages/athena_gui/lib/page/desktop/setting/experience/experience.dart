@@ -178,7 +178,7 @@ class _DesktopSettingExperiencePageState
   }
 
   void _openContextMenu(TapUpDetails details, ExperienceEntity experience) {
-    var menu = DesktopContextMenu(
+    final menu = DesktopContextMenu(
       offset: details.globalPosition,
       width: 160,
       children: _menuItems(experience),
@@ -193,7 +193,7 @@ class _DesktopSettingExperiencePageState
   Widget _buildDetail(ExperienceEntity experience) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final archived = _isArchived(experience);
-    var header = Row(
+    final header = Row(
       children: [
         AthenaSettingsBackLink(label: 'Experiences', onTap: _closeDetail),
         if (archived) ...[
@@ -202,7 +202,7 @@ class _DesktopSettingExperiencePageState
         ],
       ],
     );
-    var actions = Row(
+    final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         AthenaSecondaryButton.small(

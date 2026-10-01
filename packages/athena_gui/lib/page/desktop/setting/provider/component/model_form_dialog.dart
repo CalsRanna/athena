@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/widget/settings/form_actions.dart';
+import 'package:athena_gui/widget/settings/form_field.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -46,7 +47,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
     releasedAtController.text = _stripReleased(widget.model?.releasedAt ?? '');
-    var cw = widget.model?.contextWindow ?? 0;
+    final cw = widget.model?.contextWindow ?? 0;
     contextController.text = cw > 0 ? formatContextWindow(cw) : '';
     inputController.text = _stripPrice(widget.model?.inputPrice ?? '');
     outputController.text = _stripPrice(widget.model?.outputPrice ?? '');
@@ -67,7 +68,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       DesktopSettingFormField(
         label: 'Model ID',
         hint: 'The id sent to the API, e.g. deepseek-v4-flash.',
@@ -163,12 +164,12 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
 
   Widget _buildCapabilities(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var labelStyle = TextStyle(
+    final labelStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaFontSize.bodyHeight,
     );
-    var reasoning = AthenaCheckboxGroup(
+    final reasoning = AthenaCheckboxGroup(
       checkbox: AthenaCheckbox(
         value: supportReasoning,
         onChanged: (value) => setState(() => supportReasoning = value),
@@ -176,7 +177,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       onTap: () => setState(() => supportReasoning = !supportReasoning),
       trailing: Text('Reasoning', style: labelStyle),
     );
-    var vision = AthenaCheckboxGroup(
+    final vision = AthenaCheckboxGroup(
       checkbox: AthenaCheckbox(
         value: supportVisual,
         onChanged: (value) => setState(() => supportVisual = value),
@@ -208,8 +209,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     final released = releasedAtController.text.trim();
     final releasedAt = released.isEmpty ? '' : 'Released $released';
     if (widget.model == null) {
-      var now = DateTime.now();
-      var newModel = ModelEntity(
+      final now = DateTime.now();
+      final newModel = ModelEntity(
         modelId: modelId,
         name: name,
         providerId: widget.provider.id!,
@@ -224,7 +225,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       );
       await viewModel.createModel(newModel);
     } else {
-      var copiedModel = widget.model!.copyWith(
+      final copiedModel = widget.model!.copyWith(
         modelId: modelId,
         name: name,
         contextWindow: parseContextWindow(contextController.text),

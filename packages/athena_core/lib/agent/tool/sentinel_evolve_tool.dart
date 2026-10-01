@@ -111,7 +111,9 @@ class SentinelEvolveTool extends Tool {
     }
 
     if (newPrompt.trim().isEmpty) {
-      return ToolExecutionResult.error('Error: new_prompt must not be empty.');
+      return const ToolExecutionResult.error(
+        'Error: new_prompt must not be empty.',
+      );
     }
 
     // 内置 sentinel 不允许改名（判据在实体上：预设角色全部锁定名字）。

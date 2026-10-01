@@ -26,17 +26,17 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var barrier = GestureDetector(
+    final barrier = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => AthenaDialog.dismiss(),
       child: Container(color: Colors.transparent),
     );
-    var input = AthenaInput(
+    final input = AthenaInput(
       autoFocus: true,
       controller: controller,
       onSubmitted: editMessage,
     );
-    var container = Container(
+    final container = Container(
       color: colors.surfaceMobile,
       padding: const EdgeInsets.all(16.0),
       child: input,
@@ -61,7 +61,7 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
   void editMessage(String text) {
     if (text.trim().isEmpty) return;
     AthenaDialog.dismiss();
-    var copiedMessage = widget.message.copyWith(content: text);
+    final copiedMessage = widget.message.copyWith(content: text);
     widget.onSubmitted?.call(copiedMessage);
   }
 

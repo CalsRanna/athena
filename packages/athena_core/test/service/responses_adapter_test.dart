@@ -94,7 +94,7 @@ void main() {
         chatRequest(
           messages: [
             ChatMessage.user('列出文件'),
-            AssistantMessage(
+            const AssistantMessage(
               content: '好的',
               toolCalls: [
                 ToolCall(
@@ -129,7 +129,7 @@ void main() {
       final request = toResponseRequest(
         chatRequest(
           messages: [
-            ToolMessage(toolCallId: 'call_1', content: 'file_a\nfile_b'),
+            const ToolMessage(toolCallId: 'call_1', content: 'file_a\nfile_b'),
           ],
         ),
       );
@@ -176,7 +176,7 @@ void main() {
 
     test('jsonObject 输出格式映射到 text.format', () {
       final request = toResponseRequest(
-        chatRequest(responseFormat: JsonObjectResponseFormat()),
+        chatRequest(responseFormat: const JsonObjectResponseFormat()),
       );
 
       expect(request.text!.format, isA<JsonObjectFormat>());
@@ -186,10 +186,10 @@ void main() {
       final request = toResponseRequest(
         chatRequest(
           messages: [
-            UserMessage(
+            const UserMessage(
               content: UserPartsContent([
-                const TextContentPart(text: '看这张图'),
-                const ImageContentPart(url: 'data:image/png;base64,AAAA'),
+                TextContentPart(text: '看这张图'),
+                ImageContentPart(url: 'data:image/png;base64,AAAA'),
               ]),
             ),
           ],
@@ -210,10 +210,8 @@ void main() {
         () => toResponseRequest(
           chatRequest(
             messages: [
-              UserMessage(
-                content: UserPartsContent([
-                  const FileContentPart(fileId: 'file_1'),
-                ]),
+              const UserMessage(
+                content: UserPartsContent([FileContentPart(fileId: 'file_1')]),
               ),
             ],
           ),
@@ -224,9 +222,9 @@ void main() {
       expect(
         () => toResponseRequest(
           chatRequest(
-            responseFormat: JsonSchemaResponseFormat(
+            responseFormat: const JsonSchemaResponseFormat(
               name: 'out',
-              schema: const {'type': 'object'},
+              schema: {'type': 'object'},
             ),
           ),
         ),

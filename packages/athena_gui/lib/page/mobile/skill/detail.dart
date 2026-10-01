@@ -41,7 +41,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
           .where((s) => s.name == widget.skill.name)
           .firstOrNull;
       skill ??= widget.skill;
-      var nameRowChildren = [
+      final nameRowChildren = [
         Expanded(
           child: Text(
             skill.name,
@@ -58,7 +58,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
             color: colors.iconSecondary,
           ),
       ];
-      var children = [
+      final children = [
         Row(children: nameRowChildren),
         const SizedBox(height: 8),
         Text(
@@ -76,10 +76,10 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         ),
         const SizedBox(height: 24),
         if (!skill.isBuiltin) _buildButtons(context, skill),
-        SafeArea(top: false, child: const SizedBox()),
+        const SafeArea(top: false, child: SizedBox()),
       ];
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: const Text('Skill')),
+        appBar: const AthenaAppBar(title: Text('Skill')),
         body: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: children,
@@ -113,11 +113,11 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   Widget _buildButtons(BuildContext context, Skill skill) {
-    var children = [
+    final children = [
       Expanded(
         child: AthenaPrimaryButton(
           onTap: () => navigateFormPage(context, skill),
-          child: Center(child: Text('Edit')),
+          child: const Center(child: Text('Edit')),
         ),
       ),
       const SizedBox(width: 8),
@@ -136,9 +136,9 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   Future<void> destroySkill(BuildContext context, Skill skill) async {
-    var result = await AthenaDialog.confirm('Delete this skill?');
+    final result = await AthenaDialog.confirm('Delete this skill?');
     if (result != true) return;
-    var removed = await viewModel.deleteSkill(skill);
+    final removed = await viewModel.deleteSkill(skill);
     if (!context.mounted) return;
     if (!removed) {
       AthenaDialog.warning(viewModel.error.value ?? 'Failed to delete skill');

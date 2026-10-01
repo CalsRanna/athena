@@ -46,7 +46,7 @@ void main() {
   test('已存在 Athena 的老用户会补上 Daedalus', () async {
     // 只有 Athena 的既有库（升级前的状态）
     await storage.sentinelRepository.createSentinel(
-      SentinelEntity(
+      const SentinelEntity(
         name: SentinelEntity.athenaName,
         description: 'old',
         prompt: 'old prompt',

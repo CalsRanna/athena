@@ -43,11 +43,11 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var decoration = BoxDecoration(
+    final decoration = BoxDecoration(
       color: colors.neutralRule,
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var children = [
+    final children = [
       for (final option in options) _buildSegment(context, option),
     ];
     return Container(
@@ -62,8 +62,8 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
     // 未选中态不能用 `Colors.transparent`：它的 RGB 是黑，AnimatedContainer
     // 切换档位时会先闪一下半透明深灰（同 menu.dart 的说明）。用目标色的 0
     // 透明度版本，填充与边框全程同色只有 alpha 在动。
-    var isSelected = option.value == selected;
-    var decoration = BoxDecoration(
+    final isSelected = option.value == selected;
+    final decoration = BoxDecoration(
       color: isSelected
           ? colors.neutralControlFill
           : colors.neutralControlFill.withValues(alpha: 0),
@@ -74,13 +74,13 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: isSelected ? colors.textPrimary : colors.textWeak,
       fontSize: AthenaSettings.segmentFontSize,
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );
-    var segment = AnimatedContainer(
+    final segment = AnimatedContainer(
       alignment: Alignment.center,
       decoration: decoration,
       duration: AthenaMotion.hover,
@@ -130,7 +130,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var label = Text(
+    final label = Text(
       widget.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -140,7 +140,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
         height: AthenaFontSize.bodyHeight,
       ),
     );
-    var chevron = Icon(
+    final chevron = Icon(
       AthenaIcons.dropdown,
       color: colors.textWeak,
       size: AthenaIcon.inlineSize,
@@ -244,22 +244,22 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var focused = focusNode.hasFocus;
-    var decoration = BoxDecoration(
+    final focused = focusNode.hasFocus;
+    final decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var base = const TextStyle(fontSize: AthenaSettings.controlFontSize);
-    var textStyle = base.copyWith(
+    const base = TextStyle(fontSize: AthenaSettings.controlFontSize);
+    final textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
       height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = base.copyWith(
+    final hintStyle = base.copyWith(
       color: colors.textWeak,
       height: AthenaFontSize.bodyHeight,
     );
-    var field = TextField(
+    final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,
       cursorHeight: 15,
@@ -278,7 +278,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
       onTapOutside: (_) => focusNode.unfocus(),
       style: textStyle,
     );
-    var children = [
+    final children = [
       Expanded(child: field),
       if (widget.obscure) ...[
         const SizedBox(width: 4),
@@ -347,22 +347,22 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var focused = focusNode.hasFocus;
-    var decoration = BoxDecoration(
+    final focused = focusNode.hasFocus;
+    final decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var base = const TextStyle(fontSize: AthenaSettings.controlFontSize);
-    var textStyle = base.copyWith(
+    const base = TextStyle(fontSize: AthenaSettings.controlFontSize);
+    final textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
       height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = base.copyWith(
+    final hintStyle = base.copyWith(
       color: colors.textWeak,
       height: AthenaFontSize.bodyHeight,
     );
-    var field = TextField(
+    final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,
       cursorWidth: 1.5,

@@ -29,9 +29,9 @@ class _MobileChatConfigurationPageState
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       AthenaFormField(label: 'Temperature', control: _buildTemperatureSlider()),
-      SizedBox(height: 24),
+      const SizedBox(height: 24),
       AthenaFormField(
         label: 'Zero Context',
         control: _buildRetentionSwitch(),
@@ -41,12 +41,12 @@ class _MobileChatConfigurationPageState
         descriptionGap: 8,
       ),
     ];
-    var listView = ListView(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+    final listView = ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       children: children,
     );
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: Text('Chat Configuration')),
+      appBar: const AthenaAppBar(title: Text('Chat Configuration')),
       body: listView,
     );
   }
@@ -81,7 +81,7 @@ class _MobileChatConfigurationPageState
         max: 2,
         onChanged: (v) => _temperature.value = v,
         onChangeEnd: _storeTemperature,
-        padding: EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         thumbColor: colors.textPrimary,
         value: _temperature.value,
       );

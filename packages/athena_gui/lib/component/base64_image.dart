@@ -27,9 +27,9 @@ class _Base64ImagePreviewDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var windowSize = MediaQuery.sizeOf(context);
-    var size = Size(windowSize.width - 64, windowSize.height - 64);
-    var container = ConstrainedBox(
+    final windowSize = MediaQuery.sizeOf(context);
+    final size = Size(windowSize.width - 64, windowSize.height - 64);
+    final container = ConstrainedBox(
       constraints: BoxConstraints.loose(size),
       child: SingleChildScrollView(child: Image.memory(bytes)),
     );
@@ -42,7 +42,7 @@ class _Base64ImageState extends State<Base64Image> {
 
   @override
   Widget build(BuildContext context) {
-    var image = Image.memory(
+    final image = Image.memory(
       bytes,
       fit: widget.fit,
       height: widget.height,

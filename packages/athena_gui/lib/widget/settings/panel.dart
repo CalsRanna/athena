@@ -36,7 +36,7 @@ class AthenaSettingsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       _buildScrim(context),
       Positioned.fill(child: Center(child: _buildPanel(context))),
     ];
@@ -63,20 +63,23 @@ class AthenaSettingsPanel extends StatelessWidget {
 
   Widget _buildPanel(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var decoration = BoxDecoration(
+    final decoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
       boxShadow: AthenaShadow.modal(colors.shadow),
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        var margin = AthenaSettings.panelMarginVertical;
-        var width = (constraints.maxWidth - 64).clamp(
+        const margin = AthenaSettings.panelMarginVertical;
+        final width = (constraints.maxWidth - 64).clamp(
           320.0,
           AthenaSettings.panelMaxWidth,
         );
-        var height = (constraints.maxHeight - margin * 2).clamp(240.0, 4000.0);
-        var closeButton = onClose == null
+        final height = (constraints.maxHeight - margin * 2).clamp(
+          240.0,
+          4000.0,
+        );
+        final closeButton = onClose == null
             ? null
             : Positioned(
                 top: AthenaSettings.closeInset,
@@ -149,7 +152,7 @@ class AthenaSettingsPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     const horizontal = AthenaSettings.panePadding - AthenaSettings.rowInset;
-    var list = ListView(
+    final list = ListView(
       padding: const EdgeInsets.fromLTRB(
         horizontal,
         AthenaSettings.panePadding,
@@ -167,7 +170,7 @@ class AthenaSettingsPane extends StatelessWidget {
         ],
       );
     }
-    var stackChildren = [
+    final stackChildren = [
       // 标题带留在滚动视口外，不能用随内容滚走的 ListView 顶部 padding。
       Positioned.fill(top: AthenaSettings.paneTopPadding, child: body),
       Positioned(
@@ -209,12 +212,12 @@ class AthenaSettingsBackLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: colors.textRowLabel,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaFontSize.bodyHeight,
     );
-    var children = [
+    final children = [
       Icon(
         AthenaIcons.back,
         color: colors.textRowLabel,
@@ -268,24 +271,24 @@ class AthenaSettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
+    final titleStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.headingFontSize,
       fontWeight: FontWeight.w600,
       height: AthenaFontSize.titleHeight,
     );
-    var descriptionStyle = TextStyle(
+    final descriptionStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaSettings.rowDescriptionHeight,
     );
-    var titleRow = Row(
+    final titleRow = Row(
       children: [
         Expanded(child: Text(title, style: titleStyle)),
         if (trailing != null) trailing!,
       ],
     );
-    var header = Padding(
+    final header = Padding(
       padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -297,7 +300,7 @@ class AthenaSettingsSection extends StatelessWidget {
       ),
     );
     // 有说明时说明本身已把标题与首行隔开，留白收窄一档。
-    var gap = description == null ? AthenaSettings.headingBottomMargin : 16.0;
+    final gap = description == null ? AthenaSettings.headingBottomMargin : 16.0;
     return Padding(
       padding: EdgeInsets.only(top: first ? 0 : AthenaSettings.sectionGap),
       child: Column(
@@ -322,11 +325,11 @@ class AthenaSettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var spacer = Padding(
+    final spacer = Padding(
       padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
       child: Container(height: 1, color: colors.neutralRule),
     );
-    var merged = <Widget>[];
+    final merged = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) merged.add(spacer);
       merged.add(children[i]);
@@ -377,12 +380,12 @@ class AthenaSettingsSaveBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaFontSize.bodyHeight,
     );
-    var children = [
+    final children = [
       Expanded(child: Text(message, maxLines: 1, style: textStyle)),
       AthenaSecondaryButton.small(
         onTap: onDiscard,
@@ -422,18 +425,18 @@ class AthenaSettingsEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
+    final titleStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
       height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = TextStyle(
+    final hintStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaSettings.rowDescriptionHeight,
     );
-    var children = [
+    final children = [
       Icon(
         icon,
         color: colors.iconSecondary,

@@ -24,6 +24,7 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';
+import 'package:meta/meta.dart';
 
 /// 内置工具集的唯一真相源。
 ///
@@ -54,7 +55,7 @@ ToolRegistry buildToolRegistry({
   String? mobileHomeDir,
 
   /// 覆盖平台判定，仅供测试。
-  bool? mobile,
+  @visibleForTesting bool? mobile,
 }) {
   final isMobile = mobile ?? PlatformUtil.isMobile;
   final registry = ToolRegistry(

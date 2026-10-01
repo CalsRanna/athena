@@ -58,7 +58,7 @@ void main() {
             slivers: [
               MessageCardListSliver(
                 messages: messagesOf(),
-                sentinel: SentinelEntity(name: 'Athena'),
+                sentinel: const SentinelEntity(name: 'Athena'),
                 navigator: navigator,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,

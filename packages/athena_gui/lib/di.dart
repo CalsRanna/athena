@@ -37,6 +37,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:get_it/get_it.dart';
+import 'package:flutter/foundation.dart';
 
 abstract final class DI {
   /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
@@ -57,7 +58,7 @@ abstract final class DI {
   /// 一份隔离的依赖图，不碰真实的 `~/.athena`。不传时行为与之前完全一致。
   static void ensureInitialized({
     String? dataDirectory,
-    String? homeDirOverride,
+    @visibleForTesting String? homeDirOverride,
   }) {
     final getIt = GetIt.instance;
 

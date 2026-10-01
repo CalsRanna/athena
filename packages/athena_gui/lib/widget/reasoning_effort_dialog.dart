@@ -76,7 +76,7 @@ class _MobileReasoningEffortTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.row.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
     );

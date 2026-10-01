@@ -42,8 +42,8 @@ class _MobileExperienceDetailPageState
           .where((e) => e.id == widget.experience.id)
           .firstOrNull;
       experience ??= widget.experience;
-      var isArchived = experience.status == ExperienceEntity.statusArchived;
-      var children = [
+      final isArchived = experience.status == ExperienceEntity.statusArchived;
+      final children = [
         Text(
           experience.lesson,
           style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
@@ -79,10 +79,10 @@ class _MobileExperienceDetailPageState
         ],
         const SizedBox(height: 24),
         _buildButtons(context, experience, isArchived),
-        SafeArea(top: false, child: const SizedBox()),
+        const SafeArea(top: false, child: SizedBox()),
       ];
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: const Text('Experience')),
+        appBar: const AthenaAppBar(title: Text('Experience')),
         body: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: children,
@@ -128,7 +128,7 @@ class _MobileExperienceDetailPageState
     ExperienceEntity experience,
     bool isArchived,
   ) {
-    var children = [
+    final children = [
       Expanded(
         child: AthenaPrimaryButton(
           onTap: () => _toggleStatus(experience, isArchived),
@@ -150,7 +150,7 @@ class _MobileExperienceDetailPageState
     ExperienceEntity experience,
     bool isArchived,
   ) async {
-    var ok = isArchived
+    final ok = isArchived
         ? await viewModel.restoreExperience(experience)
         : await viewModel.archiveExperience(experience);
     if (!mounted) return;
@@ -163,9 +163,9 @@ class _MobileExperienceDetailPageState
     BuildContext context,
     ExperienceEntity experience,
   ) async {
-    var result = await AthenaDialog.confirm('Delete this experience?');
+    final result = await AthenaDialog.confirm('Delete this experience?');
     if (result != true) return;
-    var removed = await viewModel.deleteExperience(experience);
+    final removed = await viewModel.deleteExperience(experience);
     if (!context.mounted) return;
     if (!removed) {
       AthenaDialog.warning(

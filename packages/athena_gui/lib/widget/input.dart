@@ -76,24 +76,24 @@ class _AthenaInputState extends State<AthenaInput> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final focused = focusNode.hasFocus;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.inputBackground,
       border: Border.all(color: focused ? colors.accent : colors.border),
       borderRadius: BorderRadius.circular(
         widget.radius ?? AthenaRadius.control,
       ),
     );
-    var hintTextStyle = AthenaTextStyle.body.copyWith(
+    final hintTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
     );
-    var inputDecoration = InputDecoration.collapsed(
+    final inputDecoration = InputDecoration.collapsed(
       hintText: widget.placeholder,
       hintStyle: hintTextStyle,
     );
     final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
     );
-    var textField = TextField(
+    final textField = TextField(
       controller: widget.controller,
       cursorHeight: 15,
       cursorColor: colors.textInput,
@@ -108,7 +108,7 @@ class _AthenaInputState extends State<AthenaInput> {
       onTapOutside: handleTapOutside,
       style: inputTextStyle,
     );
-    var children = [
+    final children = [
       Expanded(child: textField),
       if (widget.suffix != null) ...[const SizedBox(width: 8), widget.suffix!],
       if (widget.obscureText) ...[

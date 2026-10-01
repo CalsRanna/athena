@@ -36,7 +36,7 @@ class MessageList extends StatelessComponent {
       // ListView.buildSeparator 复用同一实例 update 时会触发
       // Element.update 的 `newComponent != component` 断言,
       // 每次构造新实例才能让 canUpdate → update 走通。
-      separatorBuilder: (_, _) => SizedBox(height: 1),
+      separatorBuilder: (_, _) => const SizedBox(height: 1),
     );
   }
 

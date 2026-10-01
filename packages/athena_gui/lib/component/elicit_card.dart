@@ -146,7 +146,7 @@ class _ElicitCardState extends State<ElicitCard> {
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

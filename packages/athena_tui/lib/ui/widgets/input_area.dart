@@ -33,13 +33,13 @@ class InputArea extends StatelessComponent {
     return Column(
       children: [
         if (isStreaming)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 1),
+          const Container(
+            padding: EdgeInsets.symmetric(horizontal: 1),
             child: Row(
               children: [
                 // 流式生成时:循环动画进度条 + Esc 停止提示
-                const StreamingProgressBar(),
-                const Spacer(),
+                StreamingProgressBar(),
+                Spacer(),
                 Text('Esc 停止', style: AthenaTextStyles.warning),
               ],
             ),

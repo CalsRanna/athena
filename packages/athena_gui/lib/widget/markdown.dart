@@ -34,22 +34,22 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.cardHeader,
     );
-    var text = Text(
+    final text = Text(
       'Call tool: ${element.textContent}',
       style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       width: double.infinity,
       child: text,
     );
-    var widgetSpan = WidgetSpan(
+    final widgetSpan = WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: container,
     );
@@ -81,7 +81,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var container = Container(
+    final container = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AthenaRadius.inline),
         color: colors.codeBackground,
@@ -94,7 +94,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
         ).code.copyWith(color: colors.textOnCode),
       ),
     );
-    var widgetSpan = WidgetSpan(
+    final widgetSpan = WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: container,
     );
@@ -132,26 +132,26 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 无边框：代码块靠 codeBackground 与页面底色的差自成一层，
     // header 再用 cardHeader 提亮一档划分标题与正文。
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.codeBackground,
     );
-    var textStyle = AthenaWorkspaceTextSize.of(
+    final textStyle = AthenaWorkspaceTextSize.of(
       context,
     ).code.copyWith(color: colors.textOnCode);
-    var contentText = Padding(
+    final contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
     );
-    var children = [
+    final children = [
       _buildHeader(context, codeElement, displayText),
       contentText,
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    var container = Container(
+    final container = Container(
       key: const ValueKey('markdown-code-block'),
       decoration: boxDecoration,
       // 裁剪内层背景（语言标签行等），避免从圆角处漏出背景色
@@ -167,44 +167,44 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     md.Element element,
     String displayText,
   ) {
-    var borderRadius = BorderRadius.only(
+    const borderRadius = BorderRadius.only(
       topLeft: Radius.circular(AthenaRadius.container),
       topRight: Radius.circular(AthenaRadius.container),
     );
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
       color: colors.cardHeader,
     );
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = AthenaWorkspaceTextSize.of(
+    const padding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    final textStyle = AthenaWorkspaceTextSize.of(
       context,
     ).prose.copyWith(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
-    var text = Text(
+    final text = Text(
       language,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
     // header 左端是"这是什么"（图标 + 语言标签），右端是"能对它做什么"（复制）
-    var icon = Icon(
+    final icon = Icon(
       LucideIcons.code,
       size: AthenaIcon.inlineSize,
       color: colors.textOnCode,
     );
     // CopyButton 的图标按传入色 40% 透明度渲染。默认取色 textOnRaised 在浅色
     // 主题下是纯白，落在近白的语言条上等于隐形；这里显式用代码面上的正文色。
-    var copyButton = Tooltip(
+    final copyButton = Tooltip(
       message: 'Copy',
       child: CopyButton(
         color: colors.textOnCode,
         onTap: () => handleTap(displayText),
       ),
     );
-    var children = [
+    final children = [
       icon,
       const SizedBox(width: 6),
       Expanded(child: text),
@@ -239,7 +239,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
     if (!_hasClass(element, 'footnote-backref')) return null;
 
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var button = Tooltip(
+    final button = Tooltip(
       message: 'Back to reference',
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -262,7 +262,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
         ),
       ),
     );
-    var widgetSpan = WidgetSpan(
+    final widgetSpan = WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: button,
     );
@@ -342,7 +342,7 @@ class _FlutterMarkdown extends StatelessWidget {
     final body = base.p
         ?.merge(AthenaWorkspaceTextSize.of(context).prose)
         .copyWith(color: colors.textPrimary);
-    Map<String, MarkdownElementBuilder> builders = {};
+    final Map<String, MarkdownElementBuilder> builders = {};
     builders['pre'] = _CodeBlockBuilder();
     builders['code'] = _InlineCodeBuilder();
     builders['a'] = _FootnoteBackrefBuilder(onTap: openLink);
@@ -352,23 +352,23 @@ class _FlutterMarkdown extends StatelessWidget {
     builders['sup'] = _SupBuilder();
     builders['reference'] = _ReferenceBuilder(onTap: openReference);
     builders['call_tool_request'] = _CallToolRequestBuilder();
-    List<md.BlockSyntax> blockSyntaxes = [];
+    final List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
-    List<md.InlineSyntax> inlineSyntaxes = [];
+    final List<md.InlineSyntax> inlineSyntaxes = [];
     inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
     inlineSyntaxes.add(LatexInlineSyntax());
     inlineSyntaxes.add(_ReferenceSyntax());
     inlineSyntaxes.add(_CallToolRequestSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
-    var borderSide = BorderSide(color: colors.border, width: 1);
+    final borderSide = BorderSide(color: colors.border, width: 1);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md §1）
-    var heading = body?.copyWith(fontWeight: FontWeight.w500);
+    final heading = body?.copyWith(fontWeight: FontWeight.w500);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
-    var markdownStyleSheet = base.copyWith(
+    final markdownStyleSheet = base.copyWith(
       a: base.a?.copyWith(
         color: colors.markdownLink,
         fontWeight: FontWeight.w500,
@@ -441,7 +441,7 @@ class _FlutterMarkdown extends StatelessWidget {
   }
 
   Future<void> openLink(String? url) async {
-    var uri = Uri.parse(url ?? '');
+    final uri = Uri.parse(url ?? '');
     if (!(await canLaunchUrl(uri))) {
       AthenaDialog.warning('The link is invalid');
       return;
@@ -451,9 +451,9 @@ class _FlutterMarkdown extends StatelessWidget {
 
   void openReference(int index) {
     try {
-      var references = jsonDecode(message.reference);
-      var reference = references[index - 1];
-      var url = reference['url'];
+      final references = jsonDecode(message.reference);
+      final reference = references[index - 1];
+      final url = reference['url'];
       openLink(url as String?);
     } catch (error) {
       AthenaDialog.error(error.toString());
@@ -473,11 +473,11 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.codeBackground,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
     );
-    var text = Text(
+    final text = Text(
       element.textContent,
       // 徽标字号比 caption 档小 2：这是徽标尺寸，不是文字档位（DESIGN.md §3 例外）
       style: AthenaTextStyle.caption.copyWith(
@@ -485,18 +485,18 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
         color: colors.textOnCode,
       ),
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.all(4),
       child: text,
     );
-    var gestureDetector = GestureDetector(
+    final gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onTap?.call(int.parse(element.textContent)),
       child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
-    var widgetSpan = WidgetSpan(
+    final widgetSpan = WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: gestureDetector,
     );
@@ -525,11 +525,11 @@ class _SupBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.codeBackground,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
     );
-    var text = Text(
+    final text = Text(
       element.textContent,
       // 与引用徽标同规格：徽标尺寸，不是文字档位
       style: AthenaTextStyle.caption.copyWith(
@@ -537,13 +537,13 @@ class _SupBuilder extends MarkdownElementBuilder {
         color: colors.textOnCode,
       ),
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.all(4),
       child: text,
     );
-    var widgetSpan = WidgetSpan(
+    final widgetSpan = WidgetSpan(
       alignment: PlaceholderAlignment.middle,
       child: container,
     );

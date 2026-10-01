@@ -185,7 +185,7 @@ class _DesktopSettingSentinelPageState
     final multiSelect = selected.length > 1 && selected.contains(sentinel);
     final targets = multiSelect ? selected : [sentinel];
     final deletable = targets.where((item) => !item.isPreset).toList();
-    var menu = DesktopContextMenu(
+    final menu = DesktopContextMenu(
       offset: details.globalPosition,
       width: 160,
       children: [
@@ -221,7 +221,7 @@ class _DesktopSettingSentinelPageState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final readOnly = sentinel.isPreset;
     final generating = viewModel.isGenerating.value;
-    var header = Row(
+    final header = Row(
       children: [
         AthenaSettingsBackLink(label: 'Sentinels', onTap: _closeEditor),
         if (readOnly) ...[
@@ -400,7 +400,7 @@ class _DesktopSettingSentinelPageState
       promptError = prompt.trim().isEmpty ? 'System prompt is required.' : null;
     });
     if (nameError != null || promptError != null) return;
-    var copied = sentinel.copyWith(
+    final copied = sentinel.copyWith(
       name: name,
       description: descriptionController.text.trim(),
       tags: tagsController.text.trim(),
@@ -425,7 +425,7 @@ class _DesktopSettingSentinelPageState
     }
     setState(() => promptError = null);
     try {
-      var modelId = await _getModelId();
+      final modelId = await _getModelId();
       if (modelId == null) return;
       final generated = await viewModel.generateSentinel(
         promptController.text,

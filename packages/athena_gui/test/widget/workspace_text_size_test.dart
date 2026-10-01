@@ -226,7 +226,7 @@ void main() {
 
       unawaited(
         router.push(
-          DesktopSettingRoute(children: [const DesktopSettingGeneralRoute()]),
+          const DesktopSettingRoute(children: [DesktopSettingGeneralRoute()]),
         ),
       );
       await settle(tester);

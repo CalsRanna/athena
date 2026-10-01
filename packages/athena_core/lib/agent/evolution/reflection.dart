@@ -106,20 +106,18 @@ class ReflectionProposal {
 abstract final class ReflectionPrompt {
   static const system =
       '''
-Analyze the run outcome and decide whether it contains one durable, actionable
-lesson worth proposing as long-term memory. Do not record transient network or
-provider failures, user cancellation, permission denial, secrets, raw file
-contents, or task-specific facts. A raw error message is not a lesson.
-Keep lesson within ${ExperienceEntity.maxLessonLength} characters and put
-supporting detail in context.
+分析运行结果，判断其中是否有一条长期有效、可执行的经验，值得提议作为长期记忆。
+不要记录暂时的网络或服务提供商故障、用户取消、权限拒绝、秘密、原始文件内容，
+或仅与本次任务有关的事实。原始错误信息不是经验。
+lesson 不超过 ${ExperienceEntity.maxLessonLength} 个字符，支持性细节放入 context。
 
-Return exactly one JSON object with:
+只返回一个 JSON 对象，格式为：
 {"should_learn":false}
-or
-{"should_learn":true,"lesson":"specific actionable lesson","context":"when it applies","tags":["tag"],"scope":"self","confidence":0.0}
+或
+{"should_learn":true,"lesson":"具体可执行的经验","context":"适用情境","tags":["标签"],"scope":"self","confidence":0.0}
 
-Use scope="shared" only for a universal user preference. Otherwise use self.
-Do not include markdown or commentary.''';
+仅当经验是用户的通用偏好时使用 scope="shared"，其他情况使用 self。
+不要包含 Markdown 或额外说明。''';
 
   static String input({
     required AgentRunOutcome outcome,

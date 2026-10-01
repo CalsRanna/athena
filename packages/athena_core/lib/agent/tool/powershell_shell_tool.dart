@@ -111,7 +111,7 @@ class PowerShellShellTool extends Tool implements CancellableTool {
     if (args['background'] == true) {
       final tasks = _tasks;
       if (tasks == null) {
-        return ToolExecutionResult.error(
+        return const ToolExecutionResult.error(
           'Error: background tasks are not available in this host.',
         );
       }

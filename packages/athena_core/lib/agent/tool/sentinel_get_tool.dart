@@ -45,7 +45,7 @@ class SentinelGetTool extends Tool {
   }) async {
     final name = (args['sentinel_name'] as String?)?.trim() ?? '';
     if (name.isEmpty) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: sentinel_name must not be empty.',
       );
     }

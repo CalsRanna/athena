@@ -39,7 +39,7 @@ class SentinelListTool extends Tool {
   }) async {
     final sentinels = await _repository.getAllSentinels();
     if (sentinels.isEmpty) {
-      return ToolExecutionResult.success('No sentinels found.');
+      return const ToolExecutionResult.success('No sentinels found.');
     }
     final sorted = List<SentinelEntity>.from(sentinels)
       ..sort((a, b) => a.name.compareTo(b.name));

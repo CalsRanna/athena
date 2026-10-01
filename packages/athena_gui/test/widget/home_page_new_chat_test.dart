@@ -60,7 +60,7 @@ void main() {
   );
 
   bool composerFocused(WidgetTester tester) {
-    var editable = composerInput();
+    final editable = composerInput();
     if (editable.evaluate().isEmpty) return false;
     return tester.widget<EditableText>(editable).focusNode.hasFocus;
   }
@@ -103,7 +103,9 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: buildAthenaThemeData(
+          AthenaColorMode.light,
+        ).copyWith(platform: TargetPlatform.macOS),
         home: const DesktopHomePage(),
       ),
     );
@@ -136,8 +138,10 @@ void main() {
   }
 
   Future<void> pressNewChat(WidgetTester tester) async {
-    // 激活键按宿主平台只注册一个（macOS ⌘，其余 Ctrl），与实现同一规则
-    var modifier = Platform.isMacOS
+    final platform = Theme.of(
+      tester.element(find.byType(DesktopHomePage)),
+    ).platform;
+    final modifier = platform == TargetPlatform.macOS
         ? LogicalKeyboardKey.metaLeft
         : LogicalKeyboardKey.controlLeft;
     await tester.sendKeyDownEvent(modifier);
@@ -192,7 +196,7 @@ void main() {
   /// 点侧栏的 "New chat" 行。顶栏标题在草稿态也是 'New chat'，所以按侧栏子树
   /// 定位，避免命中标题。
   Future<void> tapSidebarNewChat(WidgetTester tester) async {
-    var newChatButton = find.descendant(
+    final newChatButton = find.descendant(
       of: find.byType(DesktopChatListView),
       matching: find.text('New chat'),
     );
@@ -270,21 +274,20 @@ void main() {
 
   testWidgets('侧栏 New chat 的快捷键提示：静止没有，hover 才出现', (tester) async {
     await pumpHome(tester);
-    // 提示文案按宿主平台只有一套（与 home_shortcuts.dart 的绑定同一条规则），
-    // 这里按平台写死期望值——实现若在 macOS 上显示 Ctrl+N，这条会失败。
-    var hintLabel = Platform.isMacOS ? '⌘N' : 'Ctrl+N';
-    var row = find.descendant(
+    // pumpHome 显式使用 macOS 主题，期望不再依赖运行测试的宿主系统。
+    const hintLabel = '⌘N';
+    final row = find.descendant(
       of: find.byType(DesktopChatListView),
       matching: find.text('New chat'),
     );
-    var hint = find.descendant(
+    final hint = find.descendant(
       of: find.byType(DesktopChatListView),
       matching: find.text(hintLabel),
     );
     expect(row, findsOneWidget);
     expect(hint, findsNothing, reason: '静止的导航行没有尾部');
 
-    var mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await mouse.moveTo(tester.getCenter(row));
@@ -311,7 +314,7 @@ void main() {
   });
 
   testWidgets('从选中的对话新建：草稿继承它的角色与工作文件夹', (tester) async {
-    var workspace = Directory.systemTemp.createTempSync('athena_inherit_ws');
+    final workspace = Directory.systemTemp.createTempSync('athena_inherit_ws');
     addTearDown(() {
       if (workspace.existsSync()) workspace.deleteSync(recursive: true);
     });
@@ -368,7 +371,7 @@ void main() {
 
   testWidgets('启动即草稿（没有选中对话）：仍是默认角色与不指定文件夹', (tester) async {
     // 来源只来自"当前选中的对话"：没有它就回默认，而不是沿用上次看过的对话
-    var workspace = Directory.systemTemp.createTempSync('athena_idle_ws');
+    final workspace = Directory.systemTemp.createTempSync('athena_idle_ws');
     addTearDown(() {
       if (workspace.existsSync()) workspace.deleteSync(recursive: true);
     });

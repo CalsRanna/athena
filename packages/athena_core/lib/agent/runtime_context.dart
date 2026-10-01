@@ -13,7 +13,7 @@ String currentDatePrompt(DateTime date) {
   final year = date.year.toString().padLeft(4, '0');
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
-  return 'Current date: $year-$month-$day.';
+  return '当前日期：$year-$month-$day。';
 }
 
 /// 生成运行环境提示文本，与日期合并后作为最后一条 system 消息注入。
@@ -26,18 +26,17 @@ String runtimeContextPrompt(
   String? workspace,
 }) {
   final client = environment == RuntimeEnvironment.gui
-      ? 'Athena GUI application'
-      : 'Athena TUI (terminal)';
+      ? 'Athena 图形界面应用'
+      : 'Athena 终端界面（TUI）';
   final buffer = StringBuffer(
-    'You are running in the $client on ${_platformName()}.\n'
-    'Application data (sentinels, chats, experiences, skills) is managed '
-    'through your tools — never locate, read, or modify application data '
-    'files directly.',
+    '你正在 ${_platformName()} 上的 $client 中运行。\n'
+    '应用数据（角色、会话、经验、技能）由工具管理，'
+    '绝不要直接定位、读取或修改应用数据文件。',
   );
   if (workspace != null && workspace.isNotEmpty) {
     buffer.write(
-      '\nYour working folder is $workspace. Shell commands run there by '
-      'default, and relative paths passed to file tools resolve against it.',
+      '\n你的工作文件夹是 $workspace。Shell 命令默认在此运行，'
+      '文件工具的相对路径也以此为基准解析。',
     );
   }
   return buffer.toString();
@@ -49,5 +48,5 @@ String _platformName() {
   if (PlatformUtil.isLinux) return 'Linux';
   if (PlatformUtil.isIOS) return 'iOS';
   if (PlatformUtil.isAndroid) return 'Android';
-  return 'an unknown platform';
+  return '未知平台';
 }

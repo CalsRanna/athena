@@ -69,14 +69,14 @@ class _MessageListViewState extends State<MessageListView> {
   Widget build(BuildContext context) {
     return Watch((context) {
       final textSize = GetIt.instance<SettingViewModel>().textSize.value;
-      var sentinel = widget.chat.hasSentinel
+      final sentinel = widget.chat.hasSentinel
           ? sentinelViewModel.sentinels.value
                 .where((s) => s.id == widget.chat.sentinelId)
                 .firstOrNull
           : SentinelViewModel.directChatSentinel;
       if (sentinel == null) return const SizedBox();
 
-      var messages = viewModel.messages.value
+      final messages = viewModel.messages.value
           .where((m) => m.chatId == widget.chat.id)
           .toList();
       final loading = viewModel.isCurrentChatStreaming.value;
@@ -197,19 +197,19 @@ class _MessageListViewState extends State<MessageListView> {
 
   void openBottomSheet(MessageEntity message) {
     HapticFeedback.heavyImpact();
-    var editTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.pencilLine),
+    final editTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () => openEditDialog(message),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.trash2),
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => destroyMessage(message),
     );
-    var children = [editTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [editTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
@@ -218,7 +218,7 @@ class _MessageListViewState extends State<MessageListView> {
 
   void openEditDialog(MessageEntity message) {
     AthenaDialog.dismiss();
-    var dialog = MobileEditMessageDialog(
+    final dialog = MobileEditMessageDialog(
       message: message,
       onSubmitted: editMessage,
     );

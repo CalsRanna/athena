@@ -27,11 +27,11 @@ class MobileSettingTile extends StatelessWidget {
     final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var titleChildren = [
+    final titleChildren = [
       Text(title, style: titleTextStyle),
       if (subtitle != null) Text(subtitle!, style: subtitleTextStyle),
     ];
-    var titleColumn = Column(
+    final titleColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: titleChildren,
     );
@@ -42,14 +42,14 @@ class MobileSettingTile extends StatelessWidget {
       style: subtitleTextStyle,
       textAlign: TextAlign.end,
     );
-    var tileChildren = [
+    final tileChildren = [
       leading ?? const SizedBox(),
       if (leading != null) const SizedBox(width: 12),
       Expanded(child: titleColumn),
       trailingText,
-      Icon(AthenaIcons.forward),
+      const Icon(AthenaIcons.forward),
     ];
-    var tileRow = IconTheme(
+    final tileRow = IconTheme(
       data: IconThemeData(
         color: colors.iconSecondary,
         size: AthenaIcon.regularSize,
@@ -89,13 +89,13 @@ class MobileGridTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = AthenaTextStyle.section.copyWith(
+    final titleStyle = AthenaTextStyle.section.copyWith(
       color: colors.textOnRaised,
     );
-    var subtitleStyle = AthenaTextStyle.caption.copyWith(
+    final subtitleStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textOnRaised,
     );
-    var titleChildren = [
+    final titleChildren = [
       Expanded(
         child: Text(
           title,
@@ -115,7 +115,7 @@ class MobileGridTile extends StatelessWidget {
         ),
       ],
     ];
-    var children = [
+    final children = [
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: titleChildren,
@@ -128,7 +128,7 @@ class MobileGridTile extends StatelessWidget {
         style: subtitleStyle,
       ),
     ];
-    var container = Container(
+    final container = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         color: colors.surfaceRaised,

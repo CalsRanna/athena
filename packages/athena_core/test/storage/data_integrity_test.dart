@@ -120,7 +120,7 @@ void main() {
 
       // 改写同一个角色前先备份——启动种子看到 0 个角色就会写入默认角色,
       // 「写到一个已存在的损坏文件」正是覆盖的触发点
-      await store.createSentinel(SentinelEntity(id: '7', name: 'Athena'));
+      await store.createSentinel(const SentinelEntity(id: '7', name: 'Athena'));
 
       final backups = backupsOf(file);
       expect(backups, hasLength(1));

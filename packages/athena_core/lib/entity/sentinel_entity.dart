@@ -8,7 +8,7 @@ class SentinelEntity {
   final String tags;
   final bool isPreset;
 
-  SentinelEntity({
+  const SentinelEntity({
     this.id,
     required this.name,
     this.description = '',

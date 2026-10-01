@@ -222,7 +222,7 @@ class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var icon = Icon(
+    final icon = Icon(
       widget.icon,
       color: colors.textRowLabel,
       size: widget.iconSize,

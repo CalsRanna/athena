@@ -17,19 +17,19 @@ class _MacWindowButtonState extends State<MacWindowButton> {
 
   @override
   Widget build(BuildContext context) {
-    var fullScreenButton = _FullScreenButton(
+    final fullScreenButton = _FullScreenButton(
       fullScreen: fullScreen,
       hover: hover,
       onToggle: toggleFullScreen,
     );
-    var children = [
+    final children = [
       _CloseButton(hover: hover),
       const SizedBox(width: 8),
       _MinimumButton(hover: hover),
       const SizedBox(width: 8),
       fullScreenButton,
     ];
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       onEnter: handleEnter,
       onExit: handleExit,
       child: Row(children: children),
@@ -76,7 +76,7 @@ class _CloseButton extends StatelessWidget {
       color: Colors.red,
       shape: BoxShape.circle,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
       child: hover ? icon : placeholder,
@@ -108,7 +108,7 @@ class _MinimumButton extends StatelessWidget {
       color: Colors.orange,
       shape: BoxShape.circle,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
       child: hover ? icon : placeholder,
@@ -145,7 +145,7 @@ class _FullScreenButton extends StatelessWidget {
       color: Colors.green,
       shape: BoxShape.circle,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
       child: hover ? child : placeholder,

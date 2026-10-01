@@ -94,7 +94,7 @@ class DesktopSettingModelMenu extends StatelessWidget {
 
 /// 模型能力小标：推理 / 视觉各一枚，都没有时返回 null（不占位）。
 Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
-  var icons = [
+  final icons = [
     if (model.reasoning) LucideIcons.brainCircuit,
     if (model.vision) LucideIcons.eye,
   ];

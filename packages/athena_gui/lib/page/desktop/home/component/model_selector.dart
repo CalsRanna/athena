@@ -97,16 +97,16 @@ class DesktopModelSelectDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final modelViewModel = GetIt.instance<ModelViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaRadius.panel),
       boxShadow: AthenaShadow.modal(colors.shadow),
     );
 
     return Watch((context) {
-      var models = modelViewModel.groupedEnabledModels.value;
-      var child = _buildData(context, models);
-      var container = Container(
+      final models = modelViewModel.groupedEnabledModels.value;
+      final child = _buildData(context, models);
+      final container = Container(
         decoration: boxDecoration,
         foregroundDecoration: Theme.of(context).brightness == Brightness.dark
             ? BoxDecoration(
@@ -114,7 +114,7 @@ class DesktopModelSelectDialog extends StatelessWidget {
                 border: Border.all(color: colors.border),
               )
             : null,
-        padding: EdgeInsets.all(8),
+        padding: const EdgeInsets.all(8),
         child: child,
       );
       return UnconstrainedBox(child: container);
@@ -126,13 +126,13 @@ class DesktopModelSelectDialog extends StatelessWidget {
     Map<String, List<ModelEntity>> models,
   ) {
     if (models.isEmpty) return const SizedBox();
-    List<Widget> children = [];
+    final List<Widget> children = [];
     for (var entry in models.entries) {
       children.add(_buildItemGroupTitle(context, entry.key));
       children.addAll(entry.value.map(_itemBuilder));
     }
     return ConstrainedBox(
-      constraints: BoxConstraints.loose(Size(520, 640)),
+      constraints: BoxConstraints.loose(const Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
   }
@@ -141,7 +141,7 @@ class DesktopModelSelectDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 分组小标题与 DesktopContextMenuGroupLabel 同档：caption + textWeak。
     // 曾经用 colors.border，那是描边色，对画布对比度只有 1.26:1，等于隐形。
-    var textStyle = AthenaTextStyle.caption.copyWith(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textWeak,
       decoration: TextDecoration.none,
     );
@@ -174,21 +174,21 @@ class _DesktopModelSelectDialogTileState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.row.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
     );
-    var thinkIcon = Icon(
+    final thinkIcon = Icon(
       LucideIcons.brainCircuit,
       color: colors.iconSecondary,
       size: AthenaIcon.regularSize,
     );
-    var visualIcon = Icon(
+    final visualIcon = Icon(
       LucideIcons.eye,
       color: colors.iconSecondary,
       size: AthenaIcon.regularSize,
     );
-    var children = [
+    final children = [
       Flexible(child: Text(widget.model.name, style: textStyle)),
       if (widget.model.reasoning) thinkIcon,
       if (widget.model.vision) visualIcon,

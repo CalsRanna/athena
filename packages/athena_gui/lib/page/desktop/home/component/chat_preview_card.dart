@@ -103,7 +103,7 @@ class DesktopChatPreviewManager {
   /// 正在播退场动画、还没摘掉的卡（指针已移开，卡片还在淡出）。
   OverlayEntry? _hidingEntry;
   Object? _owner;
-  static DesktopChatPreviewManager instance = DesktopChatPreviewManager();
+  static final DesktopChatPreviewManager instance = DesktopChatPreviewManager();
 
   /// 卡片与锚点行的间距。
   static const double gap = 8;

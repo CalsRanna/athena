@@ -37,9 +37,7 @@ class ProjectInstructions {
   final int modifiedMillis;
 
   /// 注入文本：一行来源说明 + 正文。
-  String get prompt =>
-      'Project conventions from $path (maintained in the workspace '
-      'repository):\n\n$content';
+  String get prompt => '以下项目约定来自 $path（由工作文件夹中的仓库维护）：\n\n$content';
 
   /// 读取 [workspace] 根目录的约定文件。
   ///

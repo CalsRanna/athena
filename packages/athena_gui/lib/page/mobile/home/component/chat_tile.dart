@@ -46,19 +46,19 @@ class ChatTile extends StatelessWidget {
 
   void handleLongPress(BuildContext context) {
     HapticFeedback.heavyImpact();
-    var renameTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.pencilLine),
+    final renameTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.pencilLine),
       title: 'Rename',
       onTap: () => _renameChat(context, viewModel),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.trash2),
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => _deleteChat(viewModel),
     );
-    var children = [renameTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [renameTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
@@ -72,7 +72,7 @@ class ChatTile extends StatelessWidget {
 
   void _renameChat(BuildContext context, ChatViewModel viewModel) async {
     AthenaDialog.dismiss();
-    var title = await AthenaDialog.input(
+    final title = await AthenaDialog.input(
       'Rename Chat',
       initialValue: chat.title,
     );

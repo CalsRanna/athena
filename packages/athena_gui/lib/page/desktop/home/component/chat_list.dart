@@ -39,7 +39,7 @@ class DesktopChatListView extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     return Watch((context) {
-      var chats = chatViewModel.chats.value;
+      final chats = chatViewModel.chats.value;
       chatViewModel.initLastSelectedIndex();
       // 侧栏结构：上方是会话列表（置顶 / 其余分两组），
       // 底部常驻一个账号式页脚（点击弹出设置 / 关于菜单）。
@@ -109,7 +109,7 @@ class DesktopChatListView extends StatelessWidget {
     ChatViewModel viewModel,
     List<ChatEntity> chats,
   ) {
-    var selectedChats = chats
+    final selectedChats = chats
         .where((c) => viewModel.selection.selectedChatIds.value.contains(c.id))
         .toList();
     if (selectedChats.isNotEmpty) {
@@ -119,10 +119,10 @@ class DesktopChatListView extends StatelessWidget {
   }
 
   void _handleTap(ChatViewModel viewModel, ChatEntity chat, int index) {
-    var isMetaPressed =
+    final isMetaPressed =
         HardwareKeyboard.instance.isMetaPressed ||
         HardwareKeyboard.instance.isControlPressed;
-    var isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
+    final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 
     if (isMetaPressed) {
       viewModel.toggleChatSelection(chat.id!, index);
@@ -153,7 +153,7 @@ class DesktopChatListView extends StatelessWidget {
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     if (chatViewModel.selection.isMultiSelect.value) {
-      var contextMenu = DesktopChatContextMenu(
+      final contextMenu = DesktopChatContextMenu(
         chat: chat,
         offset: position,
         multiSelect: true,
@@ -162,7 +162,7 @@ class DesktopChatListView extends StatelessWidget {
       );
       DesktopContextMenuManager.instance.show(context, contextMenu);
     } else {
-      var contextMenu = DesktopChatContextMenu(
+      final contextMenu = DesktopChatContextMenu(
         chat: chat,
         offset: position,
         onAutoRenamed: () => onAutoRenamed?.call(chat),
@@ -198,9 +198,9 @@ class DesktopChatListView extends StatelessWidget {
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     return Watch((context) {
-      var selectedChat = chatViewModel.currentChat.value;
-      var selectedIds = chatViewModel.selection.selectedChatIds.value;
-      var renamingIds = chatViewModel.selection.renamingChatIds.value;
+      final selectedChat = chatViewModel.currentChat.value;
+      final selectedIds = chatViewModel.selection.selectedChatIds.value;
+      final renamingIds = chatViewModel.selection.renamingChatIds.value;
       return Padding(
         padding: const EdgeInsets.only(bottom: 2),
         child: _ChatTile(
@@ -348,7 +348,7 @@ class _ShortcutHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
-      DesktopHomeShortcuts.newChatLabel,
+      DesktopHomeShortcuts.newChatLabel(context),
       style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
     );
   }

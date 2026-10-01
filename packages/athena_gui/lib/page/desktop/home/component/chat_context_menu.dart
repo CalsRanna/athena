@@ -28,8 +28,8 @@ class DesktopChatContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var pinText = chat.pinned ? 'Unpin' : 'Pin';
-    var renameSubmenu = DesktopContextMenuTileWithSubmenu(
+    final pinText = chat.pinned ? 'Unpin' : 'Pin';
+    final renameSubmenu = DesktopContextMenuTileWithSubmenu(
       text: 'Rename',
       enabled: !multiSelect,
       submenuItems: [
@@ -40,7 +40,7 @@ class DesktopChatContextMenu extends StatelessWidget {
         ),
       ],
     );
-    var children = [
+    final children = [
       DesktopContextMenuTile(
         text: pinText,
         onTap: onPinned,

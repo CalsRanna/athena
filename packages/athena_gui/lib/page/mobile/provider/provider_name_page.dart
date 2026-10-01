@@ -29,7 +29,7 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
   @override
   Widget build(BuildContext context) {
     final button = AthenaIconButton(icon: LucideIcons.check, onTap: handleTap);
-    var input = AthenaInput(
+    final input = AthenaInput(
       controller: controller,
       autoFocus: true,
       placeholder: 'Name',
@@ -42,8 +42,8 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
 
   Future<void> handleTap() async {
     if (controller.text.isEmpty) return;
-    var viewModel = GetIt.instance<ProviderViewModel>();
-    var provider = ProviderEntity(
+    final viewModel = GetIt.instance<ProviderViewModel>();
+    final provider = ProviderEntity(
       enabled: true,
       name: controller.text,
       baseUrl: '',

@@ -49,10 +49,10 @@ class _DesktopAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var leadingChildren = [
-      MacWindowButton(),
+    final leadingChildren = [
+      const MacWindowButton(),
       const Spacer(),
-      SizedBox(width: 16),
+      const SizedBox(width: 16),
     ];
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 顶栏底色与画布相同（相当于透明），只有侧栏上方那条与侧栏同色。

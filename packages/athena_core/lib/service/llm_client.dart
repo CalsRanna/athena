@@ -204,7 +204,7 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async* {
-    var client = _createClient(provider.apiKey, provider.baseUrl);
+    final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       yield* retryStream(
         () => withIdleTimeout(
@@ -259,7 +259,7 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async {
-    var client = _createClient(provider.apiKey, provider.baseUrl);
+    final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       final response = await retry(
         () => client.chat.completions
@@ -282,7 +282,7 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async* {
-    var client = _createClient(provider.apiKey, provider.baseUrl);
+    final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       yield* retryStream(
         () => withIdleTimeout(
@@ -309,7 +309,7 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async {
-    var client = _createClient(provider.apiKey, provider.baseUrl);
+    final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       return await retry(
         () async => responseToChatCompletion(

@@ -101,7 +101,7 @@ class SkillEvolveTool extends Tool {
         );
       }
       if (existing.isBuiltin) {
-        return ToolExecutionResult.error(
+        return const ToolExecutionResult.error(
           'Error: Built-in skills cannot be updated.',
         );
       }
@@ -123,7 +123,7 @@ class SkillEvolveTool extends Tool {
     }
 
     if (description.isEmpty) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: description is required when creating a new skill.',
       );
     }

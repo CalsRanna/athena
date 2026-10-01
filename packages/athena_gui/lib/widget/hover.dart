@@ -62,8 +62,8 @@ class _AthenaHoverState extends State<AthenaHover> {
 
   @override
   Widget build(BuildContext context) {
-    Widget result = widget.builder(context, hover);
-    var region = MouseRegion(
+    final Widget result = widget.builder(context, hover);
+    final region = MouseRegion(
       cursor: widget.cursor ?? MouseCursor.defer,
       onEnter: widget.enabled ? _handleEnter : null,
       onExit: widget.enabled ? _handleExit : null,

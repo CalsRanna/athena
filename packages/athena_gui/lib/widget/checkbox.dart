@@ -30,12 +30,12 @@ class AthenaCheckboxGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       checkbox,
       if (trailing != null) const SizedBox(width: 12),
       if (trailing != null) trailing!,
     ];
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
@@ -51,26 +51,26 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var border = Border.all(
+    final border = Border.all(
       color: widget.value ? colors.accent : colors.checkboxOff,
     );
     // 同 menu.dart：不能从 Colors.transparent 插值，否则取消勾选时闪一下深色
-    var color = widget.value
+    final color = widget.value
         ? colors.accent
         : colors.accent.withValues(alpha: 0);
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       border: border,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: color,
     );
-    var animatedContainer = AnimatedContainer(
+    final animatedContainer = AnimatedContainer(
       decoration: boxDecoration,
       duration: Durations.short2,
       height: 16,
       width: 16,
       child: widget.value ? _buildCheckIcon() : null,
     );
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: animatedContainer,
     );

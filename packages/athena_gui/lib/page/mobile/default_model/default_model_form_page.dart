@@ -31,49 +31,49 @@ class _MobileDefaultModelFormPageState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = AthenaTextStyle.section.copyWith(
+    final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
       fontWeight: FontWeight.w600,
     );
-    var chatTitle = Text('Agent Model', style: titleTextStyle);
-    var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
-    var generationTitle = Text(
+    final chatTitle = Text('Agent Model', style: titleTextStyle);
+    final namingTitle = Text('Chat Naming Model', style: titleTextStyle);
+    final generationTitle = Text(
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
     );
-    var tipTextStyle = AthenaTextStyle.caption.copyWith(
+    final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var chatTip = Text('Model designated for new chat', style: tipTextStyle);
-    var namingTip = Text(
+    final chatTip = Text('Model designated for new chat', style: tipTextStyle);
+    final namingTip = Text(
       'Model designated for automatic chat renaming',
       style: tipTextStyle,
     );
-    var generationTip = Text(
+    final generationTip = Text(
       'Model designated for generating sentinel name, description, and tags',
       style: tipTextStyle,
     );
     return Watch((context) {
-      var chatDropdown = _ModelDropdown(
+      final chatDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
         model: settingViewModel.chatModel.value,
         onChanged: settingViewModel.updateChatModelId,
         provider: settingViewModel.chatModelProvider.value,
       );
-      var chatNamingDropdown = _ModelDropdown(
+      final chatNamingDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
         model: settingViewModel.chatNamingModel.value,
         onChanged: settingViewModel.updateChatNamingModelId,
         provider: settingViewModel.chatNamingModelProvider.value,
       );
-      var sentinelMetadataGenerationDropdown = _ModelDropdown(
+      final sentinelMetadataGenerationDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
         model: settingViewModel.sentinelMetadataGenerationModel.value,
         onChanged: settingViewModel.updateSentinelMetadataGenerationModelId,
         provider:
             settingViewModel.sentinelMetadataGenerationModelProvider.value,
       );
-      var listChildren = [
+      final listChildren = [
         chatTitle,
         const SizedBox(height: 12),
         chatDropdown,
@@ -92,14 +92,14 @@ class _MobileDefaultModelFormPageState
         const SizedBox(height: 12),
         generationTip,
         const SizedBox(height: 16),
-        SafeArea(top: false, child: const SizedBox()),
+        const SafeArea(top: false, child: SizedBox()),
       ];
-      var listView = ListView(
+      final listView = ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: listChildren,
       );
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: Text('Default Model')),
+        appBar: const AthenaAppBar(title: Text('Default Model')),
         body: listView,
       );
     });
@@ -138,26 +138,26 @@ class _ModelDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    final boxDecoration = BoxDecoration(
       color: colors.inputBackground.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
-    var icon = Icon(
+    final icon = Icon(
       AthenaIcons.dropdown,
       color: colors.textInput,
       size: AthenaIcon.inlineSize,
     );
-    var children = [Expanded(child: _buildText()), icon];
-    var row = Row(
+    final children = [Expanded(child: _buildText()), icon];
+    final row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: children,
     );
-    var container = Container(
+    final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
       child: row,
     );
-    var mouseRegion = MouseRegion(
+    final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: container,
     );

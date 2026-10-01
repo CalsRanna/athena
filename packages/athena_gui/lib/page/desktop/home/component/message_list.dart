@@ -211,7 +211,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
       return;
     }
     // 删除会连带删掉这条之后的全部消息（deleteMessage 按位置截断）
-    var result = await AthenaDialog.confirm(
+    final result = await AthenaDialog.confirm(
       'Delete this message and all messages after it?',
     );
     if (result == true) {
@@ -220,7 +220,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   }
 
   void openContextMenu(TapUpDetails details, MessageEntity message) {
-    var contextMenu = DesktopMessageContextMenu(
+    final contextMenu = DesktopMessageContextMenu(
       offset: details.globalPosition,
       onCopied: () => copyMessage(message),
       onDestroyed: () => destroyMessage(message),

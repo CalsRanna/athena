@@ -14,7 +14,7 @@ Future<ToolExecutionResult> startBackgroundShellTask({
   required String command,
 }) async {
   if (args[toolBackgroundDisabledKey] == true) {
-    return ToolExecutionResult.error(
+    return const ToolExecutionResult.error(
       'Error: background tasks are not allowed in this run. '
       'Do this work in a normal run instead.',
     );
@@ -22,7 +22,7 @@ Future<ToolExecutionResult> startBackgroundShellTask({
 
   final chatId = args[toolChatIdKey];
   if (chatId is! String) {
-    return ToolExecutionResult.error(
+    return const ToolExecutionResult.error(
       'Error: background tasks are unavailable: this host has no '
       'session context (background tasks need a session to belong to).',
     );

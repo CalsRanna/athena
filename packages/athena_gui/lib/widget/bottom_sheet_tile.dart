@@ -22,34 +22,37 @@ class AthenaBottomSheetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textColor = enabled ? colors.textPrimary : colors.textSecondary;
-    var textStyle = AthenaTextStyle.body.copyWith(
+    final textColor = enabled ? colors.textPrimary : colors.textSecondary;
+    final textStyle = AthenaTextStyle.body.copyWith(
       color: textColor,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
     );
-    var trailingTextStyle = AthenaTextStyle.body.copyWith(color: textColor);
-    var iconColor = enabled ? colors.iconSecondary : colors.textSecondary;
-    var leadingIconThemeData = IconThemeData(color: iconColor);
-    var trailingIconThemeData = IconThemeData(color: textColor);
-    var trailingIconTheme = IconTheme(
+    final trailingTextStyle = AthenaTextStyle.body.copyWith(color: textColor);
+    final iconColor = enabled ? colors.iconSecondary : colors.textSecondary;
+    final leadingIconThemeData = IconThemeData(color: iconColor);
+    final trailingIconThemeData = IconThemeData(color: textColor);
+    final trailingIconTheme = IconTheme(
       data: trailingIconThemeData,
       child: trailing ?? const SizedBox(),
     );
-    var defaultTrailing = DefaultTextStyle.merge(
+    final defaultTrailing = DefaultTextStyle.merge(
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: trailingTextStyle,
       child: trailingIconTheme,
     );
-    var align = Align(alignment: Alignment.centerRight, child: defaultTrailing);
-    var children = [
+    final align = Align(
+      alignment: Alignment.centerRight,
+      child: defaultTrailing,
+    );
+    final children = [
       IconTheme(data: leadingIconThemeData, child: leading ?? const SizedBox()),
       if (leading != null) const SizedBox(width: 12),
       Text(title, style: textStyle),
       if (trailing != null) const SizedBox(width: 12),
       Flexible(child: align),
     ];
-    var container = Container(
+    final container = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       child: Row(children: children),
     );

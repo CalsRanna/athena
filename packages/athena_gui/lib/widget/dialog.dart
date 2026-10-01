@@ -28,7 +28,7 @@ abstract final class AthenaDialog {
   /// 两端才都能断言。生产环境不显式设置 `ThemeData.platform`，
   /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
   static bool _isMobile(BuildContext context) {
-    var platform = Theme.of(context).platform;
+    final platform = Theme.of(context).platform;
     return platform == TargetPlatform.android || platform == TargetPlatform.iOS;
   }
 
@@ -96,8 +96,8 @@ abstract final class AthenaDialog {
     final messenger = scaffoldMessengerKey.currentState;
     if (messenger == null) return;
     final style = _AthenaMessageVisualStyle.fromType(type, _colors);
-    var textStyle = TextStyle(color: _colors.textPrimary);
-    var content = Row(
+    final textStyle = TextStyle(color: _colors.textPrimary);
+    final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
@@ -109,7 +109,7 @@ abstract final class AthenaDialog {
         Flexible(child: Text(message, style: textStyle)),
       ],
     );
-    var snackBar = SnackBar(
+    final snackBar = SnackBar(
       backgroundColor: _colors.surfaceMobile,
       behavior: SnackBarBehavior.floating,
       content: content,
@@ -200,7 +200,7 @@ class AthenaDesktopDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var header = title == null
+    final header = title == null
         ? null
         : Row(
             children: [
@@ -216,7 +216,7 @@ class AthenaDesktopDialog extends StatelessWidget {
                 AthenaGhostIconButton(icon: LucideIcons.x, onTap: onClose),
             ],
           );
-    var children = [
+    final children = [
       if (header != null) header,
       if (header != null) const SizedBox(height: AthenaSpace.lg),
       child,
@@ -267,7 +267,7 @@ class AthenaDialogActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       AthenaSecondaryButton(onTap: onCancel, child: Text(cancelLabel)),
       const SizedBox(width: AthenaSpace.sm),
       AthenaPrimaryButton(onTap: onConfirm, child: Text(confirmLabel)),
@@ -318,8 +318,8 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
-    var children = [
+    final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
+    final children = [
       Text(text, style: textStyle),
       const SizedBox(height: AthenaSpace.xxl),
       AthenaPrimaryButton(
@@ -355,10 +355,10 @@ class _DesktopConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var messageStyle = AthenaTextStyle.body.copyWith(
+    final messageStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
     );
-    var children = [
+    final children = [
       Text(message, style: messageStyle),
       const SizedBox(height: AthenaSpace.xxl),
       AthenaDialogActions(
@@ -404,7 +404,7 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       AthenaInput(controller: controller, autoFocus: true),
       const SizedBox(height: AthenaSpace.xxl),
       AthenaDialogActions(
@@ -451,9 +451,11 @@ class _InputDialogState extends State<_InputDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
-    var input = AthenaInput(controller: controller, autoFocus: true);
-    var children = [
+    final titleStyle = AthenaTextStyle.title.copyWith(
+      color: colors.textPrimary,
+    );
+    final input = AthenaInput(controller: controller, autoFocus: true);
+    final children = [
       Text(widget.title, style: titleStyle),
       const SizedBox(height: AthenaSpace.lg),
       input,

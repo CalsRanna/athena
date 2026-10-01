@@ -23,32 +23,35 @@ class _MobileDataPageState extends State<MobileDataPage> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       MobileSettingTile(
-        leading: Icon(LucideIcons.fileOutput, size: AthenaIcon.largeSize),
+        leading: const Icon(LucideIcons.fileOutput, size: AthenaIcon.largeSize),
         onTap: _handleExport,
         title: 'Export',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.fileInput, size: AthenaIcon.largeSize),
+        leading: const Icon(LucideIcons.fileInput, size: AthenaIcon.largeSize),
         onTap: _handleImport,
         title: 'Import',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.databaseBackup, size: AthenaIcon.largeSize),
+        leading: const Icon(
+          LucideIcons.databaseBackup,
+          size: AthenaIcon.largeSize,
+        ),
         onTap: _handleReset,
         title: 'Reset',
         trailing: '',
       ),
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: Text('Data')),
+      appBar: const AthenaAppBar(title: Text('Data')),
       body: column,
     );
   }

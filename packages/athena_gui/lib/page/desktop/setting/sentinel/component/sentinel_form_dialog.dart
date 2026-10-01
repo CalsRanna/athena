@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/widget/settings/form_actions.dart';
+import 'package:athena_gui/widget/settings/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -33,7 +34,7 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       DesktopSettingFormField(
         label: 'Name',
         hint: 'You can write the system prompt on the next screen.',
@@ -69,7 +70,7 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
       setState(() => error = 'Give the Sentinel a name.');
       return;
     }
-    var newSentinel = SentinelEntity(
+    final newSentinel = SentinelEntity(
       name: name,
       prompt: '',
       description: '',

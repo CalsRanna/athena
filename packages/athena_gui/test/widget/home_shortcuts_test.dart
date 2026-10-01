@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,12 +7,16 @@ import 'package:flutter_test/flutter_test.dart';
 /// 新建对话快捷键的生效范围：首页持焦（含输入框失焦回到页面）时触发；
 /// 设置页 / 对话框这类压在首页之上的路由打开时不触发，关掉后恢复。
 void main() {
-  // 激活键按宿主平台只注册一个（macOS ⌘，其余 Ctrl），测试按同一规则按键。
-  final modifier = Platform.isMacOS
-      ? LogicalKeyboardKey.metaLeft
-      : LogicalKeyboardKey.controlLeft;
-
-  Future<void> pressNewChat(WidgetTester tester) async {
+  Future<void> pressNewChat(
+    WidgetTester tester, {
+    LogicalKeyboardKey? modifier,
+  }) async {
+    final platform = Theme.of(
+      tester.element(find.byType(DesktopHomeShortcuts)),
+    ).platform;
+    modifier ??= platform == TargetPlatform.macOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
     await tester.sendKeyDownEvent(modifier);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.keyN);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.keyN);
@@ -29,6 +32,10 @@ void main() {
           child: Column(
             children: [
               const TextField(),
+              Builder(
+                builder: (context) =>
+                    Text(DesktopHomeShortcuts.newChatLabel(context)),
+              ),
               // 画布要能被命中测试到（空 SizedBox 不算），用带底色的盒子
               Expanded(
                 child: ColoredBox(
@@ -72,6 +79,23 @@ void main() {
     expect(fired, 3, reason: '输入框失焦后快捷键仍然可用');
   }, variant: TargetPlatformVariant.desktop());
 
+  testWidgets('快捷键提示和修饰键跟随主题平台，其他修饰键不触发', (tester) async {
+    var fired = 0;
+    await tester.pumpWidget(buildHome(onNewChat: () => fired++));
+    await tester.pump();
+    final isMac = defaultTargetPlatform == TargetPlatform.macOS;
+    expect(find.text(isMac ? '⌘N' : 'Ctrl+N'), findsOneWidget);
+    await pressNewChat(
+      tester,
+      modifier: isMac
+          ? LogicalKeyboardKey.controlLeft
+          : LogicalKeyboardKey.metaLeft,
+    );
+    expect(fired, 0);
+    await pressNewChat(tester);
+    expect(fired, 1);
+  }, variant: TargetPlatformVariant.desktop());
+
   testWidgets('压在首页之上的路由打开时不触发，关掉后恢复', (tester) async {
     var fired = 0;
     await tester.pumpWidget(buildHome(onNewChat: () => fired++));
@@ -93,5 +117,5 @@ void main() {
     await tester.pumpAndSettle();
     await pressNewChat(tester);
     expect(fired, 1, reason: '回到首页后焦点还给首页，快捷键恢复');
-  });
+  }, variant: TargetPlatformVariant.desktop());
 }

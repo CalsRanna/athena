@@ -211,10 +211,10 @@ void main() {
               ChatMessage.user('run'),
               ChatMessage.assistant(
                 toolCalls: [
-                  ToolCall(
+                  const ToolCall(
                     id: 'functions.bash:0',
                     type: 'function',
-                    function: const FunctionCall(name: 'bash', arguments: '{}'),
+                    function: FunctionCall(name: 'bash', arguments: '{}'),
                   ),
                 ],
               ),

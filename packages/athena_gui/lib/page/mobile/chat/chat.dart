@@ -57,7 +57,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    var actionButton = AthenaIconButton(
+    final actionButton = AthenaIconButton(
       icon: AthenaIcons.more,
       onTap: () {
         openBottomSheet(_resolveChat());
@@ -82,8 +82,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Widget _buildTitle() {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      var chat = _resolveChat();
-      var isRenaming =
+      final chat = _resolveChat();
+      final isRenaming =
           chat != null &&
           viewModel.selection.renamingChatIds.value.contains(chat.id);
       String title;
@@ -99,7 +99,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(child: Text(title, textAlign: TextAlign.center)),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             SizedBox(
               width: 12,
               height: 12,
@@ -117,11 +117,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Widget _buildContent() {
     return Watch((context) {
-      var chat = _resolveChat();
-      var sentinel = _resolveSentinel(chat);
+      final chat = _resolveChat();
+      final sentinel = _resolveSentinel(chat);
 
       if (chat != null) {
-        var model = modelViewModel.models.value
+        final model = modelViewModel.models.value
             .where((m) => m.id == chat.modelId)
             .firstOrNull;
         return MessageListView(
@@ -221,7 +221,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   void openBottomSheet(ChatEntity? chat) {
-    var mobileChatBottomSheet = MobileChatBottomSheet(
+    final mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
       chatViewModel: viewModel,
       sentinelViewModel: sentinelViewModel,
@@ -342,7 +342,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Widget _buildInput() {
     return Watch((context) {
       final chat = _resolveChat();
-      var userInput = UserInput(
+      final userInput = UserInput(
         controller: controller,
         isStreaming: viewModel.isCurrentChatStreaming.value,
         onSubmitted: () => sendMessage(chat),

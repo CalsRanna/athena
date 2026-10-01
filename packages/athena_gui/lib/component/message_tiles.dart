@@ -208,7 +208,7 @@ class _AssistantMessageSegment extends StatelessWidget {
     );
     // 首个 delta 前也由底部工具条表达运行状态；切换为复制按钮时保持同一行高。
     // 完成后沿用整卡 hover，只有工具条订阅它，正文不参与重建。
-    Widget result = MouseRegion(
+    final Widget result = MouseRegion(
       onEnter: (_) => hover.enter(cardId),
       onExit: (_) => hover.leave(cardId),
       child: Column(
@@ -325,24 +325,24 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     try {
       final decoded = jsonDecode(message.reference);
       final references = decoded is List ? decoded : const <dynamic>[];
-      List<Widget> referenceWidgets = [];
+      final List<Widget> referenceWidgets = [];
       for (var i = 0; i < references.length; i++) {
         final reference = references[i];
         if (reference is! Map<String, dynamic>) continue;
         referenceWidgets.add(_buildReference(context, reference, index: i));
       }
-      var children = [Text('References:'), ...referenceWidgets];
-      var column = Column(
+      final children = [const Text('References:'), ...referenceWidgets];
+      final column = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 4,
         children: children,
       );
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      var boxDecoration = BoxDecoration(
+      final boxDecoration = BoxDecoration(
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         color: colors.codeBackground,
       );
-      var textStyle = TextStyle(
+      final textStyle = TextStyle(
         fontWeight: FontWeight.w600,
         color: colors.textOnCode,
       );
@@ -359,7 +359,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
   }
 
   Future<void> openLink(String? url) async {
-    var uri = Uri.parse(url ?? '');
+    final uri = Uri.parse(url ?? '');
     if (!(await canLaunchUrl(uri))) {
       AthenaDialog.warning('The link is invalid');
       return;
@@ -373,14 +373,14 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     required int index,
   }) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var url = reference['url'] as String?;
-    var title = reference['title'] as String?;
-    var textSpan = TextSpan(
+    final url = reference['url'] as String?;
+    final title = reference['title'] as String?;
+    final textSpan = TextSpan(
       text: title,
       style: TextStyle(color: colors.markdownLink),
       recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
     );
-    var children = [TextSpan(text: '${index + 1}. '), textSpan];
+    final children = [TextSpan(text: '${index + 1}. '), textSpan];
     return Text.rich(TextSpan(children: children));
   }
 }
@@ -462,17 +462,17 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
     // 字号 / 行高与助手正文同一档，否则一轮对话里
     // 问与答的字号会不一致。
-    var textStyle = AthenaWorkspaceTextSize.of(
+    final textStyle = AthenaWorkspaceTextSize.of(
       context,
     ).prose.copyWith(color: colors.textPrimary);
-    var text = Text(widget.message.content, style: textStyle);
-    var images = widget.message.imageUrls.isNotEmpty
+    final text = Text(widget.message.content, style: textStyle);
+    final images = widget.message.imageUrls.isNotEmpty
         ? widget.message.imageUrls.split(',')
         : <String>[];
     const delegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 9,
     );
-    var gridView = GridView.builder(
+    final gridView = GridView.builder(
       gridDelegate: delegate,
       // 以 base64 为 key：同一网格位置的元素在不同消息间复用时，
       // 避免渲染出上一条消息的图片
@@ -487,8 +487,8 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
       shrinkWrap: true,
     );
     // 图片是用户输入内容的一部分，渲染在文字之前
-    var children = [if (images.isNotEmpty) gridView, text];
-    var column = Column(
+    final children = [if (images.isNotEmpty) gridView, text];
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
@@ -499,7 +499,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 也不设 minHeight：内容贴顶对齐，缺席的高度会整块落在文字下方——单行消息
     // 于是凭空多出一行空白。气泡高度交给行盒与内边距：8 + 20 + 8 = 36 已经是
     // 单行该有的高度，短内容靠外层内边距兜底即可。
-    var gestureDetector = GestureDetector(
+    final gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPress: widget.onLongPress,
       onSecondaryTapUp: widget.onSecondaryTapUp,

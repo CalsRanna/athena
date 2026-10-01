@@ -58,7 +58,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var children = [
+      final children = [
         _buildLeftBar(context),
         Expanded(child: _buildWorkspace()),
       ];
@@ -102,7 +102,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> batchDestroyChats(List<ChatEntity> chats) async {
-    var result = await AthenaDialog.confirm(
+    final result = await AthenaDialog.confirm(
       'Do you want to delete ${chats.length} chats?',
     );
     if (result == true) {
@@ -114,7 +114,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> destroyChat(ChatEntity chat) async {
-    var result = await AthenaDialog.confirm('Do you want to delete this chat?');
+    final result = await AthenaDialog.confirm(
+      'Do you want to delete this chat?',
+    );
     if (result == true) {
       scrollController.followBottom();
       await chatViewModel.deleteChat(chat);
@@ -139,7 +141,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> manualRenameChat(ChatEntity chat) async {
-    var title = await AthenaDialog.input(
+    final title = await AthenaDialog.input(
       'Rename Chat',
       initialValue: chat.title,
     );
@@ -149,7 +151,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> resendMessage(MessageEntity message) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat == null) return;
     // 当前对话正在流式时重发会先删消息再被 sendMessage 静默吞掉，直接拦截
     if (chatViewModel.isStreamingChat(chat.id!)) {
@@ -251,7 +253,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> updateRetention(int retention) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chatViewModel.updateCurrentRetention(retention);
       return;
@@ -264,7 +266,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> updateModel(ModelEntity newModel) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat != null) {
       // 有选中的对话，更新对话的模型
       await chatViewModel.updateModel(newModel, chat: chat);
@@ -275,7 +277,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> updateSentinel(SentinelEntity newSentinel) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat != null) {
       // 有选中的对话，更新对话的哨兵
       await chatViewModel.updateSentinel(newSentinel, chat: chat);
@@ -286,7 +288,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> updateReasoningEffort(String effort) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chatViewModel.updateCurrentReasoningEffort(effort);
       return;
@@ -305,7 +307,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 清除本会话的工作文件夹，回到默认（shell 用用户主目录）。
   /// 没有选中对话时改的是草稿：落盘时就不带工作文件夹。
   Future<void> clearWorkspaceFolder() async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chatViewModel.updateCurrentWorkspacePath(null);
       return;
@@ -316,7 +318,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 切换本会话的审批档位。没有选中对话时改的是草稿：
   /// 首条消息发送时随草稿一起落盘。
   Future<void> updateApprovalMode(ApprovalMode mode) async {
-    var chat = chatViewModel.currentChat.value;
+    final chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chatViewModel.updateCurrentApprovalMode(mode);
       return;
@@ -328,7 +330,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
     // 右侧是一组视图操作。这里保留标题那一部分（Athena 没有导航与右面板）。
-    var title = Watch((context) {
+    final title = Watch((context) {
       final chat = chatViewModel.currentChat.value;
       final text = chat?.title.trim() ?? '';
       return Align(
@@ -348,7 +350,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Widget _buildLeftBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var chatListView = DesktopChatListView(
+    final chatListView = DesktopChatListView(
       onCreateChat: startNewChat,
       onAutoRenamed: chatViewModel.renameChat,
       onBatchDestroyed: batchDestroyChats,
@@ -370,11 +372,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildWorkspace() {
-    var workspace = DesktopMessageList(
+    final workspace = DesktopMessageList(
       controller: scrollController,
       onResend: resendMessage,
     );
-    var desktopMessageInput = DesktopMessageInput(
+    final desktopMessageInput = DesktopMessageInput(
       controller: controller,
       focusNode: composerFocusNode,
       onRetentionChange: updateRetention,

@@ -22,7 +22,7 @@ const _namingPrompt = '''
 3.  **语言一致性**:标题必须与用户首要使用的语言保持一致。
 
 # 摘要逻辑
-- 分析用户的核心意图(Intent)或主要话题(Topic)。
+- 分析用户的核心意图或主要话题。
 - 去除客套话(如"你好"、"请问"),直接提炼关键词。
 - 优先保留专有名词(如 "Flutter状态管理" > "关于状态管理的问题")。
 
@@ -31,17 +31,17 @@ const _namingPrompt = '''
 
 # 示例
 
-Input: "我想问一下关于那个最新的iPhone 15 Pro Max的散热问题"
-Output: iPhone15散热分析
+输入: "我想问一下关于那个最新的iPhone 15 Pro Max的散热问题"
+输出: iPhone15散热分析
 
-Input: "写一个Python脚本来自动备份MySQL数据库"
-Output: Python数据库备份脚本
+输入: "写一个Python脚本来自动备份MySQL数据库"
+输出: Python数据库备份脚本
 
-Input: "How do I implement a binary search tree in Golang?"
-Output: Golang Binary Search Tree
+输入: "How do I implement a binary search tree in Golang?"
+输出: Golang Binary Search Tree
 
-Input: "今天天气不错,适合去哪玩?"
-Output: 游玩地点推荐
+输入: "今天天气不错,适合去哪玩?"
+输出: 游玩地点推荐
 ''';
 
 /// 聊天相关的 AI 网络请求。
@@ -61,11 +61,14 @@ class ChatCompletionsService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var request = ChatCompletionCreateRequest(
+    final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: [ChatMessage.user('Hi')],
     );
-    var response = await _llmClient.fetch(provider: provider, request: request);
+    final response = await _llmClient.fetch(
+      provider: provider,
+      request: request,
+    );
     return response.text ?? '';
   }
 
@@ -86,7 +89,7 @@ class ChatCompletionsService {
     final effort = model.reasoning
         ? _parseReasoningEffort(chat.reasoningEffort)
         : null;
-    var request = ChatCompletionCreateRequest(
+    final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
       temperature: _acceptsTemperature(model.modelId, effort)
@@ -115,11 +118,11 @@ class ChatCompletionsService {
     required ModelEntity model,
     Future<void>? cancelSignal,
   }) async {
-    var request = ChatCompletionCreateRequest(
+    final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
     );
-    var response = await _llmClient.fetch(
+    final response = await _llmClient.fetch(
       provider: provider,
       request: request,
       cancelSignal: cancelSignal,
@@ -133,11 +136,11 @@ class ChatCompletionsService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
-    var request = ChatCompletionCreateRequest(
+    final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: [ChatMessage.system(_namingPrompt), ChatMessage.user(value)],
     );
-    var stream = _llmClient.stream(provider: provider, request: request);
+    final stream = _llmClient.stream(provider: provider, request: request);
     await for (final chunk in stream) {
       if (chunk.choices == null || chunk.choices!.isEmpty) continue;
       yield chunk.choices!.first.delta.content ?? '';

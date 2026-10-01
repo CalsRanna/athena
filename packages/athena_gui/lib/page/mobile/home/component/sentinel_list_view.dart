@@ -11,23 +11,23 @@ class SentinelListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var sentinels = sentinelViewModel.sentinels.value;
+      final sentinels = sentinelViewModel.sentinels.value;
       return _buildData(sentinels);
     });
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
-    List<Widget> children1 = [];
-    List<Widget> children2 = [];
-    List<Widget> children3 = [];
+    final List<Widget> children1 = [];
+    final List<Widget> children2 = [];
+    final List<Widget> children3 = [];
     for (var i = 0; i < sentinels.length; i++) {
-      var tile = SentinelTile(sentinels[i]);
+      final tile = SentinelTile(sentinels[i]);
       if (i % 3 == 0) children1.add(tile);
       if (i % 3 == 1) children2.add(tile);
       if (i % 3 == 2) children3.add(tile);
     }
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 12,
       children: [

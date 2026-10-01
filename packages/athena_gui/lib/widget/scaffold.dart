@@ -1,5 +1,4 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
 
 /// 页面骨架。桌面端是"侧栏面板 + 画布工作区"，移动端是单列。
@@ -13,7 +12,12 @@ class AthenaScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var isDesktop = PlatformUtil.isDesktop;
+    final isDesktop = switch (Theme.of(context).platform) {
+      TargetPlatform.macOS ||
+      TargetPlatform.windows ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
     if (isDesktop) return _DesktopScaffold(appBar: appBar, body: body);
     return _MobileScaffold(appBar: appBar, body: body);
   }
@@ -27,7 +31,7 @@ class _DesktopScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var children = [
+    final children = [
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
     ];

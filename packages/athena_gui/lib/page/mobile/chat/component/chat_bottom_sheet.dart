@@ -12,7 +12,7 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/widget/approval_mode_dialog.dart';
+import 'package:athena_gui/component/approval_mode_dialog.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
@@ -111,46 +111,46 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       // Fallback to first enabled model if not found
       model ??= modelViewModel.enabledModels.value.firstOrNull;
 
-      var provider = providerViewModel.providers.value
+      final provider = providerViewModel.providers.value
           .where((p) => p.id == (model?.providerId))
           .firstOrNull;
 
-      var modelName = model?.name ?? '';
-      var providerName = provider?.name ?? '';
-      var modelFullName =
+      final modelName = model?.name ?? '';
+      final providerName = provider?.name ?? '';
+      final modelFullName =
           '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
-      var sentinelSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.userRound),
+      final sentinelSheetTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.userRound),
         onTap: openSentinelSelectorDialog,
         title: 'Sentinel',
         trailing: Text(sentinel?.name ?? ''),
       );
-      var modelSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.cpu),
+      final modelSheetTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.cpu),
         onTap: openModelSelectorDialog,
         title: 'Model',
         trailing: Text(modelFullName),
       );
-      var reasoningEffortSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.brainCircuit),
+      final reasoningEffortSheetTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.brainCircuit),
         onTap: openReasoningEffortDialog,
         title: 'Reasoning Effort',
         trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
       );
-      var approvalModeSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.shieldCheck),
+      final approvalModeSheetTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.shieldCheck),
         onTap: openApprovalModeDialog,
         title: 'Approval Mode',
         trailing: Text(_approvalMode.value.label),
       );
-      var chatConfigurationSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.slidersHorizontal),
+      final chatConfigurationSheetTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.slidersHorizontal),
         onTap: openConfigurationDialog,
         title: 'Chat Configuration',
-        trailing: Icon(AthenaIcons.forward),
+        trailing: const Icon(AthenaIcons.forward),
       );
 
-      var children = <Widget>[
+      final children = <Widget>[
         sentinelSheetTile,
         modelSheetTile,
         reasoningEffortSheetTile,
@@ -158,7 +158,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         chatConfigurationSheetTile,
       ];
 
-      var padding = Padding(
+      final padding = Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(mainAxisSize: MainAxisSize.min, children: children),
       );
@@ -172,7 +172,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openModelSelectorDialog() {
-    var dialog = MobileModelSelectDialog(
+    final dialog = MobileModelSelectDialog(
       groupedModels: modelViewModel.groupedEnabledModels.value,
       onTap: _updateModel,
     );
@@ -180,7 +180,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openConfigurationDialog() {
-    var dialog = MobileChatConfigurationDialog(
+    final dialog = MobileChatConfigurationDialog(
       chat: widget.chat,
       retention: _retention.value,
       temperature: _temperature.value,
@@ -197,7 +197,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openReasoningEffortDialog() {
-    var dialog = MobileReasoningEffortSelectDialog(
+    final dialog = MobileReasoningEffortSelectDialog(
       current: _reasoningEffort.value,
       onTap: _updateReasoningEffort,
     );
@@ -211,7 +211,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openApprovalModeDialog() {
-    var dialog = MobileApprovalModeSelectDialog(
+    final dialog = MobileApprovalModeSelectDialog(
       current: _approvalMode.value,
       onTap: _updateApprovalMode,
     );
@@ -225,7 +225,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openSentinelSelectorDialog() {
-    var dialog = MobileSentinelSelectDialog(
+    final dialog = MobileSentinelSelectDialog(
       onTap: _updateSentinel,
       sentinelViewModel: sentinelViewModel,
     );

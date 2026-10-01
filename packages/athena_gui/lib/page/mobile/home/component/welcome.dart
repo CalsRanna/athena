@@ -14,7 +14,7 @@ class MobileHomeWelcome extends StatefulWidget {
 class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   @override
   Widget build(BuildContext context) {
-    var padding = Padding(
+    final padding = Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(children: [_buildText(context), _buildAvatar(context)]),
     );
@@ -38,7 +38,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   }
 
   void handleTap(BuildContext context) {
-    SettingRoute().push<void>(context);
+    const SettingRoute().push<void>(context);
   }
 
   void handleVisibilityChanged(VisibilityInfo info) {
@@ -49,13 +49,13 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
 
   Widget _buildAvatar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var circleAvatar = Container(
+    final circleAvatar = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: colors.textPrimary.withValues(alpha: 0.5),
       ),
-      padding: EdgeInsets.all(4),
-      child: CircleAvatar(
+      padding: const EdgeInsets.all(4),
+      child: const CircleAvatar(
         backgroundImage: AssetImage('asset/image/avatar.png'),
         radius: 28,
       ),
@@ -73,7 +73,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
     final welcomeTextStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
     );
-    var textChildren = [
+    final textChildren = [
       TextSpan(text: 'Good ${getPeriod()}!', style: welcomeTextStyle),
     ];
     return Expanded(child: Text.rich(TextSpan(children: textChildren)));

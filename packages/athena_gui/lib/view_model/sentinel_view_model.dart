@@ -14,7 +14,7 @@ class SentinelViewModel {
 
   /// 仅用于 GUI 状态与渲染，不写入 sentinels 表。
   /// ChatStoreService 将其保存为 sentinel_id: null。
-  static final directChatSentinel = SentinelEntity(
+  static const directChatSentinel = SentinelEntity(
     id: ChatEntity.noSentinelId,
     name: directChatName,
     description: 'Talk directly to the model without a Sentinel prompt.',
@@ -70,11 +70,11 @@ class SentinelViewModel {
   }
 
   late final tags = computed(() {
-    var allTags = <String>[];
+    final allTags = <String>[];
     for (var sentinel in sentinels.value) {
       allTags.addAll(sentinel.tagList);
     }
-    var sortedTags = allTags.toSet().toList();
+    final sortedTags = allTags.toSet().toList();
     sortedTags.sort((a, b) => a.compareTo(b));
     return sortedTags;
   });
@@ -89,7 +89,7 @@ class SentinelViewModel {
       // 如果没有 sentinel,创建默认的
       if (loadedSentinels.isEmpty) {
         var entity = defaultSentinelEntity;
-        var id = await _sentinelRepository.createSentinel(entity);
+        final id = await _sentinelRepository.createSentinel(entity);
         entity = entity.copyWith(id: id);
         loadedSentinels = [entity];
       } else {
@@ -120,7 +120,7 @@ class SentinelViewModel {
   /// 按名称查找 sentinel（先查内存信号，再查数据库）
   Future<SentinelEntity?> getSentinelByName(String name) async {
     // 优先从已加载列表查找
-    var match = sentinels.value.cast<SentinelEntity?>().firstWhere(
+    final match = sentinels.value.cast<SentinelEntity?>().firstWhere(
       (s) => s!.name == name,
       orElse: () => null,
     );
@@ -144,12 +144,12 @@ class SentinelViewModel {
     isGenerating.value = true;
     error.value = null;
     try {
-      var model = await _modelRepository.getModelById(modelId);
+      final model = await _modelRepository.getModelById(modelId);
       if (model == null) {
         error.value = 'Model not found';
         return null;
       }
-      var provider = await _providerRepository.getProviderById(
+      final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
       if (provider == null) {
@@ -178,12 +178,12 @@ class SentinelViewModel {
     isGenerating.value = true;
     error.value = null;
     try {
-      var model = await _modelRepository.getModelById(modelId);
+      final model = await _modelRepository.getModelById(modelId);
       if (model == null) {
         error.value = 'Model not found';
         return null;
       }
-      var provider = await _providerRepository.getProviderById(
+      final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
       if (provider == null) {
@@ -212,13 +212,13 @@ class SentinelViewModel {
     error.value = null;
     try {
       // 获取模型和提供商
-      var model = await _modelRepository.getModelById(modelId);
+      final model = await _modelRepository.getModelById(modelId);
       if (model == null) {
         error.value = 'Model not found';
         return null;
       }
 
-      var provider = await _providerRepository.getProviderById(
+      final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
       if (provider == null) {
@@ -227,7 +227,7 @@ class SentinelViewModel {
       }
 
       // 生成 sentinel 元数据
-      var sentinel = await _sentinelService.generate(
+      final sentinel = await _sentinelService.generate(
         prompt,
         provider: provider,
         model: model,
@@ -247,8 +247,8 @@ class SentinelViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var id = await _sentinelRepository.createSentinel(sentinel);
-      var created = sentinel.copyWith(id: id);
+      final id = await _sentinelRepository.createSentinel(sentinel);
+      final created = sentinel.copyWith(id: id);
       sentinels.value = [...sentinels.value, created];
       return created;
     } catch (e) {

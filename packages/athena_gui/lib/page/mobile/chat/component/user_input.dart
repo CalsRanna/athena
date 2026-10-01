@@ -64,7 +64,7 @@ class _UserInputState extends State<UserInput> {
       style: textStyle,
       textInputAction: TextInputAction.newline,
     );
-    var sendButton = SendButton(
+    final sendButton = SendButton(
       onSubmitted: widget.onSubmitted,
       onTerminated: widget.onTerminated,
       isStreaming: widget.isStreaming,

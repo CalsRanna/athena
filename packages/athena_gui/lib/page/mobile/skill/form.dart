@@ -47,7 +47,7 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    var listChildren = [
+    final listChildren = [
       if (!isEdit) ...[
         AthenaFormField(
           label: 'Name',
@@ -78,13 +78,13 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
         ),
       ),
       const SizedBox(height: 32),
-      SafeArea(top: false, child: const SizedBox()),
+      const SafeArea(top: false, child: SizedBox()),
     ];
-    var listView = ListView(
+    final listView = ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: listChildren,
     );
-    var column = Column(
+    final column = Column(
       children: [
         Expanded(child: listView),
         _buildStoreButton(context),
@@ -103,7 +103,7 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
       padding: const EdgeInsets.all(16.0),
       child: AthenaPrimaryButton(
         onTap: storeSkill,
-        child: Center(child: Text('Store')),
+        child: const Center(child: Text('Store')),
       ),
     );
   }

@@ -4,7 +4,7 @@ import 'package:athena_core/entity/model_entity.dart';
 ///
 /// 没有任何可显示项时返回 null（行就不画说明）。
 String? modelSubtitle(ModelEntity model) {
-  var parts = <String>[
+  final parts = <String>[
     if (model.releasedAt.isNotEmpty) model.releasedAt,
     if (model.contextWindow > 0)
       '${compactTokens(model.contextWindow)} context',

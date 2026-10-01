@@ -10,7 +10,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 时不能再对已销毁的 State 调 setState。
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light),
+    theme: buildAthenaThemeData(
+      AthenaColorMode.light,
+    ).copyWith(platform: TargetPlatform.macOS),
     home: Scaffold(body: Center(child: child)),
   );
 
@@ -86,4 +88,24 @@ void main() {
       AthenaTextStyle.body.fontSize,
     );
   });
+
+  for (final platform in TargetPlatform.values) {
+    testWidgets('复制反馈按主题平台 $platform 显示文案', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAthenaThemeData(
+            AthenaColorMode.light,
+          ).copyWith(platform: platform),
+          home: const Scaffold(body: CopiedLabel(color: Colors.black)),
+        ),
+      );
+      final isDesktop = {
+        TargetPlatform.macOS,
+        TargetPlatform.windows,
+        TargetPlatform.linux,
+      }.contains(platform);
+      expect(find.byIcon(LucideIcons.check), findsOneWidget);
+      expect(find.text('Copied'), isDesktop ? findsOneWidget : findsNothing);
+    });
+  }
 }

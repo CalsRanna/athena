@@ -33,8 +33,8 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    var isPreset = widget.sentinel?.isPreset ?? false;
-    var listViewChildren = [
+    final isPreset = widget.sentinel?.isPreset ?? false;
+    final listViewChildren = [
       AthenaFormField(
         label: 'Prompt',
         control: AthenaInput(
@@ -60,15 +60,15 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         trailing: _buildGenerateIcon(generateSentinelDescription),
       ),
     ];
-    var listView = ListView(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+    final listView = ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [
+    final columnChildren = [
       Expanded(child: listView),
       if (!isPreset) _buildButtons(context),
     ];
-    var column = Column(children: columnChildren);
+    final column = Column(children: columnChildren);
     return AthenaScaffold(
       appBar: AthenaAppBar(
         title: Text(widget.sentinel?.name ?? 'New Sentinel'),
@@ -78,7 +78,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Widget _buildButtons(BuildContext context) {
-    var children = [
+    final children = [
       Expanded(child: _buildStoreButton(context)),
       const SizedBox(width: 8),
       Expanded(child: _buildGenerateButton(context)),
@@ -104,9 +104,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelId = await _getModelId();
+      final modelId = await _getModelId();
       if (modelId == null) return;
-      var sentinel = await viewModel.generateSentinel(
+      final sentinel = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
       );
@@ -128,9 +128,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelId = await _getModelId();
+      final modelId = await _getModelId();
       if (modelId == null) return;
-      var description = await viewModel.generateSentinelDescription(
+      final description = await viewModel.generateSentinelDescription(
         promptController.text,
         modelId: modelId,
         existingName: nameController.text,
@@ -152,9 +152,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelId = await _getModelId();
+      final modelId = await _getModelId();
       if (modelId == null) return;
-      var name = await viewModel.generateSentinelName(
+      final name = await viewModel.generateSentinelName(
         promptController.text,
         modelId: modelId,
       );
@@ -177,7 +177,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Future<void> storeSentinel() async {
-    var message = _validate();
+    final message = _validate();
     if (message != null) return AthenaDialog.warning(message);
     if (widget.sentinel == null) return _store();
     _update();
@@ -200,19 +200,19 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   Widget _buildGenerateButton(BuildContext context) {
     return AthenaPrimaryButton(
       onTap: generateSentinel,
-      child: Center(child: Text('Generate')),
+      child: const Center(child: Text('Generate')),
     );
   }
 
   Widget _buildStoreButton(BuildContext context) {
     return AthenaPrimaryButton(
       onTap: storeSentinel,
-      child: Center(child: Text('Store')),
+      child: const Center(child: Text('Store')),
     );
   }
 
   Future<void> _store() async {
-    var sentinel = SentinelEntity(
+    final sentinel = SentinelEntity(
       name: nameController.text,
       description: descriptionController.text,
       tags: '',
@@ -224,7 +224,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Future<void> _update() async {
-    var sentinel = widget.sentinel!.copyWith(
+    final sentinel = widget.sentinel!.copyWith(
       name: nameController.text,
       description: descriptionController.text,
       prompt: promptController.text,
@@ -242,10 +242,10 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Future<String?> _getModelId() async {
-    var settingViewModel = GetIt.instance<SettingViewModel>();
-    var modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
+    final settingViewModel = GetIt.instance<SettingViewModel>();
+    final modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
     if (modelId.isNotEmpty) return modelId;
-    var modelViewModel = GetIt.instance<ModelViewModel>();
+    final modelViewModel = GetIt.instance<ModelViewModel>();
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {
       AthenaDialog.dismiss();

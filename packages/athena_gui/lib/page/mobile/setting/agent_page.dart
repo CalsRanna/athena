@@ -40,7 +40,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   @override
   Widget build(BuildContext context) {
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: const Text('Agent Settings')),
+      appBar: const AthenaAppBar(title: Text('Agent Settings')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
@@ -50,7 +50,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             _buildGeneralSection(context),
             const SizedBox(height: 32),
             _buildToolsSection(context),
-            SafeArea(top: false, child: const SizedBox()),
+            const SafeArea(top: false, child: SizedBox()),
           ],
         ),
       ),

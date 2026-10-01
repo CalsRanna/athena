@@ -40,7 +40,7 @@ class PermissionApprovalCard extends StatelessWidget {
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +74,7 @@ class PermissionApprovalCard extends StatelessWidget {
             color: colors.textPrimary,
           ),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             StepCard.toolLabel(request.arguments),

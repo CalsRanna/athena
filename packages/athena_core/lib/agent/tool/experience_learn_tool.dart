@@ -132,18 +132,18 @@ class ExperienceLearnTool extends Tool {
     try {
       if (action == 'create') {
         if (experienceId != null && experienceId.isNotEmpty) {
-          return ToolExecutionResult.error(
+          return const ToolExecutionResult.error(
             'Error: experience_id must be omitted when action is "create". '
             'Use action "update" to modify an existing experience.',
           );
         }
         if (lesson.trim().isEmpty) {
-          return ToolExecutionResult.error(
+          return const ToolExecutionResult.error(
             'Error: lesson must not be empty when creating an experience.',
           );
         }
         if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
-          return ToolExecutionResult.error(
+          return const ToolExecutionResult.error(
             'Error: lesson must not exceed '
             '${ExperienceEntity.maxLessonLength} characters. Put supporting '
             'detail in context.',
@@ -182,7 +182,7 @@ class ExperienceLearnTool extends Tool {
 
       if (action == 'update') {
         if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
-          return ToolExecutionResult.error(
+          return const ToolExecutionResult.error(
             'Error: lesson must not exceed '
             '${ExperienceEntity.maxLessonLength} characters. Put supporting '
             'detail in context.',

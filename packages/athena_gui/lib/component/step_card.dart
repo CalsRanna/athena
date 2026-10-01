@@ -128,8 +128,8 @@ class StepCard extends StatefulWidget {
   /// 组进行中折叠头文案：当前（最后一个）步骤。
   static String currentLabel(AssistantStep last) => switch (last) {
     ReasoningStep() => 'Thinking',
-    ToolCallStep step => toolLabel(step.arguments),
-    ContextCompactionStep step => compactionLabel(step),
+    final ToolCallStep step => toolLabel(step.arguments),
+    final ContextCompactionStep step => compactionLabel(step),
   };
 
   /// 组进行中折叠头文案 + 截至此刻的汇总：`运行测试 · Used 2 tools · Thought 3.2 seconds`。
@@ -218,7 +218,7 @@ class _StepCardState extends State<StepCard> {
       running: widget.live,
       body: _ReasoningBody(message: message, onTap: _toggle),
     ),
-    ToolCallStep tool => (
+    final ToolCallStep tool => (
       icon: StepCard.toolIcon(tool.toolName),
       label: StepCard.toolLabel(tool.arguments),
       running: !tool.hasResult,
@@ -226,7 +226,7 @@ class _StepCardState extends State<StepCard> {
       // 展开只是确认"它已经在跑了"。结果到了换成结果本身，展开态保持不变。
       body: _resultBody(tool.result ?? StepCard.usingToolLabel),
     ),
-    ContextCompactionStep compaction => (
+    final ContextCompactionStep compaction => (
       icon: LucideIcons.fileArchive,
       label: StepCard.compactionLabel(compaction),
       running: compaction.running,
@@ -255,8 +255,8 @@ class _StepCardState extends State<StepCard> {
         widget.live ||
         steps.any(
           (step) => switch (step) {
-            ToolCallStep tool => !tool.hasResult,
-            ContextCompactionStep compaction => compaction.running,
+            final ToolCallStep tool => !tool.hasResult,
+            final ContextCompactionStep compaction => compaction.running,
             ReasoningStep() => false,
           },
         );
@@ -287,8 +287,8 @@ class _StepCardState extends State<StepCard> {
   static Key _childKey(AssistantStep step) => ValueKey(switch (step) {
     ReasoningStep(:final message) =>
       'reasoning-${message.id ?? identityHashCode(message)}',
-    ToolCallStep tool => 'tool-${tool.id}',
-    ContextCompactionStep compaction =>
+    final ToolCallStep tool => 'tool-${tool.id}',
+    final ContextCompactionStep compaction =>
       'compaction-${compaction.step.compactionId}',
   });
 }

@@ -271,7 +271,7 @@ class _DesktopSettingProviderPageState
     final multiSelect = selected.length > 1 && selected.contains(provider);
     final targets = multiSelect ? selected : [provider];
     final deletable = targets.where((item) => !item.isPreset).toList();
-    var menu = DesktopContextMenu(
+    final menu = DesktopContextMenu(
       offset: details.globalPosition,
       width: 160,
       children: [
@@ -482,7 +482,7 @@ class _DesktopSettingProviderPageState
   }
 
   Widget _buildCapabilities(ModelEntity model, AthenaColors colors) {
-    var icons = <Widget>[
+    final icons = <Widget>[
       if (model.reasoning)
         Tooltip(
           message: 'Reasoning',
@@ -575,7 +575,7 @@ class _DesktopSettingProviderPageState
   Future<void> checkConnection(ModelEntity model) async {
     AthenaDialog.loading();
     try {
-      var result = await modelViewModel.checkConnection(model);
+      final result = await modelViewModel.checkConnection(model);
       AthenaDialog.dismiss();
       if (!result.isSuccess) {
         AthenaDialog.error(result.detail ?? result.message);
@@ -597,7 +597,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> destroyModel(ModelEntity model) async {
-    var result = await AthenaDialog.confirm('Delete ${model.name}?');
+    final result = await AthenaDialog.confirm('Delete ${model.name}?');
     if (result == true) {
       await modelViewModel.deleteModel(model);
     }

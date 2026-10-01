@@ -68,7 +68,7 @@ class ChatEntity {
 
   bool get hasSentinel => sentinelId != noSentinelId;
 
-  ChatEntity({
+  const ChatEntity({
     this.id,
     required this.title,
     required this.modelId,

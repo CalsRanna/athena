@@ -24,10 +24,10 @@ class MobileSentinelListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      var sentinelViewModel = GetIt.instance<SentinelViewModel>();
-      var sentinels = sentinelViewModel.sentinels.value;
+      final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+      final sentinels = sentinelViewModel.sentinels.value;
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: const Text('Sentinel')),
+        appBar: const AthenaAppBar(title: Text('Sentinel')),
         body: Stack(
           children: [
             _buildData(sentinels),
@@ -42,7 +42,7 @@ class MobileSentinelListPage extends StatelessWidget {
                     border: Border.all(color: colors.border),
                     borderRadius: BorderRadius.circular(AthenaRadius.control),
                   ),
-                  padding: EdgeInsets.fromLTRB(8, 12, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
                   margin: EdgeInsets.only(
                     bottom: MediaQuery.paddingOf(context).bottom,
                   ),
@@ -64,7 +64,7 @@ class MobileSentinelListPage extends StatelessWidget {
                           color: colors.iconOnRaised,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Text(
                         'Add a sentinel',
                         style: AthenaTextStyle.section.copyWith(
@@ -93,7 +93,7 @@ class MobileSentinelListPage extends StatelessWidget {
       mainAxisSpacing: 8,
       itemCount: sentinels.length,
       itemBuilder: (context, index) {
-        var sentinel = sentinels[index];
+        final sentinel = sentinels[index];
         return MobileGridTile(
           title: sentinel.name,
           subtitle: sentinel.description,
@@ -117,19 +117,19 @@ class MobileSentinelListPage extends StatelessWidget {
   void openBottomSheet(BuildContext context, SentinelEntity sentinel) {
     HapticFeedback.heavyImpact();
     if (sentinel.isPreset) return;
-    var editTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.pencilLine),
+    final editTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () => editSentinel(context, sentinel),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.trash2),
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => destroySentinel(context, sentinel),
     );
-    var children = [editTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [editTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );

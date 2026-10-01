@@ -21,7 +21,7 @@ class SkillViewModel {
 
   /// 用户级 Skill（首页卡片与管理列表使用；不含内置），按名称排序。
   late final userSkills = computed(() {
-    var list = skills.value.where((s) => !s.isBuiltin).toList();
+    final list = skills.value.where((s) => !s.isBuiltin).toList();
     list.sort((a, b) => a.name.compareTo(b.name));
     return list;
   });

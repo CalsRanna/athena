@@ -23,22 +23,22 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.caption.copyWith(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var image = Image.asset(
+    final image = Image.asset(
       'asset/image/launcher_icon_ios_512x512.jpg',
       height: 120,
       width: 120,
     );
-    var children = [
+    final children = [
       ClipOval(child: image),
-      SizedBox(height: 24),
+      const SizedBox(height: 24),
       Text(version, style: textStyle),
     ];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: const Text('About')),
+      appBar: const AthenaAppBar(title: Text('About')),
       body: Center(child: column),
     );
   }
@@ -50,9 +50,9 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
   }
 
   Future<void> _initState() async {
-    var packageInfo = await PackageInfo.fromPlatform();
-    var version = packageInfo.version;
-    var buildNumber = packageInfo.buildNumber;
+    final packageInfo = await PackageInfo.fromPlatform();
+    final version = packageInfo.version;
+    final buildNumber = packageInfo.buildNumber;
     if (!mounted) return;
     setState(() {
       this.version = '$version ($buildNumber)';

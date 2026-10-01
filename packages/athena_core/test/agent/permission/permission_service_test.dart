@@ -206,7 +206,7 @@ void main() {
 
   test('web_fetch 的 deny 规则对任何 method 都生效', () {
     store.rules.add(
-      PermissionRule(
+      const PermissionRule(
         tool: 'web_fetch',
         kind: RuleKind.origin,
         pattern: 'https://evil.example',

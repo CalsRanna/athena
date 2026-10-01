@@ -56,11 +56,11 @@ class AthenaFormField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var note = error ?? description;
-    var noteStyle = AthenaTextStyle.caption.copyWith(
+    final note = error ?? description;
+    final noteStyle = AthenaTextStyle.caption.copyWith(
       color: error != null ? colors.dangerText : colors.textSecondary,
     );
-    var children = [
+    final children = [
       AthenaFormTileLabel.large(title: label, trailing: trailing),
       const SizedBox(height: 12),
       control,

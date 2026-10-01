@@ -23,7 +23,7 @@ class ChatSelectionDelegate {
 
   /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
   void toggleChatSelection(String chatId, int index) {
-    var newSet = Set<String>.from(selectedChatIds.value);
+    final newSet = Set<String>.from(selectedChatIds.value);
     if (newSet.contains(chatId)) {
       newSet.remove(chatId);
       if (newSet.isEmpty) {
@@ -52,21 +52,21 @@ class ChatSelectionDelegate {
       }
     }
 
-    var startIndex = firstSelectedIndex ?? lastSelectedIndex.value;
+    final startIndex = firstSelectedIndex ?? lastSelectedIndex.value;
     if (startIndex == null) return;
 
     var start = startIndex;
     var end = endIndex;
     if (start > end) {
-      var temp = start;
+      final temp = start;
       start = end;
       end = temp;
     }
 
-    var newSet = Set<String>.from(selectedChatIds.value);
+    final newSet = Set<String>.from(selectedChatIds.value);
     for (var i = start; i <= end; i++) {
       if (i < chats.length) {
-        var chatId = chats[i].id;
+        final chatId = chats[i].id;
         if (chatId != null) {
           newSet.add(chatId);
         }
@@ -78,7 +78,7 @@ class ChatSelectionDelegate {
   /// 初始化 lastSelectedIndex
   void initLastSelectedIndex(ChatEntity? currentChat, List<ChatEntity> chats) {
     if (lastSelectedIndex.value == null && currentChat != null) {
-      var index = chats.indexWhere((c) => c.id == currentChat.id);
+      final index = chats.indexWhere((c) => c.id == currentChat.id);
       if (index >= 0) {
         lastSelectedIndex.value = index;
       }
@@ -92,7 +92,7 @@ class ChatSelectionDelegate {
 
   /// 结束 AI 重命名
   void stopRenaming(String chatId) {
-    var newSet = Set<String>.from(renamingChatIds.value);
+    final newSet = Set<String>.from(renamingChatIds.value);
     newSet.remove(chatId);
     renamingChatIds.value = newSet;
   }

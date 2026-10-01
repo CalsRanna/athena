@@ -124,12 +124,12 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
 
     final questions = parsed.questions!;
     if (!channel.available) {
-      return ToolExecutionResult.success(noChannelMessage);
+      return const ToolExecutionResult.success(noChannelMessage);
     }
 
     final answers = await channel.ask(questions);
     if (answers == null || answers.isEmpty) {
-      return ToolExecutionResult.success(noAnswerMessage);
+      return const ToolExecutionResult.success(noAnswerMessage);
     }
     return ToolExecutionResult.success(_formatAnswers(questions, answers));
   }

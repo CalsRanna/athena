@@ -32,7 +32,7 @@ class _MobileConfigurationDialogState
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       AthenaBottomSheetTile(
         title: 'Temperature',
         trailing: _buildTemperatureSlider(),
@@ -43,7 +43,7 @@ class _MobileConfigurationDialogState
       ),
     ];
     return ListView(
-      padding: EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       shrinkWrap: true,
       children: children,
     );
@@ -79,7 +79,7 @@ class _MobileConfigurationDialogState
         max: 2,
         onChanged: (v) => _temperature.value = v,
         onChangeEnd: _storeTemperature,
-        padding: EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         thumbColor: colors.textPrimary,
         value: _temperature.value,
       );

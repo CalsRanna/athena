@@ -59,7 +59,7 @@ class FileUpdateTool extends Tool {
     final replaceAll = args['replace_all'] as bool? ?? false;
 
     if (rawOld == rawNew) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: old_string and new_string must differ',
       );
     }
@@ -68,7 +68,9 @@ class FileUpdateTool extends Tool {
     final newString = _preprocess(rawNew);
 
     if (oldString.isEmpty) {
-      return ToolExecutionResult.error('Error: old_string must not be empty');
+      return const ToolExecutionResult.error(
+        'Error: old_string must not be empty',
+      );
     }
 
     // 引擎已把 path 解析为真实路径并据此审批；复核审批后链接没有被替换
@@ -98,7 +100,7 @@ class FileUpdateTool extends Tool {
     final normalized = _NormalizedText(_normalizeQuotes(content));
     final matchCount = _countMatches(normalized.text, oldString);
     if (matchCount == 0) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: old_string not found in file. '
         'Make sure the string matches exactly, including whitespace and indentation.',
       );
@@ -189,7 +191,7 @@ class FileUpdateTool extends Tool {
   ) async {
     final mtimeNow = await file.lastModified();
     if (mtimeNow != mtimeBefore) {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: File was modified externally since reading. '
         'Re-read the file and try again.',
       );

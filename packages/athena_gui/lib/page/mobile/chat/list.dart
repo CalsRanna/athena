@@ -28,7 +28,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   @override
   Widget build(BuildContext context) {
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: const Text('Chat history')),
+      appBar: const AthenaAppBar(title: Text('Chat history')),
       body: _buildData(),
     );
   }
@@ -40,7 +40,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
         child: ListView.separated(
           itemCount: viewModel.chatHistories.value.length,
           itemBuilder: _buildItem,
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           separatorBuilder: (context, index) => _buildSeparator(context),
         ),
       ),
@@ -49,44 +49,44 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
 
   Widget _buildItem(BuildContext context, int index) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var chatHistory = viewModel.chatHistories.value[index];
-    var chat = chatHistory.chat;
-    var titleTextStyle = AthenaTextStyle.section.copyWith(
+    final chatHistory = viewModel.chatHistories.value[index];
+    final chat = chatHistory.chat;
+    final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
     );
-    var title = Text(
+    final title = Text(
       chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
-    var icon = Icon(AthenaIcons.more, color: colors.textPrimary);
-    var gestureDetector = GestureDetector(
+    final icon = Icon(AthenaIcons.more, color: colors.textPrimary);
+    final gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _openBottomSheet(context, chat),
       child: icon,
     );
-    var rowChildren = [Expanded(child: title), gestureDetector];
-    var content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
-    var messageTextStyle = AthenaTextStyle.caption.copyWith(
+    final rowChildren = [Expanded(child: title), gestureDetector];
+    final content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
+    final messageTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
     );
-    var message = Text(
+    final message = Text(
       content,
       style: messageTextStyle,
       maxLines: 4,
       overflow: TextOverflow.ellipsis,
     );
-    var columnChildren = [
+    final columnChildren = [
       Row(children: rowChildren),
       const SizedBox(height: 8),
       message,
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: columnChildren,
     );
-    var padding = Padding(padding: const EdgeInsets.all(12.0), child: column);
+    final padding = Padding(padding: const EdgeInsets.all(12.0), child: column);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _navigateMobileChatPage(context, chat),
@@ -96,7 +96,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
 
   Widget _buildSeparator(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var divider = Divider(color: colors.border, height: 1, thickness: 1);
+    final divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: divider,
@@ -113,19 +113,19 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   }
 
   void _openBottomSheet(BuildContext context, ChatEntity chat) {
-    var editTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.pencilLine),
+    final editTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.pencilLine),
       title: 'Rename',
       onTap: () => _renameChat(context, chat),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.trash2),
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => _destroyChat(context, chat),
     );
-    var children = [editTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [editTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
@@ -135,7 +135,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   void _renameChat(BuildContext context, ChatEntity chat) async {
     AthenaDialog.dismiss();
 
-    var title = await AthenaDialog.input(
+    final title = await AthenaDialog.input(
       'Rename Chat',
       initialValue: chat.title,
     );

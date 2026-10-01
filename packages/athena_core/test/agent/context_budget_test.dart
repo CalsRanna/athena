@@ -56,20 +56,20 @@ void main() {
       ChatMessage.user('跑两次构建'),
       ChatMessage.assistant(
         toolCalls: [
-          ToolCall(
+          const ToolCall(
             id: 'a',
             type: 'function',
-            function: const FunctionCall(name: 'bash', arguments: '{}'),
+            function: FunctionCall(name: 'bash', arguments: '{}'),
           ),
         ],
       ),
       ChatMessage.tool(toolCallId: 'a', content: 'A' * longOutput),
       ChatMessage.assistant(
         toolCalls: [
-          ToolCall(
+          const ToolCall(
             id: 'b',
             type: 'function',
-            function: const FunctionCall(name: 'bash', arguments: '{}'),
+            function: FunctionCall(name: 'bash', arguments: '{}'),
           ),
         ],
       ),

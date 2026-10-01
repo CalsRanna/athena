@@ -46,15 +46,15 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   @override
   Widget build(BuildContext context) {
-    var syncButton = AthenaIconButton(
+    final syncButton = AthenaIconButton(
       icon: LucideIcons.refreshCw,
       onTap: () => syncFromModelsDev(context),
     );
-    var addButton = AthenaIconButton(
+    final addButton = AthenaIconButton(
       icon: LucideIcons.plus,
       onTap: () => navigateProviderNamePage(context),
     );
-    var actions = Row(
+    final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [syncButton, const SizedBox(width: 8), addButton],
     );
@@ -67,7 +67,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   }
 
   void navigateProviderNamePage(BuildContext context) {
-    MobileProviderNameRoute().push<void>(context);
+    const MobileProviderNameRoute().push<void>(context);
   }
 
   /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
@@ -93,7 +93,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   }
 
   Widget _buildBody(BuildContext context) {
-    var providers = viewModel.providers.value;
+    final providers = viewModel.providers.value;
     if (providers.isEmpty) return const SizedBox();
     return ListView.separated(
       itemCount: providers.length,
@@ -105,9 +105,9 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   Widget _buildSeparator(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var divider = Divider(color: colors.border, height: 1, thickness: 1);
+    final divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: divider,
     );
   }
@@ -126,9 +126,9 @@ class _ProviderListTile extends StatelessWidget {
     final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
     );
-    var titleChildren = [
+    final titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
-      if (provider.enabled) SizedBox(width: 8),
+      if (provider.enabled) const SizedBox(width: 8),
       if (provider.enabled)
         Icon(
           LucideIcons.toggleRight,
@@ -136,29 +136,29 @@ class _ProviderListTile extends StatelessWidget {
           color: colors.iconSecondary,
         ),
     ];
-    var icon = Icon(
+    final icon = Icon(
       AthenaIcons.more,
       color: colors.iconSecondary,
       size: AthenaIcon.regularSize,
     );
-    var actionButton = GestureDetector(
+    final actionButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => openBottomSheet(context),
       child: icon,
     );
-    var rowChildren = [
+    final rowChildren = [
       Expanded(child: Row(children: titleChildren)),
       actionButton,
     ];
-    var columnChildren = [
+    final columnChildren = [
       Row(children: rowChildren),
       Text(provider.baseUrl, style: subtitleTextStyle),
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: columnChildren,
     );
-    var padding = Padding(
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: column,
     );
@@ -170,7 +170,7 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void destroyProvider() {
-    var viewModel = GetIt.instance<ProviderViewModel>();
+    final viewModel = GetIt.instance<ProviderViewModel>();
     viewModel.deleteProvider(provider);
     AthenaDialog.dismiss();
   }
@@ -180,22 +180,22 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void openBottomSheet(BuildContext context) {
-    var enableText = provider.enabled ? 'Disable' : 'Enable';
+    final enableText = provider.enabled ? 'Disable' : 'Enable';
     var enableIcon = LucideIcons.toggleLeft;
     if (provider.enabled) enableIcon = LucideIcons.toggleRight;
-    var enableTile = AthenaBottomSheetTile(
+    final enableTile = AthenaBottomSheetTile(
       leading: Icon(enableIcon),
       title: enableText,
       onTap: () => toggleEnable(),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.trash2),
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => destroyProvider(),
     );
-    var children = [enableTile, if (!provider.isPreset) deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [enableTile, if (!provider.isPreset) deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
@@ -203,8 +203,8 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void toggleEnable() {
-    var viewModel = GetIt.instance<ProviderViewModel>();
-    var updatedProvider = provider.copyWith(enabled: !provider.enabled);
+    final viewModel = GetIt.instance<ProviderViewModel>();
+    final updatedProvider = provider.copyWith(enabled: !provider.enabled);
     viewModel.updateProvider(updatedProvider);
     AthenaDialog.dismiss();
   }

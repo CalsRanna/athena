@@ -35,34 +35,34 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    var listViewChildren = [
+    final listViewChildren = [
       AthenaFormField(
         label: 'Id',
         control: AthenaInput(controller: valueController),
       ),
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       AthenaFormField(
         label: 'Name',
         control: AthenaInput(controller: nameController),
       ),
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       AthenaFormField(
         label: 'Input Price',
         control: AthenaInput(controller: inputController),
       ),
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       AthenaFormField(
         label: 'Output Price',
         control: AthenaInput(controller: outputController),
       ),
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       AthenaFormField(label: 'Features', control: _buildFeatures(context)),
     ];
-    var listView = ListView(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+    final listView = ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [
+    final columnChildren = [
       Expanded(child: listView),
       _buildSubmitButton(context),
     ];
@@ -94,8 +94,8 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
 
   Future<void> submitModel() async {
     if (widget.model == null) {
-      var now = DateTime.now();
-      var newModel = ModelEntity(
+      final now = DateTime.now();
+      final newModel = ModelEntity(
         name: nameController.text,
         modelId: valueController.text,
         providerId: widget.provider!.id!,
@@ -110,7 +110,7 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       );
       await viewModel.createModel(newModel);
     } else {
-      var copiedModel = widget.model!.copyWith(
+      final copiedModel = widget.model!.copyWith(
         name: nameController.text,
         modelId: valueController.text,
         inputPrice: inputController.text,
@@ -138,28 +138,28 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
 
   Widget _buildFeatures(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var reasoningCheckbox = AthenaCheckbox(
+    final reasoningCheckbox = AthenaCheckbox(
       value: supportReasoning,
       onChanged: updateSupportReasoning,
     );
-    var visualCheckbox = AthenaCheckbox(
+    final visualCheckbox = AthenaCheckbox(
       value: supportVisual,
       onChanged: updateSupportVisual,
     );
-    var trailingTextStyle = AthenaTextStyle.section.copyWith(
+    final trailingTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
     );
-    var reasoningCheckboxGroup = AthenaCheckboxGroup(
+    final reasoningCheckboxGroup = AthenaCheckboxGroup(
       checkbox: reasoningCheckbox,
       onTap: () => updateSupportReasoning(!supportReasoning),
       trailing: Text('Reasoning', style: trailingTextStyle),
     );
-    var visualCheckboxGroup = AthenaCheckboxGroup(
+    final visualCheckboxGroup = AthenaCheckboxGroup(
       checkbox: visualCheckbox,
       onTap: () => updateSupportVisual(!supportVisual),
       trailing: Text('Visual', style: trailingTextStyle),
     );
-    var children = [
+    final children = [
       reasoningCheckboxGroup,
       const SizedBox(width: 12),
       visualCheckboxGroup,
@@ -168,9 +168,9 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   }
 
   Widget _buildSubmitButton(BuildContext context) {
-    var button = AthenaPrimaryButton(
+    final button = AthenaPrimaryButton(
       onTap: submitModel,
-      child: Center(child: Text('Submit')),
+      child: const Center(child: Text('Submit')),
     );
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }

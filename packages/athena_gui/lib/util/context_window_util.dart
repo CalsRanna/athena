@@ -16,16 +16,18 @@ int parseContextWindow(String raw) {
   s = s.replaceAll(RegExp(r'\s*context$', caseSensitive: false), '').trim();
   if (s.isEmpty) return 0;
   // 检测尾部 K/M（大小写不敏感）后缀
-  var suffixMatch = RegExp(r'^([0-9.,]+)\s*([kKmM])$').firstMatch(s);
+  final suffixMatch = RegExp(r'^([0-9.,]+)\s*([kKmM])$').firstMatch(s);
   if (suffixMatch != null) {
-    var digits = suffixMatch.group(1)!.replaceAll(',', '');
-    var mult = suffixMatch.group(2)!.toLowerCase() == 'k' ? 1024 : 1024 * 1024;
-    var n = int.tryParse(digits);
+    final digits = suffixMatch.group(1)!.replaceAll(',', '');
+    final mult = suffixMatch.group(2)!.toLowerCase() == 'k'
+        ? 1024
+        : 1024 * 1024;
+    final n = int.tryParse(digits);
     if (n == null) return 0;
     return n * mult;
   }
   // 纯数字（含千分位）
-  var digits = s.replaceAll(',', '');
+  final digits = s.replaceAll(',', '');
   return int.tryParse(digits) ?? 0;
 }
 
@@ -39,8 +41,8 @@ String formatContextWindow(int tokens) {
   }
   if (tokens >= 1000) {
     // 千分位展示，保持可读
-    var s = tokens.toString();
-    var buf = StringBuffer();
+    final s = tokens.toString();
+    final buf = StringBuffer();
     for (var i = 0; i < s.length; i++) {
       if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
       buf.write(s[i]);

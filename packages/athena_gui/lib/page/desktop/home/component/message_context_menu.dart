@@ -15,7 +15,7 @@ class DesktopMessageContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       DesktopContextMenuTile(text: 'Copy', onTap: onCopied),
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
     ];

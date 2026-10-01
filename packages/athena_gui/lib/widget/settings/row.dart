@@ -74,31 +74,31 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hasDescription = widget.description != null;
-    var labelStyle = TextStyle(
+    final hasDescription = widget.description != null;
+    final labelStyle = TextStyle(
       color: widget.dimmed ? colors.textSecondary : colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
       height: AthenaFontSize.bodyHeight,
     );
-    var descriptionStyle = TextStyle(
+    final descriptionStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: FontWeight.w400,
       height: AthenaSettings.rowDescriptionHeight,
     );
-    var errorStyle = TextStyle(
+    final errorStyle = TextStyle(
       color: colors.dangerText,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaSettings.rowDescriptionHeight,
     );
-    var label = Text(
+    final label = Text(
       widget.label,
       maxLines: widget.labelMaxLines,
       overflow: widget.labelMaxLines == null ? null : TextOverflow.ellipsis,
       style: labelStyle,
     );
-    var labelRow = Row(
+    final labelRow = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (widget.leading != null) ...[
@@ -113,8 +113,8 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       ],
     );
     // 有 leading 时说明与标签的文字左缘对齐（跳过 leading 的 30）。
-    var textIndent = widget.leading == null ? 0.0 : 30.0;
-    var labelColumn = Column(
+    final textIndent = widget.leading == null ? 0.0 : 30.0;
+    final labelColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         labelRow,
@@ -148,7 +148,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
         size: AthenaIcon.inlineSize,
       );
     }
-    var row = Row(
+    final row = Row(
       crossAxisAlignment: hasDescription && widget.control != null
           ? CrossAxisAlignment.start
           : CrossAxisAlignment.center,
@@ -158,14 +158,14 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
         if (trailing != null) trailing,
       ],
     );
-    var content = Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AthenaSettings.rowInset,
         vertical: AthenaSettings.rowPaddingVertical,
       ),
       child: row,
     );
-    var interactive = widget.onTap != null || widget.onSecondaryTap != null;
+    final interactive = widget.onTap != null || widget.onSecondaryTap != null;
     if (!interactive && !widget.selected) return content;
     return AthenaHover(
       enabled: interactive,
@@ -197,7 +197,7 @@ class AthenaSettingsParagraph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaFontSize.bodyHeight,

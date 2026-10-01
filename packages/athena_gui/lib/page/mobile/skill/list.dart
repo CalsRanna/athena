@@ -39,9 +39,9 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   Widget build(BuildContext context) {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      var skills = viewModel.skills.value;
+      final skills = viewModel.skills.value;
       return AthenaScaffold(
-        appBar: AthenaAppBar(title: const Text('Skills')),
+        appBar: const AthenaAppBar(title: Text('Skills')),
         body: Stack(
           children: [
             _buildData(context, skills),
@@ -99,7 +99,9 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   Widget _buildData(BuildContext context, List<Skill> skills) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (skills.isEmpty) {
-      var textStyle = AthenaTextStyle.body.copyWith(color: colors.textPrimary);
+      final textStyle = AthenaTextStyle.body.copyWith(
+        color: colors.textPrimary,
+      );
       return Center(child: Text('No skills yet', style: textStyle));
     }
     return MasonryGridView.count(
@@ -108,7 +110,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
       mainAxisSpacing: 8,
       itemCount: skills.length,
       itemBuilder: (context, index) {
-        var skill = skills[index];
+        final skill = skills[index];
         return MobileGridTile(
           title: skill.name,
           subtitle: skill.description,
@@ -134,7 +136,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   void openBottomSheet(BuildContext context, Skill skill) {
     HapticFeedback.heavyImpact();
     if (skill.isBuiltin) return;
-    var editTile = AthenaBottomSheetTile(
+    final editTile = AthenaBottomSheetTile(
       leading: const Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () {
@@ -142,19 +144,19 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
         navigateFormPage(context, skill);
       },
     );
-    var deleteTile = AthenaBottomSheetTile(
+    final deleteTile = AthenaBottomSheetTile(
       leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () async {
         AthenaDialog.dismiss();
-        var result = await AthenaDialog.confirm('Delete this skill?');
+        final result = await AthenaDialog.confirm('Delete this skill?');
         if (result != true) return;
         await viewModel.deleteSkill(skill);
       },
     );
-    var children = [editTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final children = [editTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );

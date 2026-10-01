@@ -42,22 +42,22 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var tipTextStyle = AthenaTextStyle.caption.copyWith(
+    final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var children = [
+    final children = [
       AthenaFormField(
         label: 'API Key',
         control: AthenaInput(controller: keyController, obscureText: true),
       ),
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       AthenaFormField(
         label: 'API Url',
         control: AthenaInput(controller: urlController),
       ),
-      SizedBox(height: 20),
-      AthenaFormTileLabel.large(title: 'API Format'),
-      SizedBox(height: 12),
+      const SizedBox(height: 20),
+      const AthenaFormTileLabel.large(title: 'API Format'),
+      const SizedBox(height: 12),
       Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -78,37 +78,37 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
             ),
         ],
       ),
-      SizedBox(height: 8),
+      const SizedBox(height: 8),
       Text(_apiFormatHint(), style: tipTextStyle),
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    var labels = Padding(
+    final labels = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: column,
     );
-    var modelListView = MobileModelListView(
+    final modelListView = MobileModelListView(
       onLongPress: openBottomSheet,
       onTap: editModel,
       provider: widget.provider,
       modelViewModel: GetIt.instance<ModelViewModel>(),
     );
-    var listViewChildren = [
+    final listViewChildren = [
       labels,
-      SizedBox(height: 16),
+      const SizedBox(height: 16),
       _buildModelFormLabel(context),
-      SizedBox(height: 12),
+      const SizedBox(height: 12),
       modelListView,
-      if (widget.provider.isPreset) SizedBox(height: 16),
+      if (widget.provider.isPreset) const SizedBox(height: 16),
       if (widget.provider.isPreset) _buildTip(context),
     ];
-    var listView = ListView(
+    final listView = ListView(
       padding: EdgeInsets.zero,
       children: listViewChildren,
     );
-    var columnChildren = [
+    final columnChildren = [
       Expanded(child: listView),
       _buildSubmitButton(context),
     ];
@@ -121,9 +121,9 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   Future<void> checkConnection(ModelEntity model) async {
     AthenaDialog.dismiss();
     AthenaDialog.loading();
-    var viewModel = GetIt.instance<ModelViewModel>();
+    final viewModel = GetIt.instance<ModelViewModel>();
     try {
-      var result = await viewModel.checkConnection(model);
+      final result = await viewModel.checkConnection(model);
       if (!result.isSuccess) {
         AthenaDialog.error(result.detail ?? result.message);
         return;
@@ -179,27 +179,27 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
-    var connectTile = AthenaBottomSheetTile(
-      leading: Icon(AthenaIcons.connection),
+    final connectTile = AthenaBottomSheetTile(
+      leading: const Icon(AthenaIcons.connection),
       title: 'Connect',
       onTap: () => checkConnection(model),
     );
-    var children = <Widget>[connectTile];
+    final children = <Widget>[connectTile];
     if (!model.isPreset) {
-      var editTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.pencilLine),
+      final editTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.pencilLine),
         title: 'Edit',
         onTap: () => editModel(model),
       );
-      var deleteTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.trash2),
+      final deleteTile = AthenaBottomSheetTile(
+        leading: const Icon(LucideIcons.trash2),
         title: 'Delete',
         onTap: () => destroyModel(model),
       );
       children.addAll([editTile, deleteTile]);
     }
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
@@ -207,10 +207,10 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Future<void> updateProvider() async {
-    var viewModel = GetIt.instance<ProviderViewModel>();
+    final viewModel = GetIt.instance<ProviderViewModel>();
     // 手动选择时传 apiFormat，`copyWith` 会把 apiFormatAuto 落成 false；
     // 选 Auto 时传 apiFormatAuto: true，格式值等下次目录同步覆盖。
-    var provider = widget.provider.copyWith(
+    final provider = widget.provider.copyWith(
       enabled: true,
       apiKey: keyController.text,
       baseUrl: urlController.text,
@@ -228,11 +228,11 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Widget _buildModelFormLabel(BuildContext context) {
-    var newModelButton = AthenaTextButton(
+    final newModelButton = AthenaTextButton(
       onTap: () => createModel(context),
       text: 'New',
     );
-    var label = AthenaFormTileLabel.large(
+    final label = AthenaFormTileLabel.large(
       title: 'Models',
       trailing: newModelButton,
     );
@@ -243,19 +243,19 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Widget _buildSubmitButton(BuildContext context) {
-    var button = AthenaPrimaryButton(
+    final button = AthenaPrimaryButton(
       onTap: updateProvider,
-      child: Center(child: Text('Update')),
+      child: const Center(child: Text('Update')),
     );
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }
 
   Widget _buildTip(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var tipTextStyle = AthenaTextStyle.caption.copyWith(
+    final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var tipText = Text(
+    final tipText = Text(
       'See ${widget.provider.name} documentation for more details',
       style: tipTextStyle,
     );

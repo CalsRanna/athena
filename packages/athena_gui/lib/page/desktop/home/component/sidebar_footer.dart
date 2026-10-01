@@ -46,7 +46,7 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
   }
 
   Future<void> _loadVersion() async {
-    var packageInfo = await PackageInfo.fromPlatform();
+    final packageInfo = await PackageInfo.fromPlatform();
     if (!mounted) return;
     setState(() {
       version = '${packageInfo.version} (${packageInfo.buildNumber})';
@@ -57,7 +57,7 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
   /// 底边离行顶 4。
   void _openMenu(Rect anchor) {
     setState(() => open = true);
-    var menu = DesktopContextMenu(
+    final menu = DesktopContextMenu(
       offset: Offset(anchor.left, anchor.top - 4),
       upward: true,
       // 面板自带 4 内边距，条目宽减 8 才能让面板外沿与行同宽
@@ -68,12 +68,12 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
         DesktopContextMenuTile(
           icon: LucideIcons.settings,
           text: 'Settings',
-          onTap: () => DesktopSettingProviderRoute().push<void>(context),
+          onTap: () => const DesktopSettingProviderRoute().push<void>(context),
         ),
         DesktopContextMenuTile(
           icon: LucideIcons.info,
           text: 'About Athena',
-          onTap: () => DesktopSettingAboutRoute().push<void>(context),
+          onTap: () => const DesktopSettingAboutRoute().push<void>(context),
         ),
       ],
     );
@@ -101,7 +101,7 @@ class _FooterTileState extends State<_FooterTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var mark = ClipRRect(
+    final mark = ClipRRect(
       borderRadius: BorderRadius.circular(AthenaRadius.pill),
       child: Image.asset(
         'asset/image/launcher_icon_ios_512x512.jpg',
@@ -111,18 +111,18 @@ class _FooterTileState extends State<_FooterTile> {
         width: 20,
       ),
     );
-    var name = Text(
+    final name = Text(
       'Athena',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
-    var chevron = Icon(
+    final chevron = Icon(
       AthenaIcons.dropdown,
       size: AthenaIcon.inlineSize,
       color: colors.iconSecondary,
     );
-    var row = Row(
+    final row = Row(
       children: [
         mark,
         const SizedBox(width: 8),
@@ -165,13 +165,13 @@ class _FooterMenuHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var width = DesktopContextMenuConfiguration.widthOf(context);
+    final width = DesktopContextMenuConfiguration.widthOf(context);
     // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
-    var nameStyle = AthenaTextStyle.row.copyWith(
+    final nameStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
     );
-    var versionStyle = AthenaTextStyle.caption.copyWith(
+    final versionStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
       decoration: TextDecoration.none,
     );

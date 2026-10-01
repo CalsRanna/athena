@@ -19,19 +19,19 @@ class SendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      var shapeDecoration = BoxDecoration(
+      final shapeDecoration = BoxDecoration(
         color: colors.accent,
         borderRadius: BorderRadius.circular(AthenaRadius.pill),
       );
       final streaming = isStreaming;
       var iconData = LucideIcons.arrowUp;
       if (streaming) iconData = LucideIcons.square;
-      var icon = Icon(
+      final icon = Icon(
         iconData,
         color: colors.textOnAccent,
         size: AthenaIcon.regularSize,
       );
-      var container = Container(
+      final container = Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(8),
         child: icon,

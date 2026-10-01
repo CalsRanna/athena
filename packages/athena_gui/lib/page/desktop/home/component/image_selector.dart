@@ -27,7 +27,7 @@ class DesktopImageSelector extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (compact) return _buildCompactButton(context);
     // 附件入口是一个裸加号，不是图片字形
-    var iconWidget = Icon(
+    final iconWidget = Icon(
       LucideIcons.plus,
       color: colors.textPrimary,
       size: AthenaIcon.regularSize,
@@ -40,7 +40,7 @@ class DesktopImageSelector extends StatelessWidget {
 
   Widget _buildCompactButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var row = Row(
+    final row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
@@ -56,12 +56,12 @@ class DesktopImageSelector extends StatelessWidget {
   }
 
   Future<void> selectImages() async {
-    var result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
       allowMultiple: true,
     );
     if (result == null) return;
-    List<String> images = [];
+    final List<String> images = [];
     for (var file in result.files) {
       if (file.path == null) continue;
       images.add(file.path!);

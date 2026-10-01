@@ -18,11 +18,11 @@ class AthenaSettingsNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var decoration = BoxDecoration(
+    final decoration = BoxDecoration(
       color: colors.surfacePanel,
       border: Border(right: BorderSide(color: colors.neutralBorder)),
     );
-    var listView = ListView(
+    final listView = ListView(
       padding: const EdgeInsets.all(AthenaSettings.navPadding),
       children: [if (search != null) search!, ...children],
     );
@@ -77,28 +77,28 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var focused = focusNode.hasFocus;
-    var decoration = BoxDecoration(
+    final focused = focusNode.hasFocus;
+    final decoration = BoxDecoration(
       color: colors.surfaceMobile,
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );
-    var icon = Icon(
+    final icon = Icon(
       LucideIcons.search,
       color: colors.textWeak,
       size: AthenaSettings.searchIconSize,
     );
-    var textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.searchFontSize,
       height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = TextStyle(
+    final hintStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.searchFontSize,
       height: AthenaFontSize.bodyHeight,
     );
-    var field = TextField(
+    final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textPrimary,
       cursorHeight: 14,
@@ -113,7 +113,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       style: textStyle,
     );
     // 有输入时右端出现清除键
-    var clear = widget.controller.text.isEmpty
+    final clear = widget.controller.text.isEmpty
         ? null
         : GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -123,7 +123,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
               child: Icon(LucideIcons.x, color: colors.textWeak, size: 12),
             ),
           );
-    var children = [
+    final children = [
       icon,
       const SizedBox(width: 8),
       Expanded(child: field),
@@ -161,24 +161,24 @@ class AthenaSettingsNavGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
+    final titleStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.navGroupFontSize,
       fontWeight: FontWeight.w400,
       height: AthenaFontSize.captionHeight,
     );
-    var label = Padding(
+    final label = Padding(
       padding: const EdgeInsets.only(left: 10),
       child: Text(title, style: titleStyle),
     );
-    var header = Padding(
+    final header = Padding(
       padding: const EdgeInsets.only(
         top: AthenaSettings.navGroupTopMargin,
         bottom: AthenaSettings.navGroupBottomMargin,
       ),
       child: label,
     );
-    var rows = <Widget>[];
+    final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) {
         rows.add(const SizedBox(height: AthenaSettings.navRowGap));
@@ -219,14 +219,14 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var contentColor = widget.active ? colors.accent : colors.textRowLabel;
-    var textStyle = TextStyle(
+    final contentColor = widget.active ? colors.accent : colors.textRowLabel;
+    final textStyle = TextStyle(
       color: contentColor,
       fontSize: AthenaSettings.navFontSize,
       fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );
-    var children = [
+    final children = [
       Icon(widget.icon, color: contentColor, size: AthenaSettings.navIconSize),
       const SizedBox(width: AthenaSettings.navIconGap),
       Expanded(

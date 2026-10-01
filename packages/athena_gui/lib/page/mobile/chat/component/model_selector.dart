@@ -17,17 +17,17 @@ class MobileModelSelectDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     if (groupedModels.isEmpty) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = AthenaTextStyle.caption.copyWith(
+    final titleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textWeak,
     );
-    List<Widget> children = [SizedBox(height: 16)];
+    final List<Widget> children = [const SizedBox(height: 16)];
     for (var entry in groupedModels.entries) {
-      var title = Padding(
+      final title = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Text(entry.key, style: titleTextStyle),
       );
       children.add(title);
-      var modelWidgets = entry.value.map((model) => _itemBuilder(model));
+      final modelWidgets = entry.value.map((model) => _itemBuilder(model));
       children.addAll(modelWidgets);
     }
     return ListView(shrinkWrap: true, children: children);

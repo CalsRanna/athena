@@ -172,7 +172,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     final multiSelect = selected.length > 1 && selected.contains(skill);
     final targets = multiSelect ? selected : [skill];
     final deletable = targets.where((item) => !item.isBuiltin).toList();
-    var menu = DesktopContextMenu(
+    final menu = DesktopContextMenu(
       offset: details.globalPosition,
       width: 180,
       children: [
@@ -207,7 +207,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   Widget _buildEditor(Skill skill) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final readOnly = skill.isBuiltin;
-    var header = Row(
+    final header = Row(
       children: [
         AthenaSettingsBackLink(label: 'Skills', onTap: _closeEditor),
         if (readOnly) ...[
@@ -315,7 +315,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
           : null;
     });
     if (descriptionError != null) return;
-    var ok = await viewModel.updateSkill(
+    final ok = await viewModel.updateSkill(
       skill,
       description: description,
       body: bodyController.text,

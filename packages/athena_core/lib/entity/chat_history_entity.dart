@@ -7,7 +7,7 @@ class ChatHistoryEntity {
   final ChatEntity chat;
   final String lastMessageContent;
 
-  ChatHistoryEntity({required this.chat, this.lastMessageContent = ''});
+  const ChatHistoryEntity({required this.chat, this.lastMessageContent = ''});
 
   factory ChatHistoryEntity.fromJson(Map<String, dynamic> json) {
     return ChatHistoryEntity(

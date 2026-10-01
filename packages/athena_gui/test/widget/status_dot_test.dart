@@ -89,7 +89,7 @@ void main() {
 
   testWidgets('不在跑的三态是圆环：1px 描边的三档静态色，不随时间变化', (tester) async {
     await pumpDot(tester);
-    var box = decoration(tester);
+    final box = decoration(tester);
     expect(box.color, isNull, reason: '圆环不该有填充');
     expect(box.border!.top.width, 1);
     expectSameColor(

@@ -313,19 +313,19 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hintTextStyle = AthenaTextStyle.body.copyWith(
+    final hintTextStyle = AthenaTextStyle.body.copyWith(
       // 占位符是**浅灰** #898782，不是深色。
       // 之前那条"深色"的结论是我把光标误当成了文字。
       color: colors.textWeak,
     );
-    var inputDecoration = InputDecoration.collapsed(
+    final inputDecoration = InputDecoration.collapsed(
       hintText: 'Ask me anything',
       hintStyle: hintTextStyle,
     );
     final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
     );
-    var textField = TextField(
+    final textField = TextField(
       controller: widget.controller,
       focusNode: widget.focusNode,
       scrollController: _scrollController,
@@ -367,7 +367,7 @@ class _InputState extends State<_Input> {
         );
       },
     );
-    var shortcuts = Shortcuts(
+    final shortcuts = Shortcuts(
       shortcuts: const {
         _SendActivator(): _SendIntent(),
         _SendNumpadActivator(): _SendIntent(),
@@ -395,7 +395,7 @@ class _InputState extends State<_Input> {
       ),
     );
     // 待发送图片属于输入内容，展示在输入框边框内部（文字上方）
-    var content = Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -515,12 +515,12 @@ class _PendingImageStrip extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) =>
                 const _ImageProgress(stage: PendingImageStage.failed),
           );
-    var icon = Icon(LucideIcons.x, color: colors.textPrimary, size: 12);
-    var decoration = BoxDecoration(
+    final icon = Icon(LucideIcons.x, color: colors.textPrimary, size: 12);
+    final decoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: colors.surfaceMobile,
     );
-    var removeButton = Semantics(
+    final removeButton = Semantics(
       label: 'Remove image',
       button: true,
       child: GestureDetector(
@@ -530,7 +530,7 @@ class _PendingImageStrip extends StatelessWidget {
           cursor: SystemMouseCursors.click,
           child: Container(
             decoration: decoration,
-            padding: EdgeInsets.all(2),
+            padding: const EdgeInsets.all(2),
             child: icon,
           ),
         ),

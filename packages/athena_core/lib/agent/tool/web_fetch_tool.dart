@@ -99,7 +99,7 @@ class WebFetchTool extends Tool implements CancellableTool {
       return ToolExecutionResult.error('Error: Invalid URL: $url');
     }
     if (uri.scheme != 'http' && uri.scheme != 'https') {
-      return ToolExecutionResult.error(
+      return const ToolExecutionResult.error(
         'Error: Only http and https URLs are allowed',
       );
     }

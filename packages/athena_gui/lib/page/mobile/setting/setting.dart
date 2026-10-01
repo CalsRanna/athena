@@ -20,71 +20,71 @@ class SettingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       MobileSettingTile(
-        leading: Icon(LucideIcons.workflow, size: AthenaIcon.largeSize),
-        onTap: () => MobileAgentRoute().push<void>(context),
+        leading: const Icon(LucideIcons.workflow, size: AthenaIcon.largeSize),
+        onTap: () => const MobileAgentRoute().push<void>(context),
         title: 'Agent',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(AthenaIcons.connection, size: AthenaIcon.largeSize),
-        onTap: () => MobileProviderListRoute().push<void>(context),
+        leading: const Icon(AthenaIcons.connection, size: AthenaIcon.largeSize),
+        onTap: () => const MobileProviderListRoute().push<void>(context),
         title: 'Provider',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.userRound, size: AthenaIcon.largeSize),
-        onTap: () => MobileSentinelListRoute().push<void>(context),
+        leading: const Icon(LucideIcons.userRound, size: AthenaIcon.largeSize),
+        onTap: () => const MobileSentinelListRoute().push<void>(context),
         title: 'Sentinel',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.bookOpen, size: AthenaIcon.largeSize),
-        onTap: () => MobileSkillListRoute().push<void>(context),
+        leading: const Icon(LucideIcons.bookOpen, size: AthenaIcon.largeSize),
+        onTap: () => const MobileSkillListRoute().push<void>(context),
         title: 'Skills',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.brain, size: AthenaIcon.largeSize),
-        onTap: () => MobileExperienceListRoute().push<void>(context),
+        leading: const Icon(LucideIcons.brain, size: AthenaIcon.largeSize),
+        onTap: () => const MobileExperienceListRoute().push<void>(context),
         title: 'Experiences',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
-        onTap: () => MobileDefaultModelFormRoute().push<void>(context),
+        leading: const Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
+        onTap: () => const MobileDefaultModelFormRoute().push<void>(context),
         title: 'Default Model',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.database, size: AthenaIcon.largeSize),
-        onTap: () => MobileDataRoute().push<void>(context),
+        leading: const Icon(LucideIcons.database, size: AthenaIcon.largeSize),
+        onTap: () => const MobileDataRoute().push<void>(context),
         title: 'Data',
         trailing: '',
       ),
       Watch((context) {
         final mode = GetIt.instance<SettingViewModel>().themeMode.value;
         return MobileSettingTile(
-          leading: Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
+          leading: const Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
           onTap: () => _showAppearanceSheet(context),
           title: 'Appearance',
           trailing: _themeModeLabel(mode),
         );
       }),
       MobileSettingTile(
-        leading: Icon(LucideIcons.info, size: AthenaIcon.largeSize),
-        onTap: () => MobileAboutRoute().push<void>(context),
+        leading: const Icon(LucideIcons.info, size: AthenaIcon.largeSize),
+        onTap: () => const MobileAboutRoute().push<void>(context),
         title: 'About Athena',
         trailing: '',
       ),
     ];
-    var column = Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: Text('Setting')),
+      appBar: const AthenaAppBar(title: Text('Setting')),
       body: SingleChildScrollView(child: column),
     );
   }
@@ -121,7 +121,7 @@ class SettingPage extends StatelessWidget {
   }
 
   Widget _sheetLabel(String text, AthenaColors colors) {
-    var textStyle = AthenaTextStyle.caption.copyWith(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
     return Padding(

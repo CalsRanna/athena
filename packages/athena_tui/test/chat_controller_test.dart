@@ -81,7 +81,7 @@ void main() {
 
   test('收尾路径也按窗口裁剪（这次合并修掉的漂移）', () {
     // 同步喂满窗口以上，不给 100ms 定时器触发机会，增量全留在缓冲里。
-    final total = ChatController.messageWindowSize + 3;
+    const total = ChatController.messageWindowSize + 3;
     for (var i = 0; i < total; i++) {
       controller.handleRunEvent(
         RunMessageStored(message('m$i', content: 'x', seq: i)),

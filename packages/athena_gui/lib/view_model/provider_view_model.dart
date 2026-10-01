@@ -64,8 +64,8 @@ class ProviderViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var id = await _repository.storeProvider(provider);
-      var created = provider.copyWith(id: id);
+      final id = await _repository.storeProvider(provider);
+      final created = provider.copyWith(id: id);
       providers.value = [...providers.value, created];
       return created;
     } catch (e) {
@@ -112,7 +112,7 @@ class ProviderViewModel {
   Future<void> toggleEnabled(ProviderEntity provider) async {
     error.value = null;
     try {
-      var updated = provider.copyWith(enabled: !provider.enabled);
+      final updated = provider.copyWith(enabled: !provider.enabled);
       await _repository.updateProvider(updated);
       providers.replaceWhere((p) => p.id == provider.id, updated);
       await _modelViewModel.loadEnabledModels();

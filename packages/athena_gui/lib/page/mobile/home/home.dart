@@ -51,14 +51,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      MobileHomeWelcome(),
+    final children = [
+      const MobileHomeWelcome(),
       const NewChatButton(),
       _buildRecentChatListView(),
       _buildExperiencesListView(),
       _buildSentinelListView(),
     ];
-    var body = SingleChildScrollView(
+    final body = SingleChildScrollView(
       child: Column(spacing: 24, children: children),
     );
     return AthenaScaffold(body: body);
@@ -66,7 +66,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Widget _buildExperiencesListView() {
     return Watch((context) {
-      var experiences = experienceViewModel.experiences.value.take(10).toList();
+      final experiences = experienceViewModel.experiences.value
+          .take(10)
+          .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
@@ -81,7 +83,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
               child: CardListView(
                 itemCount: experiences.length,
                 itemBuilder: (_, index) {
-                  var experience = experiences[index];
+                  final experience = experiences[index];
                   return CardTile(
                     icon: LucideIcons.brain,
                     name: experience.lesson,
@@ -100,7 +102,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void navigateExperienceList(BuildContext context) {
-    MobileExperienceListRoute().push<void>(context);
+    const MobileExperienceListRoute().push<void>(context);
   }
 
   String _formatDate(DateTime dt) {
@@ -141,10 +143,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void navigateChatList(BuildContext context) {
-    MobileChatListRoute().push<void>(context);
+    const MobileChatListRoute().push<void>(context);
   }
 
   void navigateSentinelList(BuildContext context) {
-    MobileSentinelListRoute().push<void>(context);
+    const MobileSentinelListRoute().push<void>(context);
   }
 }

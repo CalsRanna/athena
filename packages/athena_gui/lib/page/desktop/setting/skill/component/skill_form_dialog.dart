@@ -1,5 +1,6 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/widget/settings/form_actions.dart';
+import 'package:athena_gui/widget/settings/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -35,7 +36,7 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    final children = [
       DesktopSettingFormField(
         label: 'Name',
         hint: 'Becomes the folder name. Lowercase words joined by dashes.',

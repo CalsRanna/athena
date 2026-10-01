@@ -45,7 +45,7 @@ class ModelViewModel {
     try {
       final enabledProviders = await _providerRepository.getEnabledProviders();
       final List<ModelEntity> result = [];
-      Map<String, List<ModelEntity>> grouped = {};
+      final Map<String, List<ModelEntity>> grouped = {};
 
       for (var provider in enabledProviders) {
         final providerModels = await _repository.getModelsByProviderId(
@@ -90,7 +90,9 @@ class ModelViewModel {
 
   Future<List<ModelEntity>> getModelsByProviderId(String providerId) async {
     try {
-      var providerModels = await _repository.getModelsByProviderId(providerId);
+      final providerModels = await _repository.getModelsByProviderId(
+        providerId,
+      );
       providerModels.sort((a, b) => a.name.compareTo(b.name));
       return providerModels;
     } catch (e) {
@@ -104,11 +106,13 @@ class ModelViewModel {
   ) async {
     try {
       // 只需检查 provider 是否 enabled，所有该 provider 下的 models 都视为 enabled
-      var provider = await _providerRepository.getProviderById(providerId);
+      final provider = await _providerRepository.getProviderById(providerId);
       if (provider == null || !provider.enabled) {
         return [];
       }
-      var providerModels = await _repository.getModelsByProviderId(providerId);
+      final providerModels = await _repository.getModelsByProviderId(
+        providerId,
+      );
       providerModels.sort((a, b) => a.name.compareTo(b.name));
       return providerModels;
     } catch (e) {
@@ -128,8 +132,8 @@ class ModelViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var id = await _repository.createModel(model);
-      var created = model.copyWith(id: id);
+      final id = await _repository.createModel(model);
+      final created = model.copyWith(id: id);
       models.value = [...models.value, created];
       await loadEnabledModels();
     } catch (e) {
@@ -179,7 +183,7 @@ class ModelViewModel {
 
   Future<ConnectionCheckResult> checkConnection(ModelEntity model) async {
     try {
-      var provider = await _providerRepository.getProviderById(
+      final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
       if (provider == null) {
@@ -189,7 +193,7 @@ class ModelViewModel {
           detail: 'Provider not found.',
         );
       }
-      var response = await _chatService.connect(
+      final response = await _chatService.connect(
         model: model,
         provider: provider,
       );

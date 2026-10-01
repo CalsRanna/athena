@@ -16,14 +16,14 @@ class SentinelPlaceholder extends StatelessWidget {
     if (sentinel == null) return const SizedBox.shrink();
 
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameTextStyle = AthenaTextStyle.hero.copyWith(
+    final nameTextStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
       fontWeight: FontWeight.w600,
     );
-    var descriptionTextStyle = AthenaTextStyle.body.copyWith(
+    final descriptionTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
     );
-    var children = [
+    final children = [
       Text(sentinel.name, style: nameTextStyle, textAlign: TextAlign.center),
       if (sentinel.description.isNotEmpty) ...[
         const SizedBox(height: 10),
@@ -65,7 +65,9 @@ class _TagWrap extends StatelessWidget {
 
   Widget _buildTile(BuildContext context, String tag) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.label.copyWith(color: colors.textSecondary);
+    final textStyle = AthenaTextStyle.label.copyWith(
+      color: colors.textSecondary,
+    );
     return Container(
       decoration: BoxDecoration(
         color: colors.surfaceButtonSecondary,

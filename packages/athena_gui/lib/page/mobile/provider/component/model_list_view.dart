@@ -25,13 +25,13 @@ class MobileModelListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var models = modelViewModel.models.value
+      final models = modelViewModel.models.value
           .where((m) => m.providerId == provider.id)
           .toList();
       if (models.isEmpty) return const SizedBox();
-      List<Widget> children = [];
+      final List<Widget> children = [];
       for (var model in models) {
-        var mobileModelTile = _ModelTile(
+        final mobileModelTile = _ModelTile(
           model: model,
           onLongPress: () => onLongPress?.call(model),
           onTap: () => onTap?.call(model),
@@ -55,18 +55,18 @@ class _ModelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameTextStyle = AthenaTextStyle.section.copyWith(
+    final nameTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
     );
-    var nameText = Text(
+    final nameText = Text(
       model.name,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: nameTextStyle,
     );
-    var nameChildren = [
+    final nameChildren = [
       Flexible(child: nameText),
-      if (model.isPreset) SizedBox(width: 8),
+      if (model.isPreset) const SizedBox(width: 8),
       if (model.isPreset)
         Icon(
           LucideIcons.lockKeyhole,
@@ -76,31 +76,31 @@ class _ModelTile extends StatelessWidget {
       const SizedBox(width: 8),
       AthenaTag.small(text: model.modelId),
     ];
-    var thinkIcon = Icon(
+    final thinkIcon = Icon(
       LucideIcons.brainCircuit,
       color: colors.iconSecondary,
       size: AthenaIcon.regularSize,
     );
-    var visualIcon = Icon(
+    final visualIcon = Icon(
       LucideIcons.eye,
       color: colors.iconSecondary,
       size: AthenaIcon.regularSize,
     );
-    var subtitleChildren = [
+    final subtitleChildren = [
       _buildSubtitle(context),
       if (model.reasoning) thinkIcon,
       if (model.vision) visualIcon,
     ];
-    var informationChildren = [
+    final informationChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 4),
       Row(spacing: 8, children: subtitleChildren),
     ];
-    var informationWidget = Column(
+    final informationWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
-    var padding = Padding(
+    final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: informationWidget,
     );
@@ -114,18 +114,18 @@ class _ModelTile extends StatelessWidget {
 
   Widget _buildSubtitle(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var contextWindow = model.contextWindow;
-    var inputPrice = model.inputPrice;
-    var outputPrice = model.outputPrice;
-    var parts = [
+    final contextWindow = model.contextWindow;
+    final inputPrice = model.inputPrice;
+    final outputPrice = model.outputPrice;
+    final parts = [
       if (contextWindow > 0) formatContextWindow(contextWindow),
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];
-    var textStyle = AthenaTextStyle.caption.copyWith(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
     );
-    var text = Text(
+    final text = Text(
       parts.join(' · '),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,

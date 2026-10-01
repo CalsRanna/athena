@@ -14,7 +14,7 @@ class ProviderEntity {
   final bool isPreset;
   final DateTime createdAt;
 
-  ProviderEntity({
+  const ProviderEntity({
     this.id,
     required this.name,
     required this.baseUrl,

@@ -61,15 +61,15 @@ class SkillRegistry {
     final remaining = sorted.length - display.length;
 
     final buffer = StringBuffer();
-    buffer.writeln('## Available Skills');
+    buffer.writeln('## 可用技能');
     buffer.writeln(
-      'You have access to the following skills. '
-      'Use the "skill" tool to load one when it would help with the task.',
+      '你可以使用以下技能。技能有助于当前任务时，'
+      '使用 "skill" 工具加载相应技能。',
     );
     if (remaining > 0) {
       buffer.writeln(
-        '(${display.length} shown, $remaining more available. '
-        'Use the "skill" tool to load any by name.)',
+        '（已显示 ${display.length} 个，另有 $remaining 个可用。'
+        '使用 "skill" 工具按名称加载任意技能。）',
       );
     }
     buffer.writeln();

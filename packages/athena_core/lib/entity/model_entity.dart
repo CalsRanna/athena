@@ -18,7 +18,7 @@ class ModelEntity {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  ModelEntity({
+  const ModelEntity({
     this.id,
     required this.name,
     required this.modelId,
