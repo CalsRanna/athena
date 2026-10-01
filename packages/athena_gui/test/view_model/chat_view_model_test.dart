@@ -5,9 +5,14 @@ import 'dart:typed_data';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/model_repository.dart';
+import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -349,6 +354,78 @@ void main() {
           '旧',
         }, reason: '就地更新不能漏掉或多出条目');
         expect(viewModel.chats.value.every((chat) => !chat.pinned), isTrue);
+      });
+    });
+  });
+
+  /// 草稿的当前模型跟随可用模型。
+  ///
+  /// composer 右下角那块整块依赖 `currentModel`，为 null 时什么都不渲染。而草稿的
+  /// 当前模型只在进入草稿态那一刻算一次，于是「启用一家 provider」必须能把之后才
+  /// 出现的模型补上——首次运行的起点正是 null（目录同步建的 preset provider
+  /// 一律 disabled，用户启用它之前没有任何可用模型）。
+  group('草稿的当前模型跟随可用模型', () {
+    /// 造一家启用的 provider 与它名下的模型，然后刷新可用模型清单——这是
+    /// `ProviderViewModel.toggleEnabled`（以及目录同步后刷新页面）走的那一步。
+    Future<String> enableProviderWithModel() async {
+      await GetIt.instance<FileStorage>().load();
+      final providerId = await GetIt.instance<ProviderRepository>()
+          .storeProvider(
+            ProviderEntity(
+              name: 'Probe',
+              baseUrl: 'https://example.com/v1',
+              apiKey: 'k',
+              enabled: true,
+              createdAt: DateTime(2026),
+            ),
+          );
+      await GetIt.instance<ModelRepository>().createModel(
+        ModelEntity(
+          name: 'Probe Model',
+          modelId: 'probe-model',
+          providerId: providerId,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      await GetIt.instance<ModelViewModel>().loadEnabledModels();
+      // 补选要解析模型对应的 provider，让它跑完再断言
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      return providerId;
+    }
+
+    testWidgets('启用 provider 后草稿自动用上可用模型', (tester) async {
+      await tester.runAsync(() async {
+        await viewModel.prepareNewChatDraft();
+        expect(viewModel.currentModel.value, isNull, reason: '前置条件：还没有可用的模型');
+
+        final providerId = await enableProviderWithModel();
+
+        expect(viewModel.currentModel.value?.modelId, 'probe-model');
+        expect(viewModel.currentProvider.value?.id, providerId);
+      });
+    });
+
+    testWidgets('草稿里已经选过模型就不覆盖', (tester) async {
+      await tester.runAsync(() async {
+        await viewModel.prepareNewChatDraft();
+        selectUsableModel();
+
+        await enableProviderWithModel();
+
+        expect(viewModel.currentModel.value?.id, 'm1');
+      });
+    });
+
+    testWidgets('已落盘的对话不替它挑模型', (tester) async {
+      // 对话的模型是那条对话自己的字段：替它顶上另一个模型，会让 composer 显示
+      // 的和会话记录里的对不上，下一条消息也就发给了别的模型。
+      await tester.runAsync(() async {
+        viewModel.currentChat.value = chat();
+
+        await enableProviderWithModel();
+
+        expect(viewModel.currentModel.value, isNull);
       });
     });
   });

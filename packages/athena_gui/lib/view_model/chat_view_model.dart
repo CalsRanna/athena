@@ -298,6 +298,21 @@ class ChatViewModel {
     // 后台任务完成后的自动汇报由协调层自己发起，没有对应的 sendMessage
     // 事件流；订阅内部事件流，让汇报的流式进度和最终结论照常出现在会话里。
     streamDelegate.internalEvents.listen(_handleInternalRunEvent);
+
+    // 草稿的「当前模型」要跟着可用模型走：草稿初值只在进入草稿态那一刻算一次
+    // （见 ChatParamsState.resetToDraftDefaults），此后启用的 provider、目录
+    // 同步补进来的模型都不会自己进来，composer 右下角就一直空着。
+    //
+    // 只订阅 enabledModels；草稿态与「要不要补」都在 untracked 里读——补选会把
+    // currentModel 写掉，把它读成依赖就成了「在自己的效果里写自己的依赖」。
+    // VM 与应用同生命周期，不需要 dispose。
+    effect(() {
+      if (_modelViewModel.enabledModels.value.isEmpty) return;
+      untracked(() {
+        if (currentChat.value != null) return;
+        unawaited(_params.adoptFirstAvailableModel());
+      });
+    });
   }
 
   // ═══════════════════════════════════════════════════════════════

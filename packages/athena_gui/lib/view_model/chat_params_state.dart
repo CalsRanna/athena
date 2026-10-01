@@ -88,6 +88,22 @@ class ChatParamsState {
     );
   }
 
+  /// 把「还没有当前模型」补成第一个可用模型。
+  ///
+  /// 除了进入草稿态时（[resetToDraftDefaults]），草稿期间可用模型**从无到有**
+  /// 也要补：启用一家 provider、目录同步把模型写进本地库，都不会再回到
+  /// [resetToDraftDefaults]。少了这一步，composer 右下角会一直空着——它的模型名
+  /// 整块依赖 [currentModel]，为 null 时什么都不渲染，看起来像模型清单没刷新；
+  /// 其实清单是新的，只是「当前用哪个模型」没跟上。
+  ///
+  /// 已经有当前模型时不覆盖：那要么来自设置里的默认模型，要么是用户在菜单里选的。
+  Future<void> adoptFirstAvailableModel() async {
+    if (currentModel.value != null) return;
+    final candidate = _modelViewModel.enabledModels.value.firstOrNull;
+    if (candidate == null) return;
+    await setModel(candidate);
+  }
+
   void setSentinel(SentinelEntity sentinel) => currentSentinel.value = sentinel;
 
   void setRetention(int retention) => currentRetention.value = retention;
@@ -114,12 +130,7 @@ class ChatParamsState {
 
     if (currentModel.value == null) {
       await _modelViewModel.loadEnabledModels();
-      currentModel.value = _modelViewModel.enabledModels.value.firstOrNull;
-      if (currentModel.value != null) {
-        currentProvider.value = await _supportService.getProviderForModel(
-          currentModel.value!.providerId,
-        );
-      }
+      await adoptFirstAvailableModel();
     }
 
     if (_sentinelViewModel.sentinels.value.isEmpty) {

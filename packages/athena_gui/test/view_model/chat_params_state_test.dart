@@ -5,7 +5,10 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/repository/model_repository.dart';
+import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/service/chat_update_service.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/view_model/chat_params_state.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -191,6 +194,61 @@ void main() {
 
         expect(params.currentApprovalMode.value, seeded);
         expect(params.currentApprovalMode.value, isNot(ApprovalMode.bypass));
+      });
+    });
+  });
+
+  group('草稿补选第一个可用模型', () {
+    /// 造一家已启用的 provider 和它名下的模型，再刷新可用模型清单——等价于
+    /// 「目录同步把模型写进本地库 + 用户在设置里启用这家 provider」的结果。
+    Future<void> enableProvider(String modelName) async {
+      await GetIt.instance<FileStorage>().load();
+      final providerId = await GetIt.instance<ProviderRepository>()
+          .storeProvider(
+            ProviderEntity(
+              name: 'P1',
+              baseUrl: 'https://example.com/v1',
+              apiKey: 'k',
+              enabled: true,
+              createdAt: DateTime(2026),
+            ),
+          );
+      await GetIt.instance<ModelRepository>().createModel(
+        ModelEntity(
+          name: modelName,
+          modelId: modelName,
+          providerId: providerId,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      await GetIt.instance<ModelViewModel>().loadEnabledModels();
+    }
+
+    testWidgets('可用模型从无到有时顶上，连带解析出它的 provider', (tester) async {
+      await tester.runAsync(() async {
+        // 首次运行的起点：草稿定下来时还没有任何启用的 provider
+        await params.resetToDraftDefaults(null);
+        expect(params.currentModel.value, isNull);
+
+        await enableProvider('M1');
+
+        await params.adoptFirstAvailableModel();
+
+        expect(params.currentModel.value?.modelId, 'M1');
+        // provider 不解析出来的话 composer 那块照样什么都不渲染
+        expect(params.currentProvider.value?.name, 'P1');
+      });
+    });
+
+    testWidgets('已经选过模型时不覆盖', (tester) async {
+      await tester.runAsync(() async {
+        params.currentModel.value = model('picked');
+
+        await enableProvider('M1');
+        await params.adoptFirstAvailableModel();
+
+        expect(params.currentModel.value?.id, 'picked');
       });
     });
   });
