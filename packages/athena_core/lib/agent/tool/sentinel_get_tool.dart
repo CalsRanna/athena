@@ -6,7 +6,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 /// 返回完整内容（含 prompt 全文），供 sentinel_evolve 前对照当前
 /// 提示词;也可用于确认某个名字/描述是否如预期。名字来自
 /// sentinel_list 的输出。
-class SentinelGetTool implements Tool {
+class SentinelGetTool extends Tool {
   final SentinelRepository _repository;
 
   SentinelGetTool({required SentinelRepository repository})
@@ -14,9 +14,6 @@ class SentinelGetTool implements Tool {
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
-
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   @override
   String get name => 'sentinel_get';

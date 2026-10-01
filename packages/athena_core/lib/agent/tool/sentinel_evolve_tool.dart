@@ -12,12 +12,7 @@ import 'package:athena_core/util/logger_util.dart';
 ///
 /// 修改前自动写入一份变更快照（[SentinelHistoryStore]），
 /// 使每次进化可追溯、可由 sentinel_revert 回滚。
-class SentinelEvolveTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
-
+class SentinelEvolveTool extends Tool {
   final SentinelRepository _repository;
   final SentinelHistoryStore _historyStore;
   final void Function()? _onChanged;

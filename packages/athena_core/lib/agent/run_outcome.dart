@@ -1,4 +1,4 @@
-import 'tool/tool_result.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 
 /// Agent run 的终止原因。
 ///

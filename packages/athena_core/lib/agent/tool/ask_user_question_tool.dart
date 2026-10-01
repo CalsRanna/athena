@@ -8,7 +8,9 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 /// 使用条件是**判据式**而非计数式：只在卡住一个真正属于用户的决定、
 /// 且从请求/代码/合理默认都推不出来时才问——这条判据写在工具描述里，
 /// 随工具一起下发给模型，不依赖某个角色的提示词。
-class AskUserQuestionTool implements Tool, ElicitChannelAware {
+///
+/// 执行期间等待用户作答，因此保持默认的串行执行，不与其他调用并发。
+class AskUserQuestionTool extends Tool implements ElicitChannelAware {
   /// 硬约束（每次调用 1-4 问、每问 2-4 选项）。
   static const int maxQuestions = 4;
   static const int minOptionsPerQuestion = 2;
@@ -31,13 +33,6 @@ class AskUserQuestionTool implements Tool, ElicitChannelAware {
 
   @override
   String get name => 'ask_user_question';
-
-  /// 串行：执行期间等待用户作答，不能与其他调用并发。
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
 
   @override
   String get description =>

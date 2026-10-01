@@ -8,12 +8,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 /// 不再只能靠再一次进化来"打补丁"。
 ///
 /// 回滚前会先保存当前态的快照（回滚同样可回滚）。
-class SentinelRevertTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
-
+class SentinelRevertTool extends Tool {
   final SentinelRepository _repository;
   final SentinelHistoryStore _historyStore;
   final void Function()? _onChanged;

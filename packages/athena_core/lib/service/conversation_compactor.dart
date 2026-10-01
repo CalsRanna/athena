@@ -65,7 +65,9 @@ class ConversationCompactor {
               )
               .toList();
       token.throwIfCancelled();
-      if (records.isEmpty) throw StateError('没有可压缩的对话历史');
+      if (records.isEmpty) {
+        throw StateError('No conversation history to compact');
+      }
 
       final coverage = ConversationSummary.create(
         chatId: chatId,
@@ -110,7 +112,9 @@ class ConversationCompactor {
       ];
       final after = request.budget.estimate(candidate, request.tools);
       if (after >= step.beforeTokens || after > request.budget.inputLimit) {
-        throw StateError('摘要未有效降低上下文占用，已保留原上下文');
+        throw StateError(
+          'Compaction did not reduce context usage; keeping the original',
+        );
       }
       step = step.copyWith(phase: CompactionPhase.persisting);
       await _repository.updateMessage(step.toMessage());
@@ -184,7 +188,9 @@ class ConversationCompactor {
       token.throwIfCancelled();
       if (budget.estimate(_summaryRequest(group, allowance), null) >
           budget.inputLimit) {
-        throw StateError('单条消息超过摘要模型输入预算，无法完整压缩');
+        throw StateError(
+          'A single message exceeds the summarizer input budget',
+        );
       }
     }
 
@@ -223,7 +229,9 @@ class ConversationCompactor {
         final messages = [ChatMessage.assistant(content: summary)];
         if (summary.trim().isEmpty ||
             budget.estimate(messages, null) > allowance) {
-          throw StateError('摘要为空或超过摘要长度预算');
+          throw StateError(
+            'Summary is empty or exceeds the summary length budget',
+          );
         }
         summaries.add(messages);
       }
@@ -232,7 +240,9 @@ class ConversationCompactor {
       }
       if (summaries.isEmpty ||
           (remaining != groups && summaries.length >= remaining.length)) {
-        throw StateError('分段摘要无法收敛到输入预算内');
+        throw StateError(
+          'Segmented summarization did not converge within the input budget',
+        );
       }
       remaining = summaries;
     }

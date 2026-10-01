@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:http/http.dart' as http;
 
-import 'tool_interface.dart';
-
-class WebSearchTool implements Tool, CancellableTool {
+class WebSearchTool extends Tool implements CancellableTool {
   /// API key 存在两个前端共用的 `~/.athena/setting.yaml` 里。
   WebSearchTool({UserSettingsStore? settings}) : _settings = settings;
 
@@ -15,8 +14,6 @@ class WebSearchTool implements Tool, CancellableTool {
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   static const _defaultTimeout = Duration(seconds: 15);
   static const _maxResults = 10;

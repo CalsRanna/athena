@@ -11,11 +11,7 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 ///
 /// Skill 统一保存在用户级目录（`~/.athena/skills/`，移动端为沙盒内
 /// `.athena/skills/`），以 `SKILL.md` 文件形式存在，对所有会话可用。
-class SkillEvolveTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
+class SkillEvolveTool extends Tool {
   final SkillRegistry _skillRegistry;
 
   /// 用户级 `.athena` 根目录。空 = 使用 `$HOME`（桌面端）。

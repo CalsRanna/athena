@@ -2,16 +2,11 @@ import 'dart:io';
 
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/text_file_reader.dart';
 import 'package:path/path.dart' as p;
 
-import 'tool_interface.dart';
-
-class SkillTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
+class SkillTool extends Tool {
   final SkillRegistry _registry;
 
   SkillTool(this._registry);

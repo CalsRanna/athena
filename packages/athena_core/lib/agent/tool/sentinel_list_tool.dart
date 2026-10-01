@@ -7,7 +7,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 /// 返回轻量元数据（名称、描述、标签），**不含** prompt 全文——
 /// 需要完整内容（含 prompt）时用 sentinel_get。结果按名称排序,
 /// 保证输出稳定可复现。
-class SentinelListTool implements Tool {
+class SentinelListTool extends Tool {
   final SentinelRepository _repository;
 
   SentinelListTool({required SentinelRepository repository})
@@ -15,9 +15,6 @@ class SentinelListTool implements Tool {
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
-
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   @override
   String get name => 'sentinel_list';

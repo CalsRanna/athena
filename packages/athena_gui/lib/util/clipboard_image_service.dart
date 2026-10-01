@@ -19,9 +19,7 @@ import 'package:path_provider/path_provider.dart';
 ///
 /// 图片数据会先写入临时目录再返回路径，
 /// 交给 composer 读取、验证并保留同一份字节用于预览与发送。
-class ClipboardImageService {
-  ClipboardImageService._();
-
+abstract final class ClipboardImageService {
   /// 模型通用的图片格式白名单（粘贴时按此过滤）。
   @visibleForTesting
   static const Set<String> supportedExtensions = {

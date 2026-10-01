@@ -4,16 +4,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/tool/html_to_markdown.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:meta/meta.dart';
 
-import 'html_to_markdown.dart';
-import 'tool_interface.dart';
-
-class WebFetchTool implements Tool, CancellableTool {
+class WebFetchTool extends Tool implements CancellableTool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   static const _maxResponseBytes = 200 * 1024; // 200KB
   static const _defaultTimeout = Duration(seconds: 30);

@@ -244,7 +244,8 @@ class PermissionStore {
           ? null
           : locks ??
                 (throw ArgumentError(
-                  'permissions 文件的锁需要与 file 配套的 LockRegistry',
+                  'Locking the permissions file requires a LockRegistry '
+                  'configured with that file',
                 ));
 
   /// 落盘文件;null = 纯内存实例,此时 [_locks] 也为 null。
@@ -262,7 +263,7 @@ class PermissionStore {
   /// 规则会静默只留在内存里,重启即丢。
   Future<void> load() async {
     if (_file == null) {
-      throw StateError('PermissionStore 未配置落盘文件,不能 load()');
+      throw StateError('PermissionStore has no backing file; cannot load()');
     }
     _loaded = true;
     _reload();

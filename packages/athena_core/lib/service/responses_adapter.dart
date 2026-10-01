@@ -607,7 +607,9 @@ InputContent _toInputContent(ContentPart part) {
       // 可直接沿用同一条 url。
       return InputImageContent.url(url, detail: detail);
     default:
-      throw UnsupportedError('Responses 协议暂不支持 ${part.runtimeType} 类型的消息内容');
+      throw UnsupportedError(
+        'Responses protocol does not support ${part.runtimeType}',
+      );
   }
 }
 
@@ -639,7 +641,8 @@ TextConfig? _toTextConfig(ResponseFormat? format, Verbosity? verbosity) {
     TextResponseFormat() => const PlainTextFormat(),
     JsonObjectResponseFormat() => const JsonObjectFormat(),
     _ => throw UnsupportedError(
-      'Responses 协议暂不支持 ${format.runtimeType} 形式的 response_format',
+      'Responses protocol does not support response_format '
+      '${format.runtimeType}',
     ),
   };
   return native == null && verbosity == null

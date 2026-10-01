@@ -4,12 +4,12 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_gui/di.dart';
-
-import '../support/fake_message_repo.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+import '../support/fake_message_repo.dart';
 
 /// 窗口分页的表征测试。
 ///

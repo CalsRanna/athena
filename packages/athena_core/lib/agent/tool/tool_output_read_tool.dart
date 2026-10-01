@@ -1,5 +1,5 @@
-import 'tool_interface.dart';
-import 'tool_output_store.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 
 /// Reads only saved tool results, including on mobile without filesystem tools.
 class ToolOutputReadTool extends Tool {

@@ -11,11 +11,7 @@ import 'package:athena_core/repository/experience_repository.dart';
 /// shared 经验对所有 Sentinel 可见，适用于用户通用偏好、沟通风格等跨域信息。
 ///
 /// 支持完整生命周期：create（记录）/ update（修正）/ archive（归档为反例）。
-class ExperienceLearnTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
+class ExperienceLearnTool extends Tool {
   final ExperienceRepository _repository;
 
   ExperienceLearnTool({required ExperienceRepository repository})
@@ -217,11 +213,7 @@ class ExperienceLearnTool implements Tool {
 /// 以便利用过去的教训和洞察来改进当前的表现。
 ///
 /// 默认检索当前 Sentinel 的私有经验 + shared 经验。
-class ExperienceRecallTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
+class ExperienceRecallTool extends Tool {
   final ExperienceRepository _repository;
 
   ExperienceRecallTool({required ExperienceRepository repository})

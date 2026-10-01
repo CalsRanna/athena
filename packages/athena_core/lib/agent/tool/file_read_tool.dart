@@ -1,15 +1,12 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 import 'package:athena_core/util/text_file_reader.dart';
 
-import 'tool_interface.dart';
-
-class FileReadTool implements Tool {
+class FileReadTool extends Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   /// Maximum lines returned per call, to avoid blowing up the LLM context.
   static const _maxReturnLines = TextFileReader.maxReturnLines;

@@ -3,7 +3,7 @@ import 'package:nocterm/nocterm.dart';
 /// Athena 设计语言在终端的映射(色板见 DESIGN.md §2 的 TUI 映射)。
 ///
 /// 终端是深色底,背景不设色(用终端默认),主要用文字色与边框表达层级。
-abstract class AthenaColors {
+abstract final class AthenaColors {
   /// 青瓷强调(#65C7BC)，与 GUI 深色主题一致:用户消息前缀、状态高亮。
   static const Color teal = Color.fromRGB(101, 199, 188);
 
@@ -21,7 +21,7 @@ abstract class AthenaColors {
 }
 
 /// 消息卡片左侧竖线色:按消息类型分色,替代文字前缀标记。
-abstract class AthenaCardColors {
+abstract final class AthenaCardColors {
   /// 用户消息:品牌 teal。
   static const Color user = AthenaColors.teal;
 
@@ -48,7 +48,7 @@ abstract class AthenaCardColors {
 }
 
 /// 常见文本样式。
-abstract class AthenaTextStyles {
+abstract final class AthenaTextStyles {
   static const TextStyle dim = TextStyle(color: AthenaColors.dim);
   static const TextStyle teal = TextStyle(color: AthenaColors.teal);
   static const TextStyle error = TextStyle(color: AthenaColors.error);

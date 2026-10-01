@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/task/background_task.dart';
+import 'package:athena_core/agent/tool/shell_background.dart';
 import 'package:athena_core/agent/tool/shell_runner.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 
-import 'shell_background.dart';
-import 'tool_interface.dart';
-
-class PowerShellShellTool implements Tool, CancellableTool {
+/// shell 工具统一串行：由审批模式处理完整调用，不推断命令的副作用。
+class PowerShellShellTool extends Tool implements CancellableTool {
   /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
   /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
   PowerShellShellTool({String? defaultWorkdir, BackgroundTaskService? tasks})
@@ -17,13 +17,6 @@ class PowerShellShellTool implements Tool, CancellableTool {
 
   /// 后台任务登记表。null = 本宿主不支持后台任务。
   final BackgroundTaskService? _tasks;
-
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-
-  /// shell 统一串行,由审批模式处理完整调用,不推断命令的副作用。
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
 
   @override
   String get name => 'powershell';

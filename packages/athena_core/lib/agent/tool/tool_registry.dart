@@ -1,9 +1,8 @@
 import 'package:athena_core/agent/task/background_task.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 
-import 'tool_interface.dart';
-import 'tool_output_store.dart';
-
-export 'tool_interface.dart' show ExecutionMode;
+export 'package:athena_core/agent/tool/tool_interface.dart' show ExecutionMode;
 
 class ToolRegistry {
   ToolRegistry({

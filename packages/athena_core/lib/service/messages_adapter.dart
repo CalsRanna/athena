@@ -93,8 +93,8 @@ anthropic.MessageCreateRequest toMessageRequest(
     null => null,
     JsonObjectResponseFormat() => _jsonOnlyInstruction,
     _ => throw UnsupportedError(
-      'Messages 协议暂不支持 ${request.responseFormat.runtimeType} 形式的 '
-      'response_format',
+      'Messages protocol does not support response_format '
+      '${request.responseFormat.runtimeType}',
     ),
   };
 
@@ -631,7 +631,9 @@ anthropic.InputContentBlock _toContentBlock(ContentPart part) {
     case ImageContentPart(:final url):
       return anthropic.InputContentBlock.image(_toImageSource(url));
     default:
-      throw UnsupportedError('Messages 协议暂不支持 ${part.runtimeType} 类型的消息内容');
+      throw UnsupportedError(
+        'Messages protocol does not support ${part.runtimeType}',
+      );
   }
 }
 
@@ -642,7 +644,9 @@ anthropic.ImageSource _toImageSource(String url) {
 
   final commaIndex = url.indexOf(',');
   if (commaIndex < 0) {
-    throw UnsupportedError('Messages 协议无法解析该 data URL 图片');
+    throw UnsupportedError(
+      'Messages protocol cannot parse this data URL image',
+    );
   }
   final header = url.substring('data:'.length, commaIndex);
   final mediaType = header.split(';').first;
@@ -651,7 +655,9 @@ anthropic.ImageSource _toImageSource(String url) {
     if (candidate.value == mediaType) parsed = candidate;
   }
   if (parsed == null) {
-    throw UnsupportedError('Messages 协议不支持 $mediaType 类型的图片');
+    throw UnsupportedError(
+      'Messages protocol does not support image media type $mediaType',
+    );
   }
   return anthropic.ImageSource.base64(
     data: url.substring(commaIndex + 1),

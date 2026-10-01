@@ -11,7 +11,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 enum AthenaMessageType { info, success, warning, error }
 
-class AthenaDialog {
+abstract final class AthenaDialog {
   static OverlayEntry? _messageOverlay;
   static Timer? _messageTimer;
 

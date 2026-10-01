@@ -38,7 +38,7 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:get_it/get_it.dart';
 
-class DI {
+abstract final class DI {
   /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
   /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
   /// ([dataDirectory])。写入端(skill_evolve / experience 工具)必须与

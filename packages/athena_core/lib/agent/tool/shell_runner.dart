@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 ///
 /// 最大超时默认 3600s，可用环境变量 `ATHENA_SHELL_MAX_TIMEOUT`（秒）覆盖，
 /// 以便在需要真正长时间运行的任务（大构建、长测试、数据迁移）时无需改代码。
-class ShellTimeoutPolicy {
+abstract final class ShellTimeoutPolicy {
   static const int defaultSeconds = 120;
   static const int minSeconds = 1;
 

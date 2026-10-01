@@ -103,9 +103,7 @@ class ReflectionProposal {
   }
 }
 
-class ReflectionPrompt {
-  ReflectionPrompt._();
-
+abstract final class ReflectionPrompt {
   static const system =
       '''
 Analyze the run outcome and decide whether it contains one durable, actionable

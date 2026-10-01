@@ -1,9 +1,8 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 import 'package:path/path.dart' as p;
-
-import '../permission/permission_rule.dart';
 
 /// 把「本次 run 的工作文件夹」落到工具调用参数上。
 ///

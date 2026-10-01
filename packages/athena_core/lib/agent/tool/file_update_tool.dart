@@ -1,16 +1,10 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/atomic_file_write.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 
-import 'tool_interface.dart';
-
-class FileUpdateTool implements Tool {
-  @override
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) => false;
-
+class FileUpdateTool extends Tool {
   FileUpdateTool();
 
   @override

@@ -158,8 +158,8 @@ class BackgroundTaskService {
            ? null
            : locks ??
                  (throw ArgumentError(
-                   'stateDirectory 必须与 locks 一起提供:孤儿记录文件的锁'
-                   '放在数据根的 .locks/ 下,不知道根就无处加锁',
+                   'stateDirectory must be provided together with locks: '
+                   'orphan-record locks live under the data root .locks/',
                  ));
 
   final DateTime Function() _now;
