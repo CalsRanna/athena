@@ -25,9 +25,6 @@ class DesktopSettingAgentPage extends StatefulWidget {
 
 class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   final viewModel = GetIt.instance<SettingViewModel>();
-  late final iterationsController = TextEditingController(
-    text: viewModel.maxAgentIterations.value.toString(),
-  );
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
@@ -35,12 +32,10 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     text: viewModel.braveApiKey.value,
   );
 
-  String? iterationsError;
   String? retriesError;
 
   @override
   void dispose() {
-    iterationsController.dispose();
     retriesController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
@@ -54,18 +49,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
           first: true,
           title: 'Limits',
           children: [
-            AthenaSettingsRow(
-              label: 'Max iterations',
-              description:
-                  'Tool-calling rounds a single run may take before it '
-                  'stops.',
-              error: iterationsError,
-              control: _buildNumberField(
-                controller: iterationsController,
-                placeholder: '100',
-                onCommit: _commitIterations,
-              ),
-            ),
             AthenaSettingsRow(
               label: 'Max retries',
               description:
@@ -135,17 +118,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
         onSubmitted: (_) => onCommit(),
       ),
     );
-  }
-
-  Future<void> _commitIterations() async {
-    final value = int.tryParse(iterationsController.text.trim());
-    if (value == null || value < 1) {
-      setState(() => iterationsError = 'Enter a whole number of at least 1.');
-      return;
-    }
-    setState(() => iterationsError = null);
-    if (value == viewModel.maxAgentIterations.value) return;
-    await viewModel.updateMaxAgentIterations(value);
   }
 
   Future<void> _commitRetries() async {

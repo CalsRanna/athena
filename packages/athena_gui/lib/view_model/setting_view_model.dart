@@ -42,9 +42,6 @@ class SettingViewModel {
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
 
-  /// 委托核心 [AgentSettings]（持久化走 [UserSettingsStore]）。
-  Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
-
   /// 新建会话的审批档位起点（会话自己的档位在 `ChatEntity.approvalMode`）。
   ///
   /// 没有设置项：它只在启动时由 [AgentSettings.init] 从旧的全局设置播种
@@ -215,11 +212,6 @@ class SettingViewModel {
   Future<void> updateBraveApiKey(String key) async {
     await _settings.saveBraveApiKey(key);
     braveApiKey.value = key;
-  }
-
-  /// 更新最大 Agent 迭代次数
-  Future<void> updateMaxAgentIterations(int max) async {
-    await _agentSettings.updateMaxAgentIterations(max);
   }
 
   /// 开关后台任务完成后的自动汇报。

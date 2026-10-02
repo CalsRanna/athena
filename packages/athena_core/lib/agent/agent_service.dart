@@ -140,7 +140,6 @@ class AgentService {
     /// 提问回调（「你要哪个」），与审批回调（「要不要做」）分开。
     /// null = 本会话没有提问 UI，ask_user_question 会降级为「按假定继续」。
     ElicitPrompt? onElicit,
-    int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
 
@@ -221,7 +220,6 @@ class AgentService {
         onCompact: onCompact,
         runId: runId,
         sentinelId: sentinelId,
-        maxIterations: maxIterations,
         jsonMode: jsonMode,
         permissionGate: permissionGate,
         permissionService: permissionService,
@@ -707,7 +705,6 @@ class _AgentLoop {
     required ContextCompactionCallback? onCompact,
     required int runId,
     required String? sentinelId,
-    required int maxIterations,
     required bool jsonMode,
     required PermissionGate? permissionGate,
     required PermissionService? permissionService,
@@ -737,7 +734,6 @@ class _AgentLoop {
        _messages = messages,
        _runId = runId,
        _sentinelId = sentinelId,
-       _maxIterations = maxIterations,
        _jsonMode = jsonMode,
        _permissionGate = permissionGate,
        _permissionService = permissionService,
@@ -769,7 +765,6 @@ class _AgentLoop {
   final List<ChatMessage> _messages;
   final int _runId;
   final String? _sentinelId;
-  final int _maxIterations;
   final bool _jsonMode;
   final PermissionGate? _permissionGate;
   final PermissionService? _permissionService;
@@ -792,7 +787,6 @@ class _AgentLoop {
 
   int _iterationsExecuted = 0;
   final List<ToolFailure> _toolFailures = [];
-  var _termination = AgentRunTermination.completed;
   var _reflectionAttempted = false;
 
   /// 本 run 内是否已有一次压缩没能完成。
@@ -804,23 +798,19 @@ class _AgentLoop {
 
   /// 执行整个 run：单层工具迭代循环，结束后触发反思并产出 outcome。
   ///
+  /// 循环不设轮次上限：语义就是「反复请求模型，直到它不再发起工具调用」，
+  /// 唯一出口是模型主动结束。此前用迭代上限兜底失控循环，现已去掉——要停下
+  /// 由用户取消本次 run（[AgentService.abort]）或取消令牌负责。
+  ///
   /// 运行中输入不在此层处理：协调层（AgentRunCoordinator）把运行中收到
   /// 的用户消息落库排队，本 run 结束后作为新 run 自动接续。
   Stream<AgentEvent> run() async* {
     try {
-      var done = false;
-      for (
-        var iteration = 0;
-        iteration < _maxIterations && !done;
-        iteration++
-      ) {
+      for (var iteration = 0; ; iteration++) {
         final st = _TurnState();
         yield* _runIteration(iteration, st);
-        done = st.done;
+        if (st.done) break;
       }
-      _termination = done
-          ? AgentRunTermination.completed
-          : AgentRunTermination.maxIterations;
 
       yield* _maybeReflect();
     } on CancelledException catch (e) {
@@ -1335,9 +1325,12 @@ class _AgentLoop {
 
   /// 反思通道：失败可归因时让模型提炼长期经验，
   /// 经 experience_learn 标准工具路径（校验/审批/执行）写入。
+  ///
+  /// 只在迭代循环自然结束（模型主动结束）后调用，所以终止原因恒为
+  /// [AgentRunTermination.completed]；取消与错误在循环里直接冒出，到不了这里。
   Stream<AgentEvent> _maybeReflect() async* {
     var outcome = AgentRunOutcome(
-      termination: _termination,
+      termination: AgentRunTermination.completed,
       iterations: _iterationsExecuted,
       toolFailures: List.unmodifiable(_toolFailures),
     );
@@ -1360,7 +1353,7 @@ class _AgentLoop {
       }
     }
     outcome = AgentRunOutcome(
-      termination: _termination,
+      termination: AgentRunTermination.completed,
       iterations: _iterationsExecuted,
       toolFailures: List.unmodifiable(_toolFailures),
       reflectionAttempted: _reflectionAttempted,

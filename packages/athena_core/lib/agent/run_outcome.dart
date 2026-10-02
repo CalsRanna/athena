@@ -3,7 +3,7 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 /// Agent run 的终止原因。
 ///
 /// `completed` 只表示模型主动结束，不等价于任务在语义上成功。
-enum AgentRunTermination { completed, maxIterations, cancelled, error }
+enum AgentRunTermination { completed, cancelled, error }
 
 /// 一次 Agent run 的结构化结果。
 class AgentRunOutcome {

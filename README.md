@@ -25,7 +25,7 @@ athena
 
 **Agent 引擎**
 
-- 多轮工具循环，带并行工具执行（并发上限 8）与迭代上限（默认 100）
+- 多轮工具循环，带并行工具执行（并发上限 8）
 - 三种 LLM 协议：OpenAI Chat Completions、OpenAI Responses、Anthropic Messages。上层的请求与事件统一为 Chat Completions 形状，协议差异收敛在两个适配器里
 - 推理状态按协议原生保存与回放：Responses 的加密推理项、Messages 的 thinking 签名、Chat Completions 的 `reasoning_details`，各自完整持久化，切换 provider 后自动失效而非串用
 - 上下文预算与自动压缩：估算超出窗口时先回收旧工具输出，再摘要压缩历史；摘要与它的覆盖范围一同提交，原消息保留可回溯

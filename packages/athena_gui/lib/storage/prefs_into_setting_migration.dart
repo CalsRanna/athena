@@ -24,7 +24,7 @@ class PrefsIntoSettingMigration {
   ///
   /// 比「GUI 自己的偏好」长：`AgentSettings` 的键今天也是经
   /// `SharedPrefsKeyValueStore` 落在 SharedPreferences 里的，漏掉就会丢掉
-  /// 用户的 Max iterations / 后台汇报开关。
+  /// 用户的后台汇报开关。
   static const keys = <String>[
     // GUI 直接读写
     'window_height',
@@ -37,7 +37,6 @@ class PrefsIntoSettingMigration {
     'theme_mode',
     'text_size',
     // 经 AgentSettings
-    'max_agent_iterations',
     'background_task_reports',
     // 更早的全局审批设置：AgentSettings 读到就删，必须一起搬，
     // 否则新会话的审批档位会退回默认而不是用户设过的值

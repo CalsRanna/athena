@@ -85,7 +85,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         SettingSection.agent,
         'Agent',
         LucideIcons.workflow,
-        keywords: ['iterations', 'retries', 'brave', 'web search'],
+        keywords: ['retries', 'brave', 'web search'],
       ),
     ]),
     const _SettingGroup('Customize', [

@@ -36,7 +36,7 @@ const _defaultMaxTokens = 8192;
 ///
 /// 模型输出上限已知（[outputLimit]，来自 models.dev）就用它：固定 8192 时，
 /// 参数超过这个长度的工具调用（写一个大文件）每次都会被截断、被拒绝执行、
-/// 再重发，直到迭代上限。再按窗口余量 [outputRoom] 收紧：「输入 +
+/// 再重发，直到模型给出完整参数。再按窗口余量 [outputRoom] 收紧：「输入 +
 /// max_tokens」超出窗口时请求同样会被拒绝。
 int messagesMaxTokens({int outputLimit = 0, int? outputRoom}) {
   final cap = outputLimit > 0 ? outputLimit : _defaultMaxTokens;

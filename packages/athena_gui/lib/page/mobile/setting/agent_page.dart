@@ -19,9 +19,6 @@ class MobileAgentPage extends StatefulWidget {
 
 class _MobileAgentPageState extends State<MobileAgentPage> {
   final viewModel = GetIt.instance.get<SettingViewModel>();
-  late final iterationsController = TextEditingController(
-    text: viewModel.maxAgentIterations.value.toString(),
-  );
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
@@ -31,7 +28,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
 
   @override
   void dispose() {
-    iterationsController.dispose();
     retriesController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
@@ -61,15 +57,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AthenaFormField(
-          label: 'Max Iterations',
-          control: AthenaInput(
-            controller: iterationsController,
-            placeholder: '100',
-          ),
-          description: 'Maximum number of agent loop iterations (default: 100)',
-        ),
-        const SizedBox(height: 16),
         AthenaFormField(
           label: 'Max Retries',
           control: AthenaInput(
@@ -125,17 +112,11 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   }
 
   Future<void> _saveGeneral() async {
-    final iterations = int.tryParse(iterationsController.text.trim());
-    if (iterations == null || iterations < 1) {
-      AthenaDialog.warning('Max Iterations must be a valid number (minimum 1)');
-      return;
-    }
     final retries = int.tryParse(retriesController.text.trim());
     if (retries == null || retries < 1) {
       AthenaDialog.warning('Max Retries must be a valid number (minimum 1)');
       return;
     }
-    await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
     if (!mounted) return;
     AthenaDialog.success('Settings saved');

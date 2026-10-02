@@ -94,7 +94,6 @@ void main() {
                 }
               : null,
           onElicit: onElicit,
-          maxIterations: 2,
         )
         .toList();
     final results = events.whereType<AgentToolResultEvent>().toList();

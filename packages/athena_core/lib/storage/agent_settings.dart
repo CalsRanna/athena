@@ -8,7 +8,6 @@ import 'package:signals/signals.dart';
 class AgentSettings {
   AgentSettings({UserSettingsStore? store}) : _store = store;
 
-  static const _keyMaxAgentIterations = 'max_agent_iterations';
   static const _keyBackgroundTaskReports = 'background_task_reports';
 
   /// 审批模式改为会话级之前的两个旧键，只在启动时读一次做播种（见 [init]）。
@@ -18,8 +17,6 @@ class AgentSettings {
   static const _keyLegacyAiApprovalEnabled = 'ai_approval_enabled';
 
   final UserSettingsStore? _store;
-
-  final maxAgentIterations = signal(100);
 
   /// 新建会话的审批档位起点（会话本身的值在 `ChatEntity.approvalMode`）。
   ///
@@ -38,10 +35,6 @@ class AgentSettings {
   Future<void> init() async {
     final store = _store;
     if (store == null) return;
-    final v = await store.getInt(_keyMaxAgentIterations);
-    if (v != null) {
-      maxAgentIterations.value = v;
-    }
     await _seedNewChatApprovalMode(store);
     final reports = await store.getBool(_keyBackgroundTaskReports);
     if (reports != null) {
@@ -78,11 +71,5 @@ class AgentSettings {
   Future<void> updateBackgroundTaskReports(bool enabled) async {
     backgroundTaskReports.value = enabled;
     await _store?.setBool(_keyBackgroundTaskReports, enabled);
-  }
-
-  /// 更新最大 Agent 迭代次数。
-  Future<void> updateMaxAgentIterations(int max) async {
-    maxAgentIterations.value = max;
-    await _store?.setInt(_keyMaxAgentIterations, max);
   }
 }

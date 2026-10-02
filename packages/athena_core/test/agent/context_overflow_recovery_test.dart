@@ -96,7 +96,6 @@ void main() {
           ],
           hasSentinelPrompt: false,
           allowReflection: false,
-          maxIterations: 3,
           onCompact: (request) async* {
             compactCalls++;
             yield ContextCompactionUpdate(

@@ -30,7 +30,7 @@ import 'package:path/path.dart' as p;
 ///                            # 旧名 storage_version.json 启动时改名过来）
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
 ///   setting.yaml              # 用户配置:两个前端共用(GUI 与 TUI 的界面偏好
-///                            # + core 的 brave API key / Agent 迭代上限)
+///                            # + core 的 brave API key)
 ///   permissions.json          # 权限规则(GUI 与 TUI 共用,可手工编辑)
 ///   providers/{id}.yaml        # 一个 provider 一个文件：provider 配置(含 API key)
 ///                            # + 它名下的模型（`models:` 段）

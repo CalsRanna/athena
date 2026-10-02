@@ -9,7 +9,7 @@ import 'package:yaml/yaml.dart';
 /// 用户配置的持久化(`~/.athena/setting.yaml`)。GUI 与 TUI 共用这一个文件。
 ///
 /// 它是**全部用户偏好**的唯一落点:两个前端各自的界面偏好(主题、字号、窗口
-/// 尺寸、默认模型……)与 core 自己消费的设置(brave API key、Agent 迭代上限)
+/// 尺寸、默认模型……)与 core 自己消费的设置(brave API key、后台汇报开关)
 /// 都写在这里。此前这些分散在 GUI 的 SharedPreferences 与 TUI 的 `kv.json`
 /// 里,同一种东西三处存放,键名还各定义一遍(`brave_api_key` 曾同时写在
 /// `web_search_tool.dart` 与本文件之外的 GUI 代码里,改一处就静默断掉另一处)。

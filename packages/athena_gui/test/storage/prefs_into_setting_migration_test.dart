@@ -59,7 +59,6 @@ void main() {
 
   test('AgentSettings 的键一并搬运', () async {
     SharedPreferences.setMockInitialValues({
-      'max_agent_iterations': 42,
       'background_task_reports': true,
       'approval_mode': 'manual',
       'ai_approval_enabled': 0,
@@ -67,7 +66,6 @@ void main() {
 
     await const PrefsIntoSettingMigration().run(settings);
 
-    expect(await settings.getInt('max_agent_iterations'), 42);
     expect(await settings.getBool('background_task_reports'), true);
     expect(await settings.getString('approval_mode'), 'manual');
     expect(await settings.getInt('ai_approval_enabled'), 0);

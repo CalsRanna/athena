@@ -133,7 +133,6 @@ void main() {
           baseMessages: withPrefix(),
           hasSentinelPrompt: false,
           allowReflection: false,
-          maxIterations: 3,
           onCompact: (request) async* {
             compactCalls++;
             // 压缩失败：候选上下文照旧，_messages 不变。

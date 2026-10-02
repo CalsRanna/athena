@@ -361,7 +361,6 @@ class AgentRunCoordinator {
         ),
         sentinelId: sentinelKey,
         hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
-        maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
@@ -673,7 +672,6 @@ class AgentRunCoordinator {
               ),
         sentinelId: sentinelKey,
         hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
-        maxIterations: _reportMaxIterations,
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
@@ -734,9 +732,6 @@ class AgentRunCoordinator {
     // 递归有界：汇报回合不允许启动后台任务，所以它自己不会制造新的完成事件。
     await _drainPendingReport(chatId);
   }
-
-  /// 汇报回合迭代上限：它是「读结果 → 汇报」，不是干活的回合。
-  static const _reportMaxIterations = 3;
 
   /// 汇报回合的说明（作为请求末尾的 user 消息发送，不进持久化历史）。
   String _backgroundReportPrompt(List<BackgroundTask> tasks) {
