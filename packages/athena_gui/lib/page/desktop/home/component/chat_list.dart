@@ -180,7 +180,7 @@ class DesktopChatListView extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Text(
-          'No chats yet',
+          'No sessions yet',
           style: AthenaTextStyle.caption.copyWith(
             color: colors.textWeak,
             decoration: TextDecoration.none,

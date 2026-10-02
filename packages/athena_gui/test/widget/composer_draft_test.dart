@@ -71,7 +71,7 @@ void main() {
   /// `_initState` 是一串真实文件 I/O，且一个接一个 await：每完成一段，它的
   /// continuation 要等下一帧才排空，下一段又需要新的真实异步窗口。别按固定轮数
   /// 等——多落一条会话就多几段 I/O，写死轮数会在"两条会话"这种用例里悄悄少等
-  /// （症状：侧栏还是 "No chats yet"）。等到 ViewModel 真的把 [seededChats] 条
+  /// （症状：侧栏还是 "No sessions yet"）。等到 ViewModel 真的把 [seededChats] 条
   /// 会话读出来为止，再多走几轮把链尾（角色/工作文件夹 chip）也放干净。
   Future<void> pumpHome(WidgetTester tester, {required int seededChats}) async {
     tester.view.physicalSize = const Size(1200, 800);
