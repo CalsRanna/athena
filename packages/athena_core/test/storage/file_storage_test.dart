@@ -92,7 +92,7 @@ void main() {
   });
 
   test('reset 清空业务数据但保留目录缓存', () async {
-    await a.sessionRepository.createChat(
+    final chatId = await a.sessionRepository.createChat(
       ChatEntity(
         title: 't',
         modelId: '1',
@@ -102,9 +102,12 @@ void main() {
       ),
     );
     await a.catalogCacheFile.writeAsString('{}');
-    expect(await a.hasData(), isTrue);
+    final sessionFile = File(p.join(a.sessionsDir.path, '$chatId.jsonl'));
+    expect(await sessionFile.exists(), isTrue, reason: '会话已落盘');
+
     await a.reset();
-    expect(await a.hasData(), isFalse);
+
+    expect(await sessionFile.exists(), isFalse);
     expect(await a.catalogCacheFile.exists(), isTrue);
     // 重置后的实体仍使用新的 UUID，无需计数文件。
     expect(

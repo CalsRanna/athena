@@ -127,19 +127,6 @@ void main() {
     expect(await storage.modelRepository.getModelById(m1), isNull);
   });
 
-  test('导入按 provider 分组覆盖，保留原 id', () async {
-    final pid = await storage.providerRepository.storeProvider(provider('p'));
-    await storage.modelRepository.createModel(model('old', pid));
-
-    await storage.modelRepository.importModels([
-      model('imported', pid, id: 'fixed-id'),
-    ]);
-
-    final all = await storage.modelRepository.getAllModels();
-    expect(all.single.id, 'fixed-id');
-    expect(all.single.name, 'imported');
-  });
-
   test('手工编辑 provider 文件加一个模型，读得到', () async {
     final pid = await storage.providerRepository.storeProvider(provider('p'));
     providerFile(pid).writeAsStringSync('''

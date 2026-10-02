@@ -114,28 +114,6 @@ class ProviderModelRepository implements ModelRepository {
     }
   }
 
-  @override
-  Future<void> deleteAllModels() async {
-    for (final providerId in await _store.providerIds()) {
-      await _store.replaceModelsOf(providerId, const []);
-    }
-  }
-
-  @override
-  Future<void> importModels(List<ModelEntity> models) async {
-    // 按 provider 分组,每个 provider 的文件写一次
-    final grouped = <String, List<ModelEntity>>{};
-    for (final model in models) {
-      grouped.putIfAbsent(model.providerId, () => []).add(model);
-    }
-    for (final providerId in await _store.providerIds()) {
-      await _store.replaceModelsOf(
-        providerId,
-        grouped.remove(providerId) ?? [],
-      );
-    }
-  }
-
   /// 追加一个模型到它所属 provider 的文件。
   ///
   /// 严格模式:provider 不存在就抛错,而不是凭空造一个只含模型的孤儿文件。

@@ -26,7 +26,7 @@ class LegacyIdMap {
   String? sentinel(Object? old) =>
       old == null || old == 0 ? null : id('sentinel', old);
 
-  /// JSON 备份导入与磁盘升级共用身份转换，不能把旧数字直接转成字符串。
+  /// 磁盘升级把旧的整数身份转成 UUID，不能把旧数字直接转成字符串。
   Map<String, dynamic> convertCatalog(Map<String, dynamic> data) {
     final result = Map<String, dynamic>.from(data);
     for (final entry in {

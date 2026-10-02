@@ -428,7 +428,7 @@ providers:
     );
   });
 
-  test('旧 JSON 备份导入保持模型和 provider 引用，字符串 ID 原样保留', () {
+  test('磁盘升级的身份转换保持模型与 provider 引用，字符串 ID 原样保留', () {
     final migrated = LegacyIdMap().convertCatalog({
       'providers': [
         {'id': 1},

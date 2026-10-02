@@ -32,7 +32,4 @@ abstract class ProviderRepository {
   Future<ProviderEntity?> getPresetProviderByName(String name);
 
   Future<void> deleteAllProviders();
-
-  /// 导入 providers：清空后插入，保留原始 ID
-  Future<void> importProviders(List<ProviderEntity> providers);
 }

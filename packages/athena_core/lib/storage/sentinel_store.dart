@@ -66,7 +66,7 @@ class SentinelStore {
   /// 删除单个角色(不存在视为成功)。
   Future<void> delete(String id) => _directory.deleteRaw(id);
 
-  /// 整目录替换为 [sentinels](导入用)。每个实体的 id 必须非空。
+  /// 整目录替换为 [sentinels](迁移用)。每个实体的 id 必须非空。
   Future<void> replaceAll(List<SentinelEntity> sentinels) {
     for (final sentinel in sentinels) {
       if (sentinel.id == null || !isValidId(sentinel.id!)) {

@@ -17,7 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// 桌面端 General（应用本身的设置）：Appearance / Data / Danger zone。
 ///
 /// 旧名 Advanced 不准确——
-/// 这里放的是主题、字号、备份这些最常用的项，不是「高级」选项。
+/// 这里放的是主题、字号、数据目录这些最常用的项，不是「高级」选项。
 @RoutePage()
 class DesktopSettingGeneralPage extends StatefulWidget {
   const DesktopSettingGeneralPage({super.key});
@@ -86,25 +86,6 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
                 child: const Text('Show in Finder'),
               ),
             ),
-            AthenaSettingsRow(
-              label: 'Export configuration',
-              description:
-                  'Save providers, models and Sentinels as a JSON backup.',
-              control: AthenaSecondaryButton.small(
-                onTap: _handleExport,
-                child: const Text('Export…'),
-              ),
-            ),
-            AthenaSettingsRow(
-              label: 'Import configuration',
-              description:
-                  'Restore a JSON backup. Replaces current providers and '
-                  'models.',
-              control: AthenaSecondaryButton.small(
-                onTap: _handleImport,
-                child: const Text('Import…'),
-              ),
-            ),
           ],
         ),
         AthenaSettingsSection(
@@ -132,28 +113,6 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
   Future<void> _openFolder(String path) async {
     final ok = await launchUrl(Uri.directory(path));
     if (!ok && mounted) AthenaDialog.error('Unable to open $path');
-  }
-
-  Future<void> _handleExport() {
-    return _runDataOperation(
-      action: viewModel.exportData,
-      successMessage: 'Configuration exported',
-      cancelledMessage: 'Export cancelled',
-      failureMessage: 'Unable to export configuration',
-    );
-  }
-
-  Future<void> _handleImport() async {
-    final confirmed = await AthenaDialog.confirm(
-      'Importing a backup replaces your current providers and models. Continue?',
-    );
-    if (!mounted || confirmed != true) return;
-    await _runDataOperation(
-      action: viewModel.importData,
-      successMessage: 'Configuration imported',
-      cancelledMessage: 'Import cancelled',
-      failureMessage: 'Unable to import configuration',
-    );
   }
 
   Future<void> _handleReset() async {

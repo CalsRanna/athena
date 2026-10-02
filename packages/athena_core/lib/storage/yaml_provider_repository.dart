@@ -62,7 +62,7 @@ class YamlProviderRepository implements ProviderRepository {
   @override
   Future<String> storeProvider(ProviderEntity provider) async {
     final id = provider.id ?? _idGenerator.next();
-    // 已带 id(如导入保留原始 id)时覆盖同名文件;否则写入刚生成的新 id。
+    // 已带 id(更新、批量写入)时覆盖同名文件;否则写入刚生成的新 id。
     await _store.write(provider.copyWith(id: id));
     return id;
   }
@@ -132,15 +132,5 @@ class YamlProviderRepository implements ProviderRepository {
     for (final id in await _store.providerIds()) {
       await _store.delete(id);
     }
-  }
-
-  @override
-  Future<void> importProviders(List<ProviderEntity> providers) {
-    return _store.replaceAll([
-      for (final provider in providers)
-        provider.id == null
-            ? provider.copyWith(id: _idGenerator.next())
-            : provider,
-    ]);
   }
 }

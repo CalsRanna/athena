@@ -49,8 +49,8 @@ class ProviderStore {
 
   /// 目录下全部 provider 的 id(不解析文件内容)。
   ///
-  /// 模型按 provider 文件分散存放,整表操作(清空全部模型、按导入覆盖)要先
-  /// 知道有哪些文件;这里只要文件名,不必把每个文件解析成实体。
+  /// 清空全部 provider、把旧 `models.json` 归位到各 provider 文件这类整表
+  /// 操作要先知道有哪些文件;这里只要文件名,不必把每个文件解析成实体。
   Future<List<String>> providerIds() => _directory.listIds();
 
   /// 全部 provider(按文件名列举,顺序不定;排序由仓储层决定)。
@@ -118,16 +118,6 @@ class ProviderStore {
   /// 这就是「模型属于 provider」的直接结果:不再需要先删模型再删 provider 的
   /// 两步操作,也不会在第一步失败后留下孤儿模型。
   Future<void> delete(String id) => _directory.deleteRaw(id);
-
-  /// 整目录替换(导入 provider):保留每个 provider 名下的模型。
-  ///
-  /// 调用方随后用 [replaceModelsOf] 覆盖模型段,两步合起来才是完整的导入。
-  Future<void> replaceAll(List<ProviderEntity> providers) {
-    return _directory.replaceAllRaw([
-      for (final provider in providers)
-        (provider.id!, encodeProvider(provider)),
-    ]);
-  }
 
   // ---------------------------------------------------------------------------
   // provider 名下的模型

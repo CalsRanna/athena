@@ -110,26 +110,6 @@ void main() {
     expect(saved.apiFormat, ApiFormat.responses);
   });
 
-  test('导入清空后按原 id 重建文件', () async {
-    final a = await storage.providerRepository.storeProvider(provider('a'));
-    await storage.providerRepository.storeProvider(provider('b'));
-
-    await storage.providerRepository.importProviders([
-      ProviderEntity(
-        id: a,
-        name: 'restored',
-        baseUrl: 'https://a.example/v1',
-        apiKey: 'imported-key',
-        createdAt: now,
-      ),
-    ]);
-
-    final all = await storage.providerRepository.getAllProviders();
-    expect(all.single.id, a);
-    expect(all.single.apiKey, 'imported-key');
-    expect(await providerFile(a).exists(), isTrue);
-  });
-
   test('getProviderById 只读目标文件，不解析整个目录', () async {
     final id = await storage.providerRepository.storeProvider(provider('a'));
     // 另一个文件损坏，读取 a 不受影响

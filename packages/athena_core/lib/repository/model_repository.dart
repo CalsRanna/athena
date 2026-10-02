@@ -30,9 +30,4 @@ abstract class ModelRepository {
     String modelId,
     String providerId,
   );
-
-  Future<void> deleteAllModels();
-
-  /// 导入 models：清空后插入，保留原始 ID
-  Future<void> importModels(List<ModelEntity> models);
 }

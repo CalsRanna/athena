@@ -60,7 +60,7 @@ void main() {
     expect(await storage.userSettings.loadModelId(), 'test-model');
   });
 
-  test('格式与自动模式经过 YAML、JSON 备份和导入仍保留', () async {
+  test('格式与自动模式经过 YAML 与 JSON 序列化仍保留', () async {
     for (final format in ApiFormat.values) {
       for (final automatic in [true, false]) {
         final provider = _provider().copyWith(
@@ -68,24 +68,24 @@ void main() {
           apiFormatAuto: automatic,
         );
         final id = await storage.providerRepository.storeProvider(provider);
+        // 另一个实例重新读盘：格式确实写进了 YAML，而不只是留在内存
         final reopened = FileStorage(root: directory);
         final saved = (await reopened.providerRepository.getProviderById(id))!;
+        expect(saved.apiFormat, format);
+        expect(saved.apiFormatAuto, automatic);
+        // JSON 序列化往返（旧备份的字段形态）也要保留这两个字段
         final restored = ProviderEntity.fromJson(
           jsonDecode(jsonEncode(saved.toJson())) as Map<String, dynamic>,
         );
-        await reopened.providerRepository.importProviders([restored]);
-        final imported = (await storage.providerRepository.getProviderById(
-          id,
-        ))!;
-        expect(imported.apiFormat, format);
-        expect(imported.apiFormatAuto, automatic);
-        expect(imported.copyWith(apiKey: 'updated').apiFormat, format);
-        expect(imported.copyWith(apiKey: 'updated').apiFormatAuto, automatic);
+        expect(restored.apiFormat, format);
+        expect(restored.apiFormatAuto, automatic);
+        expect(restored.copyWith(apiKey: 'updated').apiFormat, format);
+        expect(restored.copyWith(apiKey: 'updated').apiFormatAuto, automatic);
       }
     }
   });
 
-  test('旧 JSON 备份缺少格式时仍可导入', () {
+  test('旧 JSON 缺少格式字段时按兼容格式与自动模式降级', () {
     final json = _provider().toJson()
       ..remove('api_format')
       ..remove('api_format_auto');

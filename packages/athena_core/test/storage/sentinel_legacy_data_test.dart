@@ -6,7 +6,6 @@ import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
-import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -59,7 +58,7 @@ isPreset: false
 
   tearDown(() => temp.delete(recursive: true));
 
-  test('旧角色和备份保留全部有效字段，编辑后不再写出头像', () async {
+  test('旧角色文件保留全部有效字段，编辑后不再写出头像', () async {
     final repository = storage.sentinelRepository;
     final sentinel = (await repository.getAllSentinels()).single;
     expect(sentinel.toJson(), currentFields);
@@ -75,13 +74,11 @@ isPreset: false
     // 文件用 camelCase(与 provider 一致),toJson 用下划线;这里比对文件侧
     expect(saved, {...registeredFileFields, 'description': 'Updated'});
 
-    await repository.importSentinels([SentinelEntity.fromJson(legacy)]);
-    expect((await repository.getSentinelById('7'))!.toJson(), currentFields);
     final listing = await SentinelListTool(repository: repository).execute({});
     final details = await SentinelGetTool(
       repository: repository,
     ).execute({'sentinel_name': 'Reviewer'});
-    expect(listing, contains('Review code'));
+    expect(listing, contains('Updated'));
     expect(details, contains('Find correctness issues.'));
     expect('$listing\n$details', isNot(contains('Avatar')));
     expect('$listing\n$details', isNot(contains('legacy-avatar')));

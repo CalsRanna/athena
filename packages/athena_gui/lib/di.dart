@@ -19,7 +19,6 @@ import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
-import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
@@ -143,7 +142,6 @@ abstract final class DI {
         modelRepository: getIt<ModelRepository>(),
         providerRepository: getIt<ProviderRepository>(),
         llmClient: getIt<LlmClient>(),
-        dataMigrationService: getIt<DataMigrationService>(),
         agentSettings: getIt<AgentSettings>(),
         storage: getIt<FileStorage>(),
       ),
@@ -298,15 +296,6 @@ abstract final class DI {
 
     getIt.registerLazySingleton(
       () => SentinelService(llmClient: getIt<LlmClient>()),
-    );
-
-    getIt.registerLazySingleton(
-      () => DataMigrationService(
-        providerRepo: getIt<ProviderRepository>(),
-        modelRepo: getIt<ModelRepository>(),
-        sentinelRepo: getIt<SentinelRepository>(),
-        chatRepo: getIt<ChatRepository>(),
-      ),
     );
 
     // 目录缓存放数据目录(与 TUI 共享),不用 systemTemp:重启清空临时

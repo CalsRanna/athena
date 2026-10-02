@@ -156,21 +156,6 @@ class FileStorage {
     await providerRepository.load();
   }
 
-  /// 是否已有业务数据(会话/模型/角色任一存在)。
-  ///
-  /// 从旧存储导入时据此判断目标是否为空。
-  Future<bool> hasData() async {
-    // 含迁移前的旧整表文件与迁移后的目录:升级前/后都要答得对
-    if (await modelsFile.exists() || await sentinelsFile.exists()) return true;
-    if (await providerStore.count() > 0) return true;
-    if (await sentinelStore.count() > 0) return true;
-    if (!await sessionsDir.exists()) return false;
-    await for (final entity in sessionsDir.list()) {
-      if (entity is File && entity.path.endsWith('.jsonl')) return true;
-    }
-    return false;
-  }
-
   /// 清空全部业务数据(会话、模型、角色、provider),不动
   /// 目录缓存与工具输出。调用方随后应重新执行种子。
   ///

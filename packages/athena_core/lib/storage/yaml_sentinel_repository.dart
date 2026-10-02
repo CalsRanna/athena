@@ -72,20 +72,4 @@ class YamlSentinelRepository implements SentinelRepository {
       await _store.write(sentinel.copyWith(id: id));
     }
   }
-
-  @override
-  Future<void> importSentinels(List<SentinelEntity> sentinels) async {
-    // 旧语义:同名更新、不同名插入(导出文件里的 chat.sentinelId 引用原 id,
-    // 所以带 id 的复用原 id 而不是重新分配)
-    for (final sentinel in sentinels) {
-      final existing = await getSentinelByName(sentinel.name);
-      if (existing != null) {
-        await _store.write(sentinel.copyWith(id: existing.id));
-      } else if (sentinel.id != null) {
-        await _store.write(sentinel);
-      } else {
-        await _store.write(sentinel.copyWith(id: _idGenerator.next()));
-      }
-    }
-  }
 }

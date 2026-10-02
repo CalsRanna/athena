@@ -13,7 +13,7 @@ import 'package:yaml/yaml.dart';
 /// 为准。
 ///
 /// id 会拼进文件路径,因此必须限定为单个文件名段([isValidId]);否则 `../x`
-/// 这样的 id 会把文件写到目录外去——导入的 JSON 备份里带什么 id,由文件说了算。
+/// 这样的 id 会把文件写到目录外去。
 ///
 /// 读写语义:
 /// - **列举与单读不加锁**。写入是原子替换(临时文件 + rename),读到的要么是旧
@@ -144,7 +144,7 @@ class YamlEntityDirectory {
     });
   }
 
-  /// 整目录替换为 [rows](导入用):先清空再逐个写入,持目录锁。
+  /// 整目录替换为 [rows](迁移用):先清空再逐个写入,持目录锁。
   ///
   /// 逐个写入时各自取该文件的锁,与并发的单条编辑按「谁后写谁赢」排队。
   Future<void> replaceAllRaw(List<(String id, Map<String, dynamic> raw)> rows) {
