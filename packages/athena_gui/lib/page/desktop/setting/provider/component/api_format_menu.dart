@@ -1,8 +1,8 @@
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/component/api_format_label.dart';
-import 'package:athena_gui/widget/context_menu.dart';
-import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/material.dart';
 
 /// 设置行里的 API 格式选择：显示当前格式，自动同步时在前面加 `Auto · `，

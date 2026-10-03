@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';

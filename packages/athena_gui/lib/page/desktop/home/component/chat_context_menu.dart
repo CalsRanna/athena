@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopChatContextMenu extends StatelessWidget {

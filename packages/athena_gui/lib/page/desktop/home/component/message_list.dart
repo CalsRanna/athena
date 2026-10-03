@@ -14,7 +14,7 @@ import 'package:athena_gui/util/chat_turn_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:athena_gui/component/elicit_card.dart';

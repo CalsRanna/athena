@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 推理强度的**档位**是引擎的事实（`ChatEntity.reasoningEfforts`），

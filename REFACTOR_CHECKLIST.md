@@ -245,7 +245,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   改法：TUI 侧改为 `TuiApp`。TUI 已有 `TuiDi` 这个先例，本就应统一到 `Tui` 前缀；
   GUI 的 `AthenaApp` 保持不动（它是主入口）。
 
-- [ ] **2.4 平台专属件放在平台无关目录**
+- [x] **2.4 平台专属件放在平台无关目录**
 
   现状：类名带 `Mobile` / `Desktop`，文件却在 `component/` 或 `widget/` 这类平台无关目录里。
 

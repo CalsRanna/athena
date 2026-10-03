@@ -2,7 +2,7 @@ import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_gui/component/approval_mode_label.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/material.dart';
 
 /// composer 左下角的审批模式文字（如 `Bypass permissions`）。

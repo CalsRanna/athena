@@ -1,6 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

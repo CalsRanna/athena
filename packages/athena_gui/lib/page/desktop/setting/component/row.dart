@@ -8,7 +8,7 @@ import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
-import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/material.dart';
 
 /// 一行设置：左侧标签（+ 徽标 + 说明 + 错误），右侧控件或钻取箭头。

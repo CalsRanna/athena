@@ -1,9 +1,9 @@
 import 'package:athena_gui/page/desktop/setting/component/model_menu.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/widget/settings/control.dart';
-import 'package:athena_gui/widget/settings/panel.dart';
-import 'package:athena_gui/widget/settings/row.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/panel.dart';
+import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';

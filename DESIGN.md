@@ -289,11 +289,12 @@
 | 层 | 位置 | 职责 |
 |---|---|---|
 | 主题 | `theme/` | 色板、token、图标、滚动行为。**唯一的取值来源** |
-| 基础控件 | `widget/` | 无业务含义的通用件：按钮、输入框、菜单、对话框壳、Markdown、设置行 |
+| 基础控件 | `widget/` | 无业务含义的通用件：按钮、输入框、对话框外壳、Markdown。以平台中立件为主，个别按平台分叉但共用一个公开入口的件（`AthenaAppBar`）也留在这里 |
+| 平台专属控件 | `page/<platform>/component/` | 只服务单一平台的通用件（桌面右键菜单、移动宫格块等），不参与跨平台复用 |
 | 复用组件 | `component/` | 跨页面复用的业务组件：消息渲染、步骤卡、权限卡、提问卡 |
 | 页面 | `page/` | 具体页面与其私有子件（`page/**/component/`） |
 
-依赖方向自上而下：基础控件不认识业务，复用组件不认识页面。改基础控件时不需要看页面。
+依赖方向自上而下：基础控件不认识业务，复用组件不认识页面。改基础控件时不需要看页面。平台专属控件虽与页面同在 `page/` 下，但只依赖 `widget/` 与 `theme/`，不反向依赖具体页面。
 
 ### 基础控件
 
@@ -306,11 +307,21 @@
 | `AthenaHover` | hover 状态机骨架，见下 |
 | `AthenaScaffold` / `AthenaAppBar` | 页面外壳，按平台分叉 |
 | `AthenaDesktopDialog` / `AthenaDialogActions` | 桌面对话框外壳与底部动作行，见下 |
-| `DesktopContextMenu` 系列 | 桌面右键菜单，支持向上展开与二级菜单 |
-| `DesktopMenuTile` / `AthenaBottomSheetTile` / `MobileSettingTile` / `MobileGridTile` | 桌面菜单行 / 移动底部面板行 / 移动设置行 / 移动宫格块 |
-| `AthenaSettings*`（`panel` / `row` / `nav` / `control`） | 设置面板专用一组：面板与分区、设置行、左侧导航、分段与下拉等控件 |
+| `AthenaBottomSheetTile` | 移动底部面板行 |
 | `AthenaMarkdown` | Markdown 渲染 |
 | `AthenaWorkspaceTextSize` | 会话字号档位的 `InheritedWidget` 载体 |
+
+### 平台专属控件
+
+只服务单一平台、但被该端多个页面复用的通用件。它们放在 `page/<platform>/component/` 或更靠内的 `page/<platform>/<area>/component/`，不参与跨平台复用：
+
+| 控件 | 位置 | 说明 |
+|---|---|---|
+| `DesktopContextMenu` 系列 | `page/desktop/component/` | 桌面右键菜单，支持向上展开与二级菜单 |
+| `DesktopMenuTile` | `page/desktop/component/` | 桌面左侧栏 / 列表行 |
+| `AthenaSettings*`（`panel` / `row` / `nav` / `control`）、`DesktopSettingFormField` / `DesktopSettingFormActions` | `page/desktop/setting/component/` | 设置面板与设置表单专用一组 |
+| `MobileSettingTile` | `page/mobile/setting/component/` | 移动设置行 |
+| `MobileGridTile` | `page/mobile/component/` | 移动宫格块（Skill / Sentinel / Experience 列表共用） |
 
 **按钮的语义**：主操作（青瓷实心）、次操作（中性面）、文字按钮（静止 `textSecondary`，hover 提亮 `textPrimary`）、图标按钮（中性反色面）。图标按钮用反色面是为了**避免把次要导航也渲染成青瓷主操作**。
 

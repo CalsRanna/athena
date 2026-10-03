@@ -8,7 +8,7 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/tag.dart';
-import 'package:athena_gui/widget/tile.dart';
+import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

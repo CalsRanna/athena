@@ -1,4 +1,4 @@
-import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopMessageContextMenu extends StatelessWidget {

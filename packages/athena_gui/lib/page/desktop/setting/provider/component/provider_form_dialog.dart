@@ -2,9 +2,9 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/settings/control.dart';
-import 'package:athena_gui/widget/settings/form_actions.dart';
-import 'package:athena_gui/widget/settings/form_field.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
+import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 

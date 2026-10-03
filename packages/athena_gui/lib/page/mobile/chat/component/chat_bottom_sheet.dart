@@ -15,7 +15,8 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/page/mobile/chat/component/approval_mode_dialog.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
+import 'package:athena_gui/page/mobile/chat/component/reasoning_effort_dialog.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/material.dart';
 
 import 'package:lucide_icons_flutter/lucide_icons.dart';
