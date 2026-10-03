@@ -15,8 +15,7 @@ class WindowUtil {
   static const _keyWindowHeight = 'window_height';
   static const _keyWindowWidth = 'window_width';
 
-  /// 默认尺寸。宽度取 1080 与 [WindowOptions.minimumSize] 同宽——比它小的
-  /// 值会在启动瞬间先按小尺寸设帧、随后才被最小尺寸钳住，白闪一下。
+  /// 默认尺寸，同时也是最小尺寸；恢复旧配置时先钳住，避免设帧后再次缩放。
   static const _defaultSize = Size(1080, 720);
 
   /// 拖动窗口时 `resized` 逐帧触发，而落盘是「读-改-整文件写 + 跨进程锁」，
@@ -53,20 +52,22 @@ class WindowUtil {
       titleBarStyle: TitleBarStyle.hidden,
       center: true,
       minimumSize: _defaultSize,
-      size: Size(width, height),
+      size: Size(
+        width.isFinite && width >= _defaultSize.width
+            ? width
+            : _defaultSize.width,
+        height.isFinite && height >= _defaultSize.height
+            ? height
+            : _defaultSize.height,
+      ),
       windowButtonVisibility: false,
       backgroundColor: backgroundColor,
       title: 'Athena',
     );
-    bool isPreventClose = true;
-    if (Platform.isWindows) {
-      isPreventClose = false;
-    }
-    windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-      await windowManager.setPreventClose(isPreventClose);
-    });
+    // 此 API 只配置原生窗口，不等待 Flutter 首帧。不要在回调里提前 show：
+    // main 在配置完成后才 runApp，统一由 show 等待实际绘制后显示。
+    await windowManager.waitUntilReadyToShow(options);
+    await windowManager.setPreventClose(!Platform.isWindows);
   }
 
   Future<void> hide() async {
@@ -93,6 +94,9 @@ class WindowUtil {
   }
 
   Future<void> show() async {
+    // main 用 deferFirstFrame 阻止初始化期间的空白帧；托盘 / 单实例激活
+    // 也必须等同一帧，不能绕过首次显示的门槛。后续调用此 Future 已完成。
+    await WidgetsBinding.instance.waitUntilFirstFrameRasterized;
     await windowManager.setSkipTaskbar(false);
     await windowManager.show();
     await windowManager.focus();

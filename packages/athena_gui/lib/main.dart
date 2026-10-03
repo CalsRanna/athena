@@ -24,7 +24,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main(List<String> args) async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  // 原生窗口保持隐藏；配置完成前连空白首帧也不提交给引擎。
+  if (PlatformUtil.isDesktop) binding.deferFirstFrame();
   // 必须先于存储初始化：重复启动的进程在此直接退出，不会碰数据目录
   await SingleInstanceUtil.instance.ensureInitialized(args);
   final supportDir = await getApplicationSupportDirectory();
@@ -63,6 +65,10 @@ void main(List<String> args) async {
   // 后台同步模型目录(models.dev),失败自动降级缓存,不阻塞启动
   unawaited(GetIt.instance<ModelCatalogService>().syncIfNeeded());
   runApp(const AthenaApp());
+  if (PlatformUtil.isDesktop) {
+    binding.allowFirstFrame();
+    await WindowUtil.instance.show();
+  }
 }
 
 /// 文件存储启动序列:加载存储,再种子内置角色(首次启动)。
