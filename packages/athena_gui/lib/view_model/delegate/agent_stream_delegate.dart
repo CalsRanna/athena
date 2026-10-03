@@ -16,7 +16,7 @@ import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
@@ -72,7 +72,7 @@ class AgentStreamDelegate {
   AgentStreamDelegate({required AgentServiceCoordinatorDeps deps}) {
     _coordinator = AgentRunCoordinator(
       agentService: deps.agentService,
-      manageService: deps.manageService,
+      chatStore: deps.chatStore,
       messageService: deps.messageService,
       chatService: deps.chatService,
       messageRepo: deps.messageRepo,
@@ -185,7 +185,7 @@ class AgentStreamDelegate {
 /// 组装 [AgentRunCoordinator] 所需依赖的载体（由 di.dart 构造）。
 class AgentServiceCoordinatorDeps {
   final AgentService agentService;
-  final ChatStoreService manageService;
+  final ChatStore chatStore;
   final ChatMessageConverter messageService;
   final ChatCompletionsService chatService;
   final MessageRepository messageRepo;
@@ -199,7 +199,7 @@ class AgentServiceCoordinatorDeps {
 
   AgentServiceCoordinatorDeps({
     required this.agentService,
-    required this.manageService,
+    required this.chatStore,
     required this.messageService,
     required this.chatService,
     required this.messageRepo,

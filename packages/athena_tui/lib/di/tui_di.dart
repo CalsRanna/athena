@@ -16,7 +16,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
@@ -90,7 +90,7 @@ class TuiDi {
 
   // Services
   late final ChatCompletionsService chatService;
-  late final ChatStoreService manageService;
+  late final ChatStore chatStore;
   late final ChatMessageConverter messageService;
   late final ChatUpdateService supportService;
   late final ModelCatalogService modelCatalogService;
@@ -197,7 +197,7 @@ class TuiDi {
     // ── Services ──
     final llmClient = LlmClient();
     chatService = ChatCompletionsService(llmClient: llmClient);
-    manageService = ChatStoreService(
+    chatStore = ChatStore(
       chatRepository: chatRepo,
       messageRepository: messageRepo,
       modelRepository: modelRepo,
@@ -237,7 +237,7 @@ class TuiDi {
     // ── Bridge + Controller ──
     agentBridge = TuiAgentBridge(
       agentService: agentService,
-      manageService: manageService,
+      chatStore: chatStore,
       messageService: messageService,
       chatService: chatService,
       messageRepo: messageRepo,
@@ -250,7 +250,7 @@ class TuiDi {
       experienceRepository: experienceRepo,
     );
     chatController = ChatController(
-      manageService: manageService,
+      chatStore: chatStore,
       bridge: agentBridge,
       messageRepo: messageRepo,
       modelRepo: modelRepo,

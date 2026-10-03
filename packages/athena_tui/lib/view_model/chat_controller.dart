@@ -16,7 +16,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
@@ -29,7 +29,7 @@ import 'package:signals/signals.dart';
 /// 不依赖 nocterm,纯 Dart 可测试。事件处理与 GUI ChatViewModel 对齐。
 class ChatController {
   ChatController({
-    required ChatStoreService manageService,
+    required ChatStore chatStore,
     required TuiAgentBridge bridge,
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
@@ -38,7 +38,7 @@ class ChatController {
     required ChatUpdateService supportService,
     Future<void> Function(String modelId)? onModelSwitched,
     String? defaultModelId,
-  }) : _manageService = manageService,
+  }) : _chatStore = chatStore,
        _bridge = bridge,
        _messageRepo = messageRepo,
        _modelRepo = modelRepo,
@@ -52,7 +52,7 @@ class ChatController {
     _internalEventsSub = _bridge.internalEvents.listen(_handleInternalEvent);
   }
 
-  final ChatStoreService _manageService;
+  final ChatStore _chatStore;
   final TuiAgentBridge _bridge;
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
@@ -254,7 +254,7 @@ class ChatController {
 
   Future<void> _reloadChats() async {
     if (!_active) return;
-    final (_, histories) = await _manageService.getChats();
+    final (_, histories) = await _chatStore.getChats();
     if (!_active) return; // 等待 IO 期间 UI 拆解
     chatList.value = histories;
   }
@@ -289,7 +289,7 @@ class ChatController {
           '当前模型 ${resolvedModel.name} 的 Provider 未配置 API key。'
           '请运行 /providers 配置后重试。';
     }
-    final chat = await _manageService.createChat(
+    final chat = await _chatStore.createChat(
       model: resolvedModel,
       sentinel: sentinel,
     );
@@ -422,7 +422,7 @@ class ChatController {
 
   /// 选中聊天并加载其消息。
   ///
-  /// 消息分页加载最近 [messageWindowSize] 条(不走 manageService.selectChat
+  /// 消息分页加载最近 [messageWindowSize] 条(不走 chatStore.selectChat
   /// 的全量加载——历史聊天可达几百 MB,全量读既慢又占内存);model /
   /// provider / sentinel 单独查。向上滚动到顶时经 [loadOlderMessages]
   /// 按 id 边界加载更早批次。
@@ -460,7 +460,7 @@ class ChatController {
     if (isStreaming.value) return;
     final chat = currentChat.value;
     if (chat?.id == null) return;
-    await _manageService.deleteChat(chat!.id!);
+    await _chatStore.deleteChat(chat!.id!);
     await _reloadChats();
     if (chatList.value.isEmpty) {
       await newChat();

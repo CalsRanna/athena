@@ -10,7 +10,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
@@ -36,7 +36,7 @@ void main() {
         chatService: chatService,
         toolRegistry: registry,
       ),
-      manageService: ChatStoreService(
+      chatStore: ChatStore(
         chatRepository: storage.sessionRepository,
         messageRepository: storage.sessionRepository,
         modelRepository: storage.modelRepository,

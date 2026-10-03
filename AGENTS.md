@@ -68,7 +68,7 @@ lib/
 
 `lib/entity/` 与 `lib/service/`、`lib/storage/` 是**接口与实现分离**的：仓储接口在 `repository/`，实现全部落在 `storage/`。
 
-`service/` 只管**网络 + 编排**（LLM 适配、协议转换、需联网的会话操作），**持久化一律进 `storage/`**。判据是它碰不碰网络，不只看类名——`storage/chat_store_service.dart` 名为 service，但只编排仓储、不发请求，故归 `storage/`。
+`service/` 只管**网络 + 编排**（LLM 适配、协议转换、需联网的会话操作），**持久化一律进 `storage/`**。判据是它碰不碰网络，不只看类名：一个跨多个仓储、但全程不发请求的编排类（如 `storage/chat_store.dart` 的 `ChatStore`）仍归 `storage/`。
 
 ### 前端
 

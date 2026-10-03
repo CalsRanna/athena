@@ -26,7 +26,7 @@ import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/conversation_compactor.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
@@ -45,7 +45,7 @@ class AgentRunCoordinator {
   static const _directChatSentinelKey = 'direct';
 
   final AgentService _agentService;
-  final ChatStoreService _manageService;
+  final ChatStore _chatStore;
   final ChatMessageConverter _messageService;
   final ChatCompletionsService _chatService;
   final MessageRepository _messageRepo;
@@ -116,7 +116,7 @@ class AgentRunCoordinator {
 
   AgentRunCoordinator({
     required AgentService agentService,
-    required ChatStoreService manageService,
+    required ChatStore chatStore,
     required ChatMessageConverter messageService,
     required ChatCompletionsService chatService,
     required MessageRepository messageRepo,
@@ -138,7 +138,7 @@ class AgentRunCoordinator {
     RuntimeEnvironment? runtimeEnvironment,
   }) : _runtimeEnvironment = runtimeEnvironment,
        _agentService = agentService,
-       _manageService = manageService,
+       _chatStore = chatStore,
        _messageService = messageService,
        _chatService = chatService,
        _messageRepo = messageRepo,
@@ -319,7 +319,7 @@ class AgentRunCoordinator {
       cancelToken.throwIfCancelled();
 
       // 3. 追加 assistant 占位消息
-      assistantMessage = await _manageService.appendAssistantPlaceholder(
+      assistantMessage = await _chatStore.appendAssistantPlaceholder(
         chatId,
         runStatistics: statistics,
       );
@@ -377,7 +377,7 @@ class AgentRunCoordinator {
       // 5. 消费流（取消/错误均在 _consumeStream 内部处理并落库）
       yield* _consumeStream(chat, assistantMessage, agentStream, cancelToken);
 
-      await _manageService.updateChatTimestamp(chat);
+      await _chatStore.updateChatTimestamp(chat);
       yield const RunListReload();
     } on CancelledException {
       // Agent 尚未启动时也要正常结束：补一条取消消息，避免用户消息后没有
@@ -385,14 +385,14 @@ class AgentRunCoordinator {
       var cancelledTarget = assistantMessage;
       var appended = false;
       if (cancelledTarget == null && userMessageStored) {
-        cancelledTarget = await _manageService.appendAssistantPlaceholder(
+        cancelledTarget = await _chatStore.appendAssistantPlaceholder(
           chatId,
           runStatistics: statistics,
         );
         appended = true;
       }
       if (cancelledTarget != null) {
-        final cancelled = await _manageService.recordCancelledOnMessage(
+        final cancelled = await _chatStore.recordCancelledOnMessage(
           cancelledTarget.copyWith(
             runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
           ),
@@ -411,7 +411,7 @@ class AgentRunCoordinator {
         ),
       );
       if (userMessageStored) {
-        await _manageService.updateChatTimestamp(chat);
+        await _chatStore.updateChatTimestamp(chat);
         yield const RunListReload();
       }
     } finally {
@@ -438,7 +438,7 @@ class AgentRunCoordinator {
   }
 
   /// run 还没开始就失败（模型 / provider 找不到）时，把错误作为一条 assistant
-  /// 消息落进会话：与运行中出错（[ChatStoreService.recordErrorOnMessage]）
+  /// 消息落进会话：与运行中出错（[ChatStore.recordErrorOnMessage]）
   /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
   /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
   Future<RunEvent> _recordSetupError(
@@ -446,14 +446,11 @@ class AgentRunCoordinator {
     String message,
     RunStatistics statistics,
   ) async {
-    final placeholder = await _manageService.appendAssistantPlaceholder(
+    final placeholder = await _chatStore.appendAssistantPlaceholder(
       chatId,
       runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
     );
-    final failed = await _manageService.recordErrorOnMessage(
-      placeholder,
-      message,
-    );
+    final failed = await _chatStore.recordErrorOnMessage(placeholder, message);
     return RunAssistantAppended(failed);
   }
 
@@ -649,7 +646,7 @@ class AgentRunCoordinator {
           : null;
       cancelToken.throwIfCancelled();
 
-      final assistantMessage = await _manageService.appendAssistantPlaceholder(
+      final assistantMessage = await _chatStore.appendAssistantPlaceholder(
         chatId,
         runStatistics: statistics,
       );
@@ -694,7 +691,7 @@ class AgentRunCoordinator {
         emit(event);
       }
 
-      await _manageService.updateChatTimestamp(chat);
+      await _chatStore.updateChatTimestamp(chat);
       emit(const RunListReload());
     } on CancelledException {
       // 用户取消/删除会话：_consumeStream 已把取消状态落库。
@@ -703,7 +700,7 @@ class AgentRunCoordinator {
       LoggerUtil.w('Background task report run failed: $e');
       final live = _liveMessages[chatId];
       if (live != null && live.content.isEmpty) {
-        await _manageService.recordErrorOnMessage(live, e);
+        await _chatStore.recordErrorOnMessage(live, e);
       }
     } finally {
       if (_runIdByChat[chatId] == runId) {
@@ -795,9 +792,9 @@ class AgentRunCoordinator {
       if (hadReasoning) {
         current = current.copyWith(reasoning: false);
       }
-      await _manageService.finalizeAssistantMessage(current);
+      await _chatStore.finalizeAssistantMessage(current);
       if (hadReasoning) yield RunMessageUpdated(current);
-      current = await _manageService.appendAssistantPlaceholder(
+      current = await _chatStore.appendAssistantPlaceholder(
         chat.id!,
         runStatistics: statistics,
       );
@@ -815,11 +812,11 @@ class AgentRunCoordinator {
         // placeholder becomes the step; the following answer gets a new ID.
         if (event is AgentCompactionEvent) {
           current = event.step.toMessage().copyWith(runStatistics: statistics);
-          await _manageService.finalizeAssistantMessage(current);
+          await _chatStore.finalizeAssistantMessage(current);
           _liveMessages[chat.id!] = current;
           yield RunCompactionChanged(event.step, runStatistics: statistics);
           if (event.step.isTerminal) {
-            current = await _manageService.appendAssistantPlaceholder(
+            current = await _chatStore.appendAssistantPlaceholder(
               chat.id!,
               runStatistics: statistics,
             );
@@ -953,7 +950,7 @@ class AgentRunCoordinator {
       current = current.copyWith(
         runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
       );
-      await _manageService.finalizeAssistantMessage(current);
+      await _chatStore.finalizeAssistantMessage(current);
       _liveMessages[chat.id!] = current;
       yield RunMessageUpdated(current);
       if (!sawOutcome) {
@@ -975,7 +972,7 @@ class AgentRunCoordinator {
         toolCallsJson,
         toolResultsJson,
       );
-      final cancelled = await _manageService.recordCancelledOnMessage(
+      final cancelled = await _chatStore.recordCancelledOnMessage(
         current.copyWith(
           runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
         ),
@@ -1003,11 +1000,11 @@ class AgentRunCoordinator {
           toolCallsJson,
           toolResultsJson,
         );
-        final failed = await _manageService.recordErrorOnMessage(current, e);
+        final failed = await _chatStore.recordErrorOnMessage(current, e);
         _liveMessages[chat.id!] = failed;
         yield RunMessageUpdated(failed);
       } else {
-        await _manageService.finalizeAssistantMessage(current);
+        await _chatStore.finalizeAssistantMessage(current);
         _liveMessages[chat.id!] = current;
         yield RunMessageUpdated(current);
       }

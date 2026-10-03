@@ -15,7 +15,7 @@ import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
@@ -60,7 +60,7 @@ class TuiAgentBridge {
 
   TuiAgentBridge({
     required AgentService agentService,
-    required ChatStoreService manageService,
+    required ChatStore chatStore,
     required ChatMessageConverter messageService,
     required ChatCompletionsService chatService,
     required MessageRepository messageRepo,
@@ -74,7 +74,7 @@ class TuiAgentBridge {
   }) {
     _coordinator = AgentRunCoordinator(
       agentService: agentService,
-      manageService: manageService,
+      chatStore: chatStore,
       messageService: messageService,
       chatService: chatService,
       messageRepo: messageRepo,

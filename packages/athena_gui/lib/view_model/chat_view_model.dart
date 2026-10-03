@@ -10,7 +10,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
@@ -41,7 +41,7 @@ class ChatViewModel {
   /// 历史对话首次及每次向上翻页加载的原始消息数。
   static const int messagePageSize = 50;
 
-  final ChatStoreService _manageService;
+  final ChatStore _chatStore;
   final AgentStreamDelegate _stream;
   final ChatRenameDelegate _rename;
   final ChatSelectionDelegate _selection;
@@ -247,7 +247,7 @@ class ChatViewModel {
   void _discardPendingMessages() => _window.discardPending();
 
   ChatViewModel({
-    required ChatStoreService manageService,
+    required ChatStore chatStore,
     required AgentStreamDelegate streamDelegate,
     required ChatRenameDelegate renameDelegate,
     ChatSelectionDelegate? selectionDelegate,
@@ -258,7 +258,7 @@ class ChatViewModel {
     required ModelViewModel modelViewModel,
     required SentinelViewModel sentinelViewModel,
     Duration streamFlushInterval = const Duration(milliseconds: 100),
-  }) : _manageService = manageService,
+  }) : _chatStore = chatStore,
        _stream = streamDelegate,
        _rename = renameDelegate,
        _selection = selectionDelegate ?? ChatSelectionDelegate(),
@@ -322,7 +322,7 @@ class ChatViewModel {
   Future<void> getChats() async {
     isLoading.value = true;
     try {
-      final (chatsList, histories) = await _manageService.getChats();
+      final (chatsList, histories) = await _chatStore.getChats();
       chats.value = chatsList;
       chatHistories.value = histories;
     } catch (e) {
@@ -335,7 +335,7 @@ class ChatViewModel {
   /// 启动：读会话列表，然后落在一个空草稿页上，
   /// 不自动打开最近的对话。历史对话从侧栏点进去。
   Future<void> initSignals() async {
-    final (chatsList, histories) = await _manageService.getChats();
+    final (chatsList, histories) = await _chatStore.getChats();
     chats.value = chatsList;
     chatHistories.value = histories;
     await prepareNewChatDraft();
@@ -379,7 +379,7 @@ class ChatViewModel {
         return null;
       }
 
-      final chat = await _manageService.createChat(
+      final chat = await _chatStore.createChat(
         model: model,
         sentinel: sentinel,
         retention: currentRetention.value,
@@ -444,7 +444,7 @@ class ChatViewModel {
       }
       _rename.cancel(chat.id!);
 
-      await _manageService.deleteChat(chat.id!);
+      await _chatStore.deleteChat(chat.id!);
       _turns.drop(chat.id);
 
       final removedCurrentChat = currentChat.value?.id == chat.id;
@@ -484,7 +484,7 @@ class ChatViewModel {
         _rename.cancel(id);
       }
 
-      await _manageService.deleteChats(ids);
+      await _chatStore.deleteChats(ids);
       _turns.dropMany(ids);
 
       final removedCurrentChat =
@@ -564,7 +564,7 @@ class ChatViewModel {
 
     try {
       final page = await _window.loadInitial(chat.id!);
-      final result = await _manageService.selectChat(
+      final result = await _chatStore.selectChat(
         chat,
         preloadedMessages: page.messages,
       );
@@ -617,7 +617,7 @@ class ChatViewModel {
   Future<void> togglePin(ChatEntity chat) async {
     error.value = null;
     try {
-      final updated = await _manageService.togglePin(chat);
+      final updated = await _chatStore.togglePin(chat);
       if (updated != null) _applyPinnedLocally(updated);
     } catch (e) {
       _reportError(e.toString());
@@ -1158,7 +1158,7 @@ class ChatViewModel {
       _flushMessages();
       final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
-        await _manageService.deleteMessagesFromIndex(
+        await _chatStore.deleteMessagesFromIndex(
           message.chatId,
           messages.value,
           index,

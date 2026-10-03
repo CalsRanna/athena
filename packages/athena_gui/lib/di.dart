@@ -15,7 +15,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
@@ -104,7 +104,7 @@ abstract final class DI {
       () => AgentStreamDelegate(
         deps: AgentServiceCoordinatorDeps(
           agentService: getIt<AgentService>(),
-          manageService: getIt<ChatStoreService>(),
+          chatStore: getIt<ChatStore>(),
           messageService: getIt<ChatMessageConverter>(),
           chatService: getIt<ChatCompletionsService>(),
           messageRepo: getIt<MessageRepository>(),
@@ -223,7 +223,7 @@ abstract final class DI {
     // ChatViewModel (depends on many things, registered last)
     getIt.registerLazySingleton(
       () => ChatViewModel(
-        manageService: getIt<ChatStoreService>(),
+        chatStore: getIt<ChatStore>(),
         streamDelegate: getIt<AgentStreamDelegate>(),
         renameDelegate: getIt<ChatRenameDelegate>(),
         supportService: getIt<ChatUpdateService>(),
@@ -277,7 +277,7 @@ abstract final class DI {
     );
 
     getIt.registerLazySingleton(
-      () => ChatStoreService(
+      () => ChatStore(
         chatRepository: getIt<ChatRepository>(),
         messageRepository: getIt<MessageRepository>(),
         modelRepository: getIt<ModelRepository>(),
