@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/component/status_dot.dart';
+import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';

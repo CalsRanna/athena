@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena_gui/component/chat_column.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
 import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';

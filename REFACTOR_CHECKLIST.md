@@ -307,7 +307,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
 
 ## 第 3 部分：目录归属
 
-- [ ] **3.1 `component/` 里混了单端组件**
+- [x] **3.1 `component/` 里混了单端组件**
 
   位置：`packages/athena_gui/lib/component/`（共 19 个文件）
 
@@ -440,7 +440,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   - 把 `_TurnState`、`_AsyncSemaphore`、`_StreamingToolCall` 移到文件末尾（或各自私有文件）。
   这是**独立的小改动**，可随时做，不必等其它项。
 
-- [ ] **4.2 GUI 测试目录与 `lib` 不同构，且 `test/widget/` 里有错位用例**
+- [x] **4.2 GUI 测试目录与 `lib` 不同构，且 `test/widget/` 里有错位用例**
 
   位置：`packages/athena_gui/test/`
 

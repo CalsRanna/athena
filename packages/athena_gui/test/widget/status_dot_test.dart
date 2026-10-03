@@ -1,6 +1,6 @@
 import 'dart:ui' show ImageByteFormat;
 
-import 'package:athena_gui/component/status_dot.dart';
+import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/material.dart';

@@ -12,7 +12,7 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/component/approval_mode_dialog.dart';
+import 'package:athena_gui/page/mobile/chat/component/approval_mode_dialog.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort_dialog.dart';

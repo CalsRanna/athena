@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_gui/component/chat_column.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';

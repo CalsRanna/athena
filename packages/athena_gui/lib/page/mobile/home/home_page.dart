@@ -1,4 +1,4 @@
-import 'package:athena_gui/component/card_tile.dart';
+import 'package:athena_gui/page/mobile/home/component/card_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
 import 'package:athena_gui/page/mobile/home/component/recent_chat_list_view.dart';
 import 'package:athena_gui/page/mobile/home/component/section_title.dart';
