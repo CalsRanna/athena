@@ -130,11 +130,11 @@ void main() {
     await settle(tester);
   }
 
-  /// 点侧栏的 "New chat" 行（顶栏标题在草稿态也是 'New chat'，按侧栏子树定位）。
+  /// 点侧栏的 "New session" 行（顶栏标题在草稿态也是 'New session'，按侧栏子树定位）。
   Future<void> tapSidebarNewChat(WidgetTester tester) async {
     final newChat = find.descendant(
       of: find.byType(DesktopChatListView),
-      matching: find.text('New chat'),
+      matching: find.text('New session'),
     );
     expect(newChat, findsOneWidget);
     await tester.tap(newChat);

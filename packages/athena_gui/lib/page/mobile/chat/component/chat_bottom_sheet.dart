@@ -146,7 +146,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       final chatConfigurationSheetTile = AthenaBottomSheetTile(
         leading: const Icon(LucideIcons.slidersHorizontal),
         onTap: openConfigurationDialog,
-        title: 'Chat Configuration',
+        title: 'Session Configuration',
         trailing: const Icon(AthenaIcons.forward),
       );
 

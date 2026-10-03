@@ -36,7 +36,7 @@ class _MobileDefaultModelFormPageState
       fontWeight: FontWeight.w600,
     );
     final chatTitle = Text('Agent Model', style: titleTextStyle);
-    final namingTitle = Text('Chat Naming Model', style: titleTextStyle);
+    final namingTitle = Text('Session Naming Model', style: titleTextStyle);
     final generationTitle = Text(
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
@@ -44,9 +44,12 @@ class _MobileDefaultModelFormPageState
     final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    final chatTip = Text('Model designated for new chat', style: tipTextStyle);
+    final chatTip = Text(
+      'Model designated for new session',
+      style: tipTextStyle,
+    );
     final namingTip = Text(
-      'Model designated for automatic chat renaming',
+      'Model designated for automatic session renaming',
       style: tipTextStyle,
     );
     final generationTip = Text(

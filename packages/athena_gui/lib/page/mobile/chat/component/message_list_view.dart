@@ -241,7 +241,7 @@ class _MessageListViewState extends State<MessageListView> {
   /// 的写入又把它们补回来（与桌面端同一拦截）。
   bool _blockWhileStreaming() {
     if (!viewModel.isStreamingChat(widget.chat.id!)) return false;
-    AthenaDialog.info('Please wait for the current chat to finish.');
+    AthenaDialog.info('Please wait for the current session to finish.');
     return true;
   }
 }

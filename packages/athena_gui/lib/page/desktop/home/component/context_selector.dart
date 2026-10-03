@@ -58,14 +58,14 @@ class _ContextMenu extends StatelessWidget {
       children: [
         const DesktopContextMenuGroupLabel(text: 'Conversation context'),
         DesktopContextMenuTile(
-          text: 'Use chat history',
-          description: 'Include earlier messages in this chat.',
+          text: 'Use session history',
+          description: 'Include earlier messages in this session.',
           selected: enabled,
           onTap: () => onSelected?.call(-1),
         ),
         DesktopContextMenuTile(
           text: 'Current message only',
-          description: 'Leave out earlier messages in this chat.',
+          description: 'Leave out earlier messages in this session.',
           selected: !enabled,
           onTap: () => onSelected?.call(0),
         ),
@@ -87,7 +87,7 @@ class _ContextMenuHint extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
         child: Text(
-          'Applies to future messages in this chat.',
+          'Applies to future messages in this session.',
           style: AthenaTextStyle.caption.copyWith(
             color: colors.textSecondary,
             decoration: TextDecoration.none,

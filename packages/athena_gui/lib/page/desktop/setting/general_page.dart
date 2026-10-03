@@ -94,7 +94,7 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
             AthenaSettingsRow(
               label: 'Reset Athena',
               description:
-                  'Deletes every chat, provider, model and Sentinel on this '
+                  'Deletes every session, provider, model and Sentinel on this '
                   'device and restores all settings to their defaults.',
               control: AthenaSecondaryButton.small(
                 onTap: _handleReset,

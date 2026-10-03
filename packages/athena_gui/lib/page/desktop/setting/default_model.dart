@@ -47,7 +47,7 @@ class _DesktopSettingDefaultModelPageState
             first: true,
             title: 'Default models',
             description:
-                'Which model each job starts with. A chat can still switch '
+                'Which model each job starts with. A session can still switch '
                 'models from the composer.',
             children: [
               if (!hasModels)
@@ -60,8 +60,8 @@ class _DesktopSettingDefaultModelPageState
                 ),
               if (hasModels) ...[
                 AthenaSettingsRow(
-                  label: 'Chat',
-                  description: 'Used by new chats and the agent loop.',
+                  label: 'Session',
+                  description: 'Used by new sessions and the agent loop.',
                   control: _buildSelect(
                     settingViewModel.chatModelId.value,
                     settingViewModel.updateChatModelId,
@@ -70,8 +70,8 @@ class _DesktopSettingDefaultModelPageState
                 AthenaSettingsRow(
                   label: 'Topic naming',
                   description:
-                      'Names a chat after its first exchange. Falls back to '
-                      'the chat model.',
+                      'Names a session after its first exchange. Falls back to '
+                      'the session model.',
                   control: _buildSelect(
                     settingViewModel.chatNamingModelId.value,
                     settingViewModel.updateChatNamingModelId,

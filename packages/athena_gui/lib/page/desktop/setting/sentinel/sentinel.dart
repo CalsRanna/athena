@@ -112,7 +112,7 @@ class _DesktopSettingSentinelPageState
           first: true,
           title: 'Sentinels',
           description:
-              'Personas you can attach to a chat. Each one is a system prompt '
+              'Personas you can attach to a session. Each one is a system prompt '
               'with a name, description and tags.',
           trailing: AthenaSecondaryButton.small(
             onTap: createSentinel,
@@ -352,7 +352,7 @@ class _DesktopSettingSentinelPageState
               AthenaSettingsRow(
                 label: 'Delete Sentinel',
                 description:
-                    'Chats that used ${sentinel.name} keep their history but '
+                    'Sessions that used ${sentinel.name} keep their history but '
                     'lose the persona.',
                 control: AthenaSecondaryButton.small(
                   onTap: () => destroySentinels([sentinel]),

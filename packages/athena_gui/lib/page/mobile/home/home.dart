@@ -128,7 +128,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     return Column(
       spacing: 8,
       children: [
-        SectionTitle('Chat history', onTap: () => navigateChatList(context)),
+        SectionTitle('Session history', onTap: () => navigateChatList(context)),
         SizedBox(
           height: 52,
           child: Watch(

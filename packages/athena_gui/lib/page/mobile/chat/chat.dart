@@ -90,8 +90,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
         title = viewModel.selection.renamingTitle.value;
       } else {
-        title = chat?.title ?? 'New Chat';
-        if (title.isEmpty) title = 'New Chat';
+        title = chat?.title ?? 'New Session';
+        if (title.isEmpty) title = 'New Session';
       }
 
       if (isRenaming) {
@@ -213,7 +213,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       }
     } catch (e) {
       if (mounted) {
-        AthenaDialog.error('Failed to load chat. Please try again.');
+        AthenaDialog.error('Failed to load session. Please try again.');
       }
     } finally {
       if (mounted && _draftPending) setState(() => _draftPending = false);

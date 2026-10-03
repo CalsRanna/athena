@@ -360,7 +360,7 @@ class ChatViewModel {
             currentModel.value?.id ?? _settingViewModel.chatModelId.value,
       );
       if (resolved == null) {
-        _reportError('Failed to create chat');
+        _reportError('Failed to create session');
         return null;
       }
       final model = resolved.model;
@@ -375,7 +375,7 @@ class ChatViewModel {
           currentSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
       if (sentinel.id == null &&
           !identical(sentinel, SentinelViewModel.directChatSentinel)) {
-        _reportError('Failed to create chat');
+        _reportError('Failed to create session');
         return null;
       }
 
@@ -1273,7 +1273,7 @@ class ChatViewModel {
 
   /// 进入草稿态：卸掉当前对话，composer 回到新对话默认参数，不落盘。
   ///
-  /// 桌面端点"New chat"、移动端进入无对话的聊天页、删掉最后一个对话都到
+  /// 桌面端点"New session"、移动端进入无对话的聊天页、删掉最后一个对话都到
   /// 这里；真正的会话文件要等首条消息发送时由 [createChat] 创建。
   ///
   /// [inheritFrom] 非空时草稿的**角色与工作文件夹**从这条对话继承：点

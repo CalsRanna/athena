@@ -397,7 +397,7 @@ class _DesktopSettingProviderPageState
               AthenaSettingsRow(
                 label: 'Delete provider',
                 description:
-                    'Removes ${provider.name} and its $modelCount. Chats that '
+                    'Removes ${provider.name} and its $modelCount. Sessions that '
                     'used them fall back to the default model.',
                 control: AthenaSecondaryButton.small(
                   onTap: () => destroyProviders([provider]),

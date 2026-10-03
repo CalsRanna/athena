@@ -28,7 +28,7 @@ class ChatTile extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Text(
-        chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
+        chat.title.isNotEmpty ? chat.title.trim() : 'New Session',
         style: AthenaTextStyle.body.copyWith(color: colors.textOnRaised),
       ),
     );
@@ -73,7 +73,7 @@ class ChatTile extends StatelessWidget {
   void _renameChat(BuildContext context, ChatViewModel viewModel) async {
     AthenaDialog.dismiss();
     final title = await AthenaDialog.input(
-      'Rename Chat',
+      'Rename Session',
       initialValue: chat.title,
     );
     if (title != null && title.isNotEmpty && title != chat.title) {

@@ -21,19 +21,19 @@ import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
 /// Athena TUI 根组件:布局 + 全局按键 + 权限审批 + 命令处理。
-class AthenaApp extends StatefulComponent {
+class TuiApp extends StatefulComponent {
   final TuiDi di;
 
   /// 消息列表滚动控制器;测试可注入以便模拟用户滚动(默认自建)。
   final ScrollController? scrollController;
 
-  const AthenaApp({super.key, required this.di, this.scrollController});
+  const TuiApp({super.key, required this.di, this.scrollController});
 
   @override
-  State<AthenaApp> createState() => _AthenaAppState();
+  State<TuiApp> createState() => _TuiAppState();
 }
 
-class _AthenaAppState extends State<AthenaApp> {
+class _TuiAppState extends State<TuiApp> {
   /// 全部斜杠命令(命令, 描述):帮助文本与实时建议的单一数据源。
   static const List<(String, String)> _allCommands = [
     ('/new', '新建聊天'),

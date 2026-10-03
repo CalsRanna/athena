@@ -46,7 +46,7 @@ class _MobileChatConfigurationPageState
       children: children,
     );
     return AthenaScaffold(
-      appBar: const AthenaAppBar(title: Text('Chat Configuration')),
+      appBar: const AthenaAppBar(title: Text('Session Configuration')),
       body: listView,
     );
   }

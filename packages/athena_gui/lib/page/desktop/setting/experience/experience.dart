@@ -74,7 +74,7 @@ class _DesktopSettingExperiencePageState
           title: 'Nothing learned yet',
           hint:
               'As the agent works it records lessons here and recalls them '
-              'in later chats. Archive the ones you disagree with.',
+              'in later sessions. Archive the ones you disagree with.',
         ),
       ];
     }
@@ -84,7 +84,7 @@ class _DesktopSettingExperiencePageState
           first: true,
           title: 'Experiences',
           description:
-              'Lessons the agent learned from earlier chats. Active ones are '
+              'Lessons the agent learned from earlier sessions. Active ones are '
               'recalled automatically; archived ones are kept as a record '
               'but never used.',
           children: rows,

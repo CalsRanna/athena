@@ -78,7 +78,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     });
   }
 
-  /// 侧栏 "New chat" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
+  /// 侧栏 "New session" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
   ///
   /// 新对话只是一个空页面，会话文件与侧栏条目要等首条
   /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
@@ -103,7 +103,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> batchDestroyChats(List<ChatEntity> chats) async {
     final result = await AthenaDialog.confirm(
-      'Do you want to delete ${chats.length} chats?',
+      'Do you want to delete ${chats.length} sessions?',
     );
     if (result == true) {
       scrollController.followBottom();
@@ -115,7 +115,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> destroyChat(ChatEntity chat) async {
     final result = await AthenaDialog.confirm(
-      'Do you want to delete this chat?',
+      'Do you want to delete this session?',
     );
     if (result == true) {
       scrollController.followBottom();
@@ -142,7 +142,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> manualRenameChat(ChatEntity chat) async {
     final title = await AthenaDialog.input(
-      'Rename Chat',
+      'Rename Session',
       initialValue: chat.title,
     );
     if (title != null && title.isNotEmpty) {
@@ -155,7 +155,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (chat == null) return;
     // 当前对话正在流式时重发会先删消息再被 sendMessage 静默吞掉，直接拦截
     if (chatViewModel.isStreamingChat(chat.id!)) {
-      AthenaDialog.info('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current session to finish.');
       return;
     }
     scrollController.followBottom();
@@ -336,7 +336,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return Align(
         alignment: Alignment.centerLeft,
         child: Text(
-          text.isEmpty ? 'New chat' : text,
+          text.isEmpty ? 'New session' : text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),

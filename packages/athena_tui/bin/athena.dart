@@ -41,7 +41,7 @@ Future<void> main(List<String> args) async {
   // 挂在 ExitHookBackend 上——StdioBackend 退出时直接 exit()，runApp 不会
   // 返回。（被强杀时没有机会执行，遗留进程由下次启动的 recoverOrphans 清理。）
   await runApp(
-    AthenaApp(di: di),
+    TuiApp(di: di),
     backend: ExitHookBackend(
       NoClipboardBackend(StdioBackend()),
       beforeExit: () => di.toolRegistry.backgroundTasks.stopAll(),

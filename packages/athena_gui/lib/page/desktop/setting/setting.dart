@@ -79,7 +79,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         SettingSection.defaultModel,
         'Default models',
         LucideIcons.cpu,
-        keywords: ['chat', 'topic naming', 'sentinel metadata'],
+        keywords: ['session', 'chat', 'topic naming', 'sentinel metadata'],
       ),
       _SettingEntry(
         SettingSection.agent,

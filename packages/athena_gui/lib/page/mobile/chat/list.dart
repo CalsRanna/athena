@@ -28,7 +28,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   @override
   Widget build(BuildContext context) {
     return AthenaScaffold(
-      appBar: const AthenaAppBar(title: Text('Chat history')),
+      appBar: const AthenaAppBar(title: Text('Session history')),
       body: _buildData(),
     );
   }
@@ -55,7 +55,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       color: colors.textPrimary,
     );
     final title = Text(
-      chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
+      chat.title.isNotEmpty ? chat.title.trim() : 'New Session',
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -136,7 +136,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     AthenaDialog.dismiss();
 
     final title = await AthenaDialog.input(
-      'Rename Chat',
+      'Rename Session',
       initialValue: chat.title,
     );
 

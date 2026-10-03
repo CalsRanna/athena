@@ -325,7 +325,7 @@ class _SidebarNav extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       child: DesktopMenuTile(
         active: false,
-        label: 'New chat',
+        label: 'New session',
         leading: const Icon(LucideIcons.pencilLine),
         // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
         hoverTrailing: const _ShortcutHint(),

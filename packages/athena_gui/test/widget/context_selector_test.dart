@@ -79,7 +79,7 @@ void main() {
       expect(menu.height, lessThan(340), reason: '菜单高度贴合两项内容');
       final optionText = tester.widget<RichText>(
         find.descendant(
-          of: find.text('Use chat history'),
+          of: find.text('Use session history'),
           matching: find.byType(RichText),
         ),
       );
@@ -96,7 +96,7 @@ void main() {
       expect(
         find.descendant(
           of: selectedOption(),
-          matching: find.text('Use chat history'),
+          matching: find.text('Use session history'),
         ),
         findsOneWidget,
       );
@@ -120,7 +120,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.text('Use chat history'));
+      await tester.tap(find.text('Use session history'));
       await tester.pumpAndSettle();
 
       expect(retention.value, -1, reason: '重新开启历史必须恢复自动管理策略');

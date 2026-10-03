@@ -286,8 +286,8 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
 
     expect(created, isNull);
-    expect(seen, ['Failed to create chat']);
-    expect(viewModel.error.value, 'Failed to create chat', reason: '状态也要留痕');
+    expect(seen, ['Failed to create session']);
+    expect(viewModel.error.value, 'Failed to create session', reason: '状态也要留痕');
   });
 
   /// 置顶的表征测试。

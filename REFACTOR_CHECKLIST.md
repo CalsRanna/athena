@@ -128,7 +128,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   `├── extension/      Map / 集合等类型的扩展方法`；
   「### 前端」那段顺带补 `extension/`（与 1.2 同批改）。
 
-- [ ] **1.4 空态文案与同批文案口径不一**
+- [x] **1.4 空态文案与同批文案口径不一**
 
   位置：GUI 界面文案（`grep -rn "No sessions yet\|New Chat\|Chat history"`）
 
@@ -235,7 +235,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   `test/page/desktop/setting/setting_test.dart:76`、`test/widget/workspace_text_size_test.dart:232`
   引用的都是它）。
 
-- [ ] **2.3 跨包重名的 `AthenaApp`**
+- [x] **2.3 跨包重名的 `AthenaApp`**
 
   位置：`packages/athena_gui/lib/main.dart:79` 与 `packages/athena_tui/lib/ui/app.dart:24`
 
@@ -483,7 +483,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
 
 ## 第 5 部分：命名细节
 
-- [ ] **5.1 `PowerShellShellTool` 的文件名推导会有分歧**
+- [x] **5.1 `PowerShellShellTool` 的文件名推导会有分歧**
 
   位置：`packages/athena_core/lib/agent/tool/powershell_shell_tool.dart`
 

@@ -22,7 +22,7 @@ import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
-/// 首页"新建对话"整条链路的验收（页级）：点侧栏 New chat、按 ⌘N / Ctrl+N
+/// 首页"新建对话"整条链路的验收（页级）：点侧栏 New session、按 ⌘N / Ctrl+N
 /// 之后，焦点必须真的落在 composer 输入框上——也就是
 /// `_DesktopHomePageState.startNewChat` 里那次 `requestFocus` 真的执行到了。
 ///
@@ -193,12 +193,12 @@ void main() {
     await settleUntil(tester, () => done);
   }
 
-  /// 点侧栏的 "New chat" 行。顶栏标题在草稿态也是 'New chat'，所以按侧栏子树
+  /// 点侧栏的 "New session" 行。顶栏标题在草稿态也是 'New session'，所以按侧栏子树
   /// 定位，避免命中标题。
   Future<void> tapSidebarNewChat(WidgetTester tester) async {
     final newChatButton = find.descendant(
       of: find.byType(DesktopChatListView),
-      matching: find.text('New chat'),
+      matching: find.text('New session'),
     );
     expect(newChatButton, findsOneWidget);
     await tester.tap(newChatButton);
@@ -222,7 +222,7 @@ void main() {
     expect(composerFocused(tester), isTrue);
   });
 
-  testWidgets('点侧栏 New chat：焦点落回 composer', (tester) async {
+  testWidgets('点侧栏 New session：焦点落回 composer', (tester) async {
     await pumpHome(tester);
     await blurComposer(tester);
 
@@ -272,13 +272,13 @@ void main() {
     );
   });
 
-  testWidgets('侧栏 New chat 的快捷键提示：静止没有，hover 才出现', (tester) async {
+  testWidgets('侧栏 New session 的快捷键提示：静止没有，hover 才出现', (tester) async {
     await pumpHome(tester);
     // pumpHome 显式使用 macOS 主题，期望不再依赖运行测试的宿主系统。
     const hintLabel = '⌘N';
     final row = find.descendant(
       of: find.byType(DesktopChatListView),
-      matching: find.text('New chat'),
+      matching: find.text('New session'),
     );
     final hint = find.descendant(
       of: find.byType(DesktopChatListView),

@@ -209,11 +209,11 @@ void main() {
 
       final sidebar = find.descendant(
         of: find.byType(DesktopChatListView),
-        matching: find.text('New chat'),
+        matching: find.text('New session'),
       );
       final title = find.descendant(
         of: find.byType(AthenaAppBar),
-        matching: find.text('New chat'),
+        matching: find.text('New session'),
       );
       final sidebarSize = paragraph(tester, sidebar).size;
       final titleSize = paragraph(tester, title).size;
@@ -316,7 +316,7 @@ void main() {
         await settle(tester);
         expectTextScale(tester, find.byType(SentinelPlaceholder), 1.2);
         expectInputScale(tester, UserInput, 1.2);
-        expectTextScale(tester, find.text('New Chat'), 1.2);
+        expectTextScale(tester, find.text('New Session'), 1.2);
       }
       await tester.runAsync(() => chatViewModel.selectChat(conversation));
       await settle(tester);

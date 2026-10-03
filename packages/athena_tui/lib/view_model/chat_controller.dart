@@ -219,7 +219,7 @@ class ChatController {
         : previous.then((_) => tracked);
   }
 
-  /// 释放资源并阻止后续信号写入。幂等;由 AthenaApp.dispose 调用。
+  /// 释放资源并阻止后续信号写入。幂等;由 TuiApp.dispose 调用。
   void dispose() {
     _disposed = true;
     _buffer.discard();
@@ -236,7 +236,7 @@ class ChatController {
   /// 启动加载:每次启动都打开一个**全新的对话**,不恢复上次会话。
   ///
   /// 幂等:已初始化(currentChat 非空)时直接返回,不再访问存储。
-  /// 第二次调用(如 AthenaApp.initState 与测试预加载)零 IO——
+  /// 第二次调用(如 TuiApp.initState 与测试预加载)零 IO——
   /// 避免异步 IO 跨组件生命周期悬挂(测试 tearDown 删除数据目录后
   /// 未完成的读文件会抛 PathNotFoundException)。
   Future<void> initialize() async {

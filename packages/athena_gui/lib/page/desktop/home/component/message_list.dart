@@ -207,7 +207,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     final chatId = chatViewModel.currentChat.value?.id;
     // 运行中删除会删掉正在运行的 run 的消息，run 随后的写入又把它们补回来
     if (chatId != null && chatViewModel.isStreamingChat(chatId)) {
-      AthenaDialog.info('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current session to finish.');
       return;
     }
     // 删除会连带删掉这条之后的全部消息（deleteMessage 按位置截断）

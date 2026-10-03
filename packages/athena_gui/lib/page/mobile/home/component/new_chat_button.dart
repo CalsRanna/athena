@@ -21,7 +21,7 @@ class NewChatButton extends StatelessWidget {
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
-      child: Center(child: Text('New Chat', style: textStyle)),
+      child: Center(child: Text('New Session', style: textStyle)),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

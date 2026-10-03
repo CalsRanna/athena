@@ -9,8 +9,8 @@ import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
-  static const directChatName = 'Direct chat';
-  static const directChatOptionLabel = 'No Sentinel (Direct chat)';
+  static const directChatName = 'Direct session';
+  static const directChatOptionLabel = 'No Sentinel (Direct session)';
 
   /// 仅用于 GUI 状态与渲染，不写入 sentinels 表。
   /// ChatStoreService 将其保存为 sentinel_id: null。
