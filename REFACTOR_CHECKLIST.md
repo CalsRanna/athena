@@ -146,7 +146,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
 
 ## 第 2 部分：命名统一（中风险，机械但面广）
 
-- [ ] **2.1 GUI 页面文件补 `_page` 后缀（19 个文件）**
+- [x] **2.1 GUI 页面文件补 `_page` 后缀（19 个文件）**
 
   现状（实测计数，非举例）：页面文件共 30 个，带 `_page` 的 11 个、不带 `_page` 的 19 个。
   **两端、乃至同一个目录内部都是混用的**，不是"一端一套"：
@@ -208,7 +208,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   - 三份文档（`AGENTS.md` / `DESIGN.md` / `README.md`）均未引用这些文件名，无需同步。
   - `git mv` 保留历史。
 
-- [ ] **2.2 `SettingPage` 补 `Mobile` 前缀（唯一漏掉的页面类）**
+- [x] **2.2 `SettingPage` 补 `Mobile` 前缀（唯一漏掉的页面类）**
 
   位置：`packages/athena_gui/lib/page/mobile/setting/setting.dart:18`
 

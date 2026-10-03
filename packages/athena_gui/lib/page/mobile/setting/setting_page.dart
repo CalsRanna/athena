@@ -15,8 +15,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class SettingPage extends StatelessWidget {
-  const SettingPage({super.key});
+class MobileSettingPage extends StatelessWidget {
+  const MobileSettingPage({super.key});
 
   @override
   Widget build(BuildContext context) {

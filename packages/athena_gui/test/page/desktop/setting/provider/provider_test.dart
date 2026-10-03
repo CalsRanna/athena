@@ -4,7 +4,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
-import 'package:athena_gui/page/desktop/setting/provider/provider.dart';
+import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_theme.dart';

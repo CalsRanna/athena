@@ -5,7 +5,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_gui/di.dart';
-import 'package:athena_gui/page/mobile/chat/chat.dart';
+import 'package:athena_gui/page/mobile/chat/chat_page.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';

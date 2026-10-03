@@ -15,25 +15,30 @@ import 'package:athena_core/entity/model_entity.dart' as _i36;
 import 'package:athena_core/entity/provider_entity.dart' as _i37;
 import 'package:athena_core/entity/sentinel_entity.dart' as _i34;
 import 'package:athena_gui/page/desktop/home/home_page.dart' as _i1;
-import 'package:athena_gui/page/desktop/setting/about.dart' as _i2;
+import 'package:athena_gui/page/desktop/setting/about_page.dart' as _i2;
 import 'package:athena_gui/page/desktop/setting/agent_page.dart' as _i3;
-import 'package:athena_gui/page/desktop/setting/default_model.dart' as _i4;
-import 'package:athena_gui/page/desktop/setting/experience/experience.dart'
+import 'package:athena_gui/page/desktop/setting/default_model_page.dart' as _i4;
+import 'package:athena_gui/page/desktop/setting/experience/experience_page.dart'
     as _i5;
 import 'package:athena_gui/page/desktop/setting/general_page.dart' as _i6;
-import 'package:athena_gui/page/desktop/setting/provider/provider.dart' as _i8;
-import 'package:athena_gui/page/desktop/setting/sentinel/sentinel.dart' as _i9;
-import 'package:athena_gui/page/desktop/setting/setting.dart' as _i7;
-import 'package:athena_gui/page/desktop/setting/skill/skill.dart' as _i10;
+import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart'
+    as _i8;
+import 'package:athena_gui/page/desktop/setting/sentinel/sentinel_page.dart'
+    as _i9;
+import 'package:athena_gui/page/desktop/setting/setting_page.dart' as _i7;
+import 'package:athena_gui/page/desktop/setting/skill/skill_page.dart' as _i10;
 import 'package:athena_gui/page/mobile/about/about_page.dart' as _i11;
-import 'package:athena_gui/page/mobile/chat/chat.dart' as _i15;
-import 'package:athena_gui/page/mobile/chat/chat_configuration.dart' as _i13;
-import 'package:athena_gui/page/mobile/chat/list.dart' as _i14;
+import 'package:athena_gui/page/mobile/chat/chat_configuration_page.dart'
+    as _i13;
+import 'package:athena_gui/page/mobile/chat/chat_list_page.dart' as _i14;
+import 'package:athena_gui/page/mobile/chat/chat_page.dart' as _i15;
 import 'package:athena_gui/page/mobile/default_model/default_model_form_page.dart'
     as _i17;
-import 'package:athena_gui/page/mobile/experience/detail.dart' as _i18;
-import 'package:athena_gui/page/mobile/experience/list.dart' as _i19;
-import 'package:athena_gui/page/mobile/home/home.dart' as _i20;
+import 'package:athena_gui/page/mobile/experience/experience_detail_page.dart'
+    as _i18;
+import 'package:athena_gui/page/mobile/experience/experience_list_page.dart'
+    as _i19;
+import 'package:athena_gui/page/mobile/home/home_page.dart' as _i20;
 import 'package:athena_gui/page/mobile/provider/model_form_page.dart' as _i21;
 import 'package:athena_gui/page/mobile/provider/provider_form_page.dart'
     as _i22;
@@ -41,14 +46,16 @@ import 'package:athena_gui/page/mobile/provider/provider_list_page.dart'
     as _i23;
 import 'package:athena_gui/page/mobile/provider/provider_name_page.dart'
     as _i24;
-import 'package:athena_gui/page/mobile/sentinel/form.dart' as _i25;
-import 'package:athena_gui/page/mobile/sentinel/list.dart' as _i26;
+import 'package:athena_gui/page/mobile/sentinel/sentinel_form_page.dart'
+    as _i25;
+import 'package:athena_gui/page/mobile/sentinel/sentinel_list_page.dart'
+    as _i26;
 import 'package:athena_gui/page/mobile/setting/agent_page.dart' as _i12;
 import 'package:athena_gui/page/mobile/setting/data_page.dart' as _i16;
-import 'package:athena_gui/page/mobile/setting/setting.dart' as _i30;
-import 'package:athena_gui/page/mobile/skill/detail.dart' as _i27;
-import 'package:athena_gui/page/mobile/skill/form.dart' as _i28;
-import 'package:athena_gui/page/mobile/skill/list.dart' as _i29;
+import 'package:athena_gui/page/mobile/setting/setting_page.dart' as _i27;
+import 'package:athena_gui/page/mobile/skill/skill_detail_page.dart' as _i28;
+import 'package:athena_gui/page/mobile/skill/skill_form_page.dart' as _i29;
+import 'package:athena_gui/page/mobile/skill/skill_list_page.dart' as _i30;
 import 'package:auto_route/auto_route.dart' as _i31;
 import 'package:flutter/material.dart' as _i32;
 
@@ -56,7 +63,10 @@ import 'package:flutter/material.dart' as _i32;
 /// [_i1.DesktopHomePage]
 class DesktopHomeRoute extends _i31.PageRouteInfo<void> {
   const DesktopHomeRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopHomeRoute.name, initialChildren: children);
+      : super(
+          DesktopHomeRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopHomeRoute';
 
@@ -72,7 +82,10 @@ class DesktopHomeRoute extends _i31.PageRouteInfo<void> {
 /// [_i2.DesktopSettingAboutPage]
 class DesktopSettingAboutRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingAboutRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingAboutRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingAboutRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingAboutRoute';
 
@@ -88,7 +101,10 @@ class DesktopSettingAboutRoute extends _i31.PageRouteInfo<void> {
 /// [_i3.DesktopSettingAgentPage]
 class DesktopSettingAgentRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingAgentRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingAgentRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingAgentRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingAgentRoute';
 
@@ -104,7 +120,10 @@ class DesktopSettingAgentRoute extends _i31.PageRouteInfo<void> {
 /// [_i4.DesktopSettingDefaultModelPage]
 class DesktopSettingDefaultModelRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingDefaultModelRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingDefaultModelRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingDefaultModelRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingDefaultModelRoute';
 
@@ -120,7 +139,10 @@ class DesktopSettingDefaultModelRoute extends _i31.PageRouteInfo<void> {
 /// [_i5.DesktopSettingExperiencePage]
 class DesktopSettingExperienceRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingExperienceRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingExperienceRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingExperienceRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingExperienceRoute';
 
@@ -136,7 +158,10 @@ class DesktopSettingExperienceRoute extends _i31.PageRouteInfo<void> {
 /// [_i6.DesktopSettingGeneralPage]
 class DesktopSettingGeneralRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingGeneralRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingGeneralRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingGeneralRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingGeneralRoute';
 
@@ -152,7 +177,10 @@ class DesktopSettingGeneralRoute extends _i31.PageRouteInfo<void> {
 /// [_i7.DesktopSettingPage]
 class DesktopSettingRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingRoute';
 
@@ -168,7 +196,10 @@ class DesktopSettingRoute extends _i31.PageRouteInfo<void> {
 /// [_i8.DesktopSettingProviderPage]
 class DesktopSettingProviderRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingProviderRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingProviderRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingProviderRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingProviderRoute';
 
@@ -184,7 +215,10 @@ class DesktopSettingProviderRoute extends _i31.PageRouteInfo<void> {
 /// [_i9.DesktopSettingSentinelPage]
 class DesktopSettingSentinelRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingSentinelRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingSentinelRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingSentinelRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingSentinelRoute';
 
@@ -200,7 +234,10 @@ class DesktopSettingSentinelRoute extends _i31.PageRouteInfo<void> {
 /// [_i10.DesktopSettingSkillPage]
 class DesktopSettingSkillRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingSkillRoute({List<_i31.PageRouteInfo>? children})
-    : super(DesktopSettingSkillRoute.name, initialChildren: children);
+      : super(
+          DesktopSettingSkillRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'DesktopSettingSkillRoute';
 
@@ -216,7 +253,10 @@ class DesktopSettingSkillRoute extends _i31.PageRouteInfo<void> {
 /// [_i11.MobileAboutPage]
 class MobileAboutRoute extends _i31.PageRouteInfo<void> {
   const MobileAboutRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileAboutRoute.name, initialChildren: children);
+      : super(
+          MobileAboutRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileAboutRoute';
 
@@ -232,7 +272,10 @@ class MobileAboutRoute extends _i31.PageRouteInfo<void> {
 /// [_i12.MobileAgentPage]
 class MobileAgentRoute extends _i31.PageRouteInfo<void> {
   const MobileAgentRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileAgentRoute.name, initialChildren: children);
+      : super(
+          MobileAgentRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileAgentRoute';
 
@@ -253,10 +296,13 @@ class MobileChatConfigurationRoute
     required _i33.ChatEntity chat,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileChatConfigurationRoute.name,
-         args: MobileChatConfigurationRouteArgs(key: key, chat: chat),
-         initialChildren: children,
-       );
+          MobileChatConfigurationRoute.name,
+          args: MobileChatConfigurationRouteArgs(
+            key: key,
+            chat: chat,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileChatConfigurationRoute';
 
@@ -264,13 +310,19 @@ class MobileChatConfigurationRoute
     name,
     builder: (data) {
       final args = data.argsAs<MobileChatConfigurationRouteArgs>();
-      return _i13.MobileChatConfigurationPage(key: args.key, chat: args.chat);
+      return _i13.MobileChatConfigurationPage(
+        key: args.key,
+        chat: args.chat,
+      );
     },
   );
 }
 
 class MobileChatConfigurationRouteArgs {
-  const MobileChatConfigurationRouteArgs({this.key, required this.chat});
+  const MobileChatConfigurationRouteArgs({
+    this.key,
+    required this.chat,
+  });
 
   final _i32.Key? key;
 
@@ -286,7 +338,10 @@ class MobileChatConfigurationRouteArgs {
 /// [_i14.MobileChatListPage]
 class MobileChatListRoute extends _i31.PageRouteInfo<void> {
   const MobileChatListRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileChatListRoute.name, initialChildren: children);
+      : super(
+          MobileChatListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileChatListRoute';
 
@@ -307,10 +362,14 @@ class MobileChatRoute extends _i31.PageRouteInfo<MobileChatRouteArgs> {
     _i34.SentinelEntity? sentinel,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileChatRoute.name,
-         args: MobileChatRouteArgs(key: key, chat: chat, sentinel: sentinel),
-         initialChildren: children,
-       );
+          MobileChatRoute.name,
+          args: MobileChatRouteArgs(
+            key: key,
+            chat: chat,
+            sentinel: sentinel,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileChatRoute';
 
@@ -318,8 +377,7 @@ class MobileChatRoute extends _i31.PageRouteInfo<MobileChatRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<MobileChatRouteArgs>(
-        orElse: () => const MobileChatRouteArgs(),
-      );
+          orElse: () => const MobileChatRouteArgs());
       return _i15.MobileChatPage(
         key: args.key,
         chat: args.chat,
@@ -330,7 +388,11 @@ class MobileChatRoute extends _i31.PageRouteInfo<MobileChatRouteArgs> {
 }
 
 class MobileChatRouteArgs {
-  const MobileChatRouteArgs({this.key, this.chat, this.sentinel});
+  const MobileChatRouteArgs({
+    this.key,
+    this.chat,
+    this.sentinel,
+  });
 
   final _i32.Key? key;
 
@@ -348,7 +410,10 @@ class MobileChatRouteArgs {
 /// [_i16.MobileDataPage]
 class MobileDataRoute extends _i31.PageRouteInfo<void> {
   const MobileDataRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileDataRoute.name, initialChildren: children);
+      : super(
+          MobileDataRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileDataRoute';
 
@@ -364,7 +429,10 @@ class MobileDataRoute extends _i31.PageRouteInfo<void> {
 /// [_i17.MobileDefaultModelFormPage]
 class MobileDefaultModelFormRoute extends _i31.PageRouteInfo<void> {
   const MobileDefaultModelFormRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileDefaultModelFormRoute.name, initialChildren: children);
+      : super(
+          MobileDefaultModelFormRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileDefaultModelFormRoute';
 
@@ -385,13 +453,13 @@ class MobileExperienceDetailRoute
     required _i35.ExperienceEntity experience,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileExperienceDetailRoute.name,
-         args: MobileExperienceDetailRouteArgs(
-           key: key,
-           experience: experience,
-         ),
-         initialChildren: children,
-       );
+          MobileExperienceDetailRoute.name,
+          args: MobileExperienceDetailRouteArgs(
+            key: key,
+            experience: experience,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileExperienceDetailRoute';
 
@@ -408,7 +476,10 @@ class MobileExperienceDetailRoute
 }
 
 class MobileExperienceDetailRouteArgs {
-  const MobileExperienceDetailRouteArgs({this.key, required this.experience});
+  const MobileExperienceDetailRouteArgs({
+    this.key,
+    required this.experience,
+  });
 
   final _i32.Key? key;
 
@@ -424,7 +495,10 @@ class MobileExperienceDetailRouteArgs {
 /// [_i19.MobileExperienceListPage]
 class MobileExperienceListRoute extends _i31.PageRouteInfo<void> {
   const MobileExperienceListRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileExperienceListRoute.name, initialChildren: children);
+      : super(
+          MobileExperienceListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileExperienceListRoute';
 
@@ -440,7 +514,10 @@ class MobileExperienceListRoute extends _i31.PageRouteInfo<void> {
 /// [_i20.MobileHomePage]
 class MobileHomeRoute extends _i31.PageRouteInfo<void> {
   const MobileHomeRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileHomeRoute.name, initialChildren: children);
+      : super(
+          MobileHomeRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileHomeRoute';
 
@@ -462,14 +539,14 @@ class MobileModelFormRoute
     _i37.ProviderEntity? provider,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileModelFormRoute.name,
-         args: MobileModelFormRouteArgs(
-           key: key,
-           model: model,
-           provider: provider,
-         ),
-         initialChildren: children,
-       );
+          MobileModelFormRoute.name,
+          args: MobileModelFormRouteArgs(
+            key: key,
+            model: model,
+            provider: provider,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileModelFormRoute';
 
@@ -477,8 +554,7 @@ class MobileModelFormRoute
     name,
     builder: (data) {
       final args = data.argsAs<MobileModelFormRouteArgs>(
-        orElse: () => const MobileModelFormRouteArgs(),
-      );
+          orElse: () => const MobileModelFormRouteArgs());
       return _i21.MobileModelFormPage(
         key: args.key,
         model: args.model,
@@ -489,7 +565,11 @@ class MobileModelFormRoute
 }
 
 class MobileModelFormRouteArgs {
-  const MobileModelFormRouteArgs({this.key, this.model, this.provider});
+  const MobileModelFormRouteArgs({
+    this.key,
+    this.model,
+    this.provider,
+  });
 
   final _i32.Key? key;
 
@@ -512,10 +592,13 @@ class MobileProviderFormRoute
     required _i37.ProviderEntity provider,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileProviderFormRoute.name,
-         args: MobileProviderFormRouteArgs(key: key, provider: provider),
-         initialChildren: children,
-       );
+          MobileProviderFormRoute.name,
+          args: MobileProviderFormRouteArgs(
+            key: key,
+            provider: provider,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileProviderFormRoute';
 
@@ -532,7 +615,10 @@ class MobileProviderFormRoute
 }
 
 class MobileProviderFormRouteArgs {
-  const MobileProviderFormRouteArgs({this.key, required this.provider});
+  const MobileProviderFormRouteArgs({
+    this.key,
+    required this.provider,
+  });
 
   final _i32.Key? key;
 
@@ -548,7 +634,10 @@ class MobileProviderFormRouteArgs {
 /// [_i23.MobileProviderListPage]
 class MobileProviderListRoute extends _i31.PageRouteInfo<void> {
   const MobileProviderListRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileProviderListRoute.name, initialChildren: children);
+      : super(
+          MobileProviderListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileProviderListRoute';
 
@@ -564,7 +653,10 @@ class MobileProviderListRoute extends _i31.PageRouteInfo<void> {
 /// [_i24.MobileProviderNamePage]
 class MobileProviderNameRoute extends _i31.PageRouteInfo<void> {
   const MobileProviderNameRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileProviderNameRoute.name, initialChildren: children);
+      : super(
+          MobileProviderNameRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileProviderNameRoute';
 
@@ -585,10 +677,13 @@ class MobileSentinelFormRoute
     _i34.SentinelEntity? sentinel,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileSentinelFormRoute.name,
-         args: MobileSentinelFormRouteArgs(key: key, sentinel: sentinel),
-         initialChildren: children,
-       );
+          MobileSentinelFormRoute.name,
+          args: MobileSentinelFormRouteArgs(
+            key: key,
+            sentinel: sentinel,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileSentinelFormRoute';
 
@@ -596,8 +691,7 @@ class MobileSentinelFormRoute
     name,
     builder: (data) {
       final args = data.argsAs<MobileSentinelFormRouteArgs>(
-        orElse: () => const MobileSentinelFormRouteArgs(),
-      );
+          orElse: () => const MobileSentinelFormRouteArgs());
       return _i25.MobileSentinelFormPage(
         key: args.key,
         sentinel: args.sentinel,
@@ -607,7 +701,10 @@ class MobileSentinelFormRoute
 }
 
 class MobileSentinelFormRouteArgs {
-  const MobileSentinelFormRouteArgs({this.key, this.sentinel});
+  const MobileSentinelFormRouteArgs({
+    this.key,
+    this.sentinel,
+  });
 
   final _i32.Key? key;
 
@@ -623,7 +720,10 @@ class MobileSentinelFormRouteArgs {
 /// [_i26.MobileSentinelListPage]
 class MobileSentinelListRoute extends _i31.PageRouteInfo<void> {
   const MobileSentinelListRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileSentinelListRoute.name, initialChildren: children);
+      : super(
+          MobileSentinelListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileSentinelListRoute';
 
@@ -636,7 +736,26 @@ class MobileSentinelListRoute extends _i31.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i27.MobileSkillDetailPage]
+/// [_i27.MobileSettingPage]
+class MobileSettingRoute extends _i31.PageRouteInfo<void> {
+  const MobileSettingRoute({List<_i31.PageRouteInfo>? children})
+      : super(
+          MobileSettingRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'MobileSettingRoute';
+
+  static _i31.PageInfo page = _i31.PageInfo(
+    name,
+    builder: (data) {
+      return const _i27.MobileSettingPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i28.MobileSkillDetailPage]
 class MobileSkillDetailRoute
     extends _i31.PageRouteInfo<MobileSkillDetailRouteArgs> {
   MobileSkillDetailRoute({
@@ -644,10 +763,13 @@ class MobileSkillDetailRoute
     required _i38.Skill skill,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileSkillDetailRoute.name,
-         args: MobileSkillDetailRouteArgs(key: key, skill: skill),
-         initialChildren: children,
-       );
+          MobileSkillDetailRoute.name,
+          args: MobileSkillDetailRouteArgs(
+            key: key,
+            skill: skill,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileSkillDetailRoute';
 
@@ -655,13 +777,19 @@ class MobileSkillDetailRoute
     name,
     builder: (data) {
       final args = data.argsAs<MobileSkillDetailRouteArgs>();
-      return _i27.MobileSkillDetailPage(key: args.key, skill: args.skill);
+      return _i28.MobileSkillDetailPage(
+        key: args.key,
+        skill: args.skill,
+      );
     },
   );
 }
 
 class MobileSkillDetailRouteArgs {
-  const MobileSkillDetailRouteArgs({this.key, required this.skill});
+  const MobileSkillDetailRouteArgs({
+    this.key,
+    required this.skill,
+  });
 
   final _i32.Key? key;
 
@@ -674,7 +802,7 @@ class MobileSkillDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i28.MobileSkillFormPage]
+/// [_i29.MobileSkillFormPage]
 class MobileSkillFormRoute
     extends _i31.PageRouteInfo<MobileSkillFormRouteArgs> {
   MobileSkillFormRoute({
@@ -682,10 +810,13 @@ class MobileSkillFormRoute
     _i38.Skill? skill,
     List<_i31.PageRouteInfo>? children,
   }) : super(
-         MobileSkillFormRoute.name,
-         args: MobileSkillFormRouteArgs(key: key, skill: skill),
-         initialChildren: children,
-       );
+          MobileSkillFormRoute.name,
+          args: MobileSkillFormRouteArgs(
+            key: key,
+            skill: skill,
+          ),
+          initialChildren: children,
+        );
 
   static const String name = 'MobileSkillFormRoute';
 
@@ -693,15 +824,20 @@ class MobileSkillFormRoute
     name,
     builder: (data) {
       final args = data.argsAs<MobileSkillFormRouteArgs>(
-        orElse: () => const MobileSkillFormRouteArgs(),
+          orElse: () => const MobileSkillFormRouteArgs());
+      return _i29.MobileSkillFormPage(
+        key: args.key,
+        skill: args.skill,
       );
-      return _i28.MobileSkillFormPage(key: args.key, skill: args.skill);
     },
   );
 }
 
 class MobileSkillFormRouteArgs {
-  const MobileSkillFormRouteArgs({this.key, this.skill});
+  const MobileSkillFormRouteArgs({
+    this.key,
+    this.skill,
+  });
 
   final _i32.Key? key;
 
@@ -714,33 +850,20 @@ class MobileSkillFormRouteArgs {
 }
 
 /// generated route for
-/// [_i29.MobileSkillListPage]
+/// [_i30.MobileSkillListPage]
 class MobileSkillListRoute extends _i31.PageRouteInfo<void> {
   const MobileSkillListRoute({List<_i31.PageRouteInfo>? children})
-    : super(MobileSkillListRoute.name, initialChildren: children);
+      : super(
+          MobileSkillListRoute.name,
+          initialChildren: children,
+        );
 
   static const String name = 'MobileSkillListRoute';
 
   static _i31.PageInfo page = _i31.PageInfo(
     name,
     builder: (data) {
-      return const _i29.MobileSkillListPage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i30.SettingPage]
-class SettingRoute extends _i31.PageRouteInfo<void> {
-  const SettingRoute({List<_i31.PageRouteInfo>? children})
-    : super(SettingRoute.name, initialChildren: children);
-
-  static const String name = 'SettingRoute';
-
-  static _i31.PageInfo page = _i31.PageInfo(
-    name,
-    builder: (data) {
-      return const _i30.SettingPage();
+      return const _i30.MobileSkillListPage();
     },
   );
 }
