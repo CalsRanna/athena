@@ -58,7 +58,7 @@ void main() {
     await pumpMessages(tester, [assistant]);
     expect(find.byType(StreamingIndicator), findsOneWidget);
     expect(find.byTooltip('Copy'), findsNothing);
-    expect(find.textContaining('0 tokens'), findsOneWidget);
+    expect(find.textContaining('tokens'), findsNothing);
     expect(
       tester.widget<MessageActionBar>(find.byType(MessageActionBar)).visible,
       isTrue,
@@ -82,9 +82,9 @@ void main() {
     ]);
     expect(find.byType(MessageActionBar), findsOneWidget);
     expect(find.byType(StreamingIndicator), findsOneWidget);
-    expect(find.textContaining('0 tokens'), findsOneWidget);
+    expect(find.textContaining('245 tokens'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 250));
-    expect(find.textContaining('123 tokens'), findsOneWidget);
+    expect(find.textContaining('245 tokens'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.textContaining('245 tokens'), findsOneWidget);
     expect(find.textContaining('245 tokens · 4.9 tokens/s'), findsOneWidget);
@@ -182,15 +182,17 @@ void main() {
     expect(bars.map((bar) => bar.visible), [false, false, true]);
     expect(find.byType(StreamingIndicator), findsOneWidget);
     expect(find.text('10s · 100 tokens · 10.0 tokens/s'), findsOneWidget);
-    expect(find.textContaining('· 0 tokens'), findsOneWidget);
+    expect(find.textContaining('tokens'), findsOneWidget);
+    expect(find.textContaining('— tokens'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('旧消息缺少统计时显示未知值', (tester) async {
+  testWidgets('旧消息缺少统计时仅显示未知耗时', (tester) async {
     await pumpMessages(tester, [
       message(content: 'Legacy answer'),
     ], streaming: false);
-    expect(find.text('— · — tokens · — tokens/s'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.textContaining('tokens'), findsNothing);
     expect(find.byTooltip('Copy'), findsOneWidget);
   });
 

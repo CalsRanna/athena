@@ -32,8 +32,7 @@ class _RunStatisticsLabelState
     _tokens =
         visitor(
               _tokens,
-              (widget.statistics?.outputTokens ?? (widget.streaming ? 0 : null))
-                  ?.toDouble(),
+              widget.statistics?.outputTokens?.toDouble(),
               (dynamic value) => Tween<double>(begin: value as double),
             )
             as Tween<double>?;
@@ -119,10 +118,13 @@ class _RunStatisticsLabelState
     final elapsed = hasDuration ? statistics.elapsedAt(now) : null;
     final displayedTokens = _tokens?.evaluate(animation).round();
     final displayedRate = _rate?.evaluate(animation);
+    final labels = [
+      _durationLabel(elapsed),
+      if (displayedTokens != null) '${_compactTokens(displayedTokens)} tokens',
+      if (displayedRate != null) '${displayedRate.toStringAsFixed(1)} tokens/s',
+    ];
     return Text(
-      '${_durationLabel(elapsed)} · '
-      '${displayedTokens == null ? '—' : _compactTokens(displayedTokens)} tokens · '
-      '${displayedRate?.toStringAsFixed(1) ?? '—'} tokens/s',
+      labels.join(' · '),
       style: athenaMono(
         color: colors.textSecondary,
         fontWeight: FontWeight.w400,

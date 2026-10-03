@@ -73,17 +73,29 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('缺失数值保留未知，首次上报速度不从虚构值动画', (tester) async {
+  testWidgets('缺失用量隐藏对应项，首次上报不从虚构值动画', (tester) async {
     await pumpStatistics(tester, streaming: false);
-    expect(find.text('10s · — tokens · — tokens/s'), findsOneWidget);
+    expect(find.text('10s'), findsOneWidget);
+    expect(find.textContaining('tokens'), findsNothing);
     await pumpStatistics(tester);
-    expect(find.textContaining('0 tokens · — tokens/s'), findsOneWidget);
+    expect(find.textContaining('tokens'), findsNothing);
     await pumpStatistics(tester, tokens: 100, rate: 10);
-    expect(find.textContaining('0 tokens · 10.0 tokens/s'), findsOneWidget);
+    expect(find.textContaining('100 tokens · 10.0 tokens/s'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 250));
-    expect(find.textContaining('50 tokens · 10.0 tokens/s'), findsOneWidget);
+    expect(find.textContaining('100 tokens · 10.0 tokens/s'), findsOneWidget);
     await pumpStatistics(tester, tokens: 200);
-    expect(find.textContaining('50 tokens · — tokens/s'), findsOneWidget);
+    expect(find.textContaining('100 tokens'), findsOneWidget);
+    expect(find.textContaining('tokens/s'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.textContaining('200 tokens'), findsOneWidget);
+    await pumpStatistics(tester, rate: 10);
+    expect(find.textContaining(' · 10.0 tokens/s'), findsOneWidget);
+    expect(find.textContaining(' tokens · '), findsNothing);
+    await pumpStatistics(tester, tokens: 0, rate: 0);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.textContaining('0 tokens · 0.0 tokens/s'), findsOneWidget);
+    await pumpStatistics(tester, streaming: false);
+    expect(find.text('10s'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
   });
