@@ -10,7 +10,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';

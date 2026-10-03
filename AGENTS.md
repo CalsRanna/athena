@@ -57,8 +57,8 @@ lib/
 │   ├── task/                 后台任务
 │   └── elicit/               向用户提问的通道
 ├── coordinator/    run 编排与对外事件（run_event.dart）
-├── service/        LLM 适配（三种协议）、会话与消息服务、模型目录
-├── storage/        文件存储、锁、JSONL 会话、id 迁移
+├── service/        LLM 适配（三种协议）、模型目录、需联网的会话操作
+├── storage/        持久化实现：文件存储、锁、JSONL 会话、仓储实现、id 迁移
 ├── repository/     仓储接口
 ├── entity/         领域模型
 ├── util/           路径、日志、重试、分页读取等纯工具
@@ -66,7 +66,9 @@ lib/
 └── seed/           内置种子数据
 ```
 
-`lib/entity/` 与 `lib/service/`、`lib/storage/` 是**接口与实现分离**的：仓储接口在 `repository/`，实现散在 `storage/`（文件）与 `repository/`（经验用独立文件布局）。
+`lib/entity/` 与 `lib/service/`、`lib/storage/` 是**接口与实现分离**的：仓储接口在 `repository/`，实现全部落在 `storage/`。
+
+`service/` 只管**网络 + 编排**（LLM 适配、协议转换、需联网的会话操作），**持久化一律进 `storage/`**。判据是它碰不碰网络，不只看类名——`storage/chat_store_service.dart` 名为 service，但只编排仓储、不发请求，故归 `storage/`。
 
 ### 前端
 

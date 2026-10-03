@@ -347,7 +347,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   改法：建 `lib/ui/backend/` 或 `lib/backend/` 收拢同族实现。顺带解决 1.2 里"组合根形态不对称"的问题
   （可同时把 `lib/di/tui_di.dart` 拉平成 `lib/tui_di.dart`，或反之把 GUI 的 `di.dart` 也变成目录）。
 
-- [ ] **3.3 core 的 `service/` 与 `storage/` 边界有例外**
+- [x] **3.3 core 的 `service/` 与 `storage/` 边界有例外**
 
   位置：`packages/athena_core/lib/service/chat_store_service.dart`
 

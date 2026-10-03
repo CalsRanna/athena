@@ -16,7 +16,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/storage/chat_store_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
