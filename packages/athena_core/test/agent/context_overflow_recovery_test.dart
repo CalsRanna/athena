@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/agent/run_outcome.dart';

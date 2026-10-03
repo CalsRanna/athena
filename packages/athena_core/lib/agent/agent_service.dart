@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/context_budget.dart';
 import 'package:athena_core/agent/context_compaction.dart';
@@ -1472,6 +1473,25 @@ class _AgentLoop {
   }
 }
 
+/// 工具执行内部结果：不进入公开事件流，仅供测试与循环内部复用。
+///
+/// 留在本库而不是随 [AgentEvent] 一起抽到 agent_event.dart：`@visibleForTesting`
+/// 只允许声明库内部与测试使用，而消费方（[AgentService.executeToolCallInternal]
+/// 与循环）都在本库。
+@visibleForTesting
+class ToolCallResultInternal {
+  final AgentToolResultEvent event;
+  final String processedResult;
+  final String rawResult;
+  final ToolResultStatus status;
+  const ToolCallResultInternal({
+    required this.event,
+    required this.processedResult,
+    required this.rawResult,
+    required this.status,
+  });
+}
+
 /// 单轮迭代的局部状态：LLM 流累积器与"模型主动结束"标志。
 ///
 /// [_AgentLoop._runIteration] 经 [_AgentLoop._streamTurn] 共享累积器,
@@ -1530,210 +1550,5 @@ class _ToolExecutionData {
     required this.event,
     required this.toolMessage,
     required this.record,
-  });
-}
-
-/// 单个工具调用的执行结果。
-@visibleForTesting
-/// 工具执行内部结果：不进入公开事件流，仅供测试与循环内部复用。
-@visibleForTesting
-class ToolCallResultInternal {
-  final AgentToolResultEvent event;
-  final String processedResult;
-  final String rawResult;
-  final ToolResultStatus status;
-  const ToolCallResultInternal({
-    required this.event,
-    required this.processedResult,
-    required this.rawResult,
-    required this.status,
-  });
-}
-
-sealed class AgentEvent {
-  const AgentEvent();
-
-  const factory AgentEvent.text(String delta) = AgentTextEvent;
-
-  const factory AgentEvent.reasoning(String delta) = AgentReasoningEvent;
-
-  const factory AgentEvent.toolCall({
-    required String id,
-    required String name,
-    required String arguments,
-  }) = AgentToolCallEvent;
-
-  /// 流式 tool_call 参数增量：卡片已出现后，参数分片实时追加。
-  const factory AgentEvent.toolCallArgs({
-    required String id,
-    required String delta,
-  }) = AgentToolCallArgsEvent;
-
-  const factory AgentEvent.toolResult({
-    required String id,
-    required String name,
-    required String result,
-    String? modelResult,
-    String? outputId,
-    required ToolResultStatus status,
-    Map<String, dynamic>? approvalReview,
-  }) = AgentToolResultEvent;
-
-  const factory AgentEvent.iterationComplete({
-    required List<Map<String, dynamic>> toolCalls,
-    required String content,
-  }) = AgentIterationCompleteEvent;
-
-  const factory AgentEvent.done({required String content}) = AgentDoneEvent;
-
-  const factory AgentEvent.turnStart({required int iteration}) =
-      AgentTurnStartEvent;
-
-  const factory AgentEvent.toolExecutionStart({
-    required String id,
-    required String name,
-    required String arguments,
-  }) = AgentToolExecutionStartEvent;
-
-  const factory AgentEvent.toolExecutionUpdate({
-    required String id,
-    required String name,
-    required String partialResult,
-  }) = AgentToolExecutionUpdateEvent;
-
-  const factory AgentEvent.usage(TokenUsage usage) = AgentUsageEvent;
-
-  const factory AgentEvent.outcome(AgentRunOutcome outcome) =
-      AgentRunOutcomeEvent;
-}
-
-class AgentCompletionDetailsEvent extends AgentEvent {
-  final Map<String, dynamic> details;
-  const AgentCompletionDetailsEvent(this.details);
-}
-
-/// 模型已完整响应带有这些任务通知的请求，协调层据此避免重复汇报。
-class AgentBackgroundTasksNotifiedEvent extends AgentEvent {
-  final List<String> taskIds;
-  const AgentBackgroundTasksNotifiedEvent(this.taskIds);
-}
-
-class AgentChatCompletionsStateEvent extends AgentEvent {
-  final ChatCompletionsState state;
-  const AgentChatCompletionsStateEvent(this.state);
-}
-
-class AgentMessagesStateEvent extends AgentEvent {
-  final MessagesState state;
-  const AgentMessagesStateEvent(this.state);
-}
-
-class AgentResponsesStateEvent extends AgentEvent {
-  final ResponsesState state;
-  const AgentResponsesStateEvent(this.state);
-}
-
-class AgentTextEvent extends AgentEvent {
-  final String delta;
-  const AgentTextEvent(this.delta);
-}
-
-class AgentCompactionEvent extends AgentEvent {
-  final CompactionStep step;
-  const AgentCompactionEvent(this.step);
-}
-
-class AgentReasoningEvent extends AgentEvent {
-  final String delta;
-  const AgentReasoningEvent(this.delta);
-}
-
-class AgentToolCallEvent extends AgentEvent {
-  final String id;
-  final String name;
-  final String arguments;
-  const AgentToolCallEvent({
-    required this.id,
-    required this.name,
-    required this.arguments,
-  });
-}
-
-/// 流式 tool_call 参数增量事件。
-class AgentToolCallArgsEvent extends AgentEvent {
-  final String id;
-
-  /// 本次 chunk 携带的 arguments 分片（非完整参数）。
-  final String delta;
-  const AgentToolCallArgsEvent({required this.id, required this.delta});
-}
-
-class AgentToolResultEvent extends AgentEvent {
-  final String id;
-  final String name;
-  final String result;
-  final String? modelResult;
-  final String? outputId;
-  final ToolResultStatus status;
-  final Map<String, dynamic>? approvalReview;
-  const AgentToolResultEvent({
-    required this.id,
-    required this.name,
-    required this.result,
-    this.modelResult,
-    this.outputId,
-    this.status = ToolResultStatus.success,
-    this.approvalReview,
-  });
-}
-
-class AgentIterationCompleteEvent extends AgentEvent {
-  final List<Map<String, dynamic>> toolCalls;
-  final String content;
-  const AgentIterationCompleteEvent({
-    required this.toolCalls,
-    required this.content,
-  });
-}
-
-class AgentDoneEvent extends AgentEvent {
-  final String content;
-  const AgentDoneEvent({required this.content});
-}
-
-class AgentUsageEvent extends AgentEvent {
-  final TokenUsage usage;
-  const AgentUsageEvent(this.usage);
-}
-
-class AgentRunOutcomeEvent extends AgentEvent {
-  final AgentRunOutcome outcome;
-  const AgentRunOutcomeEvent(this.outcome);
-}
-
-class AgentTurnStartEvent extends AgentEvent {
-  final int iteration;
-  const AgentTurnStartEvent({required this.iteration});
-}
-
-class AgentToolExecutionStartEvent extends AgentEvent {
-  final String id;
-  final String name;
-  final String arguments;
-  const AgentToolExecutionStartEvent({
-    required this.id,
-    required this.name,
-    required this.arguments,
-  });
-}
-
-class AgentToolExecutionUpdateEvent extends AgentEvent {
-  final String id;
-  final String name;
-  final String partialResult;
-  const AgentToolExecutionUpdateEvent({
-    required this.id,
-    required this.name,
-    required this.partialResult,
   });
 }

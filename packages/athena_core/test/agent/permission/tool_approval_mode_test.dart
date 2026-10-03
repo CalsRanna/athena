@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';

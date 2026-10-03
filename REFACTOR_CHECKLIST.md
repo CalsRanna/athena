@@ -417,7 +417,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
 
 ## 第 4 部分：结构
 
-- [ ] **4.1 拆 `agent_service.dart` 的 `AgentEvent` 家族**
+- [x] **4.1 拆 `agent_service.dart` 的 `AgentEvent` 家族**
 
   位置：`packages/athena_core/lib/agent/agent_service.dart`
 
