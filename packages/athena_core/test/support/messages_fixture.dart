@@ -16,6 +16,7 @@ Map<String, dynamic> thinkingMessage({
   bool tools = true,
   String stop = 'tool_use',
   String suffix = '1',
+  bool signed = true,
 }) => {
   'id': 'msg_$suffix',
   'type': 'message',
@@ -32,20 +33,20 @@ Map<String, dynamic> thinkingMessage({
     {
       'type': 'thinking',
       'thinking': '先读取配置。',
-      'signature': 'signature_${suffix}_0',
+      if (signed) 'signature': 'signature_${suffix}_0',
     },
     {'type': 'text', 'text': '准备执行。'},
-    {'type': 'redacted_thinking', 'data': 'redacted_$suffix'},
+    if (signed) {'type': 'redacted_thinking', 'data': 'redacted_$suffix'},
     {
       'type': 'thinking',
       'thinking': '',
-      'signature': 'signature_${suffix}_hidden',
+      if (signed) 'signature': 'signature_${suffix}_hidden',
     },
     if (tools) _tool(0, suffix),
     {
       'type': 'thinking',
       'thinking': '再验证结果。',
-      'signature': 'signature_${suffix}_1',
+      if (signed) 'signature': 'signature_${suffix}_1',
     },
     if (tools) _tool(1, suffix),
   ],
@@ -86,7 +87,8 @@ List<Map<String, dynamic>> thinkingEvents(
         ...block,
         if (type == 'thinking' || type == 'text')
           key: initialText && text.isNotEmpty ? text.substring(0, 1) : '',
-        if (type == 'thinking') 'signature': '',
+        if (type == 'thinking' && block.containsKey('signature'))
+          'signature': '',
         if (type == 'tool_use') 'input': <String, dynamic>{},
       },
     });
@@ -97,7 +99,7 @@ List<Map<String, dynamic>> thinkingEvents(
         'index': i,
         'delta': {'type': '${type}_delta', key: rest},
       });
-      if (type == 'thinking') {
+      if (type == 'thinking' && block.containsKey('signature')) {
         events.add({
           'type': 'content_block_delta',
           'index': i,

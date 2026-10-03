@@ -7,6 +7,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/completion_details.dart';
 import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/storage/file_storage.dart';
@@ -205,6 +206,136 @@ void main() {
     expect(jsonEncode(message.toJson()), isNot(contains('redacted_')));
   });
 
+  test('完整无签名推理在两条路径保留展示与工具，并显式标记不可回放', () async {
+    final response = thinkingMessage(signed: false);
+    final chunks = await normalizeMessagesStream(
+      Stream.fromIterable(
+        thinkingEvents(
+          response,
+          initialText: true,
+        ).map(anthropic.MessageStreamEvent.fromJson),
+      ),
+      provider: provider,
+      request: native,
+    ).toList();
+    final accumulator = ChatStreamAccumulator();
+    chunks.forEach(accumulator.add);
+    expect(accumulator.reasoningContent, '先读取配置。\n\n再验证结果。');
+    expect(accumulator.content, '准备执行。');
+    expect(accumulator.toolCalls, hasLength(2));
+    expect(accumulator.finishReason, FinishReason.toolCalls);
+    expect(accumulator.usage!.completionTokens, 80);
+    expect(chunks.whereType<MessagesStateChunk>(), isEmpty);
+    expect(
+      chunks.whereType<CompletionDetailsChunk>().last.details,
+      containsPair('thinking_replayable', false),
+    );
+
+    final completion =
+        messageToChatCompletion(
+              anthropic.Message.fromJson(response),
+              provider: provider,
+              request: native,
+            )
+            as DetailedChatCompletion;
+    final message =
+        completion.choices.single.message as MessagesAssistantMessage;
+    expect(message.reasoningContent, accumulator.reasoningContent);
+    expect(message.content, accumulator.content);
+    Map<String, Object?> toolValue(ToolCall call) => {
+      'id': call.id,
+      'name': call.function.name,
+      'arguments': jsonDecode(call.function.arguments),
+    };
+    expect(
+      message.toolCalls!.map(toolValue),
+      accumulator.toolCalls.map(toolValue),
+    );
+    expect(message.messagesState, isNull);
+    expect(completion.details, containsPair('thinking_replayable', false));
+    final next = toMessageRequest(
+      request(messages: history(message)),
+      provider: provider,
+    );
+    expect(
+      assistantBlocks(next),
+      (response['content'] as List)
+          .where((b) => b['type'] != 'thinking')
+          .toList(),
+    );
+    expect(next.thinking!.toJson(), native.thinking!.toJson());
+  });
+
+  test('签名分片完整拼接后保存，不能只保留最后一个分片', () async {
+    final events = thinkingEvents(thinkingMessage());
+    final fragmented = <Map<String, dynamic>>[];
+    for (final event in events) {
+      final delta = event['delta'];
+      if (delta is Map && delta['type'] == 'signature_delta') {
+        final signature = delta['signature'] as String;
+        final split = signature.length ~/ 2;
+        for (final part in [
+          signature.substring(0, split),
+          signature.substring(split),
+        ]) {
+          fragmented.add({
+            ...event,
+            'delta': {'type': 'signature_delta', 'signature': part},
+          });
+        }
+      } else {
+        fragmented.add(event);
+      }
+    }
+    final chunks = await normalizeMessagesStream(
+      Stream.fromIterable(
+        fragmented.map(anthropic.MessageStreamEvent.fromJson),
+      ),
+      provider: provider,
+      request: native,
+    ).toList();
+    expect(
+      chunks.whereType<MessagesStateChunk>().single.state.content,
+      thinkingMessage()['content'],
+    );
+    expect(
+      chunks.whereType<CompletionDetailsChunk>().last.details,
+      containsPair('thinking_replayable', true),
+    );
+  });
+
+  test('部分签名缺失与损坏的隐藏推理在两条路径仍明确失败', () async {
+    for (final redacted in [false, true]) {
+      final response = thinkingMessage();
+      final content = response['content'] as List;
+      if (redacted) {
+        (content.firstWhere((b) => b['type'] == 'redacted_thinking')
+                as Map)['data'] =
+            '';
+      } else {
+        (content.first as Map).remove('signature');
+      }
+      await expectLater(
+        normalizeMessagesStream(
+          Stream.fromIterable(
+            thinkingEvents(response).map(anthropic.MessageStreamEvent.fromJson),
+          ),
+          provider: provider,
+          request: native,
+        ).toList(),
+        throwsStateError,
+      );
+      expect(
+        () => messageToChatCompletion(
+          anthropic.Message.fromJson(response),
+          provider: provider,
+          request: native,
+        ),
+        throwsStateError,
+      );
+    }
+  });
+
   test('来源、消息、工具或前缀改变后不回传旧签名', () {
     final message = assistant();
     void noState(
@@ -285,7 +416,7 @@ void main() {
     );
   });
 
-  test('断流、截断、错误和缺失签名不发布可复用状态', () async {
+  test('断流、截断、错误和不完整的原生签名不发布可复用状态', () async {
     final full = thinkingEvents(thinkingMessage());
     final cases = [
       full.take(full.length - 1).toList(),
@@ -317,7 +448,7 @@ void main() {
           if (chunk is MessagesStateChunk) states.add(chunk);
         }
       } on StateError {
-        // 提前 EOF 或缺签名也必须显式失败。
+        // 提前 EOF 或包含隐藏块的不完整原生状态必须显式失败。
       } on anthropic.ApiException {
         /* 已收到的展示文字仍可保留。 */
       }

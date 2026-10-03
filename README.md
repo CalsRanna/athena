@@ -27,7 +27,7 @@ athena
 
 - 多轮工具循环，带并行工具执行（并发上限 8）
 - 三种 LLM 协议：OpenAI Chat Completions、OpenAI Responses、Anthropic Messages。上层的请求与事件统一为 Chat Completions 形状，协议差异收敛在两个适配器里
-- 推理状态按协议原生保存与回放：Responses 的加密推理项、Messages 的 thinking 签名、Chat Completions 的 `reasoning_details`，各自完整持久化，切换 provider 后自动失效而非串用
+- 推理状态按协议原生保存与回放：Responses 的加密推理项、Messages 的 thinking 签名、Chat Completions 的 `reasoning_details`，各自完整持久化，切换 provider 后自动失效而非串用。Messages 兼容端点的全部无签名推理保留展示与正常工具调用，在完成明细中标记为不可回放，不保存为原生签名状态
 - 上下文预算与自动压缩：估算超出窗口时先回收旧工具输出，再摘要压缩历史；摘要与它的覆盖范围一同提交，原消息保留可回溯
 - 失败反思：同一工具累计失败两次以上时，用一次独立 LLM 调用提炼教训，并复用标准工具路径写入经验库
 

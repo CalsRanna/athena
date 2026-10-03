@@ -370,7 +370,9 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
             }
           case anthropic.SignatureDelta(:final signature):
             final block = blocks[index];
-            if (block != null) block['signature'] = signature;
+            if (block != null) {
+              block['signature'] = '${block['signature'] ?? ''}$signature';
+            }
           case anthropic.CitationsDelta(:final citation):
             final block = blocks[index];
             if (block != null) {
@@ -407,26 +409,20 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
             'Messages stream ended with unfinished content blocks',
           );
         }
-        if (provider != null &&
-            request != null &&
-            id != null &&
-            openBlocks.isEmpty &&
-            _completeStop(stopReason)) {
+        if (openBlocks.isEmpty && _completeStop(stopReason)) {
           for (final entry in arguments.entries) {
             blocks[entry.key]!['input'] = jsonDecode(entry.value.toString());
           }
           final content = blocks.values.toList();
-          if (content.any(
-                (block) =>
-                    block['type'] == 'thinking' ||
-                    block['type'] == 'redacted_thinking',
-              ) &&
-              !MessagesState.hasCompleteThinking(content)) {
-            throw StateError(
-              'Messages thinking response is missing its signature',
-            );
+          final thinkingReplayable = _thinkingReplayable(content);
+          if (thinkingReplayable != null) {
+            details['thinking_replayable'] = thinkingReplayable;
+            yield CompletionDetailsChunk(Map<String, dynamic>.of(details));
           }
-          if (MessagesState.hasCompleteThinking(content)) {
+          if (provider != null &&
+              request != null &&
+              id != null &&
+              thinkingReplayable == true) {
             yield MessagesStateChunk(
               MessagesState(
                 provider: provider,
@@ -517,11 +513,11 @@ ChatCompletion messageToChatCompletion(
 }) {
   final content = message.content.map((block) => block.toJson()).toList();
   final assistant = _assistantFromContent(content);
+  final thinkingReplayable = _completeStop(message.stopReason)
+      ? _thinkingReplayable(content)
+      : null;
   final state =
-      provider != null &&
-          request != null &&
-          _completeStop(message.stopReason) &&
-          MessagesState.hasCompleteThinking(content)
+      provider != null && request != null && thinkingReplayable == true
       ? MessagesState(
           provider: provider,
           model: request.model,
@@ -545,6 +541,7 @@ ChatCompletion messageToChatCompletion(
       'protocol': 'messages',
       'stop_reason': message.stopReason?.value,
       'stop_sequence': message.stopSequence,
+      if (thinkingReplayable != null) 'thinking_replayable': thinkingReplayable,
       if (message.stopDetails != null)
         'stop_details': message.stopDetails!.toJson(),
       'usage': message.usage.toJson(),
@@ -573,6 +570,29 @@ ChatCompletion messageToChatCompletion(
       reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens,
     ),
   );
+}
+
+// 兼容端点可能把其他协议的推理转换为全部无签名的 thinking。完整响应仍能
+// 展示并执行工具，但不能伪装成可回传的原生状态；用 completion_details 显式
+// 记录此区别，流式与非流式共用口径。部分签名缺失或 redacted 数据损坏不属于
+// 这种兼容响应，继续报错，避免把不完整的原生推理误当成无签名推理。
+bool? _thinkingReplayable(List<Map<String, dynamic>> content) {
+  final thinking = content
+      .where(
+        (block) =>
+            block['type'] == 'thinking' || block['type'] == 'redacted_thinking',
+      )
+      .toList();
+  if (thinking.isEmpty) return null;
+  if (MessagesState.hasCompleteThinking(content)) return true;
+  if (thinking.any(
+    (block) =>
+        block['type'] == 'redacted_thinking' ||
+        (block['signature'] as String?)?.isNotEmpty == true,
+  )) {
+    throw StateError('Messages response contains incomplete signed thinking');
+  }
+  return false;
 }
 
 bool _completeStop(anthropic.StopReason? reason) =>

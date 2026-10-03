@@ -201,6 +201,91 @@ void main() {
     expect(echo.values, ['0', '1'], reason: '回传的历史工具不会重新执行');
   });
 
+  test('无签名推理经真实 SDK 执行工具并续接，重载后不回放为原生状态', () async {
+    replies = [
+      thinkingEvents(thinkingMessage(signed: false)),
+      thinkingEvents(thinkingMessage(tools: false, suffix: '2', signed: false)),
+      thinkingEvents(thinkingMessage(tools: false, suffix: '3', signed: false)),
+    ];
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    expect(
+      events.whereType<RunOutcomeChanged>().last.outcome.termination,
+      AgentRunTermination.completed,
+    );
+    expect(echo.values, ['0', '1']);
+    expect(bodies, hasLength(2));
+    final history = bodies[1]['messages'] as List;
+    final assistant = history.singleWhere((m) => m['role'] == 'assistant');
+    expect((assistant['content'] as List).map((b) => b['type']), [
+      'text',
+      'tool_use',
+      'tool_use',
+    ]);
+    expect((history.last['content'] as List).map((b) => b['tool_use_id']), [
+      'toolu_1_0',
+      'toolu_1_1',
+    ]);
+    expect(bodies[1]['thinking'], bodies.first['thinking']);
+    expect(bodies[1]['output_config'], bodies.first['output_config']);
+
+    final reopened = FileStorage(root: tmp);
+    await reopened.load();
+    final saved = (await reopened.sessionRepository.getMessagesByChatId(
+      chat.id!,
+    )).where((m) => m.role == 'assistant').toList();
+    expect(saved, hasLength(2));
+    expect(
+      saved.map((m) => m.reasoningContent),
+      everyElement('先读取配置。\n\n再验证结果。'),
+    );
+    expect(saved.map((m) => m.messagesState), everyElement(isEmpty));
+    expect(
+      saved.map((m) => jsonDecode(m.completionDetails)['thinking_replayable']),
+      everyElement(false),
+    );
+    final converter = ChatMessageConverter(
+      messageRepository: reopened.sessionRepository,
+    );
+    final converted = await converter.convertMessage(
+      saved.first,
+      includeReasoning: true,
+    );
+    final message = converted.first as AssistantMessage;
+    expect(message.reasoningContent, '先读取配置。\n\n再验证结果。');
+    expect(message.toolCalls, hasLength(2));
+    expect(message, isNot(isA<MessagesAssistantMessage>()));
+
+    final next = await send();
+    expect(next.whereType<RunError>(), isEmpty);
+    final nextHistory = bodies.last['messages'] as List;
+    expect(
+      nextHistory.expand((m) => m['content'] as List).map((b) => b['type']),
+      isNot(contains('thinking')),
+    );
+    expect(echo.values, ['0', '1'], reason: '历史工具不会再次执行');
+  });
+
+  for (final stop in ['max_tokens', 'eof']) {
+    test('无签名推理 $stop 仍不执行已收到的工具', () async {
+      replies[0] = thinkingEvents(
+        thinkingMessage(signed: false, stop: stop == 'eof' ? 'tool_use' : stop),
+      );
+      if (stop == 'eof') replies[0].removeLast();
+      final events = await send();
+      expect(
+        events.whereType<RunError>(),
+        stop == 'eof' ? hasLength(1) : isEmpty,
+      );
+      expect(echo.values, isEmpty);
+      final saved = await storage.sessionRepository.getMessagesByChatId(
+        chat.id!,
+      );
+      final truncated = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
+      expect(truncated.messagesState, isEmpty);
+    });
+  }
+
   for (final reason in ['max_tokens', 'model_context_window_exceeded']) {
     test('无工具的 $reason 不再误报正常完成', () async {
       final response = thinkingMessage(tools: false)..['stop_reason'] = reason;
@@ -314,6 +399,37 @@ void main() {
     expect(message.messagesState!.content, thinkingMessage()['content']);
     expect(message.toolCalls, hasLength(2));
     expect(result.usage!.completionTokensDetails!.reasoningTokens, 25);
+  });
+
+  test('fetch 经真实 SDK 接受没有 signature 字段的兼容推理', () async {
+    final client = LlmClient(
+      anthropicClientFactory: ({required apiKey, required baseUrl}) =>
+          anthropic.AnthropicClient(
+            config: anthropic.AnthropicConfig(
+              authProvider: anthropic.ApiKeyProvider(apiKey),
+              baseUrl: baseUrl,
+            ),
+            httpClient: MockClient(
+              (request) async => http.Response(
+                jsonEncode(thinkingMessage(signed: false)),
+                200,
+                headers: {'content-type': 'application/json; charset=utf-8'},
+              ),
+            ),
+          ),
+    );
+    final result = await client.fetch(
+      provider: messagesProvider(),
+      request: ChatCompletionCreateRequest(
+        model: 'claude-sonnet-4-6',
+        messages: [ChatMessage.user('hi')],
+        reasoningEffort: ReasoningEffort.high,
+      ),
+    );
+    final message = result.choices.single.message as MessagesAssistantMessage;
+    expect(message.reasoningContent, '先读取配置。\n\n再验证结果。');
+    expect(message.toolCalls, hasLength(2));
+    expect(message.messagesState, isNull);
   });
 }
 
