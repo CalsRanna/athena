@@ -370,7 +370,7 @@ class _DesktopSettingProviderPageState
               description: _apiFormatDescription(provider),
               control: SizedBox(
                 width: AthenaSettingsControlWidth.wide,
-                child: DesktopSettingApiFormatSelect(
+                child: DesktopSettingApiFormatSelector(
                   provider: provider,
                   onSelected: ({required bool auto, ApiFormat? format}) =>
                       _commitApiFormat(provider, auto: auto, format: format),

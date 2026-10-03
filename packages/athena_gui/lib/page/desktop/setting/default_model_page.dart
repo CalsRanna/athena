@@ -104,7 +104,7 @@ class _DesktopSettingDefaultModelPageState
   }) {
     return SizedBox(
       width: AthenaSettingsControlWidth.wide,
-      child: DesktopSettingModelSelect(
+      child: DesktopSettingModelSelector(
         modelId: modelId,
         clearable: clearable,
         onChanged: onChanged,

@@ -5,11 +5,8 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:signals_flutter/signals_flutter.dart';
 
 /// composer 里的模型选择菜单：不放数字快捷键与
 /// 模型描述，每行只有模型名。
@@ -19,16 +16,12 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 起步）。启用了多个 provider 时按 provider 分组、组名用说明字号；只有一个
 /// provider 时不显示组名——只有一组时列表就是平铺的。
 ///
-/// 设置页里选默认模型仍用下面的 [DesktopModelSelectDialog]。
-class DesktopModelSelectMenu extends StatelessWidget {
+/// 设置页里选默认模型走另一套控件（`DesktopSettingModelSelector`）。
+class DesktopModelMenu extends StatelessWidget {
   final Rect anchor;
   final void Function(ModelEntity)? onSelected;
 
-  const DesktopModelSelectMenu({
-    super.key,
-    required this.anchor,
-    this.onSelected,
-  });
+  const DesktopModelMenu({super.key, required this.anchor, this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -83,128 +76,6 @@ class _DefaultBadge extends StatelessWidget {
           color: colors.textSecondary,
           decoration: TextDecoration.none,
         ),
-      ),
-    );
-  }
-}
-
-/// 设置页「默认模型」用的居中对话框（按 provider 分组的完整列表）。
-class DesktopModelSelectDialog extends StatelessWidget {
-  final void Function(ModelEntity)? onTap;
-  const DesktopModelSelectDialog({super.key, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final boxDecoration = BoxDecoration(
-      color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(AthenaRadius.panel),
-      boxShadow: AthenaShadow.modal(colors.shadow),
-    );
-
-    return Watch((context) {
-      final models = modelViewModel.groupedEnabledModels.value;
-      final child = _buildData(context, models);
-      final container = Container(
-        decoration: boxDecoration,
-        foregroundDecoration: Theme.of(context).brightness == Brightness.dark
-            ? BoxDecoration(
-                borderRadius: BorderRadius.circular(AthenaRadius.panel),
-                border: Border.all(color: colors.border),
-              )
-            : null,
-        padding: const EdgeInsets.all(8),
-        child: child,
-      );
-      return UnconstrainedBox(child: container);
-    });
-  }
-
-  Widget _buildData(
-    BuildContext context,
-    Map<String, List<ModelEntity>> models,
-  ) {
-    if (models.isEmpty) return const SizedBox();
-    final List<Widget> children = [];
-    for (var entry in models.entries) {
-      children.add(_buildItemGroupTitle(context, entry.key));
-      children.addAll(entry.value.map(_itemBuilder));
-    }
-    return ConstrainedBox(
-      constraints: BoxConstraints.loose(const Size(520, 640)),
-      child: ListView(shrinkWrap: true, children: children),
-    );
-  }
-
-  Widget _buildItemGroupTitle(BuildContext context, String title) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 分组小标题与 DesktopContextMenuGroupLabel 同档：caption + textWeak。
-    // 曾经用 colors.border，那是描边色，对画布对比度只有 1.26:1，等于隐形。
-    final textStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.textWeak,
-      decoration: TextDecoration.none,
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Text(title, style: textStyle),
-    );
-  }
-
-  Widget _itemBuilder(ModelEntity model) {
-    return _DesktopModelSelectDialogTile(
-      model: model,
-      onTap: () => onTap?.call(model),
-    );
-  }
-}
-
-class _DesktopModelSelectDialogTile extends StatefulWidget {
-  final ModelEntity model;
-  final void Function()? onTap;
-  const _DesktopModelSelectDialogTile({required this.model, this.onTap});
-
-  @override
-  State<_DesktopModelSelectDialogTile> createState() =>
-      _DesktopModelSelectDialogTileState();
-}
-
-class _DesktopModelSelectDialogTileState
-    extends State<_DesktopModelSelectDialogTile> {
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = AthenaTextStyle.row.copyWith(
-      color: colors.textPrimary,
-      decoration: TextDecoration.none,
-    );
-    final thinkIcon = Icon(
-      LucideIcons.brainCircuit,
-      color: colors.iconSecondary,
-      size: AthenaIcon.regularSize,
-    );
-    final visualIcon = Icon(
-      LucideIcons.eye,
-      color: colors.iconSecondary,
-      size: AthenaIcon.regularSize,
-    );
-    final children = [
-      Flexible(child: Text(widget.model.name, style: textStyle)),
-      if (widget.model.reasoning) thinkIcon,
-      if (widget.model.vision) visualIcon,
-    ];
-    return AthenaHover(
-      onTap: widget.onTap,
-      cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AthenaRadius.row),
-          color: hover ? colors.surfaceButtonSecondary : null,
-        ),
-        duration: AthenaMotion.hover,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(spacing: 8, children: children),
       ),
     );
   }

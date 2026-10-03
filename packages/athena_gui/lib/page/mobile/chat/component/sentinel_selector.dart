@@ -4,10 +4,10 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-class MobileSentinelSelectDialog extends StatelessWidget {
+class MobileSentinelDialog extends StatelessWidget {
   final void Function(SentinelEntity)? onTap;
   final SentinelViewModel sentinelViewModel;
-  const MobileSentinelSelectDialog({
+  const MobileSentinelDialog({
     super.key,
     this.onTap,
     required this.sentinelViewModel,

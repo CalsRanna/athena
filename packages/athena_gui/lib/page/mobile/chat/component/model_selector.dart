@@ -4,14 +4,10 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
 
-class MobileModelSelectDialog extends StatelessWidget {
+class MobileModelDialog extends StatelessWidget {
   final Map<String, List<ModelEntity>> groupedModels;
   final void Function(ModelEntity)? onTap;
-  const MobileModelSelectDialog({
-    super.key,
-    required this.groupedModels,
-    this.onTap,
-  });
+  const MobileModelDialog({super.key, required this.groupedModels, this.onTap});
 
   @override
   Widget build(BuildContext context) {

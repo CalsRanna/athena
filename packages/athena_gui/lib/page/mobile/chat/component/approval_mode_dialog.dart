@@ -8,11 +8,11 @@ import 'package:flutter/material.dart';
 ///
 /// 带说明是因为三档的差别不看解释看不出来（desktop 的 Mode 菜单同样带）；
 /// 推理强度的档位是自明的，那边就只列名字。
-class MobileApprovalModeSelectDialog extends StatelessWidget {
+class MobileApprovalModeDialog extends StatelessWidget {
   final ApprovalMode current;
   final void Function(ApprovalMode)? onTap;
 
-  const MobileApprovalModeSelectDialog({
+  const MobileApprovalModeDialog({
     super.key,
     required this.current,
     this.onTap,

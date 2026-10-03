@@ -173,7 +173,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openModelSelectorDialog() {
-    final dialog = MobileModelSelectDialog(
+    final dialog = MobileModelDialog(
       groupedModels: modelViewModel.groupedEnabledModels.value,
       onTap: _updateModel,
     );
@@ -198,7 +198,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openReasoningEffortDialog() {
-    final dialog = MobileReasoningEffortSelectDialog(
+    final dialog = MobileReasoningEffortDialog(
       current: _reasoningEffort.value,
       onTap: _updateReasoningEffort,
     );
@@ -212,7 +212,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openApprovalModeDialog() {
-    final dialog = MobileApprovalModeSelectDialog(
+    final dialog = MobileApprovalModeDialog(
       current: _approvalMode.value,
       onTap: _updateApprovalMode,
     );
@@ -226,7 +226,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openSentinelSelectorDialog() {
-    final dialog = MobileSentinelSelectDialog(
+    final dialog = MobileSentinelDialog(
       onTap: _updateSentinel,
       sentinelViewModel: sentinelViewModel,
     );

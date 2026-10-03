@@ -7,13 +7,13 @@ import 'package:flutter/material.dart';
 
 /// 设置行里的 API 格式选择：显示当前格式，自动同步时在前面加 `Auto · `，
 /// 点开 [DesktopSettingApiFormatMenu]。
-class DesktopSettingApiFormatSelect extends StatelessWidget {
+class DesktopSettingApiFormatSelector extends StatelessWidget {
   final ProviderEntity provider;
 
   /// `auto: true` 表示交还给 models.dev 同步；`auto: false` 时必须给 [format]。
   final void Function({required bool auto, ApiFormat? format}) onSelected;
 
-  const DesktopSettingApiFormatSelect({
+  const DesktopSettingApiFormatSelector({
     super.key,
     required this.provider,
     required this.onSelected,

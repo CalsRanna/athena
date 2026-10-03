@@ -38,7 +38,7 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 320,
-              child: DesktopSettingApiFormatSelect(
+              child: DesktopSettingApiFormatSelector(
                 provider: entity,
                 onSelected: onSelected,
               ),

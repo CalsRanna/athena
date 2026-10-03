@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 
 /// 推理强度选择对话框——移动端,行样式与 [AthenaBottomSheetTile]
 /// 一致,当前档位文字加粗区分。
-class MobileReasoningEffortSelectDialog extends StatelessWidget {
+class MobileReasoningEffortDialog extends StatelessWidget {
   final String current;
   final void Function(String)? onTap;
 
-  const MobileReasoningEffortSelectDialog({
+  const MobileReasoningEffortDialog({
     super.key,
     required this.current,
     this.onTap,

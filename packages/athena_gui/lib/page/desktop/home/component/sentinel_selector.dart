@@ -13,15 +13,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 在 Sentinel chip [anchor] 上方弹出，左边与它对齐；每行只有角色名，当前会话
 /// 在用的行尾打钩。没有「No Sentinel」项——清掉角色走 chip 上的清除按钮，
 /// 选择器里再放一个"不选"只是重复入口。
-class DesktopSentinelSelectMenu extends StatelessWidget {
+class DesktopSentinelMenu extends StatelessWidget {
   final Rect anchor;
   final void Function(SentinelEntity)? onSelected;
 
-  const DesktopSentinelSelectMenu({
-    super.key,
-    required this.anchor,
-    this.onSelected,
-  });
+  const DesktopSentinelMenu({super.key, required this.anchor, this.onSelected});
 
   @override
   Widget build(BuildContext context) {

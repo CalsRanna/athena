@@ -84,6 +84,7 @@ lib/
 - 概念三元组：`xxx_service.dart`（编排）、`xxx_rule.dart`（纯值对象）、`xxx_prompt.dart`（回调 typedef）
 - 持久化实体的 id 一律 `String?`（未入库时为 null），由 `IdGenerator` 生成 UUIDv7
 - 页面类一律 `<Platform><Area?>...Page`（`Desktop` / `Mobile` 前缀）；页面文件一律 `xxx_page.dart`，词根取类名去掉平台前缀再 snake_case
+- 选择器（选一个值的交互）：触发控件用 `...Selector`，弹出菜单面板用 `...Menu`，对话框面板用 `...Dialog`。同一交互桌面弹 `...Menu`、移动端弹底部 `...Dialog`，这是**有意的平台差异**，不是命名不一致
 
 **纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半——`LoggerUtil` 就是这么被漏掉的。
 

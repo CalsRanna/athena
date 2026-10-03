@@ -272,7 +272,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
 
   这是**设计决定**，建议先按 0.1 一并定口径。
 
-- [ ] **2.5 选择器的构词在"层"与"端"两个维度上都不统一**
+- [x] **2.5 选择器的构词在"层"与"端"两个维度上都不统一**
 
   范围：本条只谈"选一个值"的交互（模型 / 角色 / 权限模式 / 推理档位 / API 格式 / 上下文 / 图片），
   不含配置弹窗与编辑弹窗。实测共 15 个类，`Menu` / `Select` / `Dialog` / `Selector` 四种词根并存：
@@ -383,7 +383,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   改法：把它移到 `storage/experience_repository.dart`（与其它文件实现一致），
   或原地改名（如 `FileExperienceRepository`）以减少与接口层的语义冲突。
 
-- [ ] **3.5 `ChatHistoryEntity` 是展示模型，却放在 core 的 `entity/`**
+- [x] **3.5 `ChatHistoryEntity` 是展示模型，却放在 core 的 `entity/`**
 
   位置：`packages/athena_core/lib/entity/chat_history_entity.dart`
 

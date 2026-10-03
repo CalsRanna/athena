@@ -421,7 +421,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (!mounted) return;
     DesktopContextMenuManager.instance.show(
       context,
-      DesktopModelSelectMenu(anchor: anchor, onSelected: updateModel),
+      DesktopModelMenu(anchor: anchor, onSelected: updateModel),
     );
   }
 
@@ -437,7 +437,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (!mounted) return;
     DesktopContextMenuManager.instance.show(
       context,
-      DesktopSentinelSelectMenu(anchor: anchor, onSelected: updateSentinel),
+      DesktopSentinelMenu(anchor: anchor, onSelected: updateSentinel),
     );
   }
 }
