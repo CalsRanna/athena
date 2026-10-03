@@ -62,6 +62,7 @@ lib/
 ├── repository/     仓储接口
 ├── entity/         领域模型
 ├── util/           路径、日志、重试、分页读取等纯工具
+├── extension/      Map / 集合等类型的扩展方法
 └── seed/           内置种子数据
 ```
 
@@ -69,7 +70,7 @@ lib/
 
 ### 前端
 
-两个前端都按 `page/`（页面）、`component/` 或 `ui/widgets/`（复用组件）、`view_model/`（状态）、`di.dart` / `tui_di.dart`（组合根）组织。GUI 额外有 `theme/`、`widget/`（基础控件）、`util/`（平台集成）。
+两个前端的目录并不同构。GUI 按 `page/`（页面）、`component/`（跨页面业务组件）、`widget/`（基础控件）、`view_model/`（状态）、`theme/`、`extension/`（扩展方法）、`util/`（平台集成）组织，组合根是 `lib/di.dart`；TUI 按 `ui/`（`app.dart`、`theme.dart`、`text_util.dart` 与 `ui/widgets/`）、`bridge/`、`view_model/` 组织（无 `page/`），组合根是 `lib/di/tui_di.dart`。
 
 ---
 
@@ -80,10 +81,13 @@ lib/
 - 私有实现类用 `_` 前缀；同类小私有类集中在使用它的文件尾部，不单独建文件
 - 概念三元组：`xxx_service.dart`（编排）、`xxx_rule.dart`（纯值对象）、`xxx_prompt.dart`（回调 typedef）
 - 持久化实体的 id 一律 `String?`（未入库时为 null），由 `IdGenerator` 生成 UUIDv7
+- 页面类一律 `<Platform><Area?>...Page`（`Desktop` / `Mobile` 前缀）；页面文件一律 `xxx_page.dart`，词根取类名去掉平台前缀再 snake_case
 
 **纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半——`LoggerUtil` 就是这么被漏掉的。
 
 **缩写在标识符里一律小写**（`chatId` / `url` / `json` / `uuid`），只在注释与用户可见文案里出现全大写（`'Model ID'`、`'ID of the snapshot'`）。不要写 `chatID` 或 `modelUUID`。
+
+上游 SDK / 平台的专名随其官方拼写（`OpenAI`、`macOS`、`ClipRRect`），本仓库自有的缩写一律小写。
 
 **常量放哪**由它是不是某个类的 API 决定：
 
@@ -135,9 +139,10 @@ lib/
 
 ### 约定
 
-- 用例文件与被测单元同名：`tool_approval_mode.dart` 的测试是 `test/agent/permission/tool_approval_mode_test.dart`
+- 用例文件与被测单元同名：`permission_rule.dart` 的测试是 `test/agent/permission/permission_rule_test.dart`
 - 只为测试暴露的接口标 `@visibleForTesting`，不要为了测试把私有成员改成公开
 - **不要给测试加「目录为空就跳过」的守卫**。测试被误删时应当失败，而不是静默变绿
+- 行为 / 回归测试以被测行为命名，不要求与被测文件同名（如 `compaction_failure_guard_test.dart`）
 
 ### 各包的重点
 
