@@ -29,6 +29,7 @@ class ApprovalRequest {
 
   /// Original argument JSON, including optional call description metadata.
   final String arguments;
+  final String? reviewReason;
   final Completer<PermissionDecision> completer;
 
   ApprovalRequest({
@@ -36,6 +37,7 @@ class ApprovalRequest {
     required this.toolName,
     required this.arguments,
     required this.completer,
+    this.reviewReason,
   });
 }
 
@@ -82,8 +84,15 @@ class AgentStreamDelegate {
       supportService: deps.supportService,
       agentSettings: deps.agentSettings,
       permissionService: deps.permissionService,
-      permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
-          _askPermission(chatId, toolName, arguments, cancelToken),
+      permissionPrompt:
+          (chatId, toolName, arguments, cancelToken, {reviewReason}) =>
+              _askPermission(
+                chatId,
+                toolName,
+                arguments,
+                cancelToken,
+                reviewReason: reviewReason,
+              ),
       elicitPrompt: (chatId, questions, cancelToken) =>
           _askElicit(chatId, questions, cancelToken),
       experienceRepository: deps.experienceRepository,
@@ -138,14 +147,16 @@ class AgentStreamDelegate {
     String chatId,
     String toolName,
     String arguments,
-    CancelToken cancelToken,
-  ) async {
+    CancelToken cancelToken, {
+    String? reviewReason,
+  }) async {
     final completer = Completer<PermissionDecision>();
     _approvalController.add(
       ApprovalRequest(
         chatId: chatId,
         toolName: toolName,
         arguments: arguments,
+        reviewReason: reviewReason,
         completer: completer,
       ),
     );

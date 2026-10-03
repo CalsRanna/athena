@@ -150,11 +150,10 @@ class _MessageListViewState extends State<MessageListView> {
                   request: request,
                   maxHeight:
                       constraints.maxHeight * permissionCardMaxHeightFraction,
-                  onDecision: (approved, persistExact) =>
-                      viewModel.respondApproval(
-                        request,
-                        permissionDecisionOf(approved, persistExact),
-                      ),
+                  onDecision: (approved) => viewModel.respondApproval(
+                    request,
+                    permissionDecisionOf(approved),
+                  ),
                 ),
               ),
             for (final (index, request) in elicits.indexed)

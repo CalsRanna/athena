@@ -56,13 +56,14 @@ typedef ElicitPrompt =
 /// 提问通道：引擎在每次 run 开始时绑定，随 run 结束失效。
 ///
 /// 与审批通道的分工：审批问的是「要不要做」（宿主已有
-/// `PermissionPrompt`，二值 + 落规则）；这里问的是「你要哪个」，
+/// `PermissionPrompt`，本次允许或拒绝）；这里问的是「你要哪个」，
 /// 需要携带选项与答案，两者不可混用。
 class ElicitChannel {
   ElicitChannel({
     required this.chatId,
     required this.prompt,
     required this.cancelToken,
+    this.onAnswered,
   });
 
   final String chatId;
@@ -71,23 +72,29 @@ class ElicitChannel {
   final ElicitPrompt? prompt;
 
   final CancelToken cancelToken;
+  final void Function(List<ElicitQuestion>, Map<String, String>)? onAnswered;
 
   /// 本会话是否真的能问到人。false 时工具应降级而非等待。
   bool get available => prompt != null;
 
   /// 提问并等待作答。
   ///
-  /// 无提问 UI 或 run 被取消时返回 null——与权限门同一写法
-  /// （`Future.any` 让取消与作答竞速），保证等待**绝不**挂死：
+  /// 无提问 UI 时返回 null；run 取消时抛出 CancelledException。
+  /// `Future.any` 让取消与作答竞速，保证等待**绝不**挂死：
   /// 同类 SDK 的提问回调有"可无限挂起"的已知问题（需另用 PreToolUse 的
   /// defer 规避），这里用取消信号把这个问题在架构上消掉。
   Future<Map<String, String>?> ask(List<ElicitQuestion> questions) async {
     final prompt = this.prompt;
     if (prompt == null) return null;
-    return Future.any<Map<String, String>?>([
+    final answers = await Future.any<Map<String, String>?>([
       prompt(chatId, questions, cancelToken),
       cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
     ]);
+    cancelToken.throwIfCancelled();
+    if (answers != null && answers.isNotEmpty) {
+      onAnswered?.call(questions, answers);
+    }
+    return answers;
   }
 }
 

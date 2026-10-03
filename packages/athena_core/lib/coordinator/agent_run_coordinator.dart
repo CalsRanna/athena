@@ -10,11 +10,9 @@ import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
 import 'package:athena_core/agent/permission/permission_prompt.dart';
-import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/runtime_context.dart';
-import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
@@ -73,7 +71,7 @@ class AgentRunCoordinator {
   /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
   final Map<String, int> _runIdByChat = {};
 
-  /// chatId → 本次 run 的工作文件夹（审批落库时按同一口径解析路径）。
+  /// chatId → 本次 run 的工作文件夹。
   ///
   /// 按会话而非进程持有：多对话可同时运行，各自的工作文件夹不能串台。
   final Map<String, String?> _workspaceByChat = {};
@@ -366,8 +364,13 @@ class AgentRunCoordinator {
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
         workspace: workspace,
-        onPermission: (toolName, arguments) =>
-            _askPermission(runId, chatId, toolName, arguments, cancelToken),
+        onPermission: (toolName, arguments, {reviewReason}) => _askPermission(
+          chatId,
+          toolName,
+          arguments,
+          cancelToken,
+          reviewReason: reviewReason,
+        ),
         onElicit: _elicitPrompt,
         jsonMode: jsonMode,
         cancelToken: cancelToken,
@@ -673,8 +676,13 @@ class AgentRunCoordinator {
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
-        onPermission: (toolName, arguments) =>
-            _askPermission(runId, chatId, toolName, arguments, cancelToken),
+        onPermission: (toolName, arguments, {reviewReason}) => _askPermission(
+          chatId,
+          toolName,
+          arguments,
+          cancelToken,
+          reviewReason: reviewReason,
+        ),
         cancelToken: cancelToken,
         workspace: _workspaceByChat[chatId],
         allowReflection: false,
@@ -1071,49 +1079,20 @@ class AgentRunCoordinator {
   }
 
   Future<bool> _askPermission(
-    int runId,
     String chatId,
     String toolName,
     String arguments,
-    CancelToken cancelToken,
-  ) async {
+    CancelToken cancelToken, {
+    String? reviewReason,
+  }) async {
     final decision = await _permissionPrompt(
       chatId,
       toolName,
       arguments,
       cancelToken,
+      reviewReason: reviewReason,
     );
-    if (cancelToken.isCancelled) return false;
-
-    if (decision.approved) {
-      Map<String, dynamic> args;
-      try {
-        args = jsonDecode(arguments) as Map<String, dynamic>;
-      } catch (_) {
-        args = {};
-      }
-
-      // 与执行侧（executeToolCallInternal）同一解析口径：这里的 args 来自模型
-      // 原始 JSON（相对路径），若直接用来记授权与落规则，会话级授权键与
-      // 持久规则的路径都会与执行时算出的绝对路径对不上——表现为「同一 run 内
-      // 已批准仍重复弹窗」与「始终允许」失效。
-      args = applyRunWorkspace(toolName, args, _workspaceByChat[chatId]);
-
-      // 任何批准模式都先写入本 run 的会话级缓存（按 run 隔离）:
-      // 同一 run 内不再重复弹窗，其他 run 不受影响
-      await _permissionService.approveForSession(runId, toolName, args);
-
-      if (decision.persistExact) {
-        // "Always Allow" 落库:规则形态由 PermissionRule.forToolCall 决定
-        // (shell 落整条命令的 exact;文件走路径;web_fetch 走 origin;
-        // 其余整工具放行)。
-        final keyArg = _permissionService.primaryArg(toolName, args);
-        for (final rule in PermissionRule.forToolCall(toolName, keyArg)) {
-          await _permissionService.persistRule(rule);
-        }
-      }
-    }
-
+    cancelToken.throwIfCancelled();
     return decision.approved;
   }
 }

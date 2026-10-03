@@ -200,10 +200,11 @@ void main() {
       agentSettings: settings,
       permissionService: PermissionService(store: PermissionStore()),
       // 审批一律放行：本用例验的是汇报链路，不是权限链路。
-      permissionPrompt: (chatId, toolName, arguments, cancelToken) async {
-        approvalTools.add(toolName);
-        return const PermissionDecision(approved: true);
-      },
+      permissionPrompt:
+          (chatId, toolName, arguments, cancelToken, {reviewReason}) async {
+            approvalTools.add(toolName);
+            return const PermissionDecision(approved: true);
+          },
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
     );
 

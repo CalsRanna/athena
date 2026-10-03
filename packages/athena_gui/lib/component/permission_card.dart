@@ -18,8 +18,8 @@ class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
   final double maxHeight;
 
-  /// 决策回调（approved + persistExact）。
-  final void Function(bool approved, bool persistExact) onDecision;
+  /// 决策只作用于本次调用。
+  final void Function(bool approved) onDecision;
 
   const PermissionApprovalCard({
     super.key,
@@ -96,7 +96,10 @@ class PermissionApprovalCard extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: Text(
-            formatToolArgsForApproval(request.toolName, request.arguments),
+            [
+              if (request.reviewReason != null) request.reviewReason!,
+              formatToolArgsForApproval(request.toolName, request.arguments),
+            ].join('\n\n'),
             style: AthenaTextStyle.caption.copyWith(color: colors.textPrimary),
           ),
         ),
@@ -115,17 +118,12 @@ class PermissionApprovalCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AthenaPrimaryButton(
-            onTap: () => onDecision(true, false),
+            onTap: () => onDecision(true),
             child: const Center(child: Text('Allow Once')),
           ),
           const SizedBox(height: 8),
           AthenaSecondaryButton(
-            onTap: () => onDecision(true, true),
-            child: const Center(child: Text('Always Allow')),
-          ),
-          const SizedBox(height: 8),
-          AthenaSecondaryButton(
-            onTap: () => onDecision(false, false),
+            onTap: () => onDecision(false),
             child: const Center(child: Text('Deny')),
           ),
         ],
@@ -137,17 +135,12 @@ class PermissionApprovalCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         AthenaSecondaryButton(
-          onTap: () => onDecision(false, false),
+          onTap: () => onDecision(false),
           child: const Text('Deny'),
         ),
         const SizedBox(width: 12),
-        AthenaSecondaryButton(
-          onTap: () => onDecision(true, true),
-          child: const Text('Always Allow'),
-        ),
-        const SizedBox(width: 12),
         AthenaPrimaryButton(
-          onTap: () => onDecision(true, false),
+          onTap: () => onDecision(true),
           child: const Text('Allow Once'),
         ),
       ],
@@ -155,5 +148,5 @@ class PermissionApprovalCard extends StatelessWidget {
   }
 }
 
-PermissionDecision permissionDecisionOf(bool approved, bool persistExact) =>
-    PermissionDecision(approved: approved, persistExact: persistExact);
+PermissionDecision permissionDecisionOf(bool approved) =>
+    PermissionDecision(approved: approved);

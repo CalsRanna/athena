@@ -6,9 +6,6 @@ export 'package:athena_core/agent/tool/tool_result.dart'
 /// Reserved display metadata, removed before permission checks and execution.
 const toolCallDescriptionKey = 'call_description';
 
-const toolApprovalRecommendationKey = 'approval_recommendation';
-const toolApprovalReasonKey = 'approval_reason';
-
 /// 引擎注入的会话标识。后台任务按会话归属（不是按 run），因此工具必须
 /// 知道这次调用属于哪个会话。injection 发生在权限门之后，也不出现在
 /// 展示用的原始参数 JSON 里，模型既看不到也改不了。
@@ -22,10 +19,7 @@ const toolBackgroundDisabledKey = '_background_disabled';
 
 /// Remove model-authored metadata before rule matching or tool execution.
 Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
-    Map<String, dynamic>.of(args)
-      ..remove(toolCallDescriptionKey)
-      ..remove(toolApprovalRecommendationKey)
-      ..remove(toolApprovalReasonKey);
+    Map<String, dynamic>.of(args)..remove(toolCallDescriptionKey);
 
 /// 工具执行模式。
 enum ExecutionMode {

@@ -3,163 +3,50 @@ import 'dart:convert';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/path_normalizer.dart';
 
-/// 权限检查结论。
-enum PermissionVerdict {
-  /// 放行(会话级命中 / 规则命中)
-  allow,
+/// Permission gate result before applying the run's approval mode.
+enum PermissionVerdict { prompt, deny }
 
-  /// 需要按当前模式审批（手动 / AI 审核 / 直接放行）
-  prompt,
-
-  /// 被 deny 规则直接拒绝(不弹窗,调用被 block)
-  deny,
-}
-
-/// 权限编排:
-/// 1. deny 规则扫描:完整调用命中 → 直接拒绝,
-///    优先于会话缓存与 allow 规则
-/// 2. 会话级缓存:当前 run 内已批准的动作直接放行
-/// 3. 持久 allow 规则:命中则放行;未命中 → 交由调用方按审批模式处理
-///
-/// shell 只匹配整条命令的显式规则,不分析动作、子命令或只读性。
-///
-/// 会话级缓存按 [runId] 隔离:多个 Agent 并发运行时,
-/// A 任务批准的命令不会被 B 任务自动放行。
+/// 持久禁令与本轮用户拒绝优先于三种审批模式。
+/// 批准仅用于当次调用，不缓存，不生成持久 allow 规则。
 class PermissionService {
-  final PermissionStore _store;
-  final Map<int, Map<String, bool>> _sessionApprovals = {};
-
   PermissionService({required PermissionStore store}) : _store = store;
 
-  /// 检查工具调用是否需要进入审批流程。
-  ///
-  /// - [allow] → 放行,无需弹窗
-  /// - [prompt] → 交由调用方按当前审批模式处理
-  /// - [deny] → 被 deny 规则拒绝,调用方应直接 block
-  ///
-  /// [runId] 为本次 Agent run 的标识(会话级缓存按 run 隔离);
-  /// [workspace] 为本次 run 的工作文件夹,用来判断 shell 的 workdir 是否由
-  /// 模型另行指定(见 [_persistentAllowApplies])。
+  final PermissionStore _store;
+  final Map<int, Set<String>> _sessionDenials = {};
+
   PermissionVerdict check(
     int runId,
     String toolName,
-    Map<String, dynamic> args, {
-    String? workspace,
-  }) {
-    // 另一进程(GUI/TUI)或手工编辑改了规则文件时先重读
+    Map<String, dynamic> args,
+  ) {
     _store.refreshIfChanged();
-
-    // ① deny 优先:完整调用命中 deny 规则 → 直接拒绝
     final keyArg = _primaryArg(toolName, args) ?? '';
-    if (_ruleHits(toolName, keyArg, effect: RuleEffect.deny)) {
+    for (final rule in _store.rules) {
+      try {
+        if (rule.matches(toolName, keyArg)) return PermissionVerdict.deny;
+      } catch (error) {
+        LoggerUtil.w('Permission rule skipped (${rule.toJson()}): $error');
+      }
+    }
+    if (_sessionDenials[runId]?.contains(_sessionKey(toolName, args)) ??
+        false) {
       return PermissionVerdict.deny;
-    }
-    final sessionKey = _sessionKey(toolName, args);
-    if (_sessionApprovals[runId]?[sessionKey] == false) {
-      return PermissionVerdict.deny;
-    }
-
-    // ② 会话级缓存:当前 run 内已批准的动作直接放行
-    if (_sessionApprovals[runId]?[sessionKey] == true) {
-      return PermissionVerdict.allow;
-    }
-
-    // ③ 持久 allow 规则命中则放行
-    if (_persistentAllowApplies(toolName, args, workspace) &&
-        _ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
-      return PermissionVerdict.allow;
     }
     return PermissionVerdict.prompt;
   }
 
-  /// 持久 allow 规则只按 [primaryArg] 匹配，覆盖不到的维度要排除在外。
-  ///
-  /// web_fetch 的规则只有 origin：对某站点一次 GET 点了「始终允许」，不能
-  /// 顺带放行之后对同一站点的 POST、带 body 或自定义 headers（令牌）的
-  /// 请求——这些都要每次审批（同一 run 内的会话缓存按完整参数照常生效）。
-  ///
-  /// shell 的规则只有命令文本：批准过的 `git clean -fdx` 不能被模型换个
-  /// workdir 挪到主目录执行，也不能加 `background: true` 在 run 结束后继续
-  /// 跑。所以只在未另行指定 workdir（为空，或就是 `applyRunWorkspace`
-  /// 注入的工作文件夹）且不在后台运行时生效。deny 规则不受此限。
-  static bool _persistentAllowApplies(
-    String toolName,
-    Map<String, dynamic> args,
-    String? workspace,
-  ) {
-    if (kShellToolNames.contains(toolName)) {
-      if (args['background'] == true) return false;
-      final workdir = args['workdir'];
-      if (workdir == null) return true;
-      return workdir is String &&
-          workspace != null &&
-          workspace.isNotEmpty &&
-          normalizePathForMatch(workdir) == normalizePathForMatch(workspace);
-    }
-    if (toolName != 'web_fetch') return true;
-    final method = (args['method'] as String? ?? 'GET').toUpperCase();
-    final body = args['body'];
-    final headers = args['headers'];
-    return method == 'GET' &&
-        (body == null || (body is String && body.isEmpty)) &&
-        (headers == null || (headers is Map && headers.isEmpty));
-  }
-
-  /// 记录一次会话级放行(弹窗批准后调用)。
-  Future<void> approveForSession(
-    int runId,
-    String toolName,
-    Map<String, dynamic> args,
-  ) async {
-    final key = _sessionKey(toolName, args);
-    (_sessionApprovals[runId] ??= {})[key] = true;
-  }
-
-  /// A user denial supersedes earlier consent for this exact call in this run.
+  /// A user denial blocks retries of this exact call in the same run.
   void denyForSession(int runId, String toolName, Map<String, dynamic> args) {
-    (_sessionApprovals[runId] ??= {})[_sessionKey(toolName, args)] = false;
+    (_sessionDenials[runId] ??= {}).add(_sessionKey(toolName, args));
   }
 
-  /// 清空指定 run 的会话级缓存(run 结束/取消时调用)。
-  void resetSession(int runId) {
-    _sessionApprovals.remove(runId);
-  }
+  void resetSession(int runId) => _sessionDenials.remove(runId);
 
-  /// 持久化一条规则。
-  Future<void> persistRule(PermissionRule rule) => _store.add(rule);
-
-  /// 加载已持久化规则。
   Future<void> load() => _store.load();
 
-  /// 提取工具调用的关键参数,归一化后用于规则匹配。
-  String? primaryArg(String toolName, Map<String, dynamic> args) {
-    return _primaryArg(toolName, args);
-  }
-
-  /// 是否存在命中的持久规则(按 effect 过滤)。
-  ///
-  /// 单条损坏规则(畸形 glob 等)只跳过、记日志,不能炸掉
-  /// 所有工具调用(历史上一条坏规则曾让所有 bash 报错)。
-  bool _ruleHits(String toolName, String keyArg, {required RuleEffect effect}) {
-    for (final rule in _store.rules) {
-      if (rule.effect != effect) continue;
-      try {
-        if (rule.matches(toolName, keyArg)) return true;
-      } catch (e) {
-        LoggerUtil.w('Permission rule skipped (${rule.toJson()}): $e');
-      }
-    }
-    return false;
-  }
-
-  /// Reuse approval only for the same tool and complete execution arguments.
-  /// A different command flag, workdir, file content or HTTP body needs review.
-  /// Display/recommendation metadata and JSON map ordering do not change consent.
-  String _sessionKey(String toolName, Map<String, dynamic> args) {
-    return jsonEncode([toolName, _sortedJson(toolExecutionArguments(args))]);
-  }
+  String _sessionKey(String toolName, Map<String, dynamic> args) =>
+      jsonEncode([toolName, _sortedJson(toolExecutionArguments(args))]);
 
   Object? _sortedJson(Object? value) {
     if (value is Map<String, dynamic>) {
@@ -173,19 +60,13 @@ class PermissionService {
   }
 
   String? _primaryArg(String toolName, Map<String, dynamic> args) {
-    // 工具集合统一来自 kFileToolNames / kShellToolNames,避免多处硬编码不一致
     if (kFileToolNames.contains(toolName)) return args['path'] as String?;
     if (kShellToolNames.contains(toolName)) return args['command'] as String?;
-    switch (toolName) {
-      case 'web_fetch':
-        final url = args['url'] as String?;
-        if (url == null) return null;
-        final uri = Uri.tryParse(url);
-        if (uri == null || uri.host.isEmpty) return null;
-        if (uri.scheme != 'http' && uri.scheme != 'https') return null;
-        return uri.origin;
-      default:
-        return null;
-    }
+    if (toolName != 'web_fetch') return null;
+    final url = args['url'] as String?;
+    final uri = url == null ? null : Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    return uri.origin;
   }
 }

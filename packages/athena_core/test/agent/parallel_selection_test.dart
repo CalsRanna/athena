@@ -11,7 +11,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 并行组里不得有需要审批弹窗的调用（AGENTS 硬约束 4）：多个审批模态同时
+/// 并行组里不得有需要审批弹窗的调用：多个审批模态同时
 /// 弹出会互相覆盖。`selectParallelCalls` 先用权限预检分级，再看工具的并行声明。
 void main() {
   late PermissionStore store;
@@ -49,33 +49,33 @@ void main() {
         calls,
         runId: 1,
         permissionService: PermissionService(store: store),
-        onPermission: (_, _) async => true,
+        onPermission: (_, _, {reviewReason}) async => true,
         workspace: workspace,
         bypassPermissions: bypass,
       )
       .map((c) => c.id)
       .toList();
 
-  test('只有已获授权的可并行调用进入并行组', () {
-    store.rules.addAll(PermissionRule.forToolCall('file_read', '/w'));
-
+  test('需要人工或 AI 审核的调用均串行，避免同时弹出审批', () {
     expect(
       select([
         call('allowed', 'file_read', {'path': '/w/a.txt'}),
         call('needs-approval', 'file_read', {'path': '/elsewhere/b.txt'}),
         call('not-parallel', 'file_write', {'path': '/w/c.txt', 'content': ''}),
       ]),
-      ['allowed'],
+      isEmpty,
     );
   });
 
   test('相对路径按工作文件夹解析后再预检，与执行口径一致', () {
-    store.rules.addAll(PermissionRule.forToolCall('file_read', '/w'));
-
     expect(
-      select([
-        call('relative', 'file_read', {'path': 'a.txt'}),
-      ], workspace: '/w'),
+      select(
+        [
+          call('relative', 'file_read', {'path': 'a.txt'}),
+        ],
+        workspace: '/w',
+        bypass: true,
+      ),
       ['relative'],
     );
   });
@@ -86,7 +86,6 @@ void main() {
         tool: 'file_read',
         kind: RuleKind.path,
         pattern: '/secret',
-        effect: RuleEffect.deny,
       ),
     );
 
@@ -100,17 +99,15 @@ void main() {
     );
   });
 
-  test('模型建议问人（approval_recommendation=ask）的调用不进并行组', () {
-    store.rules.addAll(PermissionRule.forToolCall('file_read', '/w'));
-
+  test('bypass 对旧的模型审批建议不作处理', () {
     expect(
       select([
-        call('ask', 'file_read', {
+        call('legacy', 'file_read', {
           'path': '/w/a.txt',
           'approval_recommendation': 'ask',
         }),
-      ]),
-      isEmpty,
+      ], bypass: true),
+      ['legacy'],
     );
   });
 }

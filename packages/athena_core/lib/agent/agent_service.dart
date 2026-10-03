@@ -23,7 +23,6 @@ import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
     show
         CancellableTool,
-        toolApprovalRecommendationKey,
         toolBackgroundDisabledKey,
         toolChatIdKey,
         toolExecutionArguments;
@@ -42,7 +41,11 @@ import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 typedef PermissionCallback =
-    Future<bool> Function(String toolName, String description);
+    Future<bool> Function(
+      String toolName,
+      String arguments, {
+      String? reviewReason,
+    });
 
 /// beforeToolCall 上下文。
 typedef BeforeToolCallContext = ({
@@ -185,12 +188,14 @@ class AgentService {
     _skillRegistry?.clearContext();
 
     // 权限门：权限检查 + 审批回调，工具执行前逐调用拦截
+    final userAnswers = <Map<String, Object?>>[];
     final permissionGate = _buildPermissionGate(
       runId: runId,
       permissionService: permissionService,
       onPermission: onPermission,
       cancelToken: token,
       reviewContext: permissionReviewContext,
+      userAnswers: userAnswers,
       bypassPermissions: bypassPermissions,
       provider: provider,
       model: model,
@@ -204,6 +209,14 @@ class AgentService {
       chatId: chat.id ?? '',
       prompt: onElicit,
       cancelToken: token,
+      onAnswered: (questions, answers) {
+        for (final question in questions) {
+          final answer = answers[question.question];
+          if (answer != null && answer.trim().isNotEmpty) {
+            userAnswers.add({'question': question.question, 'answer': answer});
+          }
+        }
+      },
     );
 
     try {
@@ -414,7 +427,7 @@ class AgentService {
   ///
   /// 预检目的：并行组内不得出现需要审批弹窗的调用（多个模态 dialog
   /// 同时弹出会互相覆盖），因此：
-  /// - 已获显式授权的调用可并行，需要审批的调用保持串行；
+  /// - Manual / AI Review 下调用保持串行，避免人工审批互相覆盖；
   /// - [bypassPermissions] 下无需审批的调用可并行，deny 仍优先；
   /// - 没有权限服务时按执行路径同样的口径收口。
   ///
@@ -434,10 +447,6 @@ class AgentService {
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
-        if (!bypassPermissions &&
-            args[toolApprovalRecommendationKey] == 'ask') {
-          continue;
-        }
         args = toolExecutionArguments(args);
         // 与 executeToolCallInternal 同一解析口径：两处不一致会出现
         // 「预检放行、执行时被拦」或反向的判定漂移
@@ -451,15 +460,9 @@ class AgentService {
       }
 
       final verdict =
-          permissionService?.check(
-            runId,
-            tc.function.name,
-            args,
-            workspace: workspace,
-          ) ??
+          permissionService?.check(runId, tc.function.name, args) ??
           _verdictWithoutPermissionService(onPermission);
-      if (verdict == PermissionVerdict.deny ||
-          (!bypassPermissions && verdict != PermissionVerdict.allow)) {
+      if (verdict == PermissionVerdict.deny || !bypassPermissions) {
         continue;
       }
 
@@ -475,6 +478,7 @@ class AgentService {
     PermissionCallback? onPermission,
     required CancelToken cancelToken,
     required PermissionReviewContext? reviewContext,
+    required List<Map<String, Object?>> userAnswers,
     required bool bypassPermissions,
     required ProviderEntity provider,
     required ModelEntity model,
@@ -484,25 +488,16 @@ class AgentService {
     final userDecisions = <Map<String, Object?>>[];
     return (ctx) async {
       cancelToken.throwIfCancelled();
-      final metadata = jsonDecode(ctx.arguments) as Map<String, dynamic>;
       final tool = _toolRegistry.get(ctx.name);
-      // 提问类工具（ask_user_question）自己就是人机通道：模型给它的
-      // approval_recommendation=ask 意思是「这件事得问用户」，而不是
-      // 「这个动作越界了」。不在这里挡掉，一次提问就会先弹审批弹窗、
-      // 再弹提问卡片，而审批一旦被拒，问题根本问不出去。
-      final asksUser =
-          metadata[toolApprovalRecommendationKey] == 'ask' &&
-          tool is! ElicitChannelAware;
       final serviceVerdict = permissionService?.check(
         runId,
         ctx.name,
         ctx.args,
-        workspace: workspace,
       );
       final verdict =
           serviceVerdict ??
           (tool is ElicitChannelAware
-              ? PermissionVerdict.allow
+              ? PermissionVerdict.prompt
               : _verdictWithoutPermissionService(onPermission));
 
       if (verdict == PermissionVerdict.deny) {
@@ -522,8 +517,9 @@ class AgentService {
         return (block: false, reason: '');
       }
 
-      if (asksUser || verdict == PermissionVerdict.prompt) {
-        if (!asksUser && reviewContext != null && tool != null) {
+      if (verdict == PermissionVerdict.prompt) {
+        String? reviewReason;
+        if (reviewContext != null && tool != null) {
           final review = await _permissionReviewer.review(
             context: reviewContext,
             toolName: ctx.name,
@@ -534,17 +530,14 @@ class AgentService {
             cancelToken: cancelToken,
             sentinelId: sentinelId,
             userDecisions: userDecisions,
+            userAnswers: userAnswers,
+            workspace: workspace,
           );
           cancelToken.throwIfCancelled();
           ctx.recordReview(review);
-          // Recheck deny rules after the asynchronous review. AI approval never
-          // writes session or persistent rules, even for identical calls.
-          if (permissionService?.check(
-                runId,
-                ctx.name,
-                ctx.args,
-                workspace: workspace,
-              ) ==
+          reviewReason = review.reason;
+          // 异步审核后重新检查禁令；逐次批准不缓存，也不生成持久规则。
+          if (permissionService?.check(runId, ctx.name, ctx.args) ==
               PermissionVerdict.deny) {
             return (
               block: true,
@@ -562,7 +555,7 @@ class AgentService {
           );
         }
         final approved = await Future.any<bool>([
-          onPermission(ctx.name, ctx.arguments),
+          onPermission(ctx.name, ctx.arguments, reviewReason: reviewReason),
           cancelToken.whenCancelled.then((_) => false),
         ]);
         cancelToken.throwIfCancelled();
@@ -574,6 +567,14 @@ class AgentService {
         if (!approved) {
           permissionService?.denyForSession(runId, ctx.name, ctx.args);
           return (block: true, reason: 'User denied the tool execution.');
+        }
+        // 人工等待期间用户也可能修改禁令；当次批准不能覆盖最新的持久限制。
+        if (permissionService?.check(runId, ctx.name, ctx.args) ==
+            PermissionVerdict.deny) {
+          return (
+            block: true,
+            reason: 'Tool call denied by a permission rule.',
+          );
         }
       }
 

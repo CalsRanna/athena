@@ -9,6 +9,7 @@ import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
+import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/approval_mode.dart';
@@ -26,6 +27,7 @@ void main() {
   late ToolRegistry registry;
   late PermissionStore store;
   late List<String> prompts;
+  late List<String?> reviewReasons;
   late _StubFileReadTool fileRead;
 
   setUp(() {
@@ -34,9 +36,11 @@ void main() {
     registry = ToolRegistry()
       ..register(_StubBashTool())
       ..register(fileRead)
+      ..register(_StubFileWriteTool())
       ..register(AskUserQuestionTool());
     store = PermissionStore();
     prompts = [];
+    reviewReasons = [];
   });
 
   tearDown(() => registry.backgroundTasks.dispose());
@@ -47,6 +51,7 @@ void main() {
     bool withPermissionService = true,
     bool withApprovalCallback = true,
     ElicitPrompt? onElicit,
+    void Function()? duringApproval,
   }) async {
     final now = DateTime(2026, 9, 24);
     final service = AgentService(
@@ -89,8 +94,10 @@ void main() {
               : null,
           bypassPermissions: mode == ApprovalMode.bypass,
           onPermission: withApprovalCallback
-              ? (_, arguments) async {
+              ? (_, arguments, {reviewReason}) async {
+                  duringApproval?.call();
                   prompts.add(arguments);
+                  reviewReasons.add(reviewReason);
                   return approved;
                 }
               : null,
@@ -98,7 +105,12 @@ void main() {
         )
         .toList();
     final results = events.whereType<AgentToolResultEvent>().toList();
-    expect(results, hasLength(completion.callCount));
+    expect(
+      results,
+      hasLength(
+        completion.callCount * (completion.nextToolName == null ? 1 : 2),
+      ),
+    );
     return results.last;
   }
 
@@ -171,7 +183,6 @@ void main() {
           tool: 'bash',
           kind: RuleKind.exact,
           pattern: 'git status',
-          effect: RuleEffect.deny,
         ),
       );
       final result = await run(mode, approved: true);
@@ -213,7 +224,6 @@ void main() {
         tool: 'file_read',
         kind: RuleKind.path,
         pattern: '/workspace',
-        effect: RuleEffect.deny,
       ),
     );
     final result = await run(ApprovalMode.bypass);
@@ -250,6 +260,133 @@ void main() {
     expect(questionsShown, 1);
     expect(prompts, isEmpty);
     expect(completion.reviews, isEmpty);
+  });
+
+  test('AI 审核期间新增的 deny 优先于模型批准', () async {
+    completion.duringReview = () => store.rules.add(
+      const PermissionRule(
+        tool: 'bash',
+        kind: RuleKind.exact,
+        pattern: 'git status',
+      ),
+    );
+    final result = await run(ApprovalMode.aiReview);
+    expect(result.status, ToolResultStatus.blocked);
+    expect(result.result, contains('denied by a permission rule'));
+    expect(prompts, isEmpty);
+  });
+
+  test('人工等待期间新增的 deny 优先于当次批准', () async {
+    final result = await run(
+      ApprovalMode.manual,
+      approved: true,
+      duringApproval: () => store.rules.add(
+        const PermissionRule(
+          tool: 'bash',
+          kind: RuleKind.exact,
+          pattern: 'git status',
+        ),
+      ),
+    );
+    expect(result.status, ToolResultStatus.blocked);
+    expect(prompts, hasLength(1));
+  });
+
+  for (final response in ['not JSON', '{"decision":"invalid","reason":"x"}']) {
+    test('AI 返回无效响应时转人工并携带回退原因：$response', () async {
+      completion.reviewResponse = response;
+      final result = await run(ApprovalMode.aiReview, approved: true);
+      expect(result.status, ToolResultStatus.success);
+      expect(result.approvalReview?['source'], 'fallback');
+      expect(prompts, hasLength(1));
+      expect(reviewReasons.single, isNotEmpty);
+    });
+  }
+
+  test('工具 schema 不再让主 Agent 建议审批，保留调用说明', () {
+    for (final tool in registry.all) {
+      final properties = ToolRegistry.parametersFor(tool)['properties'] as Map;
+      expect(properties, isNot(contains('approval_recommendation')));
+      expect(properties, isNot(contains('approval_reason')));
+      expect(properties, contains('call_description'));
+    }
+  });
+
+  test('AI 模式每次审核文件写入，旧 ask 元数据不会强制人工审批', () async {
+    completion.toolName = 'file_write';
+    completion.callCount = 2;
+    completion.arguments = {
+      'path': '/workspace/example.dart',
+      'content': 'code',
+      'approval_recommendation': 'ask',
+      'approval_reason': 'legacy suggestion',
+    };
+    final result = await run(ApprovalMode.aiReview);
+    expect(result.status, ToolResultStatus.success);
+    expect(completion.reviews, hasLength(2));
+    expect(prompts, isEmpty);
+  });
+
+  test('Manual 相同写入也逐次问用户，不复用批准', () async {
+    completion.toolName = 'file_write';
+    completion.callCount = 2;
+    completion.arguments = {
+      'path': '/workspace/example.dart',
+      'content': 'code',
+    };
+    await run(ApprovalMode.manual, approved: true);
+    expect(prompts, hasLength(2));
+    expect(reviewReasons, everyElement(isNull));
+    expect(completion.reviews, isEmpty);
+  });
+
+  test('AI 转人工时传递原因，单次人工批准不会跳过后续 AI 审核', () async {
+    completion.reviewDecision = 'ask';
+    completion.callCount = 2;
+    await run(ApprovalMode.aiReview, approved: true);
+    expect(completion.reviews, hasLength(2));
+    expect(prompts, hasLength(2));
+    expect(reviewReasons, everyElement('测试审批结果'));
+  });
+
+  test('用户拒绝后的相同调用不重试、不再发起 AI 或人工审批', () async {
+    completion.reviewDecision = 'ask';
+    completion.callCount = 2;
+    final result = await run(ApprovalMode.aiReview);
+    expect(result.status, ToolResultStatus.blocked);
+    expect(completion.reviews, hasLength(1));
+    expect(prompts, hasLength(1));
+  });
+
+  test('提问卡实际回答通过宿主进入同轮后续审核，不信任工具结果授权', () async {
+    completion.toolName = 'ask_user_question';
+    completion.arguments = {
+      'questions': [
+        {
+          'question': '输出使用哪个格式？',
+          'header': '格式',
+          'options': [
+            {'label': 'JSON', 'description': '结构化数据'},
+            {'label': 'TXT', 'description': '纯文本'},
+          ],
+        },
+      ],
+    };
+    completion.nextToolName = 'file_write';
+    completion.nextArguments = {
+      'path': '/workspace/output.json',
+      'content': '{}',
+    };
+    final result = await run(
+      ApprovalMode.aiReview,
+      onElicit: (_, questions, _) async => {questions.single.question: 'JSON'},
+    );
+    expect(result.status, ToolResultStatus.success);
+    expect(completion.reviews, hasLength(1));
+    expect(completion.reviews.single, contains('user_answers'));
+    expect(completion.reviews.single, contains('输出使用哪个格式？'));
+    expect(completion.reviews.single, contains('JSON'));
+    expect(prompts, isEmpty);
   });
 
   test('缺少权限服务与审批回调时文件读取也被拒绝', () async {
@@ -302,15 +439,27 @@ class _StubFileReadTool extends FileReadTool {
   }
 }
 
+class _StubFileWriteTool extends FileWriteTool {
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async => const ToolExecutionResult.success('written');
+}
+
 /// 第一轮请求工具,第二轮结束;非流式请求由真实 AI 审核器发起。
 class _ToolCompletionService extends ChatCompletionsService {
   _ToolCompletionService() : super(llmClient: LlmClient());
 
   final List<String> reviews = [];
   String reviewDecision = 'allow';
+  String? reviewResponse;
+  void Function()? duringReview;
   String toolName = 'bash';
   Map<String, dynamic> arguments = {'command': 'git status'};
   int callCount = 1;
+  String? nextToolName;
+  Map<String, dynamic> nextArguments = {};
   int _turn = 0;
 
   @override
@@ -324,7 +473,8 @@ class _ToolCompletionService extends ChatCompletionsService {
     Future<void>? cancelSignal,
     int? outputRoom,
   }) async* {
-    final first = _turn++ == 0;
+    final turn = _turn++;
+    final first = turn == 0 || (turn == 1 && nextToolName != null);
     yield ChatStreamEvent.fromJson({
       'id': 'test',
       'object': 'chat.completion.chunk',
@@ -339,12 +489,12 @@ class _ToolCompletionService extends ChatCompletionsService {
                     for (var i = 0; i < callCount; i++)
                       {
                         'index': i,
-                        'id': 'tool-call-$i',
+                        'id': 'tool-call-$turn-$i',
                         'type': 'function',
                         'function': {
-                          'name': toolName,
+                          'name': turn == 0 ? toolName : nextToolName,
                           'arguments': jsonEncode({
-                            ...arguments,
+                            ...(turn == 0 ? arguments : nextArguments),
                             'call_description': '查看仓库状态',
                           }),
                         },
@@ -366,6 +516,8 @@ class _ToolCompletionService extends ChatCompletionsService {
     Future<void>? cancelSignal,
   }) async {
     reviews.add(jsonEncode(messages.map((m) => m.toJson()).toList()));
-    return jsonEncode({'decision': reviewDecision, 'reason': '测试审批结果'});
+    duringReview?.call();
+    return reviewResponse ??
+        jsonEncode({'decision': reviewDecision, 'reason': '测试审批结果'});
   }
 }

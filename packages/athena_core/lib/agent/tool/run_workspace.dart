@@ -13,12 +13,9 @@ import 'package:path/path.dart' as p;
 /// 匹配（`PermissionRule._matchesPath` 同样走归一化）自动共用同一基准，
 /// 不需要给 `PermissionService` 另开一条基准通道。
 ///
-/// **必须三处共用**：执行（`AgentService.executeToolCallInternal`）、
-/// 并行预检（`AgentService.selectParallelCalls`）、审批落库
-/// （`AgentRunCoordinator._askPermission`）。审批路径拿到的是模型原始 JSON
-/// （相对路径）；若那里不同步解析，会话级授权键与持久规则都会存成相对路径，
-/// 之后拿绝对路径匹配永远不命中，表现为「同一 run 内已批准仍重复弹窗」与
-/// 「始终允许」规则失效。
+/// **必须共用**：执行（`AgentService.executeToolCallInternal`）与
+/// 并行预检（`AgentService.selectParallelCalls`）使用同一解析口径；审批卡
+/// 与 AI 审核也必须看到实际执行目标，避免词法路径与真实路径产生判定漂移。
 ///
 /// 文件工具的路径同时解析符号链接（[resolveRealPathSync]）：审批卡、AI
 /// 审核、会话缓存、持久规则与执行都落在同一个真实目标上，项目里一个指向
@@ -26,7 +23,7 @@ import 'package:path/path.dart' as p;
 ///
 /// [workspace] 为 null 或空串 = 不指定：shell 不注入 workdir（工具默认用户
 /// 主目录），文件工具相对路径按进程当前目录解析——同样在这里落成绝对路径，
-/// 否则「始终允许」会存成相对路径规则，换个目录启动就跨项目生效。
+/// 避免审批目标随进程启动目录漂移。
 Map<String, dynamic> applyRunWorkspace(
   String toolName,
   Map<String, dynamic> args,

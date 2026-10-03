@@ -222,12 +222,32 @@ void main() {
     late File file;
     setUp(() => file = File(p.join(tmp.path, 'permissions.json')));
 
-    PermissionRule deny(String command) => PermissionRule(
-      tool: 'bash',
-      kind: RuleKind.exact,
-      pattern: command,
-      effect: RuleEffect.deny,
-    );
+    PermissionRule deny(String command) =>
+        PermissionRule(tool: 'bash', kind: RuleKind.exact, pattern: command);
+
+    test('混合旧规则只加载 deny，保留原文件并不把 allow 转成禁令', () async {
+      final content = jsonEncode({
+        'rules': [
+          {'tool': 'bash', 'kind': 'exact', 'pattern': 'git status'},
+          {
+            'tool': 'file_write',
+            'kind': 'path',
+            'pattern': '/workspace',
+            'effect': 'allow',
+          },
+          deny('rm -rf /').toJson(),
+        ],
+      });
+      file.writeAsStringSync(content);
+      final store = PermissionStore(file: file, locks: LockRegistry(tmp));
+      await store.load();
+      expect(store.rules.map((r) => r.pattern), ['rm -rf /']);
+      expect(file.readAsStringSync(), content);
+      await store.add(deny('git push -f'));
+      final reloaded = PermissionStore(file: file, locks: LockRegistry(tmp));
+      await reloaded.load();
+      expect(reloaded.rules.map((r) => r.pattern), ['rm -rf /', 'git push -f']);
+    });
 
     test('另一实例的写入被看见，也不会被本实例的旧列表覆盖', () async {
       final gui = PermissionStore(file: file, locks: LockRegistry(tmp));
@@ -239,11 +259,11 @@ void main() {
       gui.refreshIfChanged();
       expect(gui.rules.map((r) => r.pattern), ['rm -rf /']);
 
-      // 手工编辑追加一条 deny，随后 GUI 点「始终允许」
+      // 手工编辑追加一条 deny，随后另一实例添加禁令
       final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
       (json['rules'] as List).add(deny('git push -f').toJson());
       file.writeAsStringSync(jsonEncode(json));
-      await gui.add(PermissionRule.forToolCall('bash', 'npm test').single);
+      await gui.add(deny('npm test'));
 
       final patterns = PermissionStore(file: file, locks: LockRegistry(tmp));
       await patterns.load();
@@ -266,7 +286,7 @@ void main() {
         'rm -rf /',
       ], reason: '解析失败时不能把 deny 规则清空');
 
-      await store.add(PermissionRule.forToolCall('bash', 'ls').single);
+      await store.add(deny('ls'));
       expect(
         backupsOf(file).single.readAsStringSync(),
         '{"rules": [ truncated',

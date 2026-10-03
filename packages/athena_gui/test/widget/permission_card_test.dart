@@ -16,7 +16,7 @@ void main() {
       final theme = buildAthenaThemeData(
         AthenaColorMode.light,
       ).copyWith(platform: platform);
-      (bool, bool)? decision;
+      bool? decision;
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
@@ -28,13 +28,14 @@ void main() {
                   request: ApprovalRequest(
                     chatId: 'chat-1',
                     toolName: toolName,
+                    reviewReason: '这次操作需要你考虑数据覆盖的影响。',
                     arguments:
                         '{"call_description":"回忆项目约定","query":"project rules"}',
                     completer: Completer<PermissionDecision>(),
                   ),
                   maxHeight: 400,
-                  onDecision: (approved, persistExact) {
-                    decision = (approved, persistExact);
+                  onDecision: (approved) {
+                    decision = approved;
                   },
                 ),
               ),
@@ -50,11 +51,15 @@ void main() {
       expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);
-      expect(find.text('query: project rules'), findsOneWidget);
+      expect(find.textContaining('这次操作需要你考虑数据覆盖的影响。'), findsOneWidget);
+      expect(find.textContaining('query: project rules'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Allow Once'));
-      expect(decision, (true, false));
+      expect(decision, isTrue);
+      expect(find.text('Always Allow'), findsNothing);
+      await tester.tap(find.text('Deny'));
+      expect(decision, isFalse);
     });
   }
 
@@ -71,7 +76,7 @@ void main() {
               completer: Completer<PermissionDecision>(),
             ),
             maxHeight: 400,
-            onDecision: (_, _) {},
+            onDecision: (_) {},
           ),
         ),
       ),

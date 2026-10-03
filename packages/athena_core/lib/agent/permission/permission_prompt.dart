@@ -3,8 +3,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 /// 用户对权限弹窗的决策（GUI 弹窗 / TUI 终端提示由 [PermissionPrompt] 提供）。
 class PermissionDecision {
   final bool approved;
-  final bool persistExact;
-  const PermissionDecision({required this.approved, this.persistExact = false});
+  const PermissionDecision({required this.approved});
 }
 
 /// 权限审批回调：由各 App 注入（GUI=会话内审批卡片，TUI=终端提示）。
@@ -16,5 +15,6 @@ typedef PermissionPrompt =
       String chatId,
       String toolName,
       String arguments,
-      CancelToken cancelToken,
-    );
+      CancelToken cancelToken, {
+      String? reviewReason,
+    });

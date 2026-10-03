@@ -199,7 +199,7 @@ void main() {
     });
   });
 
-  test('路径规则按真实路径匹配：写在链接目录下的 allow / deny 照常生效', () {
+  test('路径规则按真实路径匹配：写在链接目录下的 deny 照常生效', () {
     Link('$root/linked').createSync(project);
     final real =
         applyRunWorkspace('file_write', {
@@ -213,7 +213,6 @@ void main() {
         tool: 'file_write',
         kind: RuleKind.path,
         pattern: pattern,
-        effect: RuleEffect.deny,
       );
       expect(rule.matches('file_write', real), isTrue, reason: pattern);
     }

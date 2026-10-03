@@ -282,7 +282,7 @@ class WebFetchTool extends Tool implements CancellableTool {
   ///
   /// 已知局限：恶意域名解析到内网（DNS rebinding）在直连模式下仍可
   /// 绕过——fake-ip 代理下由代理层缓解；直连场景由 POST / body / 自定义
-  /// headers 不吃持久 allow 规则（PermissionService）、跨 origin 跳转不跟随
+  /// 跨 origin 跳转不跟随
   /// 兜底。
   @visibleForTesting
   static String? blockedReason(Uri uri) {

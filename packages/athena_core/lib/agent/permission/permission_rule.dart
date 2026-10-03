@@ -8,7 +8,7 @@ import 'package:athena_core/util/path_normalizer.dart';
 /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
 const kFileToolNames = {'file_read', 'file_write', 'file_update'};
 
-/// Shell 类工具:「始终允许」落整条命令的精确匹配(见 [PermissionRule.forToolCall])。
+/// Shell 类工具:禁令按整条命令匹配，不分析命令语义。
 ///
 /// 与 [kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
 /// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
@@ -16,15 +16,12 @@ const kShellToolNames = {'bash', 'powershell'};
 
 /// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
 ///
-/// - [exact]:shell 工具。命令 trim 后与 pattern 完全相等(当前唯一的落库形态)
+/// - [exact]:shell 工具。折叠空白并去掉参数末尾的 `/` 后匹配完整命令
 /// - [origin]:web_fetch。pattern 为 URL origin,前缀 + 主机边界
 /// - [path]:文件工具。归一化路径 + 目录前缀(/ 边界)或路径 glob
 enum RuleKind { exact, origin, path }
 
-/// 规则效果。deny 优先于 allow(以及会话缓存等一切放行路径)。
-enum RuleEffect { allow, deny }
-
-/// 单条权限规则:工具名 + 匹配方式 + 模式。
+/// 单条持久禁令:工具名 + 匹配方式 + 模式。
 ///
 /// 匹配语义宁窄勿宽:
 /// - pattern 为空(任意 kind)→ 匹配该工具的所有调用
@@ -35,20 +32,16 @@ class PermissionRule {
   final RuleKind kind;
 
   /// 匹配模式:exact 的完整命令 / origin /
-  /// path 目录前缀或路径 glob。空串 = 放行全部。
+  /// path 目录前缀或路径 glob。空串 = 禁止该工具全部调用。
   final String pattern;
-
-  /// 效果:默认放行;deny 规则在权限检查中优先。
-  final RuleEffect effect;
 
   const PermissionRule({
     required this.tool,
     required this.kind,
     this.pattern = '',
-    this.effect = RuleEffect.allow,
   });
 
-  /// 严格解析;非法组合或已移除的 action 规则
+  /// 严格解析;旧 allow、非法组合或已移除的 action 规则
   /// 返回 null,由存储层跳过——损坏规则不能拖垮整个权限检查。
   static PermissionRule? fromJson(Map<String, dynamic> json) {
     final tool = json['tool'] as String?;
@@ -58,9 +51,8 @@ class PermissionRule {
     if (kind == null) return null;
     final pattern = json['pattern'] as String? ?? '';
     final wildcard = json['wildcard'] as bool? ?? false;
-    final effect = RuleEffect.values
-        .asNameMap()[json['effect'] as String? ?? 'allow'];
-    if (effect == null) return null;
+    // 旧 allow 规则（包括省略 effect 的旧格式）停止生效，绝不能改读成 deny。
+    if (json['effect'] != 'deny') return null;
 
     // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
     if (kind == RuleKind.origin && tool != 'web_fetch') {
@@ -70,58 +62,15 @@ class PermissionRule {
     } else if (wildcard) {
       return null;
     }
-    return PermissionRule(
-      tool: tool,
-      kind: kind,
-      pattern: pattern,
-      effect: effect,
-    );
+    return PermissionRule(tool: tool, kind: kind, pattern: pattern);
   }
 
   Map<String, dynamic> toJson() => {
     'tool': tool,
     'kind': kind.name,
-    if (effect == RuleEffect.deny) 'effect': 'deny',
+    'effect': 'deny',
     'pattern': pattern,
   };
-
-  /// 「始终允许」落库用:按工具类别选择规则形态。
-  ///
-  /// - shell 工具 → [RuleKind.exact](整条命令精确匹配)
-  /// - 文件工具   → [RuleKind.path](归一化路径前缀 / glob)
-  /// - web_fetch  → [RuleKind.origin](scheme://host[:port])
-  /// - 其余工具 → 空 pattern 的 [RuleKind.exact],即放行该工具的所有调用
-  /// - 以上三类缺少 [keyArg](如 URL 不合法) → 不落规则。退化成整工具放行
-  ///   会让一次针对坏参数的「始终允许」放开该工具的全部调用
-  ///
-  /// shell 按「动作 + 参数前缀」匹配会把一次授权
-  /// 顺带扩展到用户没看到的变体(`npm test` 放行 `npm test -- --watch`),
-  /// 而这中间没有二次确认。精确匹配把授权范围钉在用户当时看到的那条命令上。
-  static List<PermissionRule> forToolCall(String tool, String? keyArg) {
-    final keyed =
-        kShellToolNames.contains(tool) ||
-        kFileToolNames.contains(tool) ||
-        tool == 'web_fetch';
-    if (keyArg == null || keyArg.isEmpty) {
-      return keyed
-          ? const []
-          : [PermissionRule(tool: tool, kind: RuleKind.exact)];
-    }
-    if (kShellToolNames.contains(tool)) {
-      return [
-        PermissionRule(tool: tool, kind: RuleKind.exact, pattern: keyArg),
-      ];
-    }
-    if (kFileToolNames.contains(tool)) {
-      return [PermissionRule(tool: tool, kind: RuleKind.path, pattern: keyArg)];
-    }
-    if (tool == 'web_fetch') {
-      return [
-        PermissionRule(tool: tool, kind: RuleKind.origin, pattern: keyArg),
-      ];
-    }
-    return [PermissionRule(tool: tool, kind: RuleKind.exact)];
-  }
 
   /// [keyArg] 是归一化后的参数(路径/命令/origin)。
   bool matches(String toolName, String? keyArg) {
@@ -129,10 +78,10 @@ class PermissionRule {
 
     switch (kind) {
       case RuleKind.exact:
-        // pattern 为空 → 允许该工具的所有调用
+        // pattern 为空 → 禁止该工具的所有调用
         if (pattern.isEmpty) return true;
         if (keyArg == null) return false;
-        if (effect == RuleEffect.deny && kShellToolNames.contains(toolName)) {
+        if (kShellToolNames.contains(toolName)) {
           return _normalizeCommandForDenyMatch(keyArg) ==
               _normalizeCommandForDenyMatch(pattern);
         }
@@ -161,20 +110,9 @@ class PermissionRule {
 
   /// deny 规则用的 shell 命令归一化：折叠空白、去掉每个参数末尾的 `/`。
   ///
-  /// **只用于 deny。** deny 是安全方向，放宽匹配最坏是多拦住一条本来能跑的
-  /// 命令；allow 一旦放宽就变成「多放行一条用户没看过的命令」，所以 allow 继续
-  /// 字面精确（见 [matches]）。
-  ///
-  /// 它堵的是最廉价的扰动：`rm -rf ~` 与 `rm -rf ~/`、`rm  -rf\t~`。它**不是**
-  /// 命令语义分析——`rm -fr ~`、`/bin/rm -rf ~`、`bash -c 'rm -rf ~'` 依旧绕得
-  /// 过去。这条边界在 permission_rule_test 里有专门的用例写着，免得有人读到这里
-  /// 就以为有更强的保证。要真挡住那些得解析 shell 语法，而「在命令文本上做动作
-  /// 分析」是本仓库明确否决的方案（见 [forToolCall]）：它会把一次授权放大到用户
-  /// 没看到的变体。需要更强的约束请换手段——别把破坏性命令交给 agent，或收窄
-  /// 工作目录。
-  ///
-  /// 按空白切词会打散引号结构（`"a  b/"` 会被当成两个词），对 deny 可以接受：
-  /// 最坏是多拦或少拦一条，而不是多放行。
+  /// 这不是命令语义分析：`rm -fr ~`、`/bin/rm -rf ~`、`bash -c 'rm -rf ~'`
+  /// 仍不匹配 `rm -rf ~`。不要把文本规则当成完整的沙箱边界。
+  /// 按空白切词会打散引号结构；这里只守住最常见的空白与末尾斜杠扰动。
   static String _normalizeCommandForDenyMatch(String command) {
     return command
         .trim()
@@ -340,7 +278,7 @@ class PermissionStore {
         if (rule != null) {
           result.add(rule);
         } else {
-          // 旧 action 规则按设计停止生效,同样落在这里
+          // 旧 allow 与 action 规则按设计停止生效，同样落在这里
           LoggerUtil.w('Permission rule skipped: $item');
         }
       }
@@ -356,7 +294,6 @@ class PermissionStore {
         (r) =>
             r.tool == rule.tool &&
             r.kind == rule.kind &&
-            r.pattern == rule.pattern &&
-            r.effect == rule.effect,
+            r.pattern == rule.pattern,
       );
 }

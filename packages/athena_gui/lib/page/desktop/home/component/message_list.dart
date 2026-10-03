@@ -175,11 +175,10 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                   child: PermissionApprovalCard(
                     request: request,
                     maxHeight: cardMaxHeight,
-                    onDecision: (approved, persistExact) =>
-                        chatViewModel.respondApproval(
-                          request,
-                          permissionDecisionOf(approved, persistExact),
-                        ),
+                    onDecision: (approved) => chatViewModel.respondApproval(
+                      request,
+                      permissionDecisionOf(approved),
+                    ),
                   ),
                 ),
               for (final request in elicits)

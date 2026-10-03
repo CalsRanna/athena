@@ -13,7 +13,8 @@ extension ApprovalModeLabel on ApprovalMode {
   String get description => switch (this) {
     ApprovalMode.manual => 'Always ask before running tools',
     ApprovalMode.aiReview =>
-      'The model reviews tool calls, asks you when unsure',
-    ApprovalMode.bypass => 'Accepts all permissions',
+      'AI decides for you, asks when your judgment is needed',
+    ApprovalMode.bypass =>
+      'Runs tools without approval; deny rules still apply',
   };
 }

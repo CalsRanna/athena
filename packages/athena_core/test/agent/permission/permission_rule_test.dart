@@ -1,181 +1,122 @@
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:test/test.dart';
 
-/// 「始终允许」落库形态的边界用例。
-///
-/// shell 工具落 [RuleKind.exact]（整条命令精确匹配），不再落
-/// action（动作 + 参数前缀）。后者会把一次授权顺带扩展到用户
-/// 没看到的变体：`npm test` 的授权会放行 `npm test -- --watch`，
-/// `rm -rf build` 的授权会放行 `rm -rf build -f`，而这两次都没有二次确认。
-/// 旧 action 规则不再生效,避免通过命令分析扩展授权。
 void main() {
-  group('shell 落整条命令的 exact', () {
-    test('单条命令 → exact，pattern 为完整命令', () {
-      final rules = PermissionRule.forToolCall('bash', 'rm -rf build');
-      expect(rules, hasLength(1));
-      expect(rules.single.kind, RuleKind.exact);
-      expect(rules.single.pattern, 'rm -rf build');
-    });
-
-    test('复合命令不被拆成多条子命令规则', () {
-      final rules = PermissionRule.forToolCall(
-        'bash',
-        'git status && npm test',
-      );
-      expect(rules, hasLength(1));
-      expect(rules.single.kind, RuleKind.exact);
-      expect(rules.single.pattern, 'git status && npm test');
-    });
-
-    test('powershell 同样落 exact', () {
-      final rules = PermissionRule.forToolCall('powershell', 'Remove-Item x');
-      expect(rules, hasLength(1));
-      expect(rules.single.kind, RuleKind.exact);
-    });
-
-    test('任何命令都不再落 action 规则（回归护栏）', () {
-      for (final command in [
-        'rm -rf build',
-        'npm test -- --watch',
-        'git clean -xfd',
-        'find . -delete',
-        'sudo rm -rf /',
-      ]) {
-        final rules = PermissionRule.forToolCall('bash', command);
-        expect(rules.single.kind, RuleKind.exact, reason: command);
+  test('旧 allow 和省略 effect 的放行规则停止生效，不转换成 deny', () {
+    for (final kind in RuleKind.values) {
+      for (final effect in [null, 'allow', 'unknown']) {
+        expect(
+          PermissionRule.fromJson({
+            'tool': switch (kind) {
+              RuleKind.exact => 'bash',
+              RuleKind.path => 'file_write',
+              RuleKind.origin => 'web_fetch',
+            },
+            'kind': kind.name,
+            'pattern': '',
+            if (effect != null) 'effect': effect,
+          }),
+          isNull,
+        );
       }
-    });
+    }
   });
 
-  group('exact 规则的匹配范围', () {
-    final rule = PermissionRule.forToolCall('bash', 'rm -rf build').single;
-
-    test('完全相同的命令命中', () {
-      expect(rule.matches('bash', 'rm -rf build'), isTrue);
-    });
-
-    test('加参数的变体不命中（旧的 action 前缀规则会命中）', () {
-      expect(rule.matches('bash', 'rm -rf build -f'), isFalse);
-    });
-
-    test('同前缀的子路径不命中', () {
-      expect(rule.matches('bash', 'rm -rf build/src'), isFalse);
-    });
-
-    test('另一条命令不命中', () {
-      expect(rule.matches('bash', 'rm -rf dist'), isFalse);
-    });
-
-    test('工具名不同的调用不命中', () {
-      expect(rule.matches('powershell', 'rm -rf build'), isFalse);
-    });
+  test('exact、path、origin 禁令往返序列化后仍生效', () {
+    for (final rule in [
+      const PermissionRule(
+        tool: 'bash',
+        kind: RuleKind.exact,
+        pattern: 'rm -rf build',
+      ),
+      const PermissionRule(
+        tool: 'file_write',
+        kind: RuleKind.path,
+        pattern: '/tmp/*.txt',
+      ),
+      const PermissionRule(
+        tool: 'web_fetch',
+        kind: RuleKind.origin,
+        pattern: 'https://a.com',
+      ),
+    ]) {
+      final decoded = PermissionRule.fromJson(rule.toJson());
+      expect(decoded?.toJson(), rule.toJson());
+      expect(decoded?.matches(rule.tool, rule.pattern), isTrue);
+      expect(rule.toJson()['effect'], 'deny');
+    }
   });
 
-  group('其余工具的落库形态不变', () {
-    test('文件工具 → path 规则', () {
-      final rules = PermissionRule.forToolCall('file_write', '/tmp/notes.md');
-      expect(rules.single.kind, RuleKind.path);
-      expect(rules.single.pattern, '/tmp/notes.md');
-    });
-
-    test('web_fetch → origin 规则', () {
-      final rules = PermissionRule.forToolCall('web_fetch', 'https://a.com/x');
-      expect(rules.single.kind, RuleKind.origin);
-    });
-
-    test('按参数匹配的工具缺 keyArg 时不落规则，不退化成整工具放行', () {
-      // 如 web_fetch 的 URL 缺 scheme：对这次坏调用点「始终允许」，不能
-      // 放开之后访问任意站点
-      for (final tool in ['bash', 'file_write', 'web_fetch']) {
-        expect(PermissionRule.forToolCall(tool, null), isEmpty, reason: tool);
-        expect(PermissionRule.forToolCall(tool, ''), isEmpty, reason: tool);
-      }
-    });
-
-    test('其余工具 → 空 pattern 的 exact，放行该工具全部调用', () {
-      final rules = PermissionRule.forToolCall('skill', null);
-      expect(rules.single.kind, RuleKind.exact);
-      expect(rules.single.pattern, '');
-      expect(rules.single.matches('skill', 'anything'), isTrue);
-    });
+  test('旧 action 和非法工具类型规则不生效', () {
+    for (final json in [
+      {'tool': 'bash', 'kind': 'action', 'effect': 'deny'},
+      {'tool': 'bash', 'kind': 'path', 'effect': 'deny'},
+      {'tool': 'file_write', 'kind': 'origin', 'effect': 'deny'},
+      {'tool': 'bash', 'kind': 'exact', 'effect': 'deny', 'wildcard': true},
+    ]) {
+      expect(PermissionRule.fromJson(json), isNull);
+    }
   });
 
-  group('持久规则读取', () {
-    test('旧 action 规则停止生效,不再解析命令动作或参数前缀', () {
-      for (final effect in RuleEffect.values) {
-        final legacy = PermissionRule.fromJson({
-          'tool': 'bash',
-          'kind': 'action',
-          'action': 'git',
-          'pattern': 'status',
-          'effect': effect.name,
-        });
-        expect(legacy, isNull);
-      }
-    });
-
-    test('现有 exact、path、origin 规则仍可往返序列化', () {
-      for (final rule in [
-        PermissionRule.forToolCall('bash', 'npm test').single,
-        PermissionRule.forToolCall('file_write', '/tmp/*.txt').single,
-        PermissionRule.forToolCall('web_fetch', 'https://a.com').single,
-        const PermissionRule(
-          tool: 'bash',
-          kind: RuleKind.exact,
-          pattern: 'npm test',
-          effect: RuleEffect.deny,
-        ),
-      ]) {
-        final decoded = PermissionRule.fromJson(rule.toJson());
-        expect(decoded?.toJson(), rule.toJson());
-        expect(decoded?.matches(rule.tool, rule.pattern), isTrue);
-      }
-    });
-  });
-
-  /// deny 是安全方向：放宽匹配最坏是多拦住一条本来能跑的命令。
-  /// allow 放宽会变成「多放行一条用户没看过的命令」——所以只有 deny 放宽。
-  group('deny 的 shell 匹配比 allow 宽', () {
-    PermissionRule deny(String pattern) => PermissionRule(
+  group('shell 禁令的文本匹配边界', () {
+    const rule = PermissionRule(
       tool: 'bash',
       kind: RuleKind.exact,
-      pattern: pattern,
-      effect: RuleEffect.deny,
+      pattern: 'rm -rf ~',
     );
-
-    PermissionRule allow(String pattern) =>
-        PermissionRule(tool: 'bash', kind: RuleKind.exact, pattern: pattern);
-
-    test('deny 命中参数末尾多一个斜杠的变体', () {
-      expect(deny('rm -rf ~').matches('bash', 'rm -rf ~/'), isTrue);
+    test('折叠空白并去掉参数末尾斜杠', () {
+      expect(rule.matches('bash', 'rm   -rf\t~/'), isTrue);
+      expect(rule.matches('bash', '  rm -rf ~  '), isTrue);
     });
-
-    test('deny 命中空白差异（多空格 / 制表符 / 首尾空白）', () {
-      expect(deny('rm -rf ~').matches('bash', 'rm   -rf\t~/'), isTrue);
-      expect(deny('  rm -rf ~  ').matches('bash', 'rm -rf ~'), isTrue);
+    test('不扩展到新增参数、子路径或其他工具', () {
+      expect(rule.matches('bash', 'rm -rf ~/data'), isFalse);
+      expect(rule.matches('bash', 'rm -rf ~ -f'), isFalse);
+      expect(rule.matches('powershell', 'rm -rf ~'), isFalse);
     });
-
-    test('allow 保持字面，不放宽斜杠与空白', () {
-      expect(allow('rm -rf ~').matches('bash', 'rm -rf ~/'), isFalse);
-      expect(allow('rm -rf ~').matches('bash', 'rm   -rf ~'), isFalse);
+    test('保留根目录斜杠', () {
+      const root = PermissionRule(
+        tool: 'bash',
+        kind: RuleKind.exact,
+        pattern: 'rm -rf /',
+      );
+      expect(root.matches('bash', 'rm -rf'), isFalse);
     });
-
-    test('放宽只针对 shell 工具，不牵连别的工具的同名 pattern', () {
-      const rule = PermissionRule(
+    test('不做命令语义分析', () {
+      expect(rule.matches('bash', 'rm -fr ~'), isFalse);
+      expect(rule.matches('bash', '/bin/rm -rf ~'), isFalse);
+      expect(rule.matches('bash', 'bash -c "rm -rf ~"'), isFalse);
+    });
+    test('非 shell exact 不折叠空白与斜杠', () {
+      const other = PermissionRule(
         tool: 'web_search',
         kind: RuleKind.exact,
         pattern: 'a/',
-        effect: RuleEffect.deny,
       );
-      expect(rule.matches('web_search', 'a'), isFalse);
+      expect(other.matches('web_search', 'a'), isFalse);
     });
+  });
 
-    test('已知边界：不做命令语义分析，换写法仍绕得过', () {
-      // 这不只是「还没做」，而是本仓库明确不做的取舍：在 shell 命令文本上做动作
-      // 分析会把一次授权扩展到用户没看到的变体。要强约束请用 path deny 规则。
-      expect(deny('rm -rf ~').matches('bash', 'rm -fr ~'), isFalse);
-      expect(deny('rm -rf ~').matches('bash', '/bin/rm -rf ~'), isFalse);
-      expect(deny('rm -rf ~').matches('bash', 'bash -c "rm -rf ~"'), isFalse);
-    });
+  test('path glob 和目录前缀保留路径边界，origin 保留主机边界', () {
+    const path = PermissionRule(
+      tool: 'file_write',
+      kind: RuleKind.path,
+      pattern: '/w',
+    );
+    const glob = PermissionRule(
+      tool: 'file_write',
+      kind: RuleKind.path,
+      pattern: '/w/*.txt',
+    );
+    const origin = PermissionRule(
+      tool: 'web_fetch',
+      kind: RuleKind.origin,
+      pattern: 'https://a.com',
+    );
+    expect(path.matches('file_write', '/w/sub/a.txt'), isTrue);
+    expect(path.matches('file_write', '/wrong/a.txt'), isFalse);
+    expect(glob.matches('file_write', '/w/a.txt'), isTrue);
+    expect(glob.matches('file_write', '/w/sub/a.txt'), isFalse);
+    expect(origin.matches('web_fetch', 'https://a.com/x'), isTrue);
+    expect(origin.matches('web_fetch', 'https://a.com.evil.com'), isFalse);
   });
 }

@@ -160,12 +160,18 @@ class _TuiAppState extends State<TuiApp> {
               flex: 2,
               child: PermissionBar(
                 title: _requestTitle('权限请求', _permissionRequest!.chatId),
-                summary: toolCallDescription(_permissionRequest!.arguments),
+                summary: [
+                  if (_permissionRequest!.reviewReason != null)
+                    _permissionRequest!.reviewReason!,
+                  if (toolCallDescription(_permissionRequest!.arguments)
+                      case final description?)
+                    description,
+                ].join('\n'),
                 scrollController: _permissionScrollController,
                 detail:
                     '${_permissionRequest!.toolName}: '
                     '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
-                hint: '[y] 允许  [n] 拒绝  [a] 总是允许  [↑↓] 滚动',
+                hint: '[y] 允许本次  [n] 拒绝本次  [↑↓] 滚动',
               ),
             ),
           if (_elicitRequest != null)
@@ -467,13 +473,10 @@ class _TuiAppState extends State<TuiApp> {
           );
           return true;
         case LogicalKey.keyY:
-          _resolvePermission(true, false);
+          _resolvePermission(true);
           return true;
         case LogicalKey.keyN:
-          _resolvePermission(false, false);
-          return true;
-        case LogicalKey.keyA:
-          _resolvePermission(true, true);
+          _resolvePermission(false);
           return true;
         case LogicalKey.escape:
           // Esc = 拒绝 + 停止发起这个请求的会话(不一定是当前会话)。直接
@@ -484,7 +487,7 @@ class _TuiAppState extends State<TuiApp> {
           } else {
             _controller.bridge.stop(permission.chatId);
           }
-          _resolvePermission(false, false);
+          _resolvePermission(false);
           return true;
       }
       return true; // 模态期间吞掉所有按键,防止误操作
@@ -537,10 +540,17 @@ class _TuiAppState extends State<TuiApp> {
     String chatId,
     String toolName,
     String arguments,
-    Future<void> cancelled,
-  ) async {
+    Future<void> cancelled, {
+    String? reviewReason,
+  }) async {
     final completer = Completer<PermissionDecision>();
-    final request = _PermissionRequest(chatId, toolName, arguments, completer);
+    final request = _PermissionRequest(
+      chatId,
+      toolName,
+      arguments,
+      completer,
+      reviewReason,
+    );
     if (_permissionQueue.isEmpty) _permissionScrollController.jumpTo(0);
     setState(() => _permissionQueue.add(request));
 
@@ -960,13 +970,11 @@ class _TuiAppState extends State<TuiApp> {
     );
   }
 
-  void _resolvePermission(bool approved, bool persistExact) {
+  void _resolvePermission(bool approved) {
     final request = _permissionRequest;
     if (request == null) return;
     if (!request.completer.isCompleted) {
-      request.completer.complete(
-        PermissionDecision(approved: approved, persistExact: persistExact),
-      );
+      request.completer.complete(PermissionDecision(approved: approved));
     }
     setState(() => _permissionQueue.remove(request));
     _permissionScrollController.jumpTo(0);
@@ -1103,11 +1111,13 @@ class _PermissionRequest {
   final String toolName;
   final String arguments;
   final Completer<PermissionDecision> completer;
+  final String? reviewReason;
   _PermissionRequest(
     this.chatId,
     this.toolName,
     this.arguments,
     this.completer,
+    this.reviewReason,
   );
 }
 
