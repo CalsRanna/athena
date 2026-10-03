@@ -19,6 +19,8 @@ void main() {
   late UserSettingsStore settings;
   late List<MethodCall> calls;
   late Size size;
+  late bool maximized;
+  late bool fullScreen;
   Future<void> Function(MethodCall)? beforeCall;
 
   setUp(() async {
@@ -29,6 +31,8 @@ void main() {
     );
     calls = [];
     size = const Size(800, 600);
+    maximized = false;
+    fullScreen = false;
     beforeCall = null;
     binding.rasterized = Completer<void>();
     binding.defaultBinaryMessenger.setMockMethodCallHandler(windowChannel, (
@@ -43,7 +47,9 @@ void main() {
         }
       }
       return switch (call.method) {
-        'isFullScreen' || 'isMaximized' || 'isMinimized' => false,
+        'isMaximized' => maximized,
+        'isFullScreen' => fullScreen,
+        'isMinimized' => false,
         'getBounds' => {
           'x': 0.0,
           'y': 0.0,
@@ -159,6 +165,28 @@ void main() {
       'show',
       'focus',
     ]);
+  });
+
+  test('debounced save persists the current window size', () async {
+    WindowUtil.instance.saveWindowSize(settings);
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+
+    expect(await settings.getDouble('window_width'), 800.0);
+    expect(await settings.getDouble('window_height'), 600.0);
+  });
+
+  test('maximized or full screen window keeps the windowed size', () async {
+    maximized = true;
+    WindowUtil.instance.saveWindowSize(settings);
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    expect(await settings.getDouble('window_width'), isNull);
+
+    // 全屏时 isMaximized 为 false，只挡最大化会让下一次启动开出屏幕大小
+    maximized = false;
+    fullScreen = true;
+    WindowUtil.instance.saveWindowSize(settings);
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    expect(await settings.getDouble('window_width'), isNull);
   });
 }
 

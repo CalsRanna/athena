@@ -140,8 +140,19 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
     }
   }
 
+  /// 尺寸落盘的两个入口，都走 [WindowUtil.saveWindowSize] 的防抖。
+  ///
+  /// 两个都要接：macOS 上 `resized`（windowDidEndLiveResize）只在鼠标拖拽
+  /// 结束时发一次，Raycast 这类用辅助功能 API 直接设 frame 的窗口管理工具
+  /// 只会发 `resize`（windowDidResize，程序化改动同样触发），只接前者会漏掉
+  /// 全部程序化的尺寸改动。
   @override
-  void onWindowResized() {
+  void onWindowResize() => _saveWindowSize();
+
+  @override
+  void onWindowResized() => _saveWindowSize();
+
+  void _saveWindowSize() {
     WindowUtil.instance.saveWindowSize(
       GetIt.instance<FileStorage>().userSettings,
     );

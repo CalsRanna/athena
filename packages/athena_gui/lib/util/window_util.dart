@@ -18,8 +18,9 @@ class WindowUtil {
   /// 默认尺寸，同时也是最小尺寸；恢复旧配置时先钳住，避免设帧后再次缩放。
   static const _defaultSize = Size(1080, 720);
 
-  /// 拖动窗口时 `resized` 逐帧触发，而落盘是「读-改-整文件写 + 跨进程锁」，
-  /// 每帧写一次既慢又与另一进程争锁。攒到尾沿一次写。
+  /// 拖动窗口时 `resize` 逐帧触发（`resized` 只在拖拽结束时来一次），而落盘
+  /// 是「读-改-整文件写 + 跨进程锁」，每帧写一次既慢又与另一进程争锁。
+  /// 攒到尾沿一次写。
   static const _saveDebounce = Duration(milliseconds: 500);
 
   final _controller = StreamController<WindowEvent>();
@@ -124,7 +125,12 @@ class WindowUtil {
   }
 
   Future<void> _writeWindowSize(UserSettingsStore settings) async {
-    if (await windowManager.isMaximized()) return;
+    // 最大化与全屏都不是用户选定的窗口尺寸，记下来会让下次启动开出一个
+    // 屏幕大小的窗口。两个都要挡：全屏时 `isMaximized()` 仍为 false。
+    if (await windowManager.isMaximized() ||
+        await windowManager.isFullScreen()) {
+      return;
+    }
     final size = await windowManager.getSize();
     await settings.setDouble(_keyWindowHeight, size.height);
     await settings.setDouble(_keyWindowWidth, size.width);
