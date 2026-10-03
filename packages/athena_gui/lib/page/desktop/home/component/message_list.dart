@@ -26,11 +26,11 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageList extends StatefulWidget {
   final MessageListScrollController? controller;
-  final void Function(MessageEntity message) onResend;
+  final void Function(MessageEntity message) onRewind;
   const DesktopMessageList({
     super.key,
     this.controller,
-    required this.onResend,
+    required this.onRewind,
   });
 
   @override
@@ -325,7 +325,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                     horizontal: columnPadding,
                     vertical: 12,
                   ),
-                  onResend: widget.onResend,
+                  onRewind: widget.onRewind,
                   onSecondaryTapUp: openContextMenu,
                 ),
               ),

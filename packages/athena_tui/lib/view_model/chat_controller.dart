@@ -8,6 +8,7 @@ import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -176,6 +177,8 @@ class ChatController {
   final currentSentinel = signal<SentinelEntity?>(null);
 
   final isStreaming = signal(false);
+  final isRewinding = signal(false);
+  final pendingImageUrls = signal('');
   final currentTokenUsage = signal<TokenUsage?>(null);
   final error = signal<String?>(null);
 
@@ -448,6 +451,7 @@ class ChatController {
         ? null
         : await _sentinelRepo.getSentinelById(chat.sentinelId!);
     if (!_active) return;
+    if (currentChat.value?.id != chat.id) pendingImageUrls.value = '';
     currentChat.value = chat;
     this.messages.value = messages;
     currentModel.value = model;
@@ -512,14 +516,55 @@ class ChatController {
 
   // ─── Agent 交互 ─────────────────────────────────────────
 
+  /// Returns all persisted user messages, including older paginated turns.
+  Future<List<MessageEntity>> rewindTargets() async {
+    final chatId = currentChat.value?.id;
+    if (chatId == null) return [];
+    return (await _messageRepo.getMessagesByChatId(
+      chatId,
+    )).where((m) => m.role == 'user').toList();
+  }
+
+  Future<RewindResult?> rewindMessage(MessageEntity message) async {
+    if (!_active || isRewinding.value || message.id == null) return null;
+    isRewinding.value = true;
+    error.value = null;
+    try {
+      final result = await _bridge.rewindToUserMessage(
+        message.chatId,
+        message.id!,
+      );
+      await waitForSend();
+      if (!_active) return result;
+      _buffer.discard();
+      isStreaming.value = false;
+      currentTokenUsage.value = null;
+      pendingImageUrls.value = result.input.imageUrls;
+      try {
+        await selectChat(result.chat);
+        await _reloadChats();
+      } catch (error) {
+        if (_active) this.error.value = error.toString();
+      }
+      return result;
+    } catch (error) {
+      if (_active) this.error.value = error.toString();
+      return null;
+    } finally {
+      if (_active) isRewinding.value = false;
+    }
+  }
+
   /// 发送用户消息并消费 [RunEvent] 事件流(镜像 GUI ChatViewModel.sendMessage)。
   Future<void> sendMessage(String text, {bool jsonMode = false}) async {
+    if (isRewinding.value) return;
     final chat = currentChat.value;
     if (chat?.id == null) return;
     final message = MessageEntity(
       chatId: chat!.id!,
       role: 'user',
       content: text,
+      imageUrls: pendingImageUrls.value,
     );
 
     // 排队语义(与 GUI ChatViewModel.sendMessage 一致):运行中或旧 run 收尾
@@ -529,6 +574,7 @@ class ChatController {
       if (isStreaming.value) {
         final stored = await _bridge.queueInput(chat.id!, message);
         if (stored != null) {
+          pendingImageUrls.value = '';
           _applyOrPushMessage(stored);
           return;
         }
@@ -542,6 +588,7 @@ class ChatController {
     }
     if (!_active) return;
 
+    pendingImageUrls.value = '';
     error.value = null;
     isStreaming.value = true;
     currentTokenUsage.value = null;

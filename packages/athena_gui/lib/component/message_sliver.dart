@@ -65,7 +65,7 @@ class MessageCardListSliver extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final void Function(MessageEntity)? onLongPress;
   final void Function(TapUpDetails, MessageEntity)? onSecondaryTapUp;
-  final void Function(MessageEntity)? onResend;
+  final void Function(MessageEntity)? onRewind;
 
   /// 轮次导航桥（可选）：登记后由本 sliver 上报「视口当前在第几轮」，
   /// 并接受「跳到第几轮」的请求。
@@ -79,7 +79,7 @@ class MessageCardListSliver extends StatefulWidget {
     this.padding = EdgeInsets.zero,
     this.onLongPress,
     this.onSecondaryTapUp,
-    this.onResend,
+    this.onRewind,
     this.navigator,
   });
 
@@ -202,9 +202,9 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
                   ? null
                   : (details) =>
                         widget.onSecondaryTapUp!(details, item.message),
-              onResend: widget.onResend == null
+              onRewind: widget.onRewind == null
                   ? null
-                  : () => widget.onResend!(item.message),
+                  : () => widget.onRewind!(item.message),
               sentinel: widget.sentinel,
             );
           }

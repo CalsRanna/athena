@@ -25,6 +25,17 @@ void main() {
     scan: (_) => scan.future,
   );
 
+  test('回退后迟到的旧扫描不能恢复被撤回轮次', () async {
+    final subject = build();
+    final loading = subject.load('c1', 1);
+    subject.replace('c1', ['u1']);
+    scan.complete(['u1', 'u2', 'u3']);
+    await loading;
+    expect(subject.turnStartIds.value, ['u1']);
+    subject.selectChat('c1');
+    expect(subject.turnStartIds.value, ['u1']);
+  });
+
   group('缓存与信号', () {
     test('新会话直接记 0 轮，不等扫描', () {
       final subject = build();

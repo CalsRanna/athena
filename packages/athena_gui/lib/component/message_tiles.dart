@@ -30,7 +30,7 @@ class MessageListTile extends StatelessWidget {
   final MessageEntity message;
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
-  final void Function()? onResend;
+  final void Function()? onRewind;
   final SentinelEntity sentinel;
 
   const MessageListTile({
@@ -38,7 +38,7 @@ class MessageListTile extends StatelessWidget {
     this.loading = false,
     required this.message,
     this.onLongPress,
-    this.onResend,
+    this.onRewind,
     this.onSecondaryTapUp,
     required this.sentinel,
   });
@@ -49,7 +49,7 @@ class MessageListTile extends StatelessWidget {
       return _UserMessageListTile(
         message: message,
         onLongPress: onLongPress,
-        onResend: onResend,
+        onRewind: onRewind,
         onSecondaryTapUp: onSecondaryTapUp,
       );
     }
@@ -388,12 +388,12 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
 class _UserMessageListTile extends StatefulWidget {
   final MessageEntity message;
   final void Function()? onLongPress;
-  final void Function()? onResend;
+  final void Function()? onRewind;
   final void Function(TapUpDetails)? onSecondaryTapUp;
   const _UserMessageListTile({
     required this.message,
     this.onLongPress,
-    this.onResend,
+    this.onRewind,
     this.onSecondaryTapUp,
   });
 
@@ -447,9 +447,9 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
             MessageActionBar(
               // 用户消息不受"本轮未结束"影响：即使正在跑，也照常 hover 显形。
               visible: hovered,
-              // Copy 始终可用；Retry 只有调用方给了回调才出现。
+              // Copy 始终可用；Rewind 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
-              onResend: widget.onResend,
+              onRewind: widget.onRewind,
             ),
           ],
         ),
@@ -548,7 +548,7 @@ class AssistantCardHover {
 class MessageActionBar extends StatelessWidget {
   final bool visible;
   final VoidCallback? onCopy;
-  final VoidCallback? onResend;
+  final VoidCallback? onRewind;
   final Widget? leading;
   final Widget? trailing;
 
@@ -556,7 +556,7 @@ class MessageActionBar extends StatelessWidget {
     super.key,
     required this.visible,
     this.onCopy,
-    this.onResend,
+    this.onRewind,
     this.leading,
     this.trailing,
   });
@@ -593,11 +593,11 @@ class MessageActionBar extends StatelessWidget {
             children: [
               if (leading != null) leading!,
               if (onCopy != null) _CopyActionButton(onTap: onCopy!),
-              if (onResend != null)
+              if (onRewind != null)
                 _MessageActionButton(
-                  tooltip: 'Retry',
-                  onTap: onResend,
-                  child: _actionBarIcon(LucideIcons.refreshCw, colors),
+                  tooltip: 'Rewind',
+                  onTap: onRewind,
+                  child: _actionBarIcon(LucideIcons.history, colors),
                 ),
               if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],

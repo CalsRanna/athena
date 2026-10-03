@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -65,6 +66,63 @@ void main() {
       updatedAt: DateTime(2026),
     );
   }
+
+  testWidgets('rewind 恢复文字附件与完整轮次，取消旧消息缓冲', (tester) async {
+    await tester.runAsync(() async {
+      final storage = GetIt.instance<FileStorage>();
+      await storage.load();
+      final repository = storage.sessionRepository;
+      final id = await repository.createChat(chat().copyWith(id: null));
+      final selected = (await repository.getChatById(id))!;
+      final first = await repository.storeMessage(
+        MessageEntity(chatId: id, role: 'user', content: 'keep'),
+      );
+      final target = await repository.storeMessage(
+        MessageEntity(
+          chatId: id,
+          role: 'user',
+          content: 'edit me',
+          imageUrls: base64Encode([1, 2, 3]),
+        ),
+      );
+      await repository.storeMessage(
+        MessageEntity(chatId: id, role: 'assistant', content: 'withdraw'),
+      );
+      await viewModel.selectChat(selected);
+      final result = await viewModel.rewindMessage(target);
+      expect(result!.input.content, 'edit me');
+      expect(viewModel.messages.value.map((m) => m.id), [first.id]);
+      expect(viewModel.turnStartIds.value, [first.id]);
+      expect(viewModel.pendingImages.value.single.bytes, [1, 2, 3]);
+      expect(viewModel.pendingImages.value.single.isReady, isTrue);
+      expect(viewModel.currentChat.value!.contextTokens, -1);
+      expect(viewModel.isCurrentChatRewinding.value, isFalse);
+      expect((await repository.getMessagesByChatId(id)).map((m) => m.id), [
+        first.id,
+      ]);
+    });
+  });
+
+  testWidgets('附件解码失败时 rewind 保留历史', (tester) async {
+    await tester.runAsync(() async {
+      final storage = GetIt.instance<FileStorage>();
+      await storage.load();
+      final repository = storage.sessionRepository;
+      final id = await repository.createChat(chat().copyWith(id: null));
+      final target = await repository.storeMessage(
+        MessageEntity(
+          chatId: id,
+          role: 'user',
+          content: 'keep',
+          imageUrls: '!invalid-base64!',
+        ),
+      );
+      final result = await viewModel.rewindMessage(target);
+      expect(result, isNull);
+      expect(await repository.getMessagesByChatId(id), hasLength(1));
+      expect(viewModel.isRewindingChat(id), isFalse);
+    });
+  });
 
   testWidgets('纯空白输入不发送', (tester) async {
     // 移动端此前用未 trim 的文本判空，「   」会被当成一条消息发出去。

@@ -5,7 +5,6 @@ import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -22,6 +21,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MessageListView extends StatefulWidget {
+  final Future<void> Function(MessageEntity) onRewind;
   final ChatEntity chat;
   final ChatViewModel viewModel;
   final SentinelViewModel sentinelViewModel;
@@ -31,6 +31,7 @@ class MessageListView extends StatefulWidget {
   const MessageListView({
     super.key,
     required this.chat,
+    required this.onRewind,
     required this.viewModel,
     required this.sentinelViewModel,
     required this.controller,
@@ -118,7 +119,7 @@ class _MessageListViewState extends State<MessageListView> {
                         sentinel: sentinel,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         onLongPress: openBottomSheet,
-                        onResend: resendMessage,
+                        onRewind: widget.onRewind,
                       ),
                     ),
                   ],
@@ -190,53 +191,36 @@ class _MessageListViewState extends State<MessageListView> {
     await viewModel.deleteMessage(message);
   }
 
-  /// 编辑 = 用改过的内容重发：从这条起截断，再发出编辑后的消息。
-  /// [message] 是编辑框回传的副本（id 不变、content 为新内容）。
-  Future<void> editMessage(MessageEntity message) => resendMessage(message);
-
   void openBottomSheet(MessageEntity message) {
     HapticFeedback.heavyImpact();
-    final editTile = AthenaBottomSheetTile(
-      leading: const Icon(LucideIcons.pencilLine),
-      title: 'Edit',
-      onTap: () => openEditDialog(message),
-    );
-    final deleteTile = AthenaBottomSheetTile(
-      leading: const Icon(LucideIcons.trash2),
-      title: 'Delete',
-      onTap: () => destroyMessage(message),
-    );
-    final children = [editTile, deleteTile];
-    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    final padding = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: column,
-    );
-    AthenaDialog.show(SafeArea(child: padding));
-  }
-
-  void openEditDialog(MessageEntity message) {
-    AthenaDialog.dismiss();
-    final dialog = MobileEditMessageDialog(
-      message: message,
-      onSubmitted: editMessage,
-    );
-    showModalBottomSheet<void>(
-      backgroundColor: Colors.transparent,
-      context: context,
-      builder: (_) => dialog,
-      isScrollControlled: true,
+    AthenaDialog.show(
+      SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AthenaBottomSheetTile(
+                leading: const Icon(LucideIcons.history),
+                title: 'Rewind',
+                onTap: () {
+                  AthenaDialog.dismiss();
+                  unawaited(widget.onRewind(message));
+                },
+              ),
+              AthenaBottomSheetTile(
+                leading: const Icon(LucideIcons.trash2),
+                title: 'Delete',
+                onTap: () => destroyMessage(message),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Future<void> resendMessage(MessageEntity message) async {
-    if (_blockWhileStreaming()) return;
-    controller.followBottom();
-    await viewModel.deleteMessage(message);
-    await viewModel.sendMessage(message, chat: widget.chat);
-  }
-
-  /// 运行中不许重发 / 编辑 / 删除：会删掉正在运行的 run 的消息，run 随后
+  /// 运行中不许删除：会删掉正在运行的 run 的消息，run 随后
   /// 的写入又把它们补回来（与桌面端同一拦截）。
   bool _blockWhileStreaming() {
     if (!viewModel.isStreamingChat(widget.chat.id!)) return false;

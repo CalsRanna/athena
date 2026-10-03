@@ -31,6 +31,15 @@ class TurnStartCache {
   final turnStartIds = listSignal<String>([]);
 
   final Map<String, List<String>> _byChat = {};
+  final Map<String, int> _revisions = {};
+
+  /// 回退提交后的完整轮次清单，覆盖旧缓存并使正在读取的旧扫描失效。
+  void replace(String chatId, List<String> ids) {
+    _revisions[chatId] = (_revisions[chatId] ?? 0) + 1;
+    _pending.remove(chatId);
+    _byChat[chatId] = List.of(ids);
+    if (_currentChatId() == chatId) turnStartIds.value = ids;
+  }
 
   /// 扫描还没回来时新落库的 user 消息，扫完并入（见类注释）。
   final Map<String, List<String>> _pending = {};
@@ -98,8 +107,10 @@ class TurnStartCache {
   ///
   /// 失败只记警告、不抛：装饰性的东西不该挡住会话。
   Future<void> load(String chatId, int generation) async {
+    final revision = _revisions[chatId] ?? 0;
     try {
       final scanned = await _scan(chatId);
+      if (revision != (_revisions[chatId] ?? 0)) return;
       final pending = _pending.remove(chatId) ?? const <String>[];
       final ids = [
         ...scanned,

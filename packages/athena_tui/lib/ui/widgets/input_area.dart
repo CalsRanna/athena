@@ -32,6 +32,13 @@ class InputArea extends StatelessComponent {
 
     return Column(
       children: [
+        if (controller.isRewinding.value)
+          const Text('正在回退会话…', style: AthenaTextStyles.dim),
+        if (controller.pendingImageUrls.value.isNotEmpty)
+          Text(
+            '已恢复 ${controller.pendingImageUrls.value.split(',').length} 张图片 · /clearimages 移除',
+            style: AthenaTextStyles.dim,
+          ),
         if (isStreaming)
           const Container(
             padding: EdgeInsets.symmetric(horizontal: 1),

@@ -52,6 +52,30 @@ void main() {
   Future<void> settle() =>
       Future<void>.delayed(const Duration(milliseconds: 150));
 
+  test('rewind 恢复输入和图片，重置窗口与用量且不发送', () async {
+    await di.storage.load();
+    final repo = di.storage.sessionRepository;
+    final id = await repo.createChat(controller.currentChat.value!);
+    final first = await repo.storeMessage(
+      MessageEntity(chatId: id, role: 'user', content: 'A'),
+    );
+    final target = await repo.storeMessage(
+      MessageEntity(chatId: id, role: 'user', content: 'B', imageUrls: 'AQID'),
+    );
+    await repo.storeMessage(
+      MessageEntity(chatId: id, role: 'assistant', content: 'withdraw'),
+    );
+    await controller.selectChat((await repo.getChatById(id))!);
+    final result = await controller.rewindMessage(target);
+    expect(result!.input.content, 'B');
+    expect(controller.messages.value.map((m) => m.id), [first.id]);
+    expect(controller.pendingImageUrls.value, 'AQID');
+    expect(controller.currentTokenUsage.value, isNull);
+    expect(controller.currentChat.value!.contextTokens, -1);
+    expect(controller.isRewinding.value, isFalse);
+    expect((await repo.getMessagesByChatId(id)).map((m) => m.id), [first.id]);
+  });
+
   test('窗口内的多次增量合并不逐条写信号', () async {
     controller.handleRunEvent(RunMessageUpdated(message('m1', content: 'a')));
     controller.handleRunEvent(RunMessageUpdated(message('m1', content: 'ab')));

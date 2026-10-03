@@ -2,6 +2,8 @@ import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
+import 'package:athena_core/repository/session_rewind_repository.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/run_statistics.dart';
@@ -137,6 +139,17 @@ class ChatStore {
     };
     if (ids.isEmpty) return;
     await _messageRepository.deleteMessages(chatId, ids);
+  }
+
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) {
+    final repository = _messageRepository;
+    if (repository is! SessionRewindRepository) {
+      throw UnsupportedError('Session repository does not support rewind.');
+    }
+    return (repository as SessionRewindRepository).rewindToUserMessage(
+      chatId,
+      messageId,
+    );
   }
 
   Future<void> updateChatTimestamp(ChatEntity chat) async {

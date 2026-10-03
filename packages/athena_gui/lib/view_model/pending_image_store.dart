@@ -127,6 +127,16 @@ class PendingImageStore {
     return false;
   }
 
+  /// 历史附件已有字节，不再依赖原文件路径；非当前会话只写自己的槽。
+  void restoreFor(String chatId, List<PendingImage> images) {
+    if (_currentChatId() == chatId) {
+      _key = chatId;
+      pendingImages.value = images;
+    } else {
+      _byChat[chatId] = images;
+    }
+  }
+
   void clear() {
     pendingImages.value = [];
   }

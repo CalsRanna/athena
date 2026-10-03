@@ -281,6 +281,101 @@ void main() {
         _finish('tool_calls'),
       ];
 
+  test('运行中的 rewind 等待取消落库，丢弃排队输入且不写回迟到响应', () async {
+    await setUpHarness(
+      script: [
+        [_text('late response'), _finish('stop')],
+      ],
+    );
+    final requested = Completer<void>();
+    final release = Completer<void>();
+    llm.beforeResponse = (_) async {
+      requested.complete();
+      await release.future;
+    };
+    final send = sendMessage();
+    await requested.future.timeout(const Duration(seconds: 5));
+    final user = (await storedMessages()).firstWhere((m) => m.role == 'user');
+    await coordinator.queueInput(
+      chat.id!,
+      MessageEntity(chatId: chat.id!, role: 'user', content: 'queued'),
+    );
+    try {
+      final result = await coordinator
+          .rewindToUserMessage(chat.id!, user.id!)
+          .timeout(const Duration(seconds: 5));
+      expect(result.input.content, '跑构建');
+      expect(await storedMessages(), isEmpty);
+      release.complete();
+      await send;
+      expect(await storedMessages(), isEmpty);
+      expect(streamRequests(), hasLength(1));
+      await (await storage.sessionRepository.acquireSessionActivity(
+        chat.id!,
+      )).release();
+    } finally {
+      if (!release.isCompleted) release.complete();
+      await send;
+    }
+  });
+
+  test('rewind 停止闲置会话的后台任务并抑制自动汇报', () async {
+    await setUpHarness(
+      script: [
+        [_text('ready'), _finish('stop')],
+      ],
+    );
+    await sendMessage();
+    final target = (await storedMessages()).firstWhere((m) => m.role == 'user');
+    final task = await tasks.start(
+      chatId: chat.id!,
+      executable: 'bash',
+      arguments: ['-c', 'sleep 60'],
+      workdir: tmp.path,
+      command: 'long task',
+    );
+    final internal = <InternalRunEvent>[];
+    final sub = coordinator.internalEvents.listen(internal.add);
+    addTearDown(sub.cancel);
+    await coordinator.rewindToUserMessage(chat.id!, target.id!);
+    expect(task.status, BackgroundTaskStatus.cancelled);
+    expect(await storedMessages(), isEmpty);
+    expect(internal, isEmpty);
+  });
+
+  test('另一前端的后台完成事件不能在 rewind 后重新进入历史', () async {
+    await setUpHarness(
+      script: [
+        [_text('ready'), _finish('stop')],
+      ],
+    );
+    await sendMessage();
+    final target = (await storedMessages()).firstWhere((m) => m.role == 'user');
+    final release = File(p.join(tmp.path, 'old-task-ready'));
+    await tasks.start(
+      chatId: chat.id!,
+      executable: 'bash',
+      arguments: [
+        '-c',
+        'while [ ! -f "${release.path}" ]; do sleep 0.01; done',
+      ],
+      workdir: tmp.path,
+      command: 'other frontend task',
+    );
+    // 用另一个仓库模拟另一前端提交回退；本协调层尚未收到通知。
+    final lease = await storage.sessionRepository.acquireSessionActivity(
+      chat.id!,
+    );
+    await storage.sessionRepository.rewindToUserMessage(chat.id!, target.id!);
+    await lease.release();
+    final completed = tasks.completions.first;
+    await release.writeAsString('ready');
+    await completed;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(await storedMessages(), isEmpty);
+    expect(streamRequests(), hasLength(1));
+  });
+
   for (final mode in [ApprovalMode.manual, ApprovalMode.aiReview]) {
     test('运行中完成的任务在下一次请求合并通知，沿用 ${mode.key} 审批且不重复汇报', () async {
       await setUpHarness(

@@ -4,6 +4,10 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/conversation_summary.dart';
+import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
@@ -153,6 +157,79 @@ class SessionJsonlStore {
         if (id is String) ids.add(id);
       }
       return ids;
+    });
+  }
+
+  /// 回退必须按完整文件的 seq 截断，不能使用前端分页窗口里的 id 集合。
+  /// 摘要与覆盖标记一起重建，避免删除摘要后原文仍因 compacted 被过滤。
+  Future<RewindResult> rewindToUserMessage(String messageId) {
+    return _mutate(() async {
+      final rows = await _readAllRows();
+      final chatRow = rows.where((row) => row['type'] == chatType).firstOrNull;
+      if (chatRow == null) throw StateError('Session does not exist.');
+      final records = rows
+          .where((row) => row['type'] == messageType)
+          .map(MessageEntity.fromJson)
+          .toList();
+      final input = records.where((m) => m.id == messageId).firstOrNull;
+      if (input == null || input.role != 'user') {
+        throw ArgumentError('Rewind target must be an existing user message.');
+      }
+      var kept = records.where((m) => m.seq < input.seq).toList();
+      // 旧 system 摘要没有覆盖元数据，无法证明它不含已撤回内容；直接删除
+      // 又会丢掉可能仅存于摘要的早期历史，因此显式失败并保留原文件。
+      if (kept.any((m) => m.role == 'system')) {
+        throw UnsupportedError(
+          'Cannot rewind legacy summaries without coverage metadata.',
+        );
+      }
+      while (true) {
+        final ids = kept.map((m) => m.id).toSet();
+        final invalid = kept
+            .where(
+              (m) =>
+                  ConversationSummary.isSummary(m) &&
+                  (ConversationSummary.position(m) >= input.seq ||
+                      !ids.containsAll(ConversationSummary.coveredIds(m))),
+            )
+            .toSet();
+        if (invalid.isEmpty) break;
+        kept = kept.where((m) => !invalid.contains(m)).toList();
+      }
+      final covered = <String>{
+        for (final message in kept)
+          if (ConversationSummary.isSummary(message))
+            ...ConversationSummary.coveredIds(message),
+      };
+      kept = kept
+          .map((m) => m.copyWith(compacted: covered.contains(m.id)))
+          .toList();
+      final now = DateTime.fromMillisecondsSinceEpoch(
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      final chat = ChatEntity.fromJson(chatRow).copyWith(
+        contextTokens: ChatEntity.unknownContextTokens,
+        cachedTokens: ChatEntity.unknownContextTokens,
+        rewoundAt: now,
+        updatedAt: now,
+      );
+      final snapshot = '${file.path}.rewind-${idGenerator.next()}';
+      // 必须先完整保留原始字节；备份失败就不提交回退。备份不以 .jsonl
+      // 结尾，因此不会混入正常会话列表。
+      await file.copy(snapshot);
+      await _writeAll([
+        {...chat.toJson(), 'type': chatType},
+        for (final message in kept) {...message.toJson(), 'type': messageType},
+      ]);
+      return RewindResult(
+        chat: chat,
+        input: input,
+        snapshotPath: snapshot,
+        turnStartIds: [
+          for (final m in kept)
+            if (m.role == 'user') m.id!,
+        ],
+      );
     });
   }
 

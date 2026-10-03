@@ -37,6 +37,8 @@ class _TuiAppState extends State<TuiApp> {
   /// 全部斜杠命令(命令, 描述):帮助文本与实时建议的单一数据源。
   static const List<(String, String)> _allCommands = [
     ('/new', '新建聊天'),
+    ('/rewind', '回退到一轮发送前，可指定轮次'),
+    ('/clearimages', '移除回退恢复的图片附件'),
     ('/list', '列出聊天'),
     ('/switch', '选择聊天'),
     ('/delete', '删除当前聊天'),
@@ -56,7 +58,8 @@ class _TuiAppState extends State<TuiApp> {
     // 新增命令/提示行时注意同步压缩。
     final commands = [
       '  /new 新建 · /list 列出 · /switch 切换',
-      '  /delete 删除 · /json JSON 模式 · /model 模型',
+      '  /delete 删除 · /rewind 回退 · /json JSON 模式',
+      '  /model 模型 · /clearimages 移除恢复的图片',
       '  /sentinels 角色 · /providers Key · /format 格式',
       '  /help 帮助 · /review 审批 · /quit 退出',
     ].join('\n');
@@ -209,6 +212,7 @@ class _TuiAppState extends State<TuiApp> {
             placeholder: _inputPlaceholder,
             statusText: _inputStatusText,
             onKeyEvent: (event) {
+              if (_controller.isRewinding.value) return true;
               // 审批模态(权限):所有按键交给全局处理器
               // (y/n/a 决策)。必须返回其结果(true)—— 若返回 false,
               // TextField 内部会把 'y' 当作字符插入输入框,事件永远
@@ -365,6 +369,10 @@ class _TuiAppState extends State<TuiApp> {
           ApprovalMode.bypass => '所有权限',
         };
         _pushSystemMessage('审批模式：$label（本会话），下一轮生效。');
+      case '/rewind':
+        await _rewind(args);
+      case '/clearimages':
+        _controller.pendingImageUrls.value = '';
       case '/new':
         if (_streamingGuard()) return;
         await _controller.newChat();
@@ -414,6 +422,56 @@ class _TuiAppState extends State<TuiApp> {
     }
   }
 
+  Future<void> _rewind(String args) async {
+    final targets = await _controller.rewindTargets();
+    if (targets.isEmpty) {
+      _pushSystemMessage('当前会话没有可回退的轮次。');
+      return;
+    }
+    final chatId = _controller.currentChat.value?.id;
+    int? index;
+    if (args.isNotEmpty) {
+      final turn = int.tryParse(args);
+      if (turn == null || turn < 1 || turn > targets.length) {
+        _pushSystemMessage('用法: /rewind [1-${targets.length}]');
+        return;
+      }
+      index = turn - 1;
+    } else {
+      index = await _openPicker(
+        title: '回退到哪一轮发送前？',
+        labels: [
+          for (final (i, m) in targets.indexed)
+            '${i + 1}. ${truncateText(m.content, 60)}',
+        ],
+        initialIndex: targets.length - 1,
+      );
+    }
+    if (index == null ||
+        !mounted ||
+        _controller.currentChat.value?.id != chatId) {
+      return;
+    }
+    final confirmed = await _openPicker(
+      title: '回退对话（文件和命令不撤销；保存恢复快照）',
+      labels: ['取消', '回退并替换草稿，停止本会话排队输入和后台工作'],
+      initialIndex: 0,
+    );
+    if (confirmed != 1 ||
+        !mounted ||
+        _controller.currentChat.value?.id != chatId) {
+      return;
+    }
+    final result = await _controller.rewindMessage(targets[index]);
+    if (result == null || !mounted) return;
+    _textController
+      ..text = result.input.content
+      ..selection = TextSelection.collapsed(
+        offset: result.input.content.length,
+      );
+    _stickToBottom = true;
+  }
+
   /// 退出前收尾：流式进行中先停止并等待 run 完全落库（最多 3s），
   /// 避免退出时留下未 finalize 的空占位消息、丢失已生成内容与
   /// [Cancelled] 标记。
@@ -444,6 +502,7 @@ class _TuiAppState extends State<TuiApp> {
   // ─── 全局按键 ────────────────────────────────────────────
 
   bool _handleGlobalKey(KeyboardEvent event) {
+    if (_controller.isRewinding.value) return true;
     // 审批模态优先:输入被屏蔽,按键只服务审批
     final permission = _permissionRequest;
     if (permission != null) {
@@ -997,6 +1056,7 @@ class _TuiAppState extends State<TuiApp> {
   // ─── 发送与命令 ──────────────────────────────────────────
 
   void _submit(String text) {
+    if (_controller.isRewinding.value) return;
     // 提问自填模式:回车保存该问题的答案(留空视为放弃自填,回到选项)。
     // 与下面的 API key 分支同理,必须排在空文本检查之前。
     final elicit = _elicitRequest;
@@ -1043,7 +1103,9 @@ class _TuiAppState extends State<TuiApp> {
         : null;
     _textController.clear();
 
-    if (_controller.isStreaming.value) {
+    if (_controller.isStreaming.value &&
+        singleCommand != '/rewind' &&
+        !trimmed.startsWith('/rewind')) {
       // 运行中输入:排队发送(消息落库可见,当前轮结束后自动接续为新轮)
       _runGuarded(() => _controller.sendMessage(trimmed));
       return;

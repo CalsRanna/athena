@@ -5,6 +5,7 @@ import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -85,6 +86,12 @@ class ChatViewModel {
     () => _queue.messagesFor(currentChat.value?.id),
   );
   final isLoading = signal(false);
+  final rewindingChatIds = listSignal<String>([]);
+  bool isRewindingChat(String chatId) =>
+      rewindingChatIds.value.contains(chatId);
+  late final isCurrentChatRewinding = computed(
+    () => rewindingChatIds.value.contains(currentChat.value?.id),
+  );
 
   /// 当前选中对话的首屏历史正在读取。
   ///
@@ -820,6 +827,13 @@ class ChatViewModel {
     required Future<bool> Function() ensureModelsReady,
     bool Function(ChatEntity? target, bool draftJustCreated)? stillValid,
   }) async {
+    if (isCurrentChatRewinding.value) {
+      return (
+        outcome: SendUserInputOutcome.superseded,
+        message: null,
+        chat: null,
+      );
+    }
     final trimmed = text.trim();
     if (images.any((image) => !image.isReady)) {
       return (
@@ -886,6 +900,13 @@ class ChatViewModel {
       );
     }
 
+    if (isRewindingChat(target.id!)) {
+      return (
+        outcome: SendUserInputOutcome.superseded,
+        message: null,
+        chat: target,
+      );
+    }
     final message = MessageEntity(
       chatId: target.id ?? '',
       role: 'user',
@@ -903,6 +924,10 @@ class ChatViewModel {
     bool jsonMode = false,
   }) async {
     final chatId = chat.id!;
+    if (isRewindingChat(chatId)) {
+      _reportError('Session is being rewound. Please wait before sending.');
+      return;
+    }
     var input = QueuedChatInput(message, chat, jsonMode);
     // The owner drains this chat's queue after each complete coordinator run.
     // Keep unsent input out of history and model context until its turn starts.
@@ -938,6 +963,7 @@ class ChatViewModel {
         if (currentChat.value?.id == chatId) _runState.noteUsage(null);
         await _sendInput(input);
         _flushMessages();
+        if (isRewindingChat(chatId)) break;
         final next = _queue.nextFor(chatId);
         if (next == null) break;
         input = next;
@@ -1150,7 +1176,54 @@ class ChatViewModel {
     _stream.respondElicit(request, answers);
   }
 
+  Future<RewindResult?> rewindMessage(MessageEntity message) async {
+    final chatId = message.chatId;
+    if (message.id == null || isRewindingChat(chatId)) return null;
+    rewindingChatIds.value = [...rewindingChatIds.value, chatId];
+    error.value = null;
+    try {
+      // 解码失败时历史保持完整，不能提交回退后才发现附件无法恢复。
+      final persisted = await _messageRepo.getMessageById(chatId, message.id!);
+      if (persisted == null) {
+        throw StateError('Rewind target no longer exists.');
+      }
+      final images = persisted.imageUrls.isEmpty
+          ? <PendingImage>[]
+          : [
+              for (final encoded in persisted.imageUrls.split(','))
+                PendingImage(
+                  bytes: base64Decode(encoded),
+                  stage: PendingImageStage.ready,
+                ),
+            ];
+      final settled = _runState.settledOf(chatId);
+      final result = await _stream.rewindToUserMessage(chatId, message.id!);
+      _queue.discardChats({chatId});
+      await settled;
+      _images.restoreFor(chatId, images);
+      _turns.replace(chatId, result.turnStartIds);
+      _updateChatInLists(result.chat);
+      if (currentChat.value?.id == chatId) _runState.noteUsage(null);
+      // 提交已成功：即使随后重读窗口失败，仍把输入交还给页面恢复。
+      try {
+        await refreshMessages(chatId);
+        await getChats();
+      } catch (error) {
+        _reportError(error.toString());
+      }
+      return result;
+    } catch (error) {
+      _reportError(error.toString());
+      return null;
+    } finally {
+      rewindingChatIds.value = rewindingChatIds.value
+          .where((id) => id != chatId)
+          .toList();
+    }
+  }
+
   Future<void> deleteMessage(MessageEntity message) async {
+    if (isRewindingChat(message.chatId)) return;
     isLoading.value = true;
     error.value = null;
     try {

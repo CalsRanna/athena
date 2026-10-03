@@ -5,15 +5,19 @@ import 'package:flutter/material.dart';
 
 class UserInput extends StatefulWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
   final bool isStreaming;
+  final bool readOnly;
   const UserInput({
     super.key,
     required this.controller,
+    this.focusNode,
     this.onSubmitted,
     this.onTerminated,
     required this.isStreaming,
+    this.readOnly = false,
   });
 
   @override
@@ -22,7 +26,7 @@ class UserInput extends StatefulWidget {
 
 class _UserInputState extends State<UserInput> {
   final _scrollController = ScrollController();
-  final _focusNode = FocusNode();
+  late final _focusNode = widget.focusNode ?? FocusNode();
 
   @override
   void initState() {
@@ -37,7 +41,7 @@ class _UserInputState extends State<UserInput> {
   @override
   void dispose() {
     _focusNode.removeListener(_handleFocusChanged);
-    _focusNode.dispose();
+    if (widget.focusNode == null) _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -53,6 +57,7 @@ class _UserInputState extends State<UserInput> {
     final textStyle = AthenaTextStyle.body.copyWith(color: colors.textInput);
     final textField = TextField(
       controller: widget.controller,
+      readOnly: widget.readOnly,
       focusNode: _focusNode,
       scrollController: _scrollController,
       cursorColor: colors.textInput,

@@ -7,6 +7,9 @@ class ChatEntity {
   /// 持久化 Sentinel 使用 UUID，null 表示没有角色引用。
   static const String? noSentinelId = null;
 
+  /// Context usage is unknown after rewind until the next model response.
+  static const unknownContextTokens = -1;
+
   /// 支持的推理强度档位，从弱到强。UI 的滑杆按这个顺序排点。
   static const reasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
 
@@ -41,6 +44,7 @@ class ChatEntity {
   final bool pinned;
 
   /// 最近一次推理的 prompt token 数（覆盖写，用于上下文窗口占用率）。
+  /// 回退后为 [unknownContextTokens]，前端隐藏占用率，直到下一次用量上报。
   final int contextTokens;
 
   /// 最近一次推理的缓存命中 token 数（覆盖写，用于缓存命中率）。
@@ -63,6 +67,9 @@ class ChatEntity {
   /// 与 [workspacePath] 同一处境：早期落库的会话文件没有这一列，读取时由
   /// [normalizeApprovalMode] 回落默认档，不写迁移代码。
   final ApprovalMode approvalMode;
+
+  /// Invalidates background reports from work started before the last rewind.
+  final DateTime? rewoundAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -81,6 +88,7 @@ class ChatEntity {
     this.cachedTokens = 0,
     this.workspacePath,
     this.approvalMode = ApprovalMode.defaultMode,
+    this.rewoundAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -103,6 +111,9 @@ class ChatEntity {
       approvalMode: normalizeApprovalMode(
         json.getStringOrNull('approval_mode'),
       ),
+      rewoundAt: json['rewound_at'] == null
+          ? null
+          : json.getDateTime('rewound_at'),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
     );
@@ -124,6 +135,7 @@ class ChatEntity {
       // 条件写法会让「清空工作文件夹」落不了库。
       'workspace_path': workspacePath,
       'approval_mode': approvalMode.key,
+      if (rewoundAt != null) 'rewound_at': rewoundAt!.millisecondsSinceEpoch,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -145,6 +157,7 @@ class ChatEntity {
     bool? pinned,
     int? contextTokens,
     int? cachedTokens,
+    DateTime? rewoundAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -165,6 +178,7 @@ class ChatEntity {
       pinned: pinned ?? this.pinned,
       contextTokens: contextTokens ?? this.contextTokens,
       cachedTokens: cachedTokens ?? this.cachedTokens,
+      rewoundAt: rewoundAt ?? this.rewoundAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

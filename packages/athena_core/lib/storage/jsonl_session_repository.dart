@@ -5,6 +5,9 @@ import 'package:path/path.dart' as p;
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
+import 'package:athena_core/repository/session_rewind_repository.dart';
+import 'package:athena_core/storage/session_activity_lease.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
@@ -24,7 +27,11 @@ import 'package:athena_core/util/logger_util.dart';
 ///
 /// 会话与消息使用 UUIDv7；消息 seq 在各自会话写锁内分配。
 class JsonlSessionRepository
-    implements ChatRepository, MessageRepository, RecentMessageRepository {
+    implements
+        ChatRepository,
+        MessageRepository,
+        RecentMessageRepository,
+        SessionRewindRepository {
   JsonlSessionRepository({
     required Directory sessionsDir,
     required LockRegistry locks,
@@ -123,6 +130,7 @@ class JsonlSessionRepository
       final merged = chat.copyWith(
         contextTokens: current.contextTokens,
         cachedTokens: current.cachedTokens,
+        rewoundAt: current.rewoundAt,
       );
       return merged.toJson();
     });
@@ -238,6 +246,18 @@ class JsonlSessionRepository
     }
     return ChatHistoryEntity(chat: chat, lastMessageContent: lastContent);
   }
+
+  @override
+  Future<SessionActivityLease> acquireSessionActivity(String chatId) {
+    final store = _storeFor(chatId);
+    return FileSessionActivityLease.acquire(
+      _locks.named('session-activity/${p.basename(store.file.path)}'),
+    );
+  }
+
+  @override
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
+      _storeFor(chatId).rewindToUserMessage(messageId);
 
   // ─────────────────────────── MessageRepository ───────────────────────────
 

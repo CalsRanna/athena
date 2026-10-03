@@ -7,6 +7,7 @@ import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/responses_adapter.dart';
 import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/util/cancellable_stream.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
@@ -173,30 +174,27 @@ class LlmClient {
     int outputLimit = 0,
     int? outputRoom,
   }) {
-    switch (provider.apiFormat) {
-      case ApiFormat.chatCompletions:
-        return _streamChatCompletions(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-        );
-      case ApiFormat.responses:
-        return _streamResponses(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-        );
-      case ApiFormat.messages:
-        return _streamMessages(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-          maxTokens: messagesMaxTokens(
-            outputLimit: outputLimit,
-            outputRoom: outputRoom,
-          ),
-        );
-    }
+    return cancellableStream(switch (provider.apiFormat) {
+      ApiFormat.chatCompletions => _streamChatCompletions(
+        provider: provider,
+        request: request,
+        cancelSignal: cancelSignal,
+      ),
+      ApiFormat.responses => _streamResponses(
+        provider: provider,
+        request: request,
+        cancelSignal: cancelSignal,
+      ),
+      ApiFormat.messages => _streamMessages(
+        provider: provider,
+        request: request,
+        cancelSignal: cancelSignal,
+        maxTokens: messagesMaxTokens(
+          outputLimit: outputLimit,
+          outputRoom: outputRoom,
+        ),
+      ),
+    }, cancelSignal);
   }
 
   Stream<ChatStreamEvent> _streamChatCompletions({

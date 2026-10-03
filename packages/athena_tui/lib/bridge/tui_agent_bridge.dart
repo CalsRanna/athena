@@ -10,6 +10,7 @@ import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -116,6 +117,9 @@ class TuiAgentBridge {
   }) {
     return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
   }
+
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
+      _coordinator.rewindToUserMessage(chatId, messageId);
 
   void stop(String chatId) {
     _coordinator.stop(chatId);

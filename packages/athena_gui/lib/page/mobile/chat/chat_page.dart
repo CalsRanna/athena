@@ -1,5 +1,7 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_gui/component/rewind_dialog.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
@@ -22,6 +24,7 @@ import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
@@ -37,6 +40,7 @@ class MobileChatPage extends StatefulWidget {
 
 class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
+  final composerFocusNode = FocusNode();
   final scrollController = MessageListScrollController();
 
   /// 新对话页打开时 ViewModel 的当前对话（上一次打开的那条）。
@@ -132,6 +136,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
           controller: scrollController,
           model: model,
           onChatTitleChanged: (_) {},
+          onRewind: rewindMessage,
         );
       }
       return SentinelPlaceholder(sentinel: sentinel);
@@ -176,6 +181,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   void dispose() {
     controller.dispose();
+    composerFocusNode.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -237,16 +243,41 @@ class _MobileChatPageState extends State<MobileChatPage> {
     AthenaDialog.show(mobileChatBottomSheet);
   }
 
+  Future<void> rewindMessage(MessageEntity message) async {
+    if (viewModel.isRewindingChat(message.chatId)) return;
+    final confirmed = await RewindDialog.confirm(
+      replacesDraft:
+          controller.text.isNotEmpty ||
+          viewModel.pendingImages.value.isNotEmpty,
+    );
+    if (confirmed != true || !mounted || _resolveChat()?.id != message.chatId) {
+      return;
+    }
+    final result = await viewModel.rewindMessage(message);
+    if (result == null) return;
+    if (!mounted || _resolveChat()?.id != message.chatId) {
+      viewModel.saveComposerDraft(message.chatId, result.input.content);
+      return;
+    }
+    controller.value = TextEditingValue(
+      text: result.input.content,
+      selection: TextSelection.collapsed(offset: result.input.content.length),
+    );
+    scrollController.followBottom();
+    composerFocusNode.requestFocus();
+  }
+
   Future<void> sendMessage(ChatEntity? chat) async {
     final sourceChatId = viewModel.currentChat.value?.id;
+    final images = viewModel.pendingImages.value;
 
     // 与桌面共用同一份「校验 + 必要时落草稿 + 构造消息」。移动端此前自己写了
     // 一遍，漏了三样：文本没 trim（纯空格也会发出去）、不检查有没有启用模型、
     // 不重查等待期间的页面/对话/附件竞态。
     final prepared = await viewModel.prepareUserInput(
       text: controller.text,
-      // 移动端没有图片附件入口
-      images: const [],
+      // 回退恢复的历史图片也要随编辑后的消息再次发送。
+      images: images,
       chat: chat,
       // 模型列表在 initState 已经加载过，正常路径不该每次发送都重拉；只有
       // 列表为空时才补一次（覆盖「init 还没跑完用户就发出去了」）。
@@ -258,6 +289,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       },
       stillValid: (target, draftJustCreated) =>
           mounted &&
+          identical(images, viewModel.pendingImages.value) &&
           viewModel.currentChat.value?.id ==
               (draftJustCreated ? target?.id : sourceChatId),
     );
@@ -344,6 +376,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
       final chat = _resolveChat();
       final userInput = UserInput(
         controller: controller,
+        focusNode: composerFocusNode,
+        readOnly: viewModel.isCurrentChatRewinding.value,
         isStreaming: viewModel.isCurrentChatStreaming.value,
         onSubmitted: () => sendMessage(chat),
         onTerminated: terminateStreaming,
@@ -358,7 +392,44 @@ class _MobileChatPageState extends State<MobileChatPage> {
               QueuedMessages(messages: queued),
               const SizedBox(height: 12),
             ],
-            userInput,
+            if (viewModel.pendingImages.value.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final (index, image)
+                      in viewModel.pendingImages.value.indexed)
+                    Stack(
+                      children: [
+                        if (image.bytes != null)
+                          Image.memory(
+                            image.bytes!,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) =>
+                                const Icon(LucideIcons.imageOff),
+                          ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Tooltip(
+                            message: 'Remove image',
+                            child: AthenaGhostIconButton(
+                              icon: LucideIcons.x,
+                              onTap: viewModel.isCurrentChatRewinding.value
+                                  ? null
+                                  : () => viewModel.removePendingImage(index),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            AbsorbPointer(
+              absorbing: viewModel.isCurrentChatRewinding.value,
+              child: userInput,
+            ),
           ],
         ),
       );

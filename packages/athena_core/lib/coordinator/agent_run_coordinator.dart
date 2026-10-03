@@ -18,6 +18,8 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
+import 'package:athena_core/repository/session_rewind_repository.dart';
 import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/storage/experience_repository.dart';
@@ -64,6 +66,84 @@ class AgentRunCoordinator {
 
   /// 下一个 run 的自增 id（多 run 并发的隔离标识）。
   int _nextRunId = 0;
+
+  final Map<String, Completer<void>> _rewinds = {};
+  final Map<String, Completer<void>> _starting = {};
+
+  bool isRewindingChat(String chatId) => _rewinds.containsKey(chatId);
+
+  Future<SessionActivityLease?> _claimSession(String chatId) async {
+    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) {
+      throw StateError('Session is busy in another operation.');
+    }
+    final started = Completer<void>();
+    _starting[chatId] = started;
+    SessionActivityLease? lease;
+    try {
+      final repository = _messageRepo;
+      if (repository is SessionRewindRepository) {
+        lease = await (repository as SessionRewindRepository)
+            .acquireSessionActivity(chatId);
+      }
+      if (isRewindingChat(chatId)) {
+        await lease?.release();
+        throw StateError('Session is being rewound.');
+      }
+      return lease;
+    } finally {
+      _starting.remove(chatId);
+      started.complete();
+    }
+  }
+
+  /// 先关闭接续入口，再等待旧 run 落库。普通 stop 会接续排队输入，不能
+  /// 用 stop + 删消息模拟回退。失败时排队输入仍保留，成功后只保留前缀。
+  Future<RewindResult> rewindToUserMessage(
+    String chatId,
+    String messageId,
+  ) async {
+    if (isRewindingChat(chatId)) {
+      throw StateError('Session is already being rewound.');
+    }
+    final target = await _messageRepo.getMessageById(chatId, messageId);
+    if (target == null || target.role != 'user') {
+      throw ArgumentError('Rewind target must be an existing user message.');
+    }
+    if (isRewindingChat(chatId)) {
+      throw StateError('Session is already being rewound.');
+    }
+    final barrier = Completer<void>();
+    _rewinds[chatId] = barrier;
+    SessionActivityLease? lease;
+    try {
+      await _starting[chatId]?.future;
+      final settled = settledOf(chatId);
+      _cancelTokenByChat[chatId]?.cancel();
+      final runId = _runIdByChat[chatId];
+      if (runId != null) _agentService.abort(runId);
+      await settled?.timeout(const Duration(seconds: 30));
+      await _agentService.backgroundTasks.stopChatTasks(chatId);
+      final repository = _messageRepo;
+      if (repository is! SessionRewindRepository) {
+        throw UnsupportedError('Session repository does not support rewind.');
+      }
+      lease = await (repository as SessionRewindRepository)
+          .acquireSessionActivity(chatId);
+      final result = await _chatStore.rewindToUserMessage(chatId, messageId);
+      _reportCutoffs[chatId] = result.chat.rewoundAt;
+      final kept = result.turnStartIds.toSet();
+      _pendingInputs[chatId]?.removeWhere((m) => !kept.contains(m.id));
+      _pendingReports.remove(chatId);
+      return result;
+    } finally {
+      try {
+        await lease?.release();
+      } finally {
+        _rewinds.remove(chatId);
+        barrier.complete();
+      }
+    }
+  }
 
   /// 正在流式运行的对话 id 集合（支持多对话同时运行）。
   final Set<String> _streamingChatIds = {};
@@ -191,6 +271,11 @@ class AgentRunCoordinator {
       throw StateError('Chat $chatId already has an active Agent run.');
     }
 
+    final activity = await _claimSession(chatId);
+    if (isRewindingChat(chatId)) {
+      await activity?.release();
+      throw StateError('Session is being rewound.');
+    }
     final runId = ++_nextRunId;
     final statistics = RunStatistics(
       id: const IdGenerator().next(),
@@ -210,6 +295,8 @@ class AgentRunCoordinator {
     var userMessageStored = false;
     MessageEntity? assistantMessage;
     try {
+      _reportCutoffs[chatId] = (await _chatRepo.getChatById(chatId))?.rewoundAt;
+      cancelToken.throwIfCancelled();
       yield const RunIterationChanged(0);
       yield const RunToolNameChanged(null);
 
@@ -426,7 +513,11 @@ class AgentRunCoordinator {
         _liveMessages.remove(chatId);
         _workspaceByChat.remove(chatId);
       }
-      if (!settled.isCompleted) settled.complete();
+      try {
+        await activity?.release();
+      } finally {
+        if (!settled.isCompleted) settled.complete();
+      }
     }
 
     // ─── 接续排队输入 ───
@@ -467,6 +558,7 @@ class AgentRunCoordinator {
     String chatId, {
     required bool jsonMode,
   }) async* {
+    await _rewinds[chatId]?.future;
     final pending = _pendingInputs[chatId];
     if (pending == null || pending.isEmpty) return;
     if (await _chatRepo.getChatById(chatId) == null) {
@@ -504,6 +596,7 @@ class AgentRunCoordinator {
     String chatId,
     MessageEntity message,
   ) async {
+    if (isRewindingChat(chatId)) throw StateError('Session is being rewound.');
     if (!_runIdByChat.containsKey(chatId)) return null;
     final stored = await _messageRepo.storeMessage(message);
     final pending = _pendingInputs.putIfAbsent(chatId, () => []);
@@ -524,6 +617,7 @@ class AgentRunCoordinator {
 
   /// 后台任务结束的回调：决定「现在汇报」还是「攒到会话空闲再汇报」。
   void _onBackgroundTaskCompleted(BackgroundTask task) {
+    if (isRewindingChat(task.chatId)) return;
     if (!shouldReportTaskCompletion(task)) return;
     if (!_agentSettings.backgroundTaskReports.value) return;
     final chatId = task.chatId;
@@ -531,11 +625,18 @@ class AgentRunCoordinator {
     unawaited(_drainPendingReport(chatId));
   }
 
-  List<BackgroundTask> _pendingBackgroundTasks(String chatId) =>
-      List.of(_pendingReports[chatId] ?? const <BackgroundTask>[]);
+  final Map<String, DateTime?> _reportCutoffs = {};
+
+  List<BackgroundTask> _pendingBackgroundTasks(String chatId) => [
+    for (final task in _pendingReports[chatId] ?? const <BackgroundTask>[])
+      if (_reportCutoffs[chatId] == null ||
+          task.startedAt.isAfter(_reportCutoffs[chatId]!))
+        task,
+  ];
 
   /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
   Future<void> _drainPendingReport(String chatId) async {
+    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) return;
     if (_reportingChatIds.contains(chatId)) return;
     if (_streamingChatIds.contains(chatId)) return;
     if (_pendingReports[chatId]?.isNotEmpty != true) return;
@@ -555,10 +656,22 @@ class AgentRunCoordinator {
     }
 
     // 仓库读取期间可能启动了 run 或确认了通知，不能使用读取前的队列快照。
-    if (_streamingChatIds.contains(chatId)) return;
-    final pending = _pendingReports.remove(chatId);
+    if (isRewindingChat(chatId) || _streamingChatIds.contains(chatId)) return;
+    final pending = _pendingReports
+        .remove(chatId)
+        ?.where(
+          (task) =>
+              chat!.rewoundAt == null ||
+              task.startedAt.isAfter(chat.rewoundAt!),
+        )
+        .toList();
     if (pending == null || pending.isEmpty) return;
-    await _runReport(chat, List.of(pending));
+    try {
+      await _runReport(chat, List.of(pending));
+    } catch (error) {
+      _pendingReports.putIfAbsent(chatId, () => []).addAll(pending);
+      LoggerUtil.w('Background report deferred: $error');
+    }
   }
 
   /// 自动汇报回合。
@@ -579,6 +692,11 @@ class AgentRunCoordinator {
       return;
     }
 
+    final activity = await _claimSession(chatId);
+    if (isRewindingChat(chatId)) {
+      await activity?.release();
+      throw StateError('Session is being rewound.');
+    }
     final runId = ++_nextRunId;
     final statistics = RunStatistics(
       id: const IdGenerator().next(),
@@ -600,6 +718,16 @@ class AgentRunCoordinator {
     }
 
     try {
+      _reportCutoffs[chatId] = (await _chatRepo.getChatById(chatId))?.rewoundAt;
+      cancelToken.throwIfCancelled();
+      tasks = tasks
+          .where(
+            (task) =>
+                _reportCutoffs[chatId] == null ||
+                task.startedAt.isAfter(_reportCutoffs[chatId]!),
+          )
+          .toList();
+      if (tasks.isEmpty) return;
       emit(const RunIterationChanged(0));
       emit(const RunToolNameChanged(null));
 
@@ -720,7 +848,11 @@ class AgentRunCoordinator {
         _workspaceByChat.remove(chatId);
       }
       _reportingChatIds.remove(chatId);
-      if (!settled.isCompleted) settled.complete();
+      try {
+        await activity?.release();
+      } finally {
+        if (!settled.isCompleted) settled.complete();
+      }
     }
 
     // 汇报期间用户可能发过消息：TUI 那条路径会把它落库进协调层的排队队列，

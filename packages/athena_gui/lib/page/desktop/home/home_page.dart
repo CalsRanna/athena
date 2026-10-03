@@ -8,6 +8,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/component/chat_error_dialog_listener.dart';
+import 'package:athena_gui/component/rewind_dialog.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
@@ -150,17 +151,30 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
   }
 
-  Future<void> resendMessage(MessageEntity message) async {
-    final chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
-    // 当前对话正在流式时重发会先删消息再被 sendMessage 静默吞掉，直接拦截
-    if (chatViewModel.isStreamingChat(chat.id!)) {
-      AthenaDialog.info('Please wait for the current session to finish.');
+  Future<void> rewindMessage(MessageEntity message) async {
+    if (chatViewModel.isRewindingChat(message.chatId)) return;
+    final confirmed = await RewindDialog.confirm(
+      replacesDraft:
+          controller.text.isNotEmpty ||
+          chatViewModel.pendingImages.value.isNotEmpty,
+    );
+    if (confirmed != true ||
+        !mounted ||
+        chatViewModel.currentChat.value?.id != message.chatId) {
       return;
     }
+    final result = await chatViewModel.rewindMessage(message);
+    if (result == null) return;
+    if (!mounted || chatViewModel.currentChat.value?.id != message.chatId) {
+      chatViewModel.saveComposerDraft(message.chatId, result.input.content);
+      return;
+    }
+    controller.value = TextEditingValue(
+      text: result.input.content,
+      selection: TextSelection.collapsed(offset: result.input.content.length),
+    );
     scrollController.followBottom();
-    await chatViewModel.deleteMessage(message);
-    await chatViewModel.sendMessage(message, chat: chat);
+    composerFocusNode.requestFocus();
   }
 
   /// 侧栏点选对话。先把草稿换过去，再让 ViewModel 去加载消息（不 await：换草稿
@@ -378,7 +392,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Widget _buildWorkspace() {
     final workspace = DesktopMessageList(
       controller: scrollController,
-      onResend: resendMessage,
+      onRewind: rewindMessage,
     );
     final desktopMessageInput = DesktopMessageInput(
       controller: controller,
@@ -401,7 +415,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: workspace),
-        desktopMessageInput,
+        AbsorbPointer(
+          absorbing: chatViewModel.isCurrentChatRewinding.value,
+          child: desktopMessageInput,
+        ),
       ],
     );
   }

@@ -145,9 +145,12 @@ class DesktopMessageInput extends StatelessWidget {
                           chatId: chatId,
                           focusNode: focusNode,
                           images: images,
+                          readOnly: chatViewModel.isCurrentChatRewinding.value,
                           onPasteImages: onPasteImages,
                           onImageRemoved: onImageRemoved,
-                          onSubmitted: images.every((image) => image.isReady)
+                          onSubmitted:
+                              !chatViewModel.isCurrentChatRewinding.value &&
+                                  images.every((image) => image.isReady)
                               ? onSubmitted
                               : null,
                         ),
@@ -250,6 +253,7 @@ class _Input extends StatefulWidget {
   /// 外部传入的焦点节点：composer 的容器要靠它切换边框色。
   final FocusNode? focusNode;
   final List<PendingImage> images;
+  final bool readOnly;
   final Future<bool> Function()? onPasteImages;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
@@ -262,6 +266,7 @@ class _Input extends StatefulWidget {
     this.chatId,
     this.focusNode,
     this.images = const [],
+    this.readOnly = false,
     this.onPasteImages,
     this.onImageRemoved,
     this.onSubmitted,
@@ -327,6 +332,7 @@ class _InputState extends State<_Input> {
     );
     final textField = TextField(
       controller: widget.controller,
+      readOnly: widget.readOnly,
       focusNode: widget.focusNode,
       scrollController: _scrollController,
       cursorHeight: 16,
@@ -417,6 +423,7 @@ class _InputState extends State<_Input> {
   }
 
   void _insertNewline() {
+    if (widget.readOnly) return;
     final controller = widget.controller;
     final text = controller.text;
     final selection = controller.selection;
@@ -445,6 +452,7 @@ class _InputState extends State<_Input> {
   /// （文件管理器多选复制可能有多个图片文件），
   /// 否则回退到默认的文本粘贴行为。
   Future<void> _pasteImageAware() async {
+    if (widget.readOnly) return;
     if (_pasting) return;
     _pasting = true;
     try {
@@ -457,6 +465,7 @@ class _InputState extends State<_Input> {
   }
 
   Future<void> _pasteClipboardText() async {
+    if (widget.readOnly) return;
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (!mounted) return;
     final text = data?.text;
