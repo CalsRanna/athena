@@ -14,6 +14,7 @@ const permissionCardMaxHeightFraction = 0.5;
 /// 容器是白底描边卡片；内部结构复用工具步骤行的标题行语言（工具图标 + 工具名 +
 /// 调用描述），命令完整展示，按钮直接用全站的 [AthenaPrimaryButton] /
 /// [AthenaSecondaryButton]（DESIGN.md §7：主路径操作按钮一律从 Primary CTA 派生）。
+/// 这是待处理的 UI 决策，文字用常规 UI 档，不跟随会话字号；只展示执行内容。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
   final double maxHeight;
@@ -69,10 +70,7 @@ class PermissionApprovalCard extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           request.toolName,
-          style: AthenaTextStyle.label.copyWith(
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
+          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -80,14 +78,14 @@ class PermissionApprovalCard extends StatelessWidget {
             StepCard.toolLabel(request.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AthenaTextStyle.caption.copyWith(color: colors.textPrimary),
+            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
         ),
       ],
     );
   }
 
-  /// 完整命令/参数展示：无背景的直接文字（与消息正文一致）。
+  /// 完整命令/参数展示：无背景的直接文字。
   Widget _buildCommand(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Scrollbar(
@@ -96,11 +94,8 @@ class PermissionApprovalCard extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: Text(
-            [
-              if (request.reviewReason != null) request.reviewReason!,
-              formatToolArgsForApproval(request.toolName, request.arguments),
-            ].join('\n\n'),
-            style: AthenaTextStyle.caption.copyWith(color: colors.textPrimary),
+            formatToolArgsForApproval(request.toolName, request.arguments),
+            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
         ),
       ),

@@ -51,7 +51,7 @@ void main() {
       expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);
-      expect(find.textContaining('这次操作需要你考虑数据覆盖的影响。'), findsOneWidget);
+      expect(find.textContaining('这次操作需要你考虑数据覆盖的影响。'), findsNothing);
       expect(find.textContaining('query: project rules'), findsOneWidget);
       expect(tester.takeException(), isNull);
 

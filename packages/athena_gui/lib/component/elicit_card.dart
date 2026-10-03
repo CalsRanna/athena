@@ -11,6 +11,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 容器与按钮体系对齐 [PermissionApprovalCard]，区别在于「要不要做」是二值
 /// 决策，而这里是「你要哪个」——每个问题给 2-4 个选项，并额外提供一个
 /// 自由输入项（用户自填的文本就是答案本身，不是 "Other" 这个词）。
+/// 文字与审批卡一样用常规 UI 档，不跟随会话字号，层级由字重与颜色区分。
 ///
 /// 一次只展示一个问题（多问时问题前标 `1 / 3`），单选点选即前进、
 /// 最后一步点选即提交；多选与自由输入由 Next / Submit 收尾。
@@ -178,10 +179,7 @@ class _ElicitCardState extends State<ElicitCard> {
     children: [
       Text(
         'Question',
-        style: AthenaTextStyle.label.copyWith(
-          fontWeight: FontWeight.w600,
-          color: colors.textPrimary,
-        ),
+        style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
       ),
     ],
   );
@@ -206,7 +204,7 @@ class _ElicitCardState extends State<ElicitCard> {
               if (question.multiSelect)
                 Text(
                   'select all that apply',
-                  style: AthenaTextStyle.caption.copyWith(
+                  style: AthenaTextStyle.body.copyWith(
                     color: colors.textPrimary,
                   ),
                 ),
@@ -215,10 +213,7 @@ class _ElicitCardState extends State<ElicitCard> {
           const SizedBox(height: 6),
           Text(
             question.question,
-            style: AthenaTextStyle.body.copyWith(
-              fontWeight: FontWeight.w500,
-              color: colors.textPrimary,
-            ),
+            style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
           ),
           const SizedBox(height: 8),
           for (final option in question.options)
@@ -281,7 +276,7 @@ class _ElicitCardState extends State<ElicitCard> {
                     if (option.description.isNotEmpty)
                       Text(
                         option.description,
-                        style: AthenaTextStyle.caption.copyWith(
+                        style: AthenaTextStyle.body.copyWith(
                           color: colors.textSecondary,
                         ),
                       ),
@@ -297,11 +292,7 @@ class _ElicitCardState extends State<ElicitCard> {
 
   /// 自由输入行：用户自填的文本就是答案。
   ///
-  /// 样式沿用全局输入约定（`AthenaInput` / 会话输入框：`inputBackground`
-  /// 半透明填充 + 24 圆角 + collapsed 装饰），只有文字色与尺度不同——卡片本身
-  /// 是 raised 白底，文字得用白卡家族的 `textOnRaised`；尺度取**卡片尺度**
-  /// （字号 14、垂直内边距 12，与卡片内按钮同高）而不是全局输入的 56px 高，
-  /// 否则一行自由输入会比整张卡片的其它内容都重。
+  /// 输入框使用控件圆角与紧凑内边距，避免一行自由输入比卡片其它内容更重。
   Widget _buildOtherRow(AthenaColors colors, int index) {
     final controller = _controllerFor(index);
     final focusNode = _focusFor(index);

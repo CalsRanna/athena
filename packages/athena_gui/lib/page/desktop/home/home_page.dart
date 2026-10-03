@@ -330,6 +330,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
     // 右侧是一组视图操作。这里保留标题那一部分（Athena 没有导航与右面板）。
+    //
+    // 会话标题走 `section`（14 / w600）而不是 `title`（16 / w600）：这里是窗口
+    // chrome 上的一条标签，不是页面标题。桌面顶栏高 46，用页面标题那一档会盖过
+    // 它下面的正文层级；层级靠字重保留。
     final title = Watch((context) {
       final chat = chatViewModel.currentChat.value;
       final text = chat?.title.trim() ?? '';
@@ -339,7 +343,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           text.isEmpty ? 'New session' : text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
         ),
       );
     });
