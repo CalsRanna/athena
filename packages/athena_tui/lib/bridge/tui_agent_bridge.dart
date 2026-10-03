@@ -11,7 +11,7 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';

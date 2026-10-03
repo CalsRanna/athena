@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena_tui/exit_hook_backend.dart';
+import 'package:athena_tui/ui/backend/exit_hook_backend.dart';
 import 'package:nocterm/nocterm.dart' show TerminalBackend;
 import 'package:test/test.dart';
 

@@ -1,6 +1,6 @@
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 
 /// 记录经验教训的工具，使 Agent 能从交互中持续学习。
 ///

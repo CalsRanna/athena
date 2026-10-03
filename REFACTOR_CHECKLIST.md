@@ -337,7 +337,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
   （消息列与 composer 共用宽度）。它只有 desktop 用，下沉到 `page/desktop/home/component/` 后，
   与 `component/` 的"业务组件"定位无关这件事就不再别扭。
 
-- [ ] **3.2 TUI 两个根级 `*_backend.dart`**
+- [x] **3.2 TUI 两个根级 `*_backend.dart`**
 
   位置：`packages/athena_tui/lib/` 根下的 `exit_hook_backend.dart` 与 `no_clipboard_backend.dart`
 
@@ -368,7 +368,7 @@ cd packages/athena_gui && flutter analyze && flutter test && dart format --outpu
     并在 §2 补一句判据。**按上面的证据，(b) 更贴合现状**；选 (a) 要搬走一个横跨 5 个仓储的类，
     收益是目录语义单一，代价是它在新位置反而成了异类。
 
-- [ ] **3.4 `ExperienceRepository` 是具体实现，留在接口目录**
+- [x] **3.4 `ExperienceRepository` 是具体实现，留在接口目录**
 
   位置：`packages/athena_core/lib/repository/experience_repository.dart:21`
 

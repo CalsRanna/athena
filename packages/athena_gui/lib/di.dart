@@ -10,7 +10,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';

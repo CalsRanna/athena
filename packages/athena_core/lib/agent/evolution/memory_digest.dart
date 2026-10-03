@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:openai_dart/openai_dart.dart';
 

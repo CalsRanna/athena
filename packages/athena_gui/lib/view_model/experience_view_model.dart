@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:signals/signals.dart';
 

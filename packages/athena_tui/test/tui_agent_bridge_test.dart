@@ -7,7 +7,7 @@ import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_store_service.dart';

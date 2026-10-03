@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/sentinel_store.dart';
 import 'package:athena_core/storage/yaml_sentinel_repository.dart';

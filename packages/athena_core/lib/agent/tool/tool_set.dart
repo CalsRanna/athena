@@ -20,7 +20,7 @@ import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/agent/tool/web_search_tool.dart';
-import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';

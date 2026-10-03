@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_tui/di/tui_di.dart';
-import 'package:athena_tui/exit_hook_backend.dart';
-import 'package:athena_tui/no_clipboard_backend.dart';
+import 'package:athena_tui/ui/backend/exit_hook_backend.dart';
+import 'package:athena_tui/ui/backend/no_clipboard_backend.dart';
 import 'package:athena_tui/ui/app.dart';
 import 'package:nocterm/nocterm.dart';
 
