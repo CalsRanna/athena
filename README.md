@@ -170,7 +170,7 @@ models:
 
 ## 开发
 
-### 检查与测试
+工程约定（分层与依赖方向、目录、命名、注释、错误处理、安全、测试、依赖与版本、常用命令、提交与发布、编码风格）统一见 [CONVENTIONS.md](CONVENTIONS.md)。日常只需跑：
 
 ```bash
 cd packages/athena_core && dart analyze && dart test
@@ -184,34 +184,15 @@ cd packages/athena_tui && dart analyze && dart test
 cd packages/athena_gui && flutter analyze && flutter test
 ```
 
-`athena_gui` 的测试运行前同样需要先跑一次 `build_runner`。
-
-CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 上分三个 job 跑这三个包，与发布流程共用同一套检查。测试目录被误删时会直接失败，而不是静默跳过。
-
-### 提交信息
-
-`<type>(<scope>): <summary>`，type 用 `feat` / `fix` / `refactor` / `docs` / `chore` / `build` / `test`，scope 取包名或子系统名（`agent` / `theme` / `storage` / `athena_gui` …）。正文写清**为什么**改，而不只是改了什么。提交信息中不添加任何工具署名。
-
-### 发布
-
-GUI 通过 GitHub Release 分发，三平台各自打包后由 `tapster publish` 更新 Homebrew tap 与 Scoop bucket：
-
-```bash
-git tag v4.0.3 && git push origin v4.0.3
-```
-
-tag 推送后触发 [release.yml](.github/workflows/release.yml)：先复用 CI 的三包检查，再并行构建 macOS（`.zip`，内含 `Athena.app`）、Windows（`.zip`，内含 `athena.exe`）、Linux（`.tar.gz`）。发布配置见 [`packages/athena_gui/.tapster.yaml`](packages/athena_gui/.tapster.yaml)，checksum 由 `tapster publish` 从 Release asset digest 解析，不需要手工维护。
-
-打 tag 前记得同步 `packages/athena_gui/pubspec.yaml` 的 `version`。
+`athena_gui` 的测试运行前同样需要先跑一次 `build_runner`。CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 上分三个 job 跑这三个包，与发布流程共用同一套检查。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
 | [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
+| [CONVENTIONS.md](CONVENTIONS.md) | 仓库约定：分层与依赖方向、目录、命名、注释、错误处理、安全、测试、依赖与版本、常用命令、提交与发布、编码风格 |
 | [DESIGN.md](DESIGN.md) | 设计系统：色板、排版、几何、组件分层与交互规则 |
-
-放入工作区根目录的 `AGENTS.md` 会被 Agent 读取并注入上下文，用于告诉它该项目的约定。它随每次请求注入、不写入会话历史，也不会成为权限批准的依据。
 
 ## 许可
 
