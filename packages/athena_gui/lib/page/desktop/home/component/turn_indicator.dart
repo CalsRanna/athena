@@ -30,8 +30,23 @@ import 'package:flutter/material.dart';
 /// 点击把那一轮滚到视口顶部（滚动由 [TurnNavigator] 落到消息 sliver 上）。
 /// 它只占条本身那一小条命中区，其余地方指针直接穿过去，不影响读消息。
 class TurnIndicator extends StatefulWidget {
-  /// 已加载窗口里的轮次，与消息列表顺序一致；只有这些有内容可预览。
-  final List<ChatTurn> turns;
+  /// 窗口里的轮次数（= 有内容可预览的那一段）。只用来判边界与摆位。
+  ///
+  /// **内容不进配置**：见 [turnAt]。
+  final int windowTurnCount;
+
+  /// 供预览卡现取某一轮的**当前**内容，参数是它在整段会话里的下标。
+  ///
+  /// 内容之所以走回调而不是字段：宿主（工作区）在 agent 工作期间每帧重建，
+  /// 轮次列表每帧都是新实例。若把它当配置传进来，本控件就得跟着每帧重建——
+  /// 进而每帧重绘（这种脏标记由控件重建传导，外面包 `RepaintBoundary` 挡不住，
+  /// 实测加了边界仍每帧重绘）。所以宿主只把**结构**（条数、窗口位置、条宽）
+  /// 交给本控件、并按它缓存控件实例，内容留到 hover 那一刻现取。
+  ///
+  /// 返回 null = 这一轮已经不在当前窗口里（窗口刚翻页、宿主的缓存还没跟上）：
+  /// 调用方跳过这次预览即可，不必自己再判一遍边界。
+  final ChatTurn? Function(int absoluteIndex) turnAt;
+
   final TurnNavigator navigator;
 
   /// 单条最大宽度；静止时取它的一半。
@@ -55,7 +70,8 @@ class TurnIndicator extends StatefulWidget {
 
   const TurnIndicator({
     super.key,
-    required this.turns,
+    required this.windowTurnCount,
+    required this.turnAt,
     required this.navigator,
     required this.maxBarWidth,
     required this.totalTurns,
@@ -134,12 +150,14 @@ class _TurnIndicatorState extends State<TurnIndicator> {
 
   /// 整段会话画多少行 = 窗口那几轮 + 未加载的历史。窗口首轮的下标大于扫描到的
   /// 总轮数时以窗口为准——新发出的消息先落进窗口、扫描还没跟上时会这样。
-  int get _rowCount =>
-      math.max(widget.totalTurns, widget.firstTurnIndex + widget.turns.length);
+  int get _rowCount => math.max(
+    widget.totalTurns,
+    widget.firstTurnIndex + widget.windowTurnCount,
+  );
 
   /// 已加载窗口在整段会话里的下标区间（左闭右开）。
   int get _windowStart => widget.firstTurnIndex;
-  int get _windowEnd => widget.firstTurnIndex + widget.turns.length;
+  int get _windowEnd => widget.firstTurnIndex + widget.windowTurnCount;
 
   bool _isLoaded(int absoluteIndex) =>
       absoluteIndex >= _windowStart && absoluteIndex < _windowEnd;
@@ -181,8 +199,7 @@ class _TurnIndicatorState extends State<TurnIndicator> {
     final windowChanged =
         oldWidget.totalTurns != widget.totalTurns ||
         oldWidget.firstTurnIndex != widget.firstTurnIndex ||
-        oldWidget.turns.length != widget.turns.length ||
-        !identical(oldWidget.turns, widget.turns);
+        oldWidget.windowTurnCount != widget.windowTurnCount;
     if (!windowChanged) return;
     // 切会话 / 翻页 / 轮次变化：卡片可能指向已经不存在的一轮，hover 也可能落在
     // 已经不存在的那一行上
@@ -250,7 +267,10 @@ class _TurnIndicatorState extends State<TurnIndicator> {
         _barKey(absoluteIndex).currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached) return;
     final barRect = box.localToGlobal(Offset.zero) & box.size;
-    final turn = widget.turns[absoluteIndex - _windowStart];
+    // 内容现取：它每帧都在变（流式正文），所以不进控件配置（见 [turnAt]）。
+    // 取不到 = 窗口已经翻走，这一轮不在库里了
+    final turn = widget.turnAt(absoluteIndex);
+    if (turn == null) return;
     DesktopChatPreviewManager.instance.show(
       context,
       owner: this,

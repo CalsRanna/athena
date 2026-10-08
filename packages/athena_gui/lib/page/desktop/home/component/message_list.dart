@@ -58,6 +58,21 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   final turnNavigator = TurnNavigator();
   String? _displayedChatId;
 
+  /// 轮次条那棵子树**缓存下来的实例**，以及它当前对应的结构（见 [_railFor]）。
+  ///
+  /// 缓存的是「哪些东西会改变条列的结构与摆位」，正文内容不在其中——它由
+  /// [TurnIndicator.turnAt] 现取（见 [_turnAt]），所以 agent 工作期间内容每帧
+  /// 更新也不会让这棵子树重建、重绘。
+  Widget? _rail;
+  ({int windowTurnCount, int totalTurns, int firstTurnIndex, double barWidth})?
+  _railKey;
+
+  /// 窗口里每一轮的**当前**内容，供轮次条 hover 预览时现取。
+  ///
+  /// 与 [_railKey] 相反，它每帧都刷新：不进控件配置，只被回调读。
+  List<ChatTurn> _windowTurns = const [];
+  int _windowFirstTurnIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +110,17 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
           .where((r) => r.chatId == chatId)
           .toList();
 
+      final turns = buildChatTurns(messages);
+      // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
+      // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
+      // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
+      final totalTurns = allTurnIds.length;
+      final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
+      // 只给 hover 预览的回调现取用（见 [_turnAt]），**不进控件配置**——它每帧
+      // 都在变，进配置就会让轮次条跟着每帧重建、重绘
+      _windowTurns = turns;
+      _windowFirstTurnIndex = firstTurnIndex;
+
       widget.controller?.isWorking = loading;
       if (_displayedChatId != chatId) {
         _displayedChatId = chatId;
@@ -124,18 +150,16 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             0.0,
             _maxBarWidth,
           );
-          final turns = buildChatTurns(messages);
-          // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
-          // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
-          // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
-          final totalTurns = allTurnIds.length;
-          final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
-          return Column(
+          // 一条 = 一轮（按整段会话算，含未加载的历史）；只有一轮时不显示，
+          // 单根条说明不了什么
+          final showRail =
+              !loadingHistory && totalTurns >= 2 && barWidth >= _minBarWidth;
+          return Stack(
             children: [
-              Expanded(
-                child: Stack(
+              Positioned.fill(
+                child: Column(
                   children: [
-                    Positioned.fill(
+                    Expanded(
                       child: _buildList(
                         messages,
                         loading: loading,
@@ -145,50 +169,53 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                         columnPadding: columnPadding,
                       ),
                     ),
-                    // 一条 = 一轮（按整段会话算，含未加载的历史）；只有一轮时
-                    // 不显示，单根条说明不了什么
-                    if (!loadingHistory &&
-                        totalTurns >= 2 &&
-                        barWidth >= _minBarWidth)
-                      Positioned(
-                        left: _turnIndicatorLeft,
-                        top: 0,
-                        bottom: 0,
-                        width: barWidth,
-                        child: Center(
-                          child: TurnIndicator(
-                            turns: turns,
-                            navigator: turnNavigator,
-                            maxBarWidth: barWidth,
-                            totalTurns: totalTurns,
-                            firstTurnIndex: firstTurnIndex,
-                            onTurnSelected: _selectTurn,
-                          ),
+                    for (final request in approvals)
+                      Padding(
+                        padding: cardPadding,
+                        child: PermissionApprovalCard(
+                          request: request,
+                          maxHeight: cardMaxHeight,
+                          onDecision: (approved) =>
+                              chatViewModel.respondApproval(
+                                request,
+                                permissionDecisionOf(approved),
+                              ),
+                        ),
+                      ),
+                    for (final request in elicits)
+                      Padding(
+                        padding: cardPadding,
+                        child: ElicitCard(
+                          request: request,
+                          maxHeight: cardMaxHeight,
+                          onSubmit: (answers) =>
+                              chatViewModel.respondElicit(request, answers),
                         ),
                       ),
                   ],
                 ),
               ),
-              for (final request in approvals)
-                Padding(
-                  padding: cardPadding,
-                  child: PermissionApprovalCard(
-                    request: request,
-                    maxHeight: cardMaxHeight,
-                    onDecision: (approved) => chatViewModel.respondApproval(
-                      request,
-                      permissionDecisionOf(approved),
+              // 轮次条是上面那列的**兄弟**，不是它 Stack 里的孩子：`top: 0,
+              // bottom: 0` 撑满的是整列高度，而这一高度与下面有几张审批 /
+              // 提问卡片无关。放进消息区那个 Stack 里时它按消息区（Expanded）
+              // 的高度居中，卡片一挤占，同一轮的条就整体上移——两帧之间换了位置。
+              //
+              // 它只占左留白那一小条，其余指针直接穿过去（见 TurnIndicator），
+              // 所以叠在卡片上方不影响卡片操作。故意不包 IgnorePointer：条自己
+              // 要能 hover 与点击。
+              if (showRail)
+                Positioned(
+                  left: _turnIndicatorLeft,
+                  top: 0,
+                  bottom: 0,
+                  width: barWidth,
+                  child: Center(
+                    child: _railFor(
+                      windowTurnCount: turns.length,
+                      totalTurns: totalTurns,
+                      firstTurnIndex: firstTurnIndex,
+                      barWidth: barWidth,
                     ),
-                  ),
-                ),
-              for (final request in elicits)
-                Padding(
-                  padding: cardPadding,
-                  child: ElicitCard(
-                    request: request,
-                    maxHeight: cardMaxHeight,
-                    onSubmit: (answers) =>
-                        chatViewModel.respondElicit(request, answers),
                   ),
                 ),
             ],
@@ -269,6 +296,51 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
       final added = await chatViewModel.loadOlderMessages();
       if (added <= 0) return;
     }
+  }
+
+  /// 轮次条 hover 到第 [absoluteIndex] 轮（整段会话下标）时取它的内容。
+  /// 不在当前窗口里就返回 null，那一次预览直接跳过。
+  ChatTurn? _turnAt(int absoluteIndex) {
+    final index = absoluteIndex - _windowFirstTurnIndex;
+    return index >= 0 && index < _windowTurns.length
+        ? _windowTurns[index]
+        : null;
+  }
+
+  /// 取轮次条子树：结构没变就复用上一次的实例。
+  ///
+  /// 复用是**必需的**，不是优化：宿主每次构建都由 `Watch` 触发（agent 工作
+  /// 期间每帧一次），照常传一棵新子树会让它逐帧重建，而重建传导下去的脏标记
+  /// 会绕过 `RepaintBoundary`——实测逐帧重绘（见 [_railKey] 的注释）。
+  /// 结构真变了才新建，此时重建一次是该的。
+  Widget _railFor({
+    required int windowTurnCount,
+    required int totalTurns,
+    required int firstTurnIndex,
+    required double barWidth,
+  }) {
+    final key = (
+      windowTurnCount: windowTurnCount,
+      totalTurns: totalTurns,
+      firstTurnIndex: firstTurnIndex,
+      barWidth: barWidth,
+    );
+    if (_rail != null && _railKey == key) return _rail!;
+    _railKey = key;
+    return _rail = RepaintBoundary(
+      // 会话 id 进 key：两条会话的轮数恰好相同时结构 key 相等，光看结构 key
+      // 会把上一条会话的 State（hover、预览卡、条的 GlobalKey）带过来
+      key: ValueKey(_displayedChatId),
+      child: TurnIndicator(
+        windowTurnCount: windowTurnCount,
+        turnAt: _turnAt,
+        navigator: turnNavigator,
+        maxBarWidth: barWidth,
+        totalTurns: totalTurns,
+        firstTurnIndex: firstTurnIndex,
+        onTurnSelected: _selectTurn,
+      ),
+    );
   }
 
   SentinelEntity _displaySentinel() {

@@ -72,7 +72,13 @@ void main() {
                     width: maxBarWidth,
                     child: Center(
                       child: TurnIndicator(
-                        turns: turnsOf(first, windowCount),
+                        windowTurnCount: windowCount,
+                        // 内容走回调现取：与宿主一样，只把窗口摆位交给控件
+                        turnAt: (index) {
+                          final slot = index - first;
+                          if (slot < 0 || slot >= windowCount) return null;
+                          return turnsOf(first, windowCount)[slot];
+                        },
                         navigator: navigator,
                         maxBarWidth: maxBarWidth,
                         totalTurns: total,
