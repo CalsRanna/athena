@@ -47,7 +47,7 @@ abstract final class AthenaSpace {
   static const sidebar = 288.0;
 }
 
-/// 通用图标按角色选档；控件内部标记与窗口控制的例外见 DESIGN.md §7。
+/// 通用图标按角色选档；控件内部标记与窗口控制的例外见 WIDGETS.md §2。
 abstract final class AthenaIcon {
   static const inlineSize = 14.0;
   static const regularSize = 16.0;

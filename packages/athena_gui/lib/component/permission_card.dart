@@ -13,7 +13,7 @@ const permissionCardMaxHeightFraction = 0.5;
 ///
 /// 容器是白底描边卡片；内部结构复用工具步骤行的标题行语言（工具图标 + 工具名 +
 /// 调用描述），命令完整展示，按钮直接用全站的 [AthenaPrimaryButton] /
-/// [AthenaSecondaryButton]（DESIGN.md §7：主路径操作按钮一律从 Primary CTA 派生）。
+/// [AthenaSecondaryButton]（WIDGETS.md §2：主路径操作按钮一律从 Primary CTA 派生）。
 /// 这是待处理的 UI 决策，文字用常规 UI 档，不跟随会话字号；只展示执行内容。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;

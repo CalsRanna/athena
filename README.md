@@ -192,7 +192,8 @@ cd packages/athena_gui && flutter analyze && flutter test
 |---|---|
 | [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
 | [CONVENTIONS.md](CONVENTIONS.md) | 仓库约定：分层与依赖方向、目录、命名、注释、错误处理、安全、测试、依赖与版本、常用命令、提交与发布、编码风格 |
-| [DESIGN.md](DESIGN.md) | 设计系统：色板、排版、几何、组件分层与交互规则 |
+| [DESIGN.md](DESIGN.md) | 设计语言：色板、排版、几何、阴影与动效 |
+| [WIDGETS.md](WIDGETS.md) | GUI 组件与交互口径：组件分层与清单、交互与状态、设置面板几何 |
 
 ## 许可
 

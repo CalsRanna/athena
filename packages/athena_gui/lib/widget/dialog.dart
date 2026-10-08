@@ -178,7 +178,7 @@ abstract final class AthenaDialog {
   }
 }
 
-/// 桌面对话框外壳（DESIGN.md §7 Desktop Dialog）。
+/// 桌面对话框外壳（WIDGETS.md §2 Desktop Dialog）。
 ///
 /// `surfaceMobile` 底 + [AthenaRadius.panel] 圆角 + [AthenaShadow.modal]，
 /// 内边距 24，宽 320–520。给 [title] 就渲染标题行（[AthenaTextStyle.title]），
