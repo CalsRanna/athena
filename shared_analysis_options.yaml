@@ -6,7 +6,7 @@ analyzer:
   exclude:
     - build/**
   errors:
-    # 项目约定：禁止相对导入（见 AGENTS.md §11）。该 lint 本身是 info 级，而
+    # 项目约定：禁止相对导入。该 lint 本身是 info 级，而
     # `dart analyze` 对 info 返回 0——不提到 error 就只是装饰，违规不会被拦下。
     always_use_package_imports: error
     prefer_final_locals: error
@@ -29,7 +29,7 @@ linter:
     # 大范围无关重排，故显式关闭。
     prefer_initializing_formals: false
 
-    # 项目约定：包内导入一律用 package: 形式，禁止相对导入（见 AGENTS.md §11）。
+    # 项目约定：包内导入一律用 package: 形式，禁止相对导入。
     # test/ 内部的辅助文件（test/support/ 等）不在 lib/ 下，本就无法用 package:
     # 导入，规则不会误伤它们——那类引用仍保持相对导入。
     always_use_package_imports: true

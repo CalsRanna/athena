@@ -1,6 +1,6 @@
 # athena_core 分析配置。
 #
-# athena_core 必须保持零 Flutter 依赖（见 AGENTS.md §1），因此用纯 Dart 的
+# athena_core 必须保持零 Flutter 依赖，因此用纯 Dart 的
 # package:lints，与 athena_gui 的 flutter_lints 是两套基线。
 include:
   - package:lints/recommended.yaml

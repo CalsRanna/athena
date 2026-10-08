@@ -208,7 +208,7 @@ tag 推送后触发 [release.yml](.github/workflows/release.yml)：先复用 CI 
 
 | 文档 | 内容 |
 |---|---|
-| [AGENTS.md](AGENTS.md) | 仓库结构、分层与依赖方向、编码与测试约定 |
+| [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
 | [DESIGN.md](DESIGN.md) | 设计系统：色板、排版、几何、组件分层与交互规则 |
 
 放入工作区根目录的 `AGENTS.md` 会被 Agent 读取并注入上下文，用于告诉它该项目的约定。它随每次请求注入、不写入会话历史，也不会成为权限批准的依据。

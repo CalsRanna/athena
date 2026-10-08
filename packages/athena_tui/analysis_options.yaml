@@ -1,7 +1,7 @@
 # athena_tui 分析配置。
 #
 # 与 athena_core 同用 package:lints：athena_tui 是纯 Dart + nocterm，没有 Flutter
-# 依赖（见 AGENTS.md §1）。
+# 依赖。
 analyzer:
   exclude:
     - android/**
