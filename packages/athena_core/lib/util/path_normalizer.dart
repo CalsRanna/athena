@@ -47,7 +47,7 @@ String normalizePathForMatch(String path) {
 ///
 /// 后果仍然要说清楚：审批卡、会话缓存与 deny 规则都会基于**词法路径**判断，而文件
 /// 真正落到哪里是未知的；`realPathChangedSinceApproval` 用的是同一个函数，会得出
-/// 「没有变化」的结论，也拦不住——拦住它的是执行前那次 [unresolvablePathError]。
+/// 「没有变化」的结论，也拦不住——拦住它的是执行前的 [unresolvablePathError]。
 String resolveRealPathSync(String path) {
   final normalized = normalizePathForMatch(path);
   try {

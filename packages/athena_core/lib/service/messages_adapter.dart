@@ -81,10 +81,7 @@ anthropic.MessageCreateRequest toMessageRequest(
     'stream_options',
   });
   // Messages 没有 response_format 字段，但「只输出一个 JSON 对象」这个意图可以
-  // 用提示词表达，所以翻译过去而不是拒绝。此前这里对所有非 null 都抛
-  // UnsupportedError，把本文件顶部声明的「表达不了的是 JSON Schema」扩大到了
-  // jsonObject，结果是 README 记录的 `/json` 模式与「生成角色名」这类功能对
-  // Anthropic 用户必然失败。
+  // 用提示词表达，所以翻译过去而不是拒绝。
   //
   // 仍然不静默：只有 jsonObject 能这样表达。json_schema 要求结构可保证，提示词
   // 兜不住，继续显式失败——宁可给调用方一个明确的错误，也不要一份「看起来符合

@@ -255,8 +255,7 @@ class _ChatTile extends StatelessWidget {
       // 会话行 leading 是一个状态点（hover 时加深），不是图标
       leadingBuilder: (hover) =>
           StatusDot(hover: hover, streaming: streaming, renaming: isRenaming),
-      // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
-      // 与"静止行没有尾部"的规则不符。
+      // 尾部只在 hover 时出现：一个 `⋮` 按钮（静止行没有尾部）。
       hoverTrailing: onMore == null ? null : _MoreButton(onTap: onMore!),
       onTap: onTap,
       onSecondaryTap: onSecondaryTap,
@@ -314,7 +313,6 @@ class _SidebarEntry extends _SidebarItem {
 ///
 /// 侧栏在会话分组之上还有一段导航行（New chat 等）。
 /// Athena 只有"新建会话"这一项有对应能力，就只放它——不摆没有行为的入口。
-/// 这一块同时替代了旧版悬在画布上的那枚新建铅笔图标。
 class _SidebarNav extends StatelessWidget {
   final void Function()? onCreateChat;
   const _SidebarNav({this.onCreateChat});

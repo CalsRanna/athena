@@ -1,9 +1,8 @@
 /// Context-window 文本/数值解析与格式化工具。
 ///
-/// 历史：models.context_window 曾经是 TEXT 列，存储形如 "64K context"、
-/// "200,000 context"、"128K" 的自由文本。现已迁移为 INTEGER（单位 token）。
-/// 本 util 保留解析函数，仅供历史路径兼容，以及把整数格式化为
-/// "64K" / "1M" 的简洁展示。
+/// `models.context_window` 现为 INTEGER（单位 token）。本 util 保留文本解析，
+/// 用于兼容旧的自由文本格式（形如 "64K context"、"200,000 context"、"128K"），
+/// 并把整数格式化为 "64K" / "1M" 的简洁展示。
 library;
 
 /// 把旧 context_window 文本解析为 token 数。

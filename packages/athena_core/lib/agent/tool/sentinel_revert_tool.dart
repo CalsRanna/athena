@@ -4,8 +4,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 
 /// 回滚 sentinel 的工具：从 [SentinelHistoryStore] 的快照恢复旧态。
 ///
-/// 与 `sentinel_evolve` 配套，使角色演进可撤销——一次失败的进化
-/// 不再只能靠再一次进化来"打补丁"。
+/// 与 `sentinel_evolve` 配套，使角色演进可撤销。
 ///
 /// 回滚前会先保存当前态的快照（回滚同样可回滚）。
 class SentinelRevertTool extends Tool {

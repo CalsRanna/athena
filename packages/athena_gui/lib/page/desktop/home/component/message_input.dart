@@ -320,7 +320,6 @@ class _InputState extends State<_Input> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final hintTextStyle = AthenaTextStyle.body.copyWith(
       // 占位符是**浅灰** #898782，不是深色。
-      // 之前那条"深色"的结论是我把光标误当成了文字。
       color: colors.textWeak,
     );
     final inputDecoration = InputDecoration.collapsed(

@@ -409,8 +409,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 内边距 12 × 8。没有头像。
     //
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
-    // 气泡右对齐，操作条也贴右缘。旧版把重发按钮常驻在气泡右侧，白占了一列
-    // 横向位置，且静止时就能看见。
+    // 气泡右对齐，操作条也贴右缘。
     return AthenaHover(
       // 消息卡片本身不可点，hover 只驱动操作条显形，所以不设 cursor。
       builder: (context, hovered) => Padding(
@@ -541,7 +540,7 @@ class AssistantCardHover {
 /// [visible] 由调用方决定：助手运行中常显，完成后与用户消息一样 hover 显形。
 ///
 /// 时序：
-/// - **只动透明度**，不做缩放（旧版加的 `scale(0.9)` 是自创的，无依据）；
+/// - **只动透明度**，不做缩放；
 /// - 进入 120ms 且**延迟** 100ms；
 /// - 退出 60ms 且无延迟。
 /// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。

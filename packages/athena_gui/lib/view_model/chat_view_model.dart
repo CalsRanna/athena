@@ -74,8 +74,7 @@ class ChatViewModel {
   /// 消息列表是窗口化分页的，只持有最近若干条，而指示器要按整段会话的
   /// 轮数来画，所以由仓储整文件扫一遍得到（见
   /// `MessageRepository.getTurnStartIds`）。**计数与窗口无关**：扫描是唯一
-  /// 当前对话的轮次起点。整块逻辑在 TurnStartCache 里；这里转发它的信号，
-  /// 指示器照旧读 `chatViewModel.turnStartIds.value`。
+  /// 当前对话的轮次起点。整块逻辑在 TurnStartCache 里。
   ListSignal<String> get turnStartIds => _turns.turnStartIds;
 
   /// 待发输入的排队区（按会话 FIFO）。见 QueuedInputQueue。
@@ -98,8 +97,7 @@ class ChatViewModel {
   /// 与通用 CRUD loading、LLM 流式状态分离，仅用于切换对话时的消息区反馈。
   final isLoadingMessages = signal(false);
 
-  /// 运行态（流式中的对话、实时进度、汇报记账）整块在 [ChatRunState] 里；
-  /// 这里转发它的信号，页面代码一行未改。
+  /// 运行态（流式中的对话、实时进度、汇报记账）整块在 [ChatRunState] 里。
   late final ChatRunState _runState = ChatRunState();
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
@@ -157,8 +155,7 @@ class ChatViewModel {
     currentChatId: () => currentChat.value?.id,
   );
 
-  /// 当前对话的待发图片。转发 [PendingImageStore.pendingImages]，页面照旧读
-  /// `chatViewModel.pendingImages.value`。
+  /// 当前对话的待发图片。转发 [PendingImageStore.pendingImages]。
   ListSignal<PendingImage> get pendingImages => _images.pendingImages;
 
   /// 轮次起点缓存（整块在 TurnStartCache 里）。它需要读当前对话与加载代次，
@@ -221,8 +218,7 @@ class ChatViewModel {
     flushInterval: _flushInterval,
   );
 
-  /// 当前显示的消息窗口。转发 [MessageWindowStore.messages]，页面照旧读
-  /// `chatViewModel.messages.value`。
+  /// 当前显示的消息窗口。转发 [MessageWindowStore.messages]。
   ListSignal<MessageEntity> get messages => _window.messages;
 
   /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出

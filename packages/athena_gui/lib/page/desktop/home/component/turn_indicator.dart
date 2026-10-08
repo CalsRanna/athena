@@ -297,7 +297,8 @@ class _TurnIndicatorState extends State<TurnIndicator> {
         final pageEnd = math.min(pageStart + TurnIndicator.maxBars, rows);
         final pageRows = math.max(0, pageEnd - pageStart);
         // 一页最多 20 条，正常情况用满行高；窗口矮到放不下这一页时才压（那时
-        // 整列本来也铺不下）。旧版按**整段会话**的轮数压行高，几十轮就压得点不中
+        // 整列本来也铺不下）。压行高只针对**当前页**的轮数：按整段会话的轮数压，
+        // 几十轮就会压得点不中。
         final rowHeight = pageRows <= 0 || !constraints.hasBoundedHeight
             ? TurnIndicator.barRowHeight
             : math.min(

@@ -40,7 +40,6 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // hover 只改底色，文字不动；选中行才使用青瓷强调。
-    // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
     final contentColor = widget.active ? colors.accent : colors.textRowLabel;
     // 列表行与输入框、菜单统一采用 14 / 22 的常规 UI 档。
     final textStyle = AthenaTextStyle.body.copyWith(
