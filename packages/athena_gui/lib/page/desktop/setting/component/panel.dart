@@ -250,7 +250,7 @@ class AthenaSettingsBackLink extends StatelessWidget {
 class AthenaSettingsSection extends StatelessWidget {
   final String title;
 
-  /// 标题下方的一句说明（`textWeak`），用于交代这一组设置管什么。
+  /// 标题下方的一句说明（`textSecondary`），用于交代这一组设置管什么。
   final String? description;
 
   /// 标题行右端的动作（开关、`Add` 按钮之类）。
@@ -278,7 +278,7 @@ class AthenaSettingsSection extends StatelessWidget {
       height: AthenaFontSize.titleHeight,
     );
     final descriptionStyle = TextStyle(
-      color: colors.textWeak,
+      color: colors.textSecondary,
       fontSize: AthenaSettings.rowFontSize,
       height: AthenaSettings.rowDescriptionHeight,
     );

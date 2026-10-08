@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 
 /// 一行设置：左侧标签（+ 徽标 + 说明 + 错误），右侧控件或钻取箭头。
 ///
-/// 标签与说明同号 14，标签使用半粗 textPrimary，说明使用常规 textWeak；
+/// 标签与说明同号 14，标签使用半粗 textPrimary，说明使用常规 textSecondary；
 /// 行上下内边距 16，行高约 69。
 ///
 /// 行自带 [AthenaSettings.rowInset] 的水平内边距：可点行的 hover / 选中底
@@ -82,7 +82,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       height: AthenaFontSize.bodyHeight,
     );
     final descriptionStyle = TextStyle(
-      color: colors.textWeak,
+      color: colors.textSecondary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: FontWeight.w400,
       height: AthenaSettings.rowDescriptionHeight,

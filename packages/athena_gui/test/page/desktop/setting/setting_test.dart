@@ -97,7 +97,7 @@ void main() {
       expectTextColor(
         tester,
         'System follows the appearance selected on this device.',
-        colors.textWeak,
+        colors.textSecondary,
       );
       expectTextColor(tester, 'Show in Finder', colors.textPrimary);
       expectTextColor(
