@@ -1,6 +1,8 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,6 +52,58 @@ void main() {
     // 用例断言失败时把残留菜单清掉，避免污染下一个用例
     DesktopContextMenuManager.instance.dismiss();
   });
+
+  for (final item in [
+    const DesktopContextMenuTile(text: 'Action'),
+    const DesktopContextMenuSubItem(text: 'Action'),
+    const DesktopContextMenuTileWithSubmenu(text: 'Action', submenuItems: []),
+  ]) {
+    testWidgets('${item.runtimeType} hover 底色渐变且不改变布局', (tester) async {
+      final context = await pumpHost(tester);
+      final colors = Theme.of(context).extension<AthenaColors>()!;
+      DesktopContextMenuManager.instance.show(
+        context,
+        DesktopContextMenu(
+          offset: const Offset(100, 100),
+          width: 220,
+          children: [item],
+        ),
+      );
+      await tester.pump();
+      final tile = find.byType(item.runtimeType);
+      final rect = tester.getRect(tile);
+      Color background() =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find
+                            .descendant(
+                              of: tile,
+                              matching: find.byType(DecoratedBox),
+                            )
+                            .first,
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color!;
+      final resting = colors.surfaceHover.withValues(alpha: 0);
+      expect(background(), resting);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      addTearDown(mouse.removePointer);
+      await mouse.moveTo(tester.getCenter(tile));
+      await tester.pump();
+      expect(background(), resting);
+      await tester.pump(AthenaMotion.hover ~/ 2);
+      expect(background(), Color.lerp(resting, colors.surfaceHover, 0.5));
+      expect(tester.getRect(tile), rect);
+      await tester.pump(AthenaMotion.hover ~/ 2);
+      expect(background(), colors.surfaceHover);
+      await mouse.moveTo(Offset.zero);
+      await tester.pump();
+      await tester.pump(AthenaMotion.hover);
+      expect(background(), resting);
+    });
+  }
 
   testWidgets('downward menu hugs its content and sits at the anchor', (
     tester,

@@ -677,7 +677,8 @@ class _MessageActionButton extends StatelessWidget {
       child: AthenaHover(
         onTap: onTap,
         cursor: SystemMouseCursors.click,
-        builder: (context, hover) => Container(
+        builder: (context, hover) => AnimatedContainer(
+          duration: AthenaMotion.hover,
           height: AthenaIconButtonSize.compact,
           constraints: const BoxConstraints(
             minWidth: AthenaIconButtonSize.compact,

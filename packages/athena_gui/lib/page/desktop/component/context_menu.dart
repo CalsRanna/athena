@@ -289,11 +289,14 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
         DesktopContextMenuManager.instance.dismiss();
         widget.onTap?.call();
       },
-      builder: (context, hover) => Container(
+      builder: (context, hover) => AnimatedContainer(
+        duration: AthenaMotion.hover,
         alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AthenaRadius.row),
-          color: hover && widget.enabled ? colors.surfaceHover : null,
+          color: hover && widget.enabled
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         width: width,
@@ -332,11 +335,14 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
         DesktopContextMenuManager.instance.dismiss();
         widget.onTap?.call();
       },
-      builder: (context, hover) => Container(
+      builder: (context, hover) => AnimatedContainer(
+        duration: AthenaMotion.hover,
         alignment: Alignment.centerLeft,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AthenaRadius.row),
-          color: hover ? colors.surfaceHover : null,
+          color: hover
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(widget.text, style: textStyle),
@@ -381,7 +387,9 @@ class _DesktopContextMenuTileWithSubmenuState
     );
     final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.row),
-      color: hover && widget.enabled ? colors.surfaceHover : null,
+      color: hover && widget.enabled
+          ? colors.surfaceHover
+          : colors.surfaceHover.withValues(alpha: 0),
     );
     final width = DesktopContextMenuConfiguration.widthOf(context);
     final row = Row(
@@ -395,7 +403,8 @@ class _DesktopContextMenuTileWithSubmenuState
         ),
       ],
     );
-    final container = Container(
+    final container = AnimatedContainer(
+      duration: AthenaMotion.hover,
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

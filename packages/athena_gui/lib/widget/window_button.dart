@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/window_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,6 @@ class _CloseButton extends StatelessWidget {
       color: Theme.of(context).colorScheme.onSurface,
       size: 10.0,
     );
-    const placeholder = SizedBox(height: 10, width: 10);
     const boxDecoration = BoxDecoration(
       color: Colors.red,
       shape: BoxShape.circle,
@@ -79,7 +79,11 @@ class _CloseButton extends StatelessWidget {
     final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
-      child: hover ? icon : placeholder,
+      child: AnimatedOpacity(
+        opacity: hover ? 1 : 0,
+        duration: AthenaMotion.hover,
+        child: icon,
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -103,7 +107,6 @@ class _MinimumButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
     final icon = Icon(LucideIcons.minus, color: color, size: 10);
-    const placeholder = SizedBox(height: 10, width: 10);
     const boxDecoration = BoxDecoration(
       color: Colors.orange,
       shape: BoxShape.circle,
@@ -111,7 +114,11 @@ class _MinimumButton extends StatelessWidget {
     final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
-      child: hover ? icon : placeholder,
+      child: AnimatedOpacity(
+        opacity: hover ? 1 : 0,
+        duration: AthenaMotion.hover,
+        child: icon,
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -140,7 +147,6 @@ class _FullScreenButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
     final child = Icon(LucideIcons.maximize2, color: color, size: 10);
-    const placeholder = SizedBox(height: 10, width: 10);
     const boxDecoration = BoxDecoration(
       color: Colors.green,
       shape: BoxShape.circle,
@@ -148,7 +154,11 @@ class _FullScreenButton extends StatelessWidget {
     final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(2),
-      child: hover ? child : placeholder,
+      child: AnimatedOpacity(
+        opacity: hover ? 1 : 0,
+        duration: AthenaMotion.hover,
+        child: child,
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

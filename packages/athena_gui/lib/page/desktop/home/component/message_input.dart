@@ -712,9 +712,12 @@ class _SquishButtonState extends State<_SquishButton> {
   Widget build(BuildContext context) {
     Widget result = widget.hoverFill == null
         ? widget.child
-        : DecoratedBox(
+        : AnimatedContainer(
+            duration: AthenaMotion.hover,
             decoration: BoxDecoration(
-              color: _hover ? widget.hoverFill : Colors.transparent,
+              color: _hover
+                  ? widget.hoverFill
+                  : widget.hoverFill!.withValues(alpha: 0),
               borderRadius: BorderRadius.circular(AthenaRadius.xs),
             ),
             child: Padding(padding: widget.padding, child: widget.child),

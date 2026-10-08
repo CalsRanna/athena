@@ -62,50 +62,56 @@ class _StepHeaderState extends State<StepHeader> {
         final foreground = interactive && hovered
             ? colors.textPrimary
             : colors.textSecondary;
-        // 与消息正文同一档：折叠头随 Text size 变，卡片里没有更小或更重的层级
-        final style = AthenaWorkspaceTextSize.of(
-          context,
-        ).prose.copyWith(color: foreground);
-        return StepHeaderShimmer(
-          active: widget.running,
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: AthenaIcon.regularSize,
-                color: foreground,
-              ),
-              const SizedBox(width: 8),
-              // 标签只占自己的宽度：箭头要跟在它后面，而不是被推到行尾
-              Flexible(
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
-                ),
-              ),
-              // 展开提示只给可展开的头（没有正文的头点了也没反应）。
-              // 隐藏时仍占位：否则 hover 进出会让标签可用的宽度变一下。
-              if (interactive) ...[
-                const SizedBox(width: 4),
-                AnimatedOpacity(
-                  opacity: hovered || widget.expanded ? 1 : 0,
-                  duration: AthenaMotion.hover,
-                  child: AnimatedRotation(
-                    // 四分之一圈：指向右 → 指向下
-                    turns: widget.expanded ? 0.25 : 0,
-                    duration: AthenaMotion.hover,
-                    child: Icon(
-                      LucideIcons.chevronRight,
-                      size: AthenaIcon.inlineSize,
-                      color: foreground,
+        return TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: foreground),
+          duration: AthenaMotion.hover,
+          builder: (context, foreground, _) {
+            // 与消息正文同一档：折叠头随 Text size 变，卡片里没有更小或更重的层级
+            final style = AthenaWorkspaceTextSize.of(
+              context,
+            ).prose.copyWith(color: foreground);
+            return StepHeaderShimmer(
+              active: widget.running,
+              child: Row(
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: AthenaIcon.regularSize,
+                    color: foreground,
+                  ),
+                  const SizedBox(width: 8),
+                  // 标签只占自己的宽度：箭头要跟在它后面，而不是被推到行尾
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
                     ),
                   ),
-                ),
-              ],
-            ],
-          ),
+                  // 展开提示只给可展开的头（没有正文的头点了也没反应）。
+                  // 隐藏时仍占位：否则 hover 进出会让标签可用的宽度变一下。
+                  if (interactive) ...[
+                    const SizedBox(width: 4),
+                    AnimatedOpacity(
+                      opacity: hovered || widget.expanded ? 1 : 0,
+                      duration: AthenaMotion.hover,
+                      child: AnimatedRotation(
+                        // 四分之一圈：指向右 → 指向下
+                        turns: widget.expanded ? 0.25 : 0,
+                        duration: AthenaMotion.hover,
+                        child: Icon(
+                          LucideIcons.chevronRight,
+                          size: AthenaIcon.inlineSize,
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
       },
     );

@@ -178,19 +178,21 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
     return AthenaHover(
       onTap: widget.onTap,
       cursor: SystemMouseCursors.click,
-      builder: (context, hover) => Container(
+      builder: (context, hover) => AnimatedContainer(
+        duration: AthenaMotion.hover,
         decoration: BoxDecoration(
-          // 这里用 Container（无动画）而不是 AnimatedContainer，颜色是瞬变的，
-          // 所以 `Colors.transparent` 安全——不会有插值经过黑色的问题。
-          color: hover ? colors.surfaceHover : Colors.transparent,
+          color: hover
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(AthenaRadius.control),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(
-          widget.text,
+        child: AnimatedDefaultTextStyle(
+          duration: AthenaMotion.hover,
           style: AthenaTextStyle.label.copyWith(
             color: hover ? colors.textPrimary : colors.textSecondary,
           ),
+          child: Text(widget.text),
         ),
       ),
     );

@@ -78,8 +78,16 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
         );
         final trailing =
             widget.trailing ??
-            (hover ? widget.hoverTrailing : null) ??
-            const SizedBox();
+            (widget.hoverTrailing == null
+                ? const SizedBox()
+                : IgnorePointer(
+                    ignoring: !hover,
+                    child: AnimatedOpacity(
+                      opacity: hover ? 1 : 0,
+                      duration: AthenaMotion.hover,
+                      child: widget.hoverTrailing,
+                    ),
+                  ));
         return AnimatedContainer(
           decoration: BoxDecoration(
             color: background,

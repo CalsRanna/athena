@@ -374,11 +374,26 @@ void main() {
         tester,
         tester.getCenter(find.byType(StepHeader)),
       );
+      expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
+      await tester.pump(AthenaMotion.hover ~/ 2);
+      expect(
+        labelColor(tester, '读取配置文件'),
+        Color.lerp(colors.textSecondary, colors.textPrimary, 0.5),
+      );
+      expect(iconColor(tester, LucideIcons.file), labelColor(tester, '读取配置文件'));
+      await tester.pump(AthenaMotion.hover ~/ 2);
       expect(labelColor(tester, '读取配置文件'), colors.textPrimary);
       expect(iconColor(tester, LucideIcons.file), colors.textPrimary);
 
       await gesture.moveTo(const Offset(0, 0));
       await tester.pump();
+      expect(labelColor(tester, '读取配置文件'), colors.textPrimary);
+      await tester.pump(AthenaMotion.hover ~/ 2);
+      expect(
+        labelColor(tester, '读取配置文件'),
+        Color.lerp(colors.textPrimary, colors.textSecondary, 0.5),
+      );
+      await tester.pump(AthenaMotion.hover ~/ 2);
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
       expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
     });

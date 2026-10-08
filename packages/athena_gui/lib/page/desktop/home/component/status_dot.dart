@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// 会话行的状态点。静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
@@ -178,7 +179,8 @@ class _StatusDotState extends State<StatusDot>
   ///
   /// 形状本身参与区分状态（不只靠颜色），同时让常驻的会话行退后一档——运行中的
   /// 实心点（还带色相循环）成为列表里唯一的实心焦点。外径仍是 6，行高不受影响。
-  Widget _ring(Color color) => Container(
+  Widget _ring(Color color) => AnimatedContainer(
+    duration: AthenaMotion.hover,
     width: 6,
     height: 6,
     decoration: BoxDecoration(

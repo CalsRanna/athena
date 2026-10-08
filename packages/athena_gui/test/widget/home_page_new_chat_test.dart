@@ -285,18 +285,28 @@ void main() {
       matching: find.text(hintLabel),
     );
     expect(row, findsOneWidget);
-    expect(hint, findsNothing, reason: '静止的导航行没有尾部');
+    double hintOpacity() => tester
+        .widget<FadeTransition>(
+          find.ancestor(of: hint, matching: find.byType(FadeTransition)).first,
+        )
+        .opacity
+        .value;
+    expect(hintOpacity(), 0, reason: '静止时提示不可见');
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
     await mouse.moveTo(tester.getCenter(row));
     await tester.pump();
-    expect(hint, findsOneWidget, reason: 'hover 后才挂出提示');
+    await tester.pump(const Duration(milliseconds: 75));
+    expect(hintOpacity(), closeTo(0.5, 0.01));
+    await tester.pump(const Duration(milliseconds: 75));
+    expect(hintOpacity(), 1, reason: 'hover 后提示显形');
 
     await mouse.moveTo(Offset.zero);
     await tester.pump();
-    expect(hint, findsNothing, reason: '指针移开提示收回');
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(hintOpacity(), 0, reason: '指针移开提示收回');
   });
 
   testWidgets('已经在草稿页时按 ⌘N：焦点照样回到 composer', (tester) async {

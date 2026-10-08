@@ -3,6 +3,7 @@ import 'dart:ui' show ImageByteFormat;
 import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_test/flutter_test.dart';
@@ -51,13 +52,13 @@ void main() {
 
   BoxDecoration decoration(WidgetTester tester) =>
       tester
-              .widget<Container>(
+              .widget<DecoratedBox>(
                 find.descendant(
                   of: find.byType(StatusDot),
-                  matching: find.byType(Container),
+                  matching: find.byType(DecoratedBox),
                 ),
               )
-              .decoration!
+              .decoration
           as BoxDecoration;
 
   /// 实心点的填充色（运行中）。
@@ -105,6 +106,10 @@ void main() {
     );
 
     await pumpDot(tester, hover: true);
+    expect(stroke(tester).a, closeTo(0.45, 0.01));
+    await tester.pump(AthenaMotion.hover ~/ 2);
+    expect(stroke(tester).a, closeTo(0.6, 0.01));
+    await tester.pump(AthenaMotion.hover ~/ 2);
     expectSameColor(
       stroke(tester),
       colors.iconSecondary.withValues(alpha: 0.75),
@@ -112,6 +117,7 @@ void main() {
     );
 
     await pumpDot(tester, renaming: true);
+    await tester.pump(AthenaMotion.hover);
     expectSameColor(stroke(tester), colors.statusWarning);
   });
 
