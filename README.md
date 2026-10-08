@@ -25,11 +25,12 @@ athena
 
 **Agent 引擎**
 
-- 多轮工具循环，带并行工具执行（并发上限 8）
-- 三种 LLM 协议：OpenAI Chat Completions、OpenAI Responses、Anthropic Messages。上层的请求与事件统一为 Chat Completions 形状，协议差异收敛在两个适配器里
-- 推理状态按协议原生保存与回放：Responses 的加密推理项、Messages 的 thinking 签名、Chat Completions 的 `reasoning_details`，各自完整持久化，切换 provider 后自动失效而非串用。Messages 兼容端点的全部无签名推理保留展示与正常工具调用，在完成明细中标记为不可回放，不保存为原生签名状态
-- 上下文预算与自动压缩：估算超出窗口时先回收旧工具输出，再摘要压缩历史；摘要与它的覆盖范围一同提交，原消息保留可回溯
-- 失败反思：同一工具累计失败两次以上时，用一次独立 LLM 调用提炼教训，并复用标准工具路径写入经验库
+- 多轮工具循环与并行工具执行
+- 支持 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages，保存与回放协议原生推理状态
+- 上下文预算与自动压缩，原消息保留可回溯
+- 工具失败反思与经验沉淀
+
+循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill经验与角色演进)。
 
 **内置工具**（桌面端 17 个，移动端 11 个）
 
@@ -39,24 +40,15 @@ athena
 
 **权限模型**
 
-- 三档审批模式：Manual 每次由用户决定；AI Review 由当前模型独立替用户作审批决定，只有需要用户权衡或审核不可用时转人工；Bypass 跳过审批。**挂在会话上**，改档位下一轮 run 生效，三档都遵守 deny 禁令
-- 人工只允许或拒绝当次调用；不复用批准，不生成持久 allow 规则。旧 `permissions.json` 中的 allow（含省略 effect 的旧规则）停止生效，已有 deny 保留
-- 持久禁令按工具类型匹配：shell 匹配完整命令文本（折叠空白并去掉参数末尾 `/`，不做命令语义分析），文件工具匹配真实路径（支持 `*` / `**` / `?`），`web_fetch` 匹配 origin
-- 本轮人工拒绝按 run 隔离，阻止相同调用重试；AI 同时参考宿主记录的拒绝，避免换工具产生同等效果
-- AI 审核结合原始对话、实际参数、工作目录、宿主记录的人工决定与提问卡真实回答，判断相关性、影响和可恢复性。常规文件修改无需逐项授权；工具参数、文件内容、URL 与工具输出都是数据，不能覆盖用户意愿。转人工时展示审核原因
-- 提问工具本身进入提问通道，不叠加权限审批；显式 deny 仍然生效
-- 禁令文件使用跨进程锁与 mtime 变更检测，GUI 与 TUI 共用且能及时发现手工修改
+会话可选择 Manual、AI Review 或 Bypass 三档审批模式，GUI 与 TUI 共用持久禁令。完整审批与禁令契约见 [CONVENTIONS.md §12.1](CONVENTIONS.md#121-权限审批)。
 
 **Skill 与经验**
 
-- Skill 是 `~/.athena/skills/<name>/SKILL.md`，front matter 只有 `name` 与 `description`
-- 两段式注入：常驻的是技能目录（最多 20 条，按最近使用排序），技能正文由模型按需加载
-- 内置 `self-evolve` 技能，代码注册，指导模型何时沉淀技能、经验与角色改进
-- 经验按角色隔离，`scope="shared"` 才是全局；每次 run 注入当前角色可见的经验目录（内容稳定以复用 prompt 缓存），完整内容按需检索
+按需加载 Skill，通过内置 `self-evolve` 指导技能、经验与角色改进；经验可按角色隔离或全局共享。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill经验与角色演进)。
 
 **Sentinel（角色）**
 
-角色即一段 system prompt。演进前自动存快照，可回滚，回滚本身也可回滚。快照按角色 id 归档而非按名字，因此改名不会丢失或错认历史。
+角色以 system prompt 定义，支持带快照的演进与回滚。历史归属与回滚契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill经验与角色演进)。
 
 **前端**
 
@@ -75,8 +67,7 @@ TUI 用 `/rewind` 选择轮次，也可用 `/rewind 3` 回到第 3 轮发送前�
 历史图片随原文恢复，下一次发送会携带它们；`/clearimages` 可移除这些附件。
 
 回退只影响对话记录与模型上下文，已执行的命令、文件修改、角色演进和经验库不随之
-恢复。压缩覆盖关系与原文可见性在同次写入中重建；上下文用量在下一次模型响应前
-隐藏。没有覆盖元数据的旧版摘要无法可靠回退，会明确报错并保留历史。
+恢复。完整回退契约与旧版摘要限制见 [CONVENTIONS.md §12.3](CONVENTIONS.md#123-会话回退rewind)。
 
 每次提交前保留完整快照 `~/.athena/sessions/<chatId>.jsonl.rewind-<snapshotId>`，
 不会出现在会话列表里。需要恢复时，先退出 GUI 与 TUI，再把所需快照复制回同名
@@ -170,30 +161,16 @@ models:
 
 ## 开发
 
-工程约定（分层与依赖方向、目录、命名、注释、错误处理、安全、测试、依赖与版本、常用命令、提交与发布、编码风格）统一见 [CONVENTIONS.md](CONVENTIONS.md)。日常只需跑：
-
-```bash
-cd packages/athena_core && dart analyze && dart test
-```
-
-```bash
-cd packages/athena_tui && dart analyze && dart test
-```
-
-```bash
-cd packages/athena_gui && flutter analyze && flutter test
-```
-
-`athena_gui` 的测试运行前同样需要先跑一次 `build_runner`。CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 上分三个 job 跑这三个包，与发布流程共用同一套检查。
+工程约定与共享行为契约统一见 [CONVENTIONS.md](CONVENTIONS.md)。按改动涉及的包运行分析、测试与格式检查，完整命令及 GUI 路由生成要求见 [CONVENTIONS.md §9](CONVENTIONS.md#9-常用命令)。CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 上分三个 job 跑三个包，与发布流程共用同一套检查。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
 | [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
-| [CONVENTIONS.md](CONVENTIONS.md) | 仓库约定：分层与依赖方向、目录、命名、注释、错误处理、安全、测试、依赖与版本、常用命令、提交与发布、编码风格 |
-| [DESIGN.md](DESIGN.md) | 设计语言：色板、排版、几何、阴影与动效 |
-| [WIDGETS.md](WIDGETS.md) | GUI 组件与交互口径：组件分层与清单、交互与状态、设置面板几何 |
+| [CONVENTIONS.md](CONVENTIONS.md) | 工程约定、架构边界与共享行为契约（审批、Agent 循环与上下文、回退、运行统计、技能与角色演进） |
+| [DESIGN.md](DESIGN.md) | 共享视觉原则、GUI 色板与排版 / 几何 / 阴影 / 动效规范、TUI 色彩映射 |
+| [WIDGETS.md](WIDGETS.md) | GUI 控件清单与平台范围、具体交互与状态、桌面设置面板几何 |
 
 ## 许可
 
