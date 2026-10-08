@@ -70,14 +70,11 @@ void main() {
   test('审批请求带上发起的会话；run 取消时立即按拒绝返回并通知 UI', () async {
     String? seenChat;
     var uiNotified = false;
-    String? seenReviewReason;
-    bridge.permissionHandler =
-        (chatId, toolName, arguments, cancelled, {reviewReason}) {
-          seenReviewReason = reviewReason;
-          seenChat = chatId;
-          cancelled.then((_) => uiNotified = true);
-          return Completer<Never>().future; // 用户迟迟不作答
-        };
+    bridge.permissionHandler = (chatId, toolName, arguments, cancelled) {
+      seenChat = chatId;
+      cancelled.then((_) => uiNotified = true);
+      return Completer<Never>().future; // 用户迟迟不作答
+    };
 
     final token = CancelToken();
     final decision = bridge.requestPermissionForTest(
@@ -85,7 +82,6 @@ void main() {
       '{}',
       chatId: '7',
       cancelToken: token,
-      reviewReason: 'Consider the overwrite.',
     );
     await Future<void>.delayed(Duration.zero); // 让请求先到达 UI
     token.cancel();
@@ -93,7 +89,6 @@ void main() {
     expect((await decision).approved, isFalse);
     await Future<void>.delayed(Duration.zero);
     expect(seenChat, '7');
-    expect(seenReviewReason, 'Consider the overwrite.');
     expect(uiNotified, isTrue, reason: 'UI 要据此撤下这张卡片');
   });
 

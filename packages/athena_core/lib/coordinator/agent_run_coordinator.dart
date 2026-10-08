@@ -451,13 +451,8 @@ class AgentRunCoordinator {
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
         workspace: workspace,
-        onPermission: (toolName, arguments, {reviewReason}) => _askPermission(
-          chatId,
-          toolName,
-          arguments,
-          cancelToken,
-          reviewReason: reviewReason,
-        ),
+        onPermission: (toolName, arguments) =>
+            _askPermission(chatId, toolName, arguments, cancelToken),
         onElicit: _elicitPrompt,
         jsonMode: jsonMode,
         cancelToken: cancelToken,
@@ -804,13 +799,8 @@ class AgentRunCoordinator {
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
         bypassPermissions: approvalMode == ApprovalMode.bypass,
-        onPermission: (toolName, arguments, {reviewReason}) => _askPermission(
-          chatId,
-          toolName,
-          arguments,
-          cancelToken,
-          reviewReason: reviewReason,
-        ),
+        onPermission: (toolName, arguments) =>
+            _askPermission(chatId, toolName, arguments, cancelToken),
         cancelToken: cancelToken,
         workspace: _workspaceByChat[chatId],
         allowReflection: false,
@@ -1214,15 +1204,13 @@ class AgentRunCoordinator {
     String chatId,
     String toolName,
     String arguments,
-    CancelToken cancelToken, {
-    String? reviewReason,
-  }) async {
+    CancelToken cancelToken,
+  ) async {
     final decision = await _permissionPrompt(
       chatId,
       toolName,
       arguments,
       cancelToken,
-      reviewReason: reviewReason,
     );
     cancelToken.throwIfCancelled();
     return decision.approved;

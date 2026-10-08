@@ -28,7 +28,6 @@ void main() {
                   request: ApprovalRequest(
                     chatId: 'chat-1',
                     toolName: toolName,
-                    reviewReason: '这次操作需要你考虑数据覆盖的影响。',
                     arguments:
                         '{"call_description":"回忆项目约定","query":"project rules"}',
                     completer: Completer<PermissionDecision>(),
@@ -51,7 +50,6 @@ void main() {
       expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);
-      expect(find.textContaining('这次操作需要你考虑数据覆盖的影响。'), findsNothing);
       expect(find.textContaining('query: project rules'), findsOneWidget);
       expect(tester.takeException(), isNull);
 

@@ -200,11 +200,10 @@ void main() {
       agentSettings: settings,
       permissionService: PermissionService(store: PermissionStore()),
       // 审批一律放行：本用例验的是汇报链路，不是权限链路。
-      permissionPrompt:
-          (chatId, toolName, arguments, cancelToken, {reviewReason}) async {
-            approvalTools.add(toolName);
-            return const PermissionDecision(approved: true);
-          },
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) async {
+        approvalTools.add(toolName);
+        return const PermissionDecision(approved: true);
+      },
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
     );
 
@@ -832,7 +831,7 @@ class _ScriptedLlm {
                   'index': 0,
                   'message': {
                     'role': 'assistant',
-                    'content': '{"decision":"allow","reason":"测试审批通过"}',
+                    'content': '{"decision":"allow"}',
                   },
                   'finish_reason': 'stop',
                 },

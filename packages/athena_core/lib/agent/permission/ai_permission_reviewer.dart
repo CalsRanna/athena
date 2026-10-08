@@ -28,23 +28,15 @@ class PermissionReviewContext {
 }
 
 class AiApprovalReview {
-  const AiApprovalReview({
-    required this.allowed,
-    required this.reason,
-    this.source = 'model',
-  });
+  const AiApprovalReview({required this.allowed, this.source = 'model'});
 
-  const AiApprovalReview.fallback(this.reason)
-    : allowed = false,
-      source = 'fallback';
+  const AiApprovalReview.fallback() : allowed = false, source = 'fallback';
 
   final bool allowed;
-  final String reason;
   final String source;
 
   Map<String, dynamic> toJson() => {
     'decision': allowed ? 'allow' : 'ask',
-    'reason': reason,
     'source': source,
   };
 }
@@ -74,9 +66,7 @@ class AiPermissionReviewer {
   }) async {
     cancelToken.throwIfCancelled();
     if (!context.conversation.any((m) => m['role'] == 'user')) {
-      return const AiApprovalReview.fallback(
-        'No original user request available.',
-      );
+      return const AiApprovalReview.fallback();
     }
     final input = jsonEncode({
       'conversation': context.conversation,
@@ -98,9 +88,7 @@ class AiPermissionReviewer {
     );
     if (utf8.encode(input).length + utf8.encode(_systemPrompt).length >
         budget) {
-      return const AiApprovalReview.fallback(
-        'Approval context exceeds the review budget.',
-      );
+      return const AiApprovalReview.fallback();
     }
 
     final abort = Completer<void>();
@@ -126,25 +114,16 @@ class AiPermissionReviewer {
       cancelToken.throwIfCancelled();
       final json = jsonDecode(response);
       if (json is! Map<String, dynamic> ||
-          (json['decision'] != 'allow' && json['decision'] != 'ask') ||
-          json['reason'] is! String ||
-          (json['reason'] as String).trim().isEmpty) {
-        return const AiApprovalReview.fallback(
-          'The reviewer returned an invalid decision.',
-        );
+          (json['decision'] != 'allow' && json['decision'] != 'ask')) {
+        return const AiApprovalReview.fallback();
       }
-      return AiApprovalReview(
-        allowed: json['decision'] == 'allow',
-        reason: (json['reason'] as String).trim(),
-      );
+      return AiApprovalReview(allowed: json['decision'] == 'allow');
     } catch (error) {
       cancelToken.throwIfCancelled();
       LoggerUtil.w(
         'AI approval failed (${error.runtimeType}); requesting human approval.',
       );
-      return const AiApprovalReview.fallback(
-        'AI review was unavailable or inconclusive.',
-      );
+      return const AiApprovalReview.fallback();
     } finally {
       timer.cancel();
       if (!abort.isCompleted) abort.complete();
@@ -155,7 +134,7 @@ class AiPermissionReviewer {
 你是用户委托的工具审批者。用户选择 AI Review 模式，就是让你先替他们决定
 是否批准这一次 Athena 工具调用；只有需要用户亲自权衡时才交给用户。
 你的职责是决定这次操作是否值得批准，不是逐项查找用户是否已经明确授权。
-只返回 JSON：{"decision":"allow"|"ask","reason":"用用户的语言给出简短解释"}。
+只返回 JSON：{"decision":"allow"|"ask"}。
 
 判断完整的实际操作、目标位置及全部效果，包括复合 Shell 命令、脚本、重定向、
 HTTP 请求体、文件覆盖，以及对技能、经验、角色的持久化修改。

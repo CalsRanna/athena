@@ -41,11 +41,7 @@ import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 typedef PermissionCallback =
-    Future<bool> Function(
-      String toolName,
-      String arguments, {
-      String? reviewReason,
-    });
+    Future<bool> Function(String toolName, String arguments);
 
 /// beforeToolCall 上下文。
 typedef BeforeToolCallContext = ({
@@ -518,7 +514,6 @@ class AgentService {
       }
 
       if (verdict == PermissionVerdict.prompt) {
-        String? reviewReason;
         if (reviewContext != null && tool != null) {
           final review = await _permissionReviewer.review(
             context: reviewContext,
@@ -535,7 +530,6 @@ class AgentService {
           );
           cancelToken.throwIfCancelled();
           ctx.recordReview(review);
-          reviewReason = review.reason;
           // 异步审核后重新检查禁令；逐次批准不缓存，也不生成持久规则。
           if (permissionService?.check(runId, ctx.name, ctx.args) ==
               PermissionVerdict.deny) {
@@ -555,7 +549,7 @@ class AgentService {
           );
         }
         final approved = await Future.any<bool>([
-          onPermission(ctx.name, ctx.arguments, reviewReason: reviewReason),
+          onPermission(ctx.name, ctx.arguments),
           cancelToken.whenCancelled.then((_) => false),
         ]);
         cancelToken.throwIfCancelled();

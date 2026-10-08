@@ -15,6 +15,5 @@ typedef PermissionPrompt =
       String chatId,
       String toolName,
       String arguments,
-      CancelToken cancelToken, {
-      String? reviewReason,
-    });
+      CancelToken cancelToken,
+    );

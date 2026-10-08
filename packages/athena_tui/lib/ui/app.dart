@@ -163,13 +163,7 @@ class _TuiAppState extends State<TuiApp> {
               flex: 2,
               child: PermissionBar(
                 title: _requestTitle('权限请求', _permissionRequest!.chatId),
-                summary: [
-                  if (_permissionRequest!.reviewReason != null)
-                    _permissionRequest!.reviewReason!,
-                  if (toolCallDescription(_permissionRequest!.arguments)
-                      case final description?)
-                    description,
-                ].join('\n'),
+                summary: toolCallDescription(_permissionRequest!.arguments),
                 scrollController: _permissionScrollController,
                 detail:
                     '${_permissionRequest!.toolName}: '
@@ -599,17 +593,10 @@ class _TuiAppState extends State<TuiApp> {
     String chatId,
     String toolName,
     String arguments,
-    Future<void> cancelled, {
-    String? reviewReason,
-  }) async {
+    Future<void> cancelled,
+  ) async {
     final completer = Completer<PermissionDecision>();
-    final request = _PermissionRequest(
-      chatId,
-      toolName,
-      arguments,
-      completer,
-      reviewReason,
-    );
+    final request = _PermissionRequest(chatId, toolName, arguments, completer);
     if (_permissionQueue.isEmpty) _permissionScrollController.jumpTo(0);
     setState(() => _permissionQueue.add(request));
 
@@ -1173,13 +1160,11 @@ class _PermissionRequest {
   final String toolName;
   final String arguments;
   final Completer<PermissionDecision> completer;
-  final String? reviewReason;
   _PermissionRequest(
     this.chatId,
     this.toolName,
     this.arguments,
     this.completer,
-    this.reviewReason,
   );
 }
 

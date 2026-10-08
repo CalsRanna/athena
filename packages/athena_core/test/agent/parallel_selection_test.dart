@@ -49,7 +49,7 @@ void main() {
         calls,
         runId: 1,
         permissionService: PermissionService(store: store),
-        onPermission: (_, _, {reviewReason}) async => true,
+        onPermission: (_, _) async => true,
         workspace: workspace,
         bypassPermissions: bypass,
       )

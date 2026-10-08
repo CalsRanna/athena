@@ -112,7 +112,7 @@ cd packages/athena_tui && dart pub get && dart run bin/athena.dart
 | `/json <文本>` | 以 JSON 模式运行 |
 | `/help` / `/quit` | 帮助 / 退出 |
 
-权限审批在终端内联提示：`y` 允许本次、`n` 拒绝本次。AI 转人工时展示审核原因。
+权限审批在终端内联提示：`y` 允许本次、`n` 拒绝本次。
 
 ### 首次配置
 

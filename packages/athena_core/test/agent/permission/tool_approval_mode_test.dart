@@ -27,7 +27,6 @@ void main() {
   late ToolRegistry registry;
   late PermissionStore store;
   late List<String> prompts;
-  late List<String?> reviewReasons;
   late _StubFileReadTool fileRead;
 
   setUp(() {
@@ -40,7 +39,6 @@ void main() {
       ..register(AskUserQuestionTool());
     store = PermissionStore();
     prompts = [];
-    reviewReasons = [];
   });
 
   tearDown(() => registry.backgroundTasks.dispose());
@@ -94,10 +92,9 @@ void main() {
               : null,
           bypassPermissions: mode == ApprovalMode.bypass,
           onPermission: withApprovalCallback
-              ? (_, arguments, {reviewReason}) async {
+              ? (_, arguments) async {
                   duringApproval?.call();
                   prompts.add(arguments);
-                  reviewReasons.add(reviewReason);
                   return approved;
                 }
               : null,
@@ -129,11 +126,11 @@ void main() {
     expect(prompts, hasLength(1));
   });
 
-  test('AI 模式下 git status 经过独立审核后执行', () async {
+  test('AI 仅返回审批决定时 git status 经过独立审核后执行', () async {
     final result = await run(ApprovalMode.aiReview);
     expect(result.status, ToolResultStatus.success);
     expect(result.result, 'shell executed');
-    expect(result.approvalReview?['decision'], 'allow');
+    expect(result.approvalReview, {'decision': 'allow', 'source': 'model'});
     expect(completion.reviews, hasLength(1));
     expect(completion.reviews.single, contains('git status'));
     expect(prompts, isEmpty);
@@ -292,14 +289,13 @@ void main() {
     expect(prompts, hasLength(1));
   });
 
-  for (final response in ['not JSON', '{"decision":"invalid","reason":"x"}']) {
-    test('AI 返回无效响应时转人工并携带回退原因：$response', () async {
+  for (final response in ['not JSON', '{"decision":"invalid"}']) {
+    test('AI 返回无效响应时转人工：$response', () async {
       completion.reviewResponse = response;
       final result = await run(ApprovalMode.aiReview, approved: true);
       expect(result.status, ToolResultStatus.success);
       expect(result.approvalReview?['source'], 'fallback');
       expect(prompts, hasLength(1));
-      expect(reviewReasons.single, isNotEmpty);
     });
   }
 
@@ -336,17 +332,15 @@ void main() {
     };
     await run(ApprovalMode.manual, approved: true);
     expect(prompts, hasLength(2));
-    expect(reviewReasons, everyElement(isNull));
     expect(completion.reviews, isEmpty);
   });
 
-  test('AI 转人工时传递原因，单次人工批准不会跳过后续 AI 审核', () async {
+  test('AI 转人工后单次人工批准不会跳过后续 AI 审核', () async {
     completion.reviewDecision = 'ask';
     completion.callCount = 2;
     await run(ApprovalMode.aiReview, approved: true);
     expect(completion.reviews, hasLength(2));
     expect(prompts, hasLength(2));
-    expect(reviewReasons, everyElement('测试审批结果'));
   });
 
   test('用户拒绝后的相同调用不重试、不再发起 AI 或人工审批', () async {
@@ -517,7 +511,6 @@ class _ToolCompletionService extends ChatCompletionsService {
   }) async {
     reviews.add(jsonEncode(messages.map((m) => m.toJson()).toList()));
     duringReview?.call();
-    return reviewResponse ??
-        jsonEncode({'decision': reviewDecision, 'reason': '测试审批结果'});
+    return reviewResponse ?? jsonEncode({'decision': reviewDecision});
   }
 }

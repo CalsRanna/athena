@@ -64,9 +64,8 @@ void main() {
       ),
       agentSettings: AgentSettings(),
       permissionService: PermissionService(store: PermissionStore()),
-      permissionPrompt:
-          (chatId, toolName, arguments, cancelToken, {reviewReason}) async =>
-              const PermissionDecision(approved: false),
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) async =>
+          const PermissionDecision(approved: false),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
     );
   });

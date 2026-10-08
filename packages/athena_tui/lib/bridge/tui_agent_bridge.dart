@@ -32,9 +32,8 @@ typedef TuiPermissionHandler =
       String chatId,
       String toolName,
       String arguments,
-      Future<void> cancelled, {
-      String? reviewReason,
-    });
+      Future<void> cancelled,
+    );
 
 /// 提问回调:由 TUI UI 层注册(终端内模态)。参数含义同 [TuiPermissionHandler]。
 ///
@@ -86,15 +85,8 @@ class TuiAgentBridge {
       supportService: supportService,
       agentSettings: agentSettings,
       permissionService: permissionService,
-      permissionPrompt:
-          (chatId, toolName, arguments, cancelToken, {reviewReason}) =>
-              _askPermission(
-                chatId,
-                toolName,
-                arguments,
-                cancelToken,
-                reviewReason: reviewReason,
-              ),
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
+          _askPermission(chatId, toolName, arguments, cancelToken),
       elicitPrompt: (chatId, questions, cancelToken) =>
           _askElicit(chatId, questions, cancelToken),
       experienceRepository: experienceRepository,
@@ -139,14 +131,12 @@ class TuiAgentBridge {
     String arguments, {
     String chatId = '',
     CancelToken? cancelToken,
-    String? reviewReason,
   }) {
     return _askPermission(
       chatId,
       toolName,
       arguments,
       cancelToken ?? CancelToken(),
-      reviewReason: reviewReason,
     );
   }
 
@@ -156,7 +146,6 @@ class TuiAgentBridge {
     List<ElicitQuestion> questions, {
     String chatId = '',
     CancelToken? cancelToken,
-    String? reviewReason,
   }) {
     return _askElicit(chatId, questions, cancelToken ?? CancelToken());
   }
@@ -180,9 +169,8 @@ class TuiAgentBridge {
     String chatId,
     String toolName,
     String arguments,
-    CancelToken cancelToken, {
-    String? reviewReason,
-  }) async {
+    CancelToken cancelToken,
+  ) async {
     final handler = permissionHandler;
     if (handler == null) {
       // UI 未就绪时拒绝,避免 Agent 挂起等待
@@ -190,13 +178,7 @@ class TuiAgentBridge {
     }
     // run 取消时自动拒绝,避免审批请求挂起导致 Agent 卡死
     return Future.any<PermissionDecision>([
-      handler(
-        chatId,
-        toolName,
-        arguments,
-        cancelToken.whenCancelled,
-        reviewReason: reviewReason,
-      ),
+      handler(chatId, toolName, arguments, cancelToken.whenCancelled),
       cancelToken.whenCancelled.then(
         (_) => const PermissionDecision(approved: false),
       ),

@@ -130,9 +130,8 @@ void main() {
       ),
       agentSettings: AgentSettings(),
       permissionService: PermissionService(store: PermissionStore()),
-      permissionPrompt:
-          (chatId, name, arguments, cancelToken, {reviewReason}) async =>
-              const PermissionDecision(approved: true),
+      permissionPrompt: (chatId, name, arguments, cancelToken) async =>
+          const PermissionDecision(approved: true),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
     );
   });
