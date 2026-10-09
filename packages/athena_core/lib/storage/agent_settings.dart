@@ -10,6 +10,13 @@ class AgentSettings {
 
   static const _keyBackgroundTaskReports = 'background_task_reports';
 
+  static const _keyDefaultOutputLimit = 'default_output_limit';
+
+  /// 未单独配置输出上限的模型，单次回复的默认输出 token 上限，也是
+  /// [defaultOutputLimit] 的初值。模型自己的 `ModelEntity.outputLimit`
+  /// （来自 models.dev）优先级更高。
+  static const fallbackOutputLimit = 128000;
+
   /// 审批模式改为会话级之前的两个旧键，只在启动时读一次做播种（见 [init]）。
   static const _keyLegacyApprovalMode = 'approval_mode';
 
@@ -31,6 +38,9 @@ class AgentSettings {
   /// 当前会话的模型，所以在 UI 上必须能看到这个开关的后果（默认开启）。
   final backgroundTaskReports = signal(true);
 
+  /// 未单独配置的模型共用的默认输出上限（设置 → Agent）。
+  final defaultOutputLimit = signal(AgentSettings.fallbackOutputLimit);
+
   /// 从存储加载设置（启动时调用）。
   Future<void> init() async {
     final store = _store;
@@ -39,6 +49,10 @@ class AgentSettings {
     final reports = await store.getBool(_keyBackgroundTaskReports);
     if (reports != null) {
       backgroundTaskReports.value = reports;
+    }
+    final outputLimit = await store.getInt(_keyDefaultOutputLimit);
+    if (outputLimit != null && outputLimit > 0) {
+      defaultOutputLimit.value = outputLimit;
     }
   }
 
@@ -71,5 +85,11 @@ class AgentSettings {
   Future<void> updateBackgroundTaskReports(bool enabled) async {
     backgroundTaskReports.value = enabled;
     await _store?.setBool(_keyBackgroundTaskReports, enabled);
+  }
+
+  /// 更新未单独配置的模型共用的默认输出上限。
+  Future<void> updateDefaultOutputLimit(int limit) async {
+    defaultOutputLimit.value = limit;
+    await _store?.setInt(_keyDefaultOutputLimit, limit);
   }
 }

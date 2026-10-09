@@ -4,6 +4,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/service/llm_client.dart';
+import 'package:athena_core/storage/agent_settings.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 自动重命名对话标题的提示词。
@@ -53,8 +54,14 @@ const _namingPrompt = '''
 class ChatCompletionsService {
   final LlmClient _llmClient;
 
-  ChatCompletionsService({required LlmClient llmClient})
-    : _llmClient = llmClient;
+  /// 全局默认输出上限（设置 → Agent）的来源；null 时用协议兜底值。
+  final AgentSettings? _agentSettings;
+
+  ChatCompletionsService({
+    required LlmClient llmClient,
+    AgentSettings? agentSettings,
+  }) : _llmClient = llmClient,
+       _agentSettings = agentSettings;
 
   /// 测试连接
   Future<String> connect({
@@ -108,6 +115,7 @@ class ChatCompletionsService {
       cancelSignal: cancelSignal,
       outputLimit: model.outputLimit,
       outputRoom: outputRoom,
+      defaultOutputLimit: _agentSettings?.defaultOutputLimit.value ?? 0,
     );
   }
 

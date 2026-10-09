@@ -53,6 +53,9 @@ class SettingViewModel {
   Signal<bool> get backgroundTaskReports =>
       _agentSettings.backgroundTaskReports;
 
+  /// 未单独配置输出上限的模型共用的默认输出上限（设置 → Agent）。
+  Signal<int> get defaultOutputLimit => _agentSettings.defaultOutputLimit;
+
   final maxRetries = signal(10);
   final braveApiKey = signal('');
   // 主题模式：默认浅色，可在设置中切换深色/浅色/跟随系统
@@ -217,6 +220,11 @@ class SettingViewModel {
   /// 开关后台任务完成后的自动汇报。
   Future<void> updateBackgroundTaskReports(bool enabled) async {
     await _agentSettings.updateBackgroundTaskReports(enabled);
+  }
+
+  /// 更新未单独配置的模型共用的默认输出上限。
+  Future<void> updateDefaultOutputLimit(int limit) async {
+    await _agentSettings.updateDefaultOutputLimit(limit);
   }
 
   /// 重置:清空全部业务数据文件并重新种子内置角色,再清空设置。

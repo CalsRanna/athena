@@ -106,28 +106,41 @@ void main() {
       );
 
   group('max_tokens', () {
-    Future<int> sentMaxTokens({int outputLimit = 0, int? outputRoom}) async {
+    Future<int> sentMaxTokens({
+      int outputLimit = 0,
+      int? outputRoom,
+      int defaultOutputLimit = 0,
+    }) async {
       await client([okStream])
           .stream(
             provider: provider,
             request: request(),
             outputLimit: outputLimit,
             outputRoom: outputRoom,
+            defaultOutputLimit: defaultOutputLimit,
           )
           .drain<void>();
       return bodies.last['max_tokens'] as int;
     }
 
-    test('模型输出上限已知时用它，而不是固定 8192', () async {
+    test('模型输出上限已知时用它，而不是全局默认', () async {
       expect(await sentMaxTokens(outputLimit: 64000), 64000);
+    });
+
+    test('模型未配置时使用全局默认输出上限', () async {
+      expect(await sentMaxTokens(defaultOutputLimit: 32000), 32000);
+    });
+
+    test('恰好填 0 时回落协议兜底，不会发出 0', () async {
+      expect(await sentMaxTokens(defaultOutputLimit: 0), 128000);
     });
 
     test('窗口余量更小时按余量收紧，输入 + 输出不超出窗口', () async {
       expect(await sentMaxTokens(outputLimit: 64000, outputRoom: 5000), 5000);
     });
 
-    test('上限未知时退回 8192', () async {
-      expect(await sentMaxTokens(), 8192);
+    test('上限未知时退回全局默认', () async {
+      expect(await sentMaxTokens(), 128000);
     });
   });
 

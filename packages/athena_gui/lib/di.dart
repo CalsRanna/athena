@@ -266,7 +266,10 @@ abstract final class DI {
     getIt.registerLazySingleton(() => LlmClient());
 
     getIt.registerLazySingleton(
-      () => ChatCompletionsService(llmClient: getIt<LlmClient>()),
+      () => ChatCompletionsService(
+        llmClient: getIt<LlmClient>(),
+        agentSettings: getIt<AgentSettings>(),
+      ),
     );
 
     getIt.registerLazySingleton(

@@ -28,18 +28,23 @@ import 'package:openai_dart/openai_dart.dart';
 /// `_jsonOnlyInstruction`）。
 
 /// Messages 的 `max_tokens` 是必填项，而 Chat Completions 里 Athena 从不传。
-/// 模型输出上限未知时的取值：与 `ContextBudget` 给输出预留的上限一致，且
-/// 不超过常见模型的上限（超过模型上限的值会被直接拒绝）。
-const _defaultMaxTokens = 8192;
+/// 模型未单独配置输出上限、且全局默认 `AgentSettings.defaultOutputLimit`
+/// 也不可用时的兜底值。
+const _defaultMaxTokens = 128000;
 
 /// 一次 Messages 请求的 `max_tokens`。
 ///
-/// 模型输出上限已知（[outputLimit]，来自 models.dev）就用它：固定 8192 时，
-/// 参数超过这个长度的工具调用（写一个大文件）每次都会被截断、被拒绝执行、
-/// 再重发，直到模型给出完整参数。再按窗口余量 [outputRoom] 收紧：「输入 +
-/// max_tokens」超出窗口时请求同样会被拒绝。
-int messagesMaxTokens({int outputLimit = 0, int? outputRoom}) {
-  final cap = outputLimit > 0 ? outputLimit : _defaultMaxTokens;
+/// 模型输出上限已知（[outputLimit]，来自 models.dev）就用它；未单独配置时用
+/// 全局默认 [fallback]（设置 → Agent 的默认输出上限）。再按窗口余量
+/// [outputRoom] 收紧：「输入 + max_tokens」超出窗口时请求同样会被拒绝。
+int messagesMaxTokens({
+  int outputLimit = 0,
+  int? outputRoom,
+  int fallback = _defaultMaxTokens,
+}) {
+  final cap = outputLimit > 0
+      ? outputLimit
+      : (fallback > 0 ? fallback : _defaultMaxTokens);
   if (outputRoom == null) return cap;
   return max(1, min(cap, outputRoom));
 }

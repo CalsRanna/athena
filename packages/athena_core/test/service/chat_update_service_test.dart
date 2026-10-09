@@ -95,6 +95,7 @@ class _Client extends LlmClient {
     Future<void>? cancelSignal,
     int outputLimit = 0,
     int? outputRoom,
+    int defaultOutputLimit = 0,
   }) {
     this.cancelSignal = cancelSignal;
     unawaited(

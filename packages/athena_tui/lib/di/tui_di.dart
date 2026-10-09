@@ -196,7 +196,10 @@ class TuiDi {
 
     // ── Services ──
     final llmClient = LlmClient();
-    chatService = ChatCompletionsService(llmClient: llmClient);
+    chatService = ChatCompletionsService(
+      llmClient: llmClient,
+      agentSettings: agentSettings,
+    );
     chatStore = ChatStore(
       chatRepository: chatRepo,
       messageRepository: messageRepo,

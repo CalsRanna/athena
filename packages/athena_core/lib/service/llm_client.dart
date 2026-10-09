@@ -167,12 +167,16 @@ class LlmClient {
   /// [outputLimit]（模型的输出上限，0 = 未知）与 [outputRoom]（这次请求的
   /// 窗口余量）只有 Messages 协议使用：它的 `max_tokens` 必填，见
   /// `messagesMaxTokens`。另两条协议不传输出上限，由服务端按模型默认。
+  ///
+  /// [defaultOutputLimit] 是模型未单独配置时的全局默认输出上限（设置 →
+  /// Agent），仅在 Messages 协议下用作 `max_tokens` 的兜底。
   Stream<ChatStreamEvent> stream({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
     int outputLimit = 0,
     int? outputRoom,
+    int defaultOutputLimit = 0,
   }) {
     return cancellableStream(switch (provider.apiFormat) {
       ApiFormat.chatCompletions => _streamChatCompletions(
@@ -192,6 +196,7 @@ class LlmClient {
         maxTokens: messagesMaxTokens(
           outputLimit: outputLimit,
           outputRoom: outputRoom,
+          fallback: defaultOutputLimit,
         ),
       ),
     }, cancelSignal);

@@ -22,6 +22,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
+  late final outputLimitController = TextEditingController(
+    text: viewModel.defaultOutputLimit.value.toString(),
+  );
   late final braveApiKeyController = TextEditingController(
     text: viewModel.braveApiKey.value,
   );
@@ -29,6 +32,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   @override
   void dispose() {
     retriesController.dispose();
+    outputLimitController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
   }
@@ -65,6 +69,17 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           ),
           description:
               'Maximum network retry attempts for LLM API calls (default: 10)',
+        ),
+        const SizedBox(height: 16),
+        AthenaFormField(
+          label: 'Default Output Limit',
+          control: AthenaInput(
+            controller: outputLimitController,
+            placeholder: '128000',
+          ),
+          description:
+              'Output token limit for models without their own limit set. '
+              'Applies to the Messages protocol only (default: 128000)',
         ),
         const SizedBox(height: 16),
         Align(
@@ -117,7 +132,15 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
       AthenaDialog.warning('Max Retries must be a valid number (minimum 1)');
       return;
     }
+    final outputLimit = int.tryParse(outputLimitController.text.trim());
+    if (outputLimit == null || outputLimit < 1) {
+      AthenaDialog.warning(
+        'Default Output Limit must be a valid number (minimum 1)',
+      );
+      return;
+    }
     await viewModel.updateMaxRetries(retries);
+    await viewModel.updateDefaultOutputLimit(outputLimit);
     if (!mounted) return;
     AthenaDialog.success('Settings saved');
   }

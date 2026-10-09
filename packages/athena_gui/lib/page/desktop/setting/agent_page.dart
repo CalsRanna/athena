@@ -28,15 +28,20 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
+  late final outputLimitController = TextEditingController(
+    text: viewModel.defaultOutputLimit.value.toString(),
+  );
   late final braveApiKeyController = TextEditingController(
     text: viewModel.braveApiKey.value,
   );
 
   String? retriesError;
+  String? outputLimitError;
 
   @override
   void dispose() {
     retriesController.dispose();
+    outputLimitController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
   }
@@ -58,6 +63,24 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                 controller: retriesController,
                 placeholder: '10',
                 onCommit: _commitRetries,
+              ),
+            ),
+            AthenaSettingsRow(
+              label: 'Default output limit',
+              description:
+                  'Output token limit for models without their own limit set. '
+                  'Applies to the Messages protocol only.',
+              error: outputLimitError,
+              control: SizedBox(
+                width: AthenaSettingsControlWidth.narrow,
+                child: AthenaSettingsTextField(
+                  controller: outputLimitController,
+                  placeholder: '128000',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onBlur: _commitOutputLimit,
+                  onSubmitted: (_) => _commitOutputLimit(),
+                ),
               ),
             ),
           ],
@@ -129,6 +152,19 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     setState(() => retriesError = null);
     if (value == viewModel.maxRetries.value) return;
     await viewModel.updateMaxRetries(value);
+  }
+
+  Future<void> _commitOutputLimit() async {
+    final value = int.tryParse(outputLimitController.text.trim());
+    if (value == null || value < 1) {
+      final fallback = viewModel.defaultOutputLimit.value;
+      setState(() => outputLimitError = 'Enter a whole number of at least 1.');
+      outputLimitController.text = fallback.toString();
+      return;
+    }
+    setState(() => outputLimitError = null);
+    if (value == viewModel.defaultOutputLimit.value) return;
+    await viewModel.updateDefaultOutputLimit(value);
   }
 
   Future<void> _commitBraveApiKey() async {
