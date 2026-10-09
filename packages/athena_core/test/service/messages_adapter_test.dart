@@ -394,6 +394,47 @@ void main() {
       expect(accumulator.usage!.promptTokensDetails!.cachedTokens, 4);
     });
 
+    test('工具参数是半截 JSON 时不终止流，原样交还由执行器兜底', () async {
+      final accumulator = ChatStreamAccumulator();
+      await for (final chunk in normalizeMessagesStream(
+        Stream.fromIterable([
+          event(messageStart()),
+          event({
+            'type': 'content_block_start',
+            'index': 0,
+            'content_block': {
+              'type': 'tool_use',
+              'id': 'toolu_1',
+              'name': 'bash',
+              'input': <String, dynamic>{},
+            },
+          }),
+          event({
+            'type': 'content_block_delta',
+            'index': 0,
+            'delta': {'type': 'input_json_delta', 'partial_json': '{"command":'},
+          }),
+          event({'type': 'content_block_stop', 'index': 0}),
+          event({
+            'type': 'message_delta',
+            'delta': {'stop_reason': 'tool_use'},
+            'usage': {'output_tokens': 3},
+          }),
+          event({'type': 'message_stop'}),
+        ]),
+      )) {
+        accumulator.add(chunk);
+      }
+
+      // message_stop 收尾处的参数解码不得抛 FormatException（那会冒到
+      // coordinator 的唯一 catch，把整轮 run 判成 error）。参数原样透传，
+      // 交由 executeToolCallInternal 判成 invalidArguments 交还模型。
+      expect(
+        accumulator.toolCalls.single.function.arguments,
+        '{"command":',
+      );
+    });
+
     test('stop_reason 映射：max_tokens 归一成 length', () async {
       final chunk = await normalizeMessagesStream(
         Stream.fromIterable([

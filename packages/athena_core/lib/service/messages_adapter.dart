@@ -408,7 +408,12 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
         }
         if (openBlocks.isEmpty && _completeStop(stopReason)) {
           for (final entry in arguments.entries) {
-            blocks[entry.key]!['input'] = jsonDecode(entry.value.toString());
+            // 与请求侧同一口径：半截/非法参数落空对象交还模型，而不是在
+            // 这里抛 FormatException——它会一路冒到 coordinator 的唯一
+            // catch，把整轮 run 判成 error 终止（见 _decodeArguments）。
+            blocks[entry.key]!['input'] = _decodeArguments(
+              entry.value.toString(),
+            );
           }
           final content = blocks.values.toList();
           final thinkingReplayable = _thinkingReplayable(content);
