@@ -42,10 +42,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     // hover 只改底色，文字不动；选中行才使用青瓷强调。
     final contentColor = widget.active ? colors.accent : colors.textRowLabel;
     // 列表行与输入框、菜单统一采用 14 / 22 的常规 UI 档。
-    final textStyle = AthenaTextStyle.body.copyWith(
-      color: contentColor,
-      fontWeight: FontWeight.w400,
-    );
+    final textStyle = AthenaTextStyle.body.copyWith(color: contentColor);
     final text = Text(
       widget.label,
       maxLines: 1,

@@ -88,16 +88,8 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       color: colors.textWeak,
       size: AthenaSettings.searchIconSize,
     );
-    final textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.searchFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
-    final hintStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.searchFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final textStyle = AthenaTextStyle.body.copyWith(color: colors.textPrimary);
+    final hintStyle = AthenaTextStyle.body.copyWith(color: colors.textWeak);
     final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textPrimary,
@@ -161,12 +153,7 @@ class AthenaSettingsNavGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.navGroupFontSize,
-      fontWeight: FontWeight.w400,
-      height: AthenaFontSize.captionHeight,
-    );
+    final titleStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
     final label = Padding(
       padding: const EdgeInsets.only(left: 10),
       child: Text(title, style: titleStyle),
@@ -220,11 +207,9 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final contentColor = widget.active ? colors.accent : colors.textRowLabel;
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: contentColor,
-      fontSize: AthenaSettings.navFontSize,
       fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
-      height: AthenaFontSize.bodyHeight,
     );
     final children = [
       Icon(widget.icon, color: contentColor, size: AthenaSettings.navIconSize),

@@ -33,7 +33,6 @@ class _MobileDefaultModelFormPageState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontWeight: FontWeight.w600,
     );
     final chatTitle = Text('Agent Model', style: titleTextStyle);
     final namingTitle = Text('Session Naming Model', style: titleTextStyle);

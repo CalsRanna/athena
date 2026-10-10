@@ -111,9 +111,8 @@ class _EffortPanel extends StatelessWidget {
       color: colors.textSecondary,
       decoration: TextDecoration.none,
     );
-    final valueStyle = AthenaTextStyle.row.copyWith(
+    final valueStyle = AthenaTextStyle.label.copyWith(
       color: colors.textPrimary,
-      fontWeight: FontWeight.w500,
       decoration: TextDecoration.none,
     );
     final endStyle = AthenaTextStyle.caption.copyWith(

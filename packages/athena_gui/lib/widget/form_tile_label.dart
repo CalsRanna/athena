@@ -19,10 +19,7 @@ class AthenaFormTileLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleTextStyle = base.copyWith(
-      color: colors.textPrimary,
-      fontWeight: FontWeight.w600,
-    );
+    final titleTextStyle = base.copyWith(color: colors.textPrimary);
     final children = [
       Expanded(child: Text(title, style: titleTextStyle)),
       trailing ?? const SizedBox(),

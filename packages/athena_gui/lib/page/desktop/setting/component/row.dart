@@ -236,23 +236,13 @@ class _SettingsRowLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final hasDescription = description != null;
-    final labelStyle = TextStyle(
+    final labelStyle = AthenaTextStyle.row.copyWith(
       color: dimmed ? colors.textSecondary : colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      fontWeight: FontWeight.w400,
-      height: AthenaFontSize.bodyHeight,
     );
-    final descriptionStyle = TextStyle(
+    final descriptionStyle = AthenaTextStyle.row.copyWith(
       color: colors.textSecondary,
-      fontSize: AthenaSettings.rowFontSize,
-      fontWeight: FontWeight.w400,
-      height: AthenaSettings.rowDescriptionHeight,
     );
-    final errorStyle = TextStyle(
-      color: colors.dangerText,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaSettings.rowDescriptionHeight,
-    );
+    final errorStyle = AthenaTextStyle.row.copyWith(color: colors.dangerText);
     final labelText = Text(
       label,
       maxLines: labelMaxLines,
@@ -353,11 +343,7 @@ class AthenaSettingsParagraph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AthenaSettings.rowInset,

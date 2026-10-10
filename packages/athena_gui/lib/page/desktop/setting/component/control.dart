@@ -74,11 +74,9 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.label.copyWith(
       color: isSelected ? colors.textPrimary : colors.textWeak,
-      fontSize: AthenaSettings.segmentFontSize,
       fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-      height: AthenaFontSize.bodyHeight,
     );
     final segment = AnimatedContainer(
       alignment: Alignment.center,
@@ -134,10 +132,8 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       widget.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
+      style: AthenaTextStyle.row.copyWith(
         color: widget.placeholder ? colors.textWeak : colors.textPrimary,
-        fontSize: AthenaSettings.controlFontSize,
-        height: AthenaFontSize.bodyHeight,
       ),
     );
     final chevron = Icon(
@@ -250,15 +246,10 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    const base = TextStyle(fontSize: AthenaSettings.controlFontSize);
-    final textStyle = base.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
-      height: AthenaFontSize.bodyHeight,
     );
-    final hintStyle = base.copyWith(
-      color: colors.textWeak,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,
@@ -353,15 +344,10 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    const base = TextStyle(fontSize: AthenaSettings.controlFontSize);
-    final textStyle = base.copyWith(
+    final textStyle = AthenaTextStyle.row.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
-      height: AthenaFontSize.bodyHeight,
     );
-    final hintStyle = base.copyWith(
-      color: colors.textWeak,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,

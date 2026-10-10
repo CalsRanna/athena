@@ -60,6 +60,7 @@ class MobileSentinelListPage extends StatelessWidget {
                         width: 24,
                         child: Icon(
                           LucideIcons.plus,
+                          // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
                           size: 12,
                           color: colors.iconOnRaised,
                         ),

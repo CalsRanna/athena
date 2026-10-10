@@ -183,11 +183,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   Widget _buildNoResult(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.fontSizeForEmptySearch,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     return Padding(
       padding: const EdgeInsets.only(
         top: AthenaSettings.navGroupTopMargin,

@@ -212,11 +212,7 @@ class AthenaSettingsBackLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textRowLabel,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textRowLabel);
     final children = [
       Icon(
         AthenaIcons.back,
@@ -271,16 +267,11 @@ class AthenaSettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleStyle = TextStyle(
+    final titleStyle = AthenaTextStyle.title.copyWith(
       color: colors.textPrimary,
-      fontSize: AthenaSettings.headingFontSize,
-      fontWeight: FontWeight.w600,
-      height: AthenaFontSize.titleHeight,
     );
-    final descriptionStyle = TextStyle(
+    final descriptionStyle = AthenaTextStyle.row.copyWith(
       color: colors.textSecondary,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaSettings.rowDescriptionHeight,
     );
     final titleRow = Row(
       children: [
@@ -380,11 +371,7 @@ class AthenaSettingsSaveBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [
       Expanded(child: Text(message, maxLines: 1, style: textStyle)),
       AthenaSecondaryButton.small(
@@ -425,17 +412,8 @@ class AthenaSettingsEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      fontWeight: FontWeight.w400,
-      height: AthenaFontSize.bodyHeight,
-    );
-    final hintStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaSettings.rowDescriptionHeight,
-    );
+    final titleStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
+    final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [
       Icon(
         icon,

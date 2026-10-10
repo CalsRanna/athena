@@ -3,7 +3,6 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -164,11 +163,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
 
   Widget _buildCapabilities(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final labelStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaFontSize.bodyHeight,
-    );
+    final labelStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
     final reasoning = AthenaCheckboxGroup(
       checkbox: AthenaCheckbox(
         value: supportReasoning,

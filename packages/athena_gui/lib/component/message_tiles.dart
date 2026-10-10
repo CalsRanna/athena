@@ -342,8 +342,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         color: colors.codeBackground,
       );
-      final textStyle = TextStyle(
-        fontWeight: FontWeight.w600,
+      final textStyle = AthenaTextStyle.section.copyWith(
         color: colors.textOnCode,
       );
       return Container(

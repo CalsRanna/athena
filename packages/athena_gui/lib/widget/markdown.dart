@@ -255,6 +255,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
             ),
             child: Icon(
               LucideIcons.arrowUp,
+              // 脚注回跳的紧凑标记，按所在容器比例取 12，不套用三档映射
               size: 12,
               color: colors.textSecondaryOnCode,
             ),

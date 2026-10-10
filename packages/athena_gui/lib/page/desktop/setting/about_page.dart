@@ -1,5 +1,4 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -40,17 +39,8 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final nameStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaSettings.headingFontSize,
-      fontWeight: FontWeight.w600,
-      height: AthenaFontSize.titleHeight,
-    );
-    final taglineStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaSettings.rowFontSize,
-      height: AthenaSettings.rowDescriptionHeight,
-    );
+    final nameStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
+    final taglineStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final mark = ClipRRect(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       child: Image.asset(

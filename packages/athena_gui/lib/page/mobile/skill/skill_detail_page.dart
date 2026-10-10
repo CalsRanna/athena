@@ -45,10 +45,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         Expanded(
           child: Text(
             skill.name,
-            style: AthenaTextStyle.title.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
           ),
         ),
         if (skill.isBuiltin)

@@ -12,7 +12,6 @@ class NewChatButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final textStyle = AthenaTextStyle.section.copyWith(
       color: colors.textOnRaised,
-      fontWeight: FontWeight.w600,
     );
     final button = Container(
       decoration: BoxDecoration(

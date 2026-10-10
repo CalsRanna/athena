@@ -582,6 +582,7 @@ class _ImageProgress extends StatelessWidget {
               children: [
                 Icon(
                   failed ? LucideIcons.imageOff : LucideIcons.image,
+                  // 24 方形容器内的图片占位图标，按容器比例取 12，不套用三档映射
                   size: 12,
                   color: failed ? colors.statusError : colors.textWeak,
                   semanticLabel: failed ? 'Could not load image' : null,

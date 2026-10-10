@@ -57,9 +57,8 @@ class ChatPreviewCard extends StatelessWidget {
             flatten(title),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AthenaTextStyle.body.copyWith(
+            style: AthenaTextStyle.section.copyWith(
               color: colors.textPrimary,
-              fontWeight: FontWeight.w600,
               decoration: TextDecoration.none,
             ),
           ),
