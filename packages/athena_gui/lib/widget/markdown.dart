@@ -363,9 +363,12 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     final borderSide = BorderSide(color: colors.border, width: 1);
-    // 标题与正文同号、同行高、同字族，只以加粗区分层级：
-    // 层级交给字重与间距，不靠放大字号（见 DESIGN.md §1）
+    // h4–h6 为次要标题，与正文同号同行高同字族，只以加粗区分（见 DESIGN.md §3）
     final heading = body?.copyWith(fontWeight: FontWeight.w500);
+    // h1–h3 在当前档位正文基础上放大一号（+1），行盒随字号等比放大
+    final largeHeading = heading?.copyWith(
+      fontSize: (heading.fontSize ?? 0) + 1,
+    );
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
     final markdownStyleSheet = base.copyWith(
@@ -382,9 +385,9 @@ class _FlutterMarkdown extends StatelessWidget {
       code: AthenaWorkspaceTextSize.of(
         context,
       ).code.copyWith(color: colors.textOnCode),
-      h1: heading,
-      h2: heading,
-      h3: heading,
+      h1: largeHeading,
+      h2: largeHeading,
+      h3: largeHeading,
       h4: heading,
       h5: heading,
       h6: heading,
@@ -393,7 +396,7 @@ class _FlutterMarkdown extends StatelessWidget {
       listBullet: body,
       // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
       // 默认取主题的 textTheme.bodyMedium，不会跟随会话正文的固定档位。
-      // 表头只保留字重差异（w500），与标题"同号不同重"的处理一致。
+      // 表头只保留字重差异（w500），与 h4–h6 次要标题「同号不同重」的处理一致。
       tableHead: body?.copyWith(
         color: colors.textPrimary,
         fontWeight: FontWeight.w500,
