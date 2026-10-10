@@ -146,7 +146,7 @@ abstract final class AthenaSettings {
   /// 空搜索结果文字字号，与导航标签同号。
   static const fontSizeForEmptySearch = AthenaFontSize.row;
 
-  /// 关闭按钮：字形约 10，内缩对齐内容区右缘（1136）与顶缘（68）。
+  /// 关闭按钮：字形 14，内缩对齐内容区右缘（1136）与顶缘（68）。
   static const closeIconSize = AthenaIcon.inlineSize;
   static const closeInset = 15.0;
 

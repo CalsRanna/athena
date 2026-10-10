@@ -138,7 +138,7 @@ lib/
 
 ### 前端
 
-两个前端的目录并不同构。GUI 按 `page/`（页面）、`component/`（跨页面业务组件）、`widget/`（基础控件）、`view_model/`（状态）、`theme/`、`extension/`（扩展方法）、`util/`（平台集成）组织，组合根是 `lib/di.dart`；TUI 按 `ui/`（`app.dart`、`theme.dart`、`text_util.dart` 与 `ui/widgets/`）、`bridge/`、`view_model/` 组织（无 `page/`），组合根是 `lib/di/tui_di.dart`。
+两个前端的目录并不同构。GUI 按 `page/`（页面）、`component/`（跨页面业务组件）、`widget/`（基础控件）、`view_model/`（状态）、`service/`（前端应用服务）、`storage/`（前端持久化与一次性迁移）、`theme/`、`extension/`（扩展方法）、`util/`（平台集成）组织，组合根是 `lib/di.dart`；TUI 按 `ui/`（`app.dart`、`theme.dart`、`text_util.dart`、`ui/widgets/` 与 `ui/backend/`）、`bridge/`、`view_model/` 组织（无 `page/`），组合根是 `lib/di/tui_di.dart`。
 
 ---
 
@@ -152,7 +152,7 @@ lib/
 - 页面类一律 `<Platform><Area?>...Page`（`Desktop` / `Mobile` 前缀）；页面文件一律 `xxx_page.dart`，词根取类名去掉平台前缀再 snake_case
 - 选择器（选一个值的交互）：触发控件用 `...Selector`，弹出菜单面板用 `...Menu`，对话框面板用 `...Dialog`。同一交互桌面弹 `...Menu`、移动端弹底部 `...Dialog`，这是**有意的平台差异**，不是命名不一致
 
-**纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半——`LoggerUtil` 就是这么被漏掉的。
+**纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半。
 
 **缩写在标识符里一律小写**（`chatId` / `url` / `json` / `uuid`），只在注释与用户可见文案里出现全大写（`'Model ID'`、`'ID of the snapshot'`）。不要写 `chatID` 或 `modelUUID`。
 
