@@ -377,8 +377,15 @@ void main() {
       );
       await tester.pumpAndSettle();
       final (fontSize, lineHeight) = proseMetrics(size);
-      for (final text in [
+      // h1–h3 比正文大一档：字号 +1，行盒随字号等比放大（见 markdown.dart）
+      expectTypography(
+        tester,
         'Heading probe',
+        fontSize + 1,
+        lineHeight / fontSize * (fontSize + 1),
+        systemScaler,
+      );
+      for (final text in [
         'Paragraph probe',
         'Quote probe',
         'List probe',

@@ -412,7 +412,10 @@ void main() {
           event({
             'type': 'content_block_delta',
             'index': 0,
-            'delta': {'type': 'input_json_delta', 'partial_json': '{"command":'},
+            'delta': {
+              'type': 'input_json_delta',
+              'partial_json': '{"command":',
+            },
           }),
           event({'type': 'content_block_stop', 'index': 0}),
           event({
@@ -429,10 +432,7 @@ void main() {
       // message_stop 收尾处的参数解码不得抛 FormatException（那会冒到
       // coordinator 的唯一 catch，把整轮 run 判成 error）。参数原样透传，
       // 交由 executeToolCallInternal 判成 invalidArguments 交还模型。
-      expect(
-        accumulator.toolCalls.single.function.arguments,
-        '{"command":',
-      );
+      expect(accumulator.toolCalls.single.function.arguments, '{"command":');
     });
 
     test('stop_reason 映射：max_tokens 归一成 length', () async {
