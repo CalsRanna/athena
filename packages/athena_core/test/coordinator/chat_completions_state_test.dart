@@ -248,12 +248,15 @@ void main() {
         .message
         .runStatistics!;
     expect(last.outputTokens, 60);
+    final lastDurationMicros = usages.last.outputDuration!.inMicroseconds;
     expect(
       last.outputTokensPerSecond,
       closeTo(
         40 *
             Duration.microsecondsPerSecond /
-            usages.last.outputDuration!.inMicroseconds,
+            (lastDurationMicros < Duration.microsecondsPerSecond
+                ? Duration.microsecondsPerSecond
+                : lastDurationMicros),
         0.000001,
       ),
     );

@@ -41,9 +41,14 @@ class RunStatistics {
     );
   }
 
+  /// 观测窗口不足 1 秒时按 1 秒计（即直接以该次 token 数作为每秒速率）。
+  /// 分片可能在中转/网关缓冲后在极短区间突发到达，真实跨度会小到几毫秒，
+  /// 照实相除会把速率放大到几万 tok/s，封底到 1 秒可压掉这种虚高。
   static double? _outputRate(int tokens, Duration? elapsed) {
     if (elapsed == null || elapsed.inMicroseconds <= 0) return null;
-    final microseconds = elapsed.inMicroseconds;
+    final microseconds = elapsed.inMicroseconds < Duration.microsecondsPerSecond
+        ? Duration.microsecondsPerSecond
+        : elapsed.inMicroseconds;
     return tokens * Duration.microsecondsPerSecond / microseconds;
   }
 

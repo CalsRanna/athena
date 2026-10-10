@@ -18,10 +18,23 @@ void main() {
       usage(30, const Duration(milliseconds: 500)),
     );
     expect(first.outputTokens, 30);
-    expect(first.outputTokensPerSecond, 60);
+    // 500ms 不足 1 秒，按 1 秒计，即直接以本次 token 数为速率。
+    expect(first.outputTokensPerSecond, 30);
     final next = first.withUsage(usage(60, const Duration(milliseconds: 1500)));
     expect(next.outputTokens, 90);
     expect(next.outputTokensPerSecond, 40);
+  });
+
+  test('观测窗口不足一秒时按一秒计，不把速率放大到几万', () {
+    final burst = statistics.withUsage(
+      usage(1000, const Duration(milliseconds: 13)),
+    );
+    expect(burst.outputTokens, 1000);
+    expect(burst.outputTokensPerSecond, 1000);
+    final subsecond = statistics.withUsage(
+      usage(40, const Duration(milliseconds: 800)),
+    );
+    expect(subsecond.outputTokensPerSecond, 40);
   });
 
   test('输出 token 总数不变时保留上一次速度', () {
@@ -30,8 +43,8 @@ void main() {
     );
     final unchanged = first.withUsage(usage(0, const Duration(seconds: 10)));
     expect(unchanged.outputTokens, 30);
-    expect(unchanged.outputTokensPerSecond, 60);
-    expect(first.withUsage(usage(null, null)).outputTokensPerSecond, 60);
+    expect(unchanged.outputTokensPerSecond, 30);
+    expect(first.withUsage(usage(null, null)).outputTokensPerSecond, 30);
   });
 
   test('结束后及文件重载后保留响应速度，不用 run 总耗时重算', () {
@@ -41,7 +54,7 @@ void main() {
     final restored = RunStatistics.fromJson(finished.toJson());
     final later = start.add(const Duration(days: 1));
     expect(restored.elapsedAt(later), const Duration(minutes: 2));
-    expect(restored.outputTokensPerSecond, 60);
+    expect(restored.outputTokensPerSecond, 30);
     expect(restored.outputTokens, 30);
   });
 
