@@ -18,7 +18,7 @@ athena
 | 包 | 说明 | 版本 |
 |---|---|---|
 | [`athena_core`](packages/athena_core) | Agent 引擎、领域模型、LLM 适配、文件存储。纯 Dart，不含任何 UI 依赖 | 0.1.0 |
-| [`athena_gui`](packages/athena_gui) | Flutter GUI，桌面三平台（发布目标）+ Android / iOS（移动页面树） | 4.0.2+1030 |
+| [`athena_gui`](packages/athena_gui) | Flutter GUI，桌面三平台（发布目标）+ Android / iOS（移动页面树） | 4.0.8+1132 |
 | [`athena_tui`](packages/athena_tui) | 终端客户端，复用同一引擎 | 0.1.0 |
 
 ## 能力
@@ -134,7 +134,7 @@ models:
     contextWindow: 131072
 ```
 
-内置的种子数据只有角色「Athena」一项；provider 与模型完全由 models.dev 同步产生。
+内置的种子数据是角色「Athena」与「Daedalus」两项；provider 与模型完全由 models.dev 同步产生。
 
 ## 数据
 
