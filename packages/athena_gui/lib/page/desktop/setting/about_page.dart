@@ -99,22 +99,19 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
                 child: const Text('Copy'),
               ),
             ),
-            AthenaSettingsRow(
+            AthenaSettingsLinkRow(
               label: 'Source code',
               description: _repository.replaceFirst('https://', ''),
-              chevron: true,
               onTap: () => _open(_repository),
             ),
-            AthenaSettingsRow(
+            AthenaSettingsLinkRow(
               label: 'Report an issue',
               description: 'Bugs and feature requests go to GitHub issues.',
-              chevron: true,
               onTap: () => _open('$_repository/issues'),
             ),
-            AthenaSettingsRow(
+            AthenaSettingsLinkRow(
               label: 'License',
               description: 'MIT License',
-              chevron: true,
               onTap: () => _open('$_repository/blob/main/LICENSE'),
             ),
           ],

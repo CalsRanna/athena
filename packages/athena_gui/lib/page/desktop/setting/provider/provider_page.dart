@@ -162,9 +162,7 @@ class _DesktopSettingProviderPageState
             padding: const EdgeInsets.symmetric(vertical: AthenaSpace.md),
             child: Text(
               '$title · ${providers.length}',
-              style: AthenaTextStyle.section.copyWith(
-                color: colors.textSecondary,
-              ),
+              style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
             ),
           ),
         ),
@@ -191,12 +189,11 @@ class _DesktopSettingProviderPageState
     final dot = AthenaSettingsDot(
       color: provider.enabled ? colors.statusSuccess : colors.switchTrackOff,
     );
-    return AthenaSettingsRow(
+    return AthenaSettingsListRow(
       label: provider.name,
       badge: provider.isPreset ? null : 'Custom',
       description: parts.join(' · '),
       leading: dot,
-      chevron: true,
       dimmed: !provider.enabled,
       selected: _selection.selectedIds.contains(provider.id),
       onTap: () => _handleProviderTap(provider),

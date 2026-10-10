@@ -77,7 +77,7 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
     final textStyle = TextStyle(
       color: isSelected ? colors.textPrimary : colors.textWeak,
       fontSize: AthenaSettings.segmentFontSize,
-      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );
     final segment = AnimatedContainer(

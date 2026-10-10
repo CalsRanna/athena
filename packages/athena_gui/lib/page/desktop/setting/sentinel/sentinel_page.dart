@@ -126,12 +126,11 @@ class _DesktopSettingSentinelPageState
 
   Widget _buildSentinelRow(SentinelEntity sentinel) {
     final description = sentinel.description.trim();
-    return AthenaSettingsRow(
+    return AthenaSettingsListRow(
       label: sentinel.name,
       badge: sentinel.isPreset ? 'Built-in' : null,
       description: description.isEmpty ? 'No description' : description,
       descriptionMaxLines: 1,
-      chevron: true,
       selected: _selection.selectedIds.contains(sentinel.id),
       onTap: () => _handleSentinelTap(sentinel),
       onSecondaryTap: (details) => _openContextMenu(details, sentinel),

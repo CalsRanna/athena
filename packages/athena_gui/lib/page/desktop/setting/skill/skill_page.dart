@@ -116,12 +116,11 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
 
   Widget _buildSkillRow(Skill skill) {
     final description = skill.description.trim();
-    return AthenaSettingsRow(
+    return AthenaSettingsListRow(
       label: skill.name,
       badge: skill.isBuiltin ? 'Built-in' : null,
       description: description.isEmpty ? 'No description' : description,
       descriptionMaxLines: 1,
-      chevron: true,
       selected: _selection.selectedIds.contains(skill.name),
       onTap: () => _handleSkillTap(skill),
       onSecondaryTap: (details) => _openContextMenu(details, skill),

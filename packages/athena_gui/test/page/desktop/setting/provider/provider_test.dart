@@ -44,8 +44,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Iterable<AthenaSettingsRow> providerRows(WidgetTester tester) => tester
-      .widgetList<AthenaSettingsRow>(find.byType(AthenaSettingsRow))
+  Iterable<AthenaSettingsListRow> providerRows(WidgetTester tester) => tester
+      .widgetList<AthenaSettingsListRow>(find.byType(AthenaSettingsListRow))
       .where((row) => row.label.startsWith('Provider '));
 
   for (final mode in AthenaColorMode.values) {

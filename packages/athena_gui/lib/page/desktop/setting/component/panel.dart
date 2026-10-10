@@ -428,7 +428,7 @@ class AthenaSettingsEmptyState extends StatelessWidget {
     final titleStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
-      fontWeight: AthenaSettings.rowLabelWeight,
+      fontWeight: FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );
     final hintStyle = TextStyle(

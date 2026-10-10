@@ -1,5 +1,4 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -21,11 +20,8 @@ class DesktopSettingFormField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final labelStyle = TextStyle(
+    final labelStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: AthenaSettings.rowFontSize,
-      fontWeight: AthenaSettings.rowLabelWeight,
-      height: AthenaFontSize.bodyHeight,
     );
     final hintStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
     final errorStyle = AthenaTextStyle.caption.copyWith(

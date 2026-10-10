@@ -105,13 +105,12 @@ class _DesktopSettingExperiencePageState
       _formatDate(experience.createdAt),
       if (experience.tags.isNotEmpty) experience.tags.take(3).join(', '),
     ];
-    return AthenaSettingsRow(
+    return AthenaSettingsListRow(
       label: experience.lesson,
       labelMaxLines: 2,
       description: meta.join(' · '),
       descriptionMaxLines: 1,
       dimmed: archived,
-      chevron: true,
       selected: _selection.selectedIds.contains(_keyOf(experience)),
       onTap: () => _handleTap(experience),
       onSecondaryTap: (details) => _openContextMenu(details, experience),

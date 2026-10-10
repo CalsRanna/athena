@@ -9,7 +9,6 @@
 library;
 
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
 
 /// 设置面板的几何与排版（不随主题变化）。
 ///
@@ -111,9 +110,6 @@ abstract final class AthenaSettings {
 
   /// 行标签与说明的字号。实测大写高均为 10.0 ≈ 13.9——**两者同号**，即 [AthenaFontSize.row]。
   static const rowFontSize = AthenaFontSize.row;
-
-  /// 行标签字重。标签是半粗，说明是常规。
-  static const rowLabelWeight = FontWeight.w600;
 
   /// 行说明与常规 UI 共用 14 / 22。
   static const rowDescriptionHeight = AthenaFontSize.bodyHeight;
