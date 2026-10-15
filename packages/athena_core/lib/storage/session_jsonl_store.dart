@@ -10,6 +10,7 @@ import 'package:athena_core/entity/conversation_summary.dart';
 import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
+import 'package:athena_core/util/atomic_file_write.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 单会话文件存储:`sessions/{chatId}.jsonl`。
@@ -65,8 +66,17 @@ class SessionJsonlStore {
   // ─────────────────────────── 会话元数据(首行) ───────────────────────────
 
   /// 读取会话元数据;文件缺失/损坏时返回 null。
+  ///
+  /// **快速路径只读首行。** 元数据行由 [writeChatRow] 的 `insert(0)` 保证在
+  /// 文件头，而整文件解码在大会话上很贵（48MB 实测约 120ms）；`getChatById`
+  /// 在每次 usage 事件后都会被调用一次（见 `agent_run_coordinator` 的
+  /// `AgentUsageEvent` 分支），这个读放大直接叠在工具循环的关键路径上。
+  /// 首行不是元数据行（历史布局）或首行超长/损坏时回退整文件扫描，
+  /// 「跳过损坏行」的既有语义不变。
   Future<Map<String, dynamic>?> readChatRow() {
     return _serialized(() async {
+      final first = await _readFirstRow();
+      if (first != null && first['type'] == chatType) return first;
       final rows = await _readAllRows();
       for (final row in rows) {
         if (row['type'] == chatType) return row;
@@ -74,6 +84,27 @@ class SessionJsonlStore {
       return null;
     });
   }
+
+  /// 只读文件第一行并解析;空文件、首行超长（无换行）或首行损坏时返回 null。
+  Future<Map<String, dynamic>?> _readFirstRow() async {
+    if (!await file.exists()) return null;
+    final raf = await file.open();
+    try {
+      final length = await raf.length();
+      if (length == 0) return null;
+      final probe = await raf.read(math.min(_chatRowProbeBytes, length));
+      final newline = probe.indexOf(0x0A);
+      // 没读到换行 = 首行超出探测窗口（或读失败）：不在这里猜，交给整文件路径
+      if (newline < 0) return null;
+      return _decodeLineBytes(Uint8List.sublistView(probe, 0, newline));
+    } finally {
+      await raf.close();
+    }
+  }
+
+  /// 首行探测窗口。元数据行是几十个键的扁平 JSON，1KB 上下；64KB 给足了
+  /// 余量，又远小于任何需要整文件扫描的阈值。
+  static const int _chatRowProbeBytes = 64 * 1024;
 
   /// 替换首行的会话元数据;不存在则插入到文件头。
   Future<void> writeChatRow(
@@ -101,19 +132,39 @@ class SessionJsonlStore {
   /// 文件无 chat 行时 [transform] 不执行,返回 null;成功返回更新后的行。
   /// 与独立调用的 readChatRow + writeChatRow 不同,不会被并发 updateChat
   /// 的整文件重写夹在中间丢失修改。
+  ///
+  /// **只重写元数据那一行**，不重编码其余消息行——理由与代价同
+  /// [replaceMessage]：这里每个工具迭代都会被 `recordUsage` 调一次。
+  /// 与 [replaceMessage] 的差异是元数据行**不一定是文件首行**：早期版本与
+  /// [writeChatRow] 的插入路径都可能把它放在别处，所以按行扫描定位。
   Future<Map<String, dynamic>?> updateChatRow(
     Map<String, dynamic> Function(Map<String, dynamic> current) transform,
   ) {
     return _mutate(() async {
-      final rows = await _readAllRows();
-      final index = rows.indexWhere((r) => r['type'] == chatType);
-      if (index < 0) return null;
-      final updated = transform(rows[index]);
-      updated['id'] = rows[index]['id'];
-      updated['type'] = chatType;
-      rows[index] = updated;
-      await _writeAll(rows);
-      return updated;
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      var lineStart = 0;
+      while (lineStart < bytes.length) {
+        final range = _lineRangeContaining(bytes, lineStart);
+        final decoded = range.end > range.start
+            ? _decodeLineBytes(
+                Uint8List.sublistView(bytes, range.start, range.end),
+              )
+            : null;
+        if (decoded != null && decoded['type'] == chatType) {
+          final updated = transform(decoded);
+          updated['id'] = decoded['id'];
+          updated['type'] = chatType;
+          await replaceFileContentBytes(
+            file,
+            _spliceLine(bytes, range, updated),
+          );
+          return updated;
+        }
+        if (range.after >= bytes.length) break;
+        lineStart = range.after;
+      }
+      return null;
     });
   }
 
@@ -246,22 +297,99 @@ class SessionJsonlStore {
   }
 
   /// 按 id 整行替换已有消息，保留原 seq；新增必须经 appendMessage。
+  ///
+  /// **只重编码被改的那一行，其余行按原始字节原样拼回。** 早期实现是
+  /// 「全量 jsonDecode → 改一行 → 全量 jsonEncode → 整文件写」，长会话里
+  /// 一次要付出整个文件的解析+编码代价，而这一步跑在调用方（GUI 的 UI
+  /// isolate）上：实测 48MB 会话同步阻塞约 1.1s、3.9MB 约 116ms，而工具循环
+  /// 每轮迭代都会走到这里。保留字节后同样的文件降到约 143ms / 23ms。
+  ///
+  /// 顺带的行为差异：全量重写会把读不出来的损坏行**丢掉**（`_readAllRows`
+  /// 跳过它们），字节保留则原样留下。丢数据不是这里该做的决定，丢弃也从未
+  /// 是刻意的契约。
   Future<void> replaceMessage(String id, Map<String, dynamic> row) {
     return _mutate(() async {
-      final rows = await _readAllRows();
-      row['id'] = id;
-      row['type'] = messageType;
-      final index = rows.indexWhere(
-        (r) => r['type'] == messageType && r['id'] == id,
-      );
-      if (index >= 0) {
-        row['seq'] = rows[index]['seq'];
-        rows[index] = row;
-      } else {
+      if (!await file.exists()) {
         throw StateError('Message $id does not exist');
       }
-      await _writeAll(rows);
+      final bytes = await file.readAsBytes();
+      // 定位：先按字节找 `"id":"<id>"`。id 是 UUID，jsonEncode 不转义它，
+      // 所以这个标记就是它在行内的原样字节。命中位置还要解码该行确认——
+      // 同一个 id 可能只是恰好出现在别行的 content 里。
+      final marker = utf8.encode('"id":"$id"');
+      var searchFrom = 0;
+      while (true) {
+        final hit = _indexOfBytes(bytes, marker, searchFrom);
+        if (hit < 0) throw StateError('Message $id does not exist');
+        final range = _lineRangeContaining(bytes, hit);
+        final decoded = _decodeLineBytes(
+          Uint8List.sublistView(bytes, range.start, range.end),
+        );
+        if (decoded != null &&
+            decoded['type'] == messageType &&
+            decoded['id'] == id) {
+          row['id'] = id;
+          row['type'] = messageType;
+          row['seq'] = decoded['seq'];
+          await replaceFileContentBytes(file, _spliceLine(bytes, range, row));
+          return;
+        }
+        searchFrom = hit + 1;
+      }
     });
+  }
+
+  /// 用 [row] 替换 [range] 对应的那一行，其余字节原样拼回。
+  ///
+  /// `range.after` 已跳过该行原有的换行（若有）；末行无换行时它等于行尾，
+  /// 此时补上的 `\n` 正好把那行补成完整行——见 [replaceMessage] 的说明。
+  static List<int> _spliceLine(
+    Uint8List bytes,
+    ({int start, int end, int after}) range,
+    Map<String, dynamic> row,
+  ) {
+    return (BytesBuilder(copy: false)
+          ..add(Uint8List.sublistView(bytes, 0, range.start))
+          ..add(utf8.encode(jsonEncode(row)))
+          ..addByte(0x0A)
+          ..add(Uint8List.sublistView(bytes, range.after, bytes.length)))
+        .takeBytes();
+  }
+
+  /// [offset] 所在行：`start` 与 `end` 之间是行内容（不含换行），
+  /// `after` 是该行换行之后的位置（末行无换行时等于 `end`）。
+  static ({int start, int end, int after}) _lineRangeContaining(
+    List<int> bytes,
+    int offset,
+  ) {
+    var start = offset;
+    while (start > 0 && bytes[start - 1] != 0x0A) {
+      start--;
+    }
+    var end = offset;
+    while (end < bytes.length && bytes[end] != 0x0A) {
+      end++;
+    }
+    return (start: start, end: end, after: end < bytes.length ? end + 1 : end);
+  }
+
+  /// 字节级子串查找（[from] 起）。逐字节比较即可：命中标记很短，
+  /// 且不命中时只比对首字节就跳过。
+  static int _indexOfBytes(List<int> haystack, List<int> needle, int from) {
+    if (needle.isEmpty) return from <= haystack.length ? from : -1;
+    final last = haystack.length - needle.length;
+    for (var i = from; i <= last; i++) {
+      if (haystack[i] != needle[0]) continue;
+      var matched = true;
+      for (var j = 1; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) {
+          matched = false;
+          break;
+        }
+      }
+      if (matched) return i;
+    }
+    return -1;
   }
 
   /// 对命中的消息行应用 [transform],返回命中数。

@@ -746,6 +746,72 @@ void main() {
     expect(llm.requests, isEmpty);
     expect(internal, isEmpty);
   }, skip: isWindows);
+
+  // usage 计数落盘：run 期间只发事件、收尾落盘一次，避免每个工具迭代都
+  // 整文件重写会话 JSONL（48MB 实测 180ms+，且叠在 UI isolate 上）。
+  group('usage 计数快照的落盘时机', () {
+    test('多轮迭代期间事件照发，但只在收尾落盘一次', () async {
+      // 三轮：工具调用 → 工具结果 → 最终回答，每轮都带 usage
+      await setUpHarness(
+        script: [
+          [
+            _toolCall(
+              id: 'call_1',
+              name: 'bash',
+              arguments: {'command': 'echo hi', 'call_description': '跑一条命令'},
+            ),
+            _usage(1000, cachedTokens: 10),
+            _finish('tool_calls'),
+          ],
+          [_text('完成。'), _usage(2000, cachedTokens: 20), _finish('stop')],
+        ],
+        approvalMode: ApprovalMode.bypass,
+      );
+
+      // run 中途（第二轮的模型请求发出前）读盘：此时第一轮的 usage 事件
+      // 已经发出，若每个迭代都落盘，磁盘上应已是 1000。改为收尾统一落盘
+      // 之后，这里必须还是原值——这是区分新旧行为的关键断言。
+      int? midRunTokens;
+      llm.beforeResponse = (index) async {
+        if (index != 1) return;
+        midRunTokens = (await storage.sessionRepository.getChatById(
+          chat.id!,
+        ))?.contextTokens;
+      };
+
+      final events = <RunEvent>[];
+      final targetChat = chat;
+      final sub = coordinator
+          .send(
+            message: MessageEntity(
+              chatId: targetChat.id!,
+              role: 'user',
+              content: '跑',
+            ),
+            chat: targetChat,
+          )
+          .listen(events.add);
+      await sub.asFuture<void>().catchError((_) {});
+
+      expect(midRunTokens, isNot(1000), reason: 'run 进行中不该已经落盘第一轮的计数');
+
+      // 事件不节流：每轮 usage 都要到 UI（它负责刷新 token 计数）
+      final usageEvents = events.whereType<RunUsageChanged>().toList();
+      expect(usageEvents, isNotEmpty, reason: 'UI 的计数依赖这些事件');
+      expect(
+        usageEvents.last.chat.contextTokens,
+        2000,
+        reason: '事件要带本次最新计数，不能被磁盘上的旧值盖回去',
+      );
+
+      // 落盘只在收尾发生一次，且是最后一轮的计数
+      final stored = await storage.sessionRepository.getChatById(
+        targetChat.id!,
+      );
+      expect(stored!.contextTokens, 2000);
+      expect(stored.cachedTokens, 20);
+    });
+  });
 }
 
 // ─── 脚本化的假 LLM ────────────────────────────────────────
@@ -799,6 +865,22 @@ Map<String, dynamic> _finish(String reason) => {
   'choices': [
     {'index': 0, 'delta': <String, dynamic>{}, 'finish_reason': reason},
   ],
+};
+
+/// 带 usage 的尾包（`stream_options.include_usage` 的形状）。
+Map<String, dynamic> _usage(int promptTokens, {int? cachedTokens}) => {
+  'id': 'c',
+  'object': 'chat.completion.chunk',
+  'created': 0,
+  'model': 'fake-model',
+  'choices': <Map<String, dynamic>>[],
+  'usage': {
+    'prompt_tokens': promptTokens,
+    'completion_tokens': 1,
+    'total_tokens': promptTokens + 1,
+    if (cachedTokens != null)
+      'prompt_tokens_details': {'cached_tokens': cachedTokens},
+  },
 };
 
 /// 按请求顺序返回预置的 SSE 分片，并记录每次请求体。

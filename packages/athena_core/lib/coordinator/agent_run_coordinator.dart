@@ -915,6 +915,38 @@ class AgentRunCoordinator {
     var sawOutcome = false;
     var turns = 0;
 
+    // ─── usage 计数快照：run 期间只发事件，收尾统一落盘一次 ──────────
+    //
+    // 落盘的唯一目的是「重启后还能看到 token 计数」；UI 的计数读的是
+    // `RunUsageChanged` 事件（GUI 的 `noteUsage` + 就地更新
+    // `chat.contextTokens`），与磁盘无关。而一次落盘 = 整文件重写会话
+    // JSONL：48MB 会话实测 180ms+，且每个工具迭代都会来一次 usage 事件，
+    // 这些时间全部叠在调用方（GUI 的 UI isolate）上。
+    //
+    // 定时器防抖在这里无效：迭代之间隔了数秒（模型推理 + 工具执行），
+    // 一秒的定时器在下次事件到来前必然先触发，于是仍是每轮写一次。真正
+    // 有效的做法是**整个 run 只在收尾写一次**（见 finally）。
+    //
+    // 代价说清楚：run 期间进程被强杀会丢掉这一次 run 的计数快照（重启后
+    // 显示上一次的值，下一轮 run 会再更新）。只影响计数显示，不影响任何
+    // 对话内容——消息各自在 append / finalize 时落盘。
+    ({int contextTokens, int cachedTokens})? pendingUsage;
+    Future<void> flushUsage() async {
+      final value = pendingUsage;
+      if (value == null) return;
+      pendingUsage = null;
+      try {
+        await _chatRepo.recordUsage(
+          chat.id!,
+          value.contextTokens,
+          value.cachedTokens,
+        );
+      } catch (e) {
+        // 计数快照是附加信息，写失败不该终止 run
+        LoggerUtil.w('Failed to persist usage snapshot: $e');
+      }
+    }
+
     Stream<RunEvent> beginNewIteration() async* {
       // 迭代结束:清除 reasoning 标记(流式期间一直为 true),避免该卡片在
       // UI 上永久显示 Thinking;落库后通知 UI 刷新为已结束的思考状态。
@@ -1039,14 +1071,22 @@ class AgentRunCoordinator {
           // 不能再加 reasoningTokens，也不能混入 promptTokens。
           statistics = statistics.withUsage(event.usage);
           current = current.copyWith(runStatistics: statistics);
-          await _chatRepo.recordUsage(
-            chat.id!,
-            event.usage.promptTokens,
-            event.usage.cachedTokens ?? 0,
+          // 只记最新快照，落盘推迟到 run 收尾（见本方法开头的说明）。
+          pendingUsage = (
+            contextTokens: event.usage.promptTokens,
+            cachedTokens: event.usage.cachedTokens ?? 0,
           );
           final updated = await _chatRepo.getChatById(chat.id!);
           if (updated != null) {
-            yield RunUsageChanged(event.usage, updated);
+            // 磁盘上的计数含之前 run 的值，可能比本次新（本 run 还没写）；
+            // 事件带上本次最新值，UI 才不会被旧值覆盖回去。
+            yield RunUsageChanged(
+              event.usage,
+              updated.copyWith(
+                contextTokens: pendingUsage!.contextTokens,
+                cachedTokens: pendingUsage!.cachedTokens,
+              ),
+            );
           }
         } else if (event is AgentRunOutcomeEvent) {
           sawOutcome = true;
@@ -1148,6 +1188,10 @@ class AgentRunCoordinator {
         );
       }
       yield RunError(e.toString());
+    } finally {
+      // run 结束（正常 / 取消 / 异常）统一把这次的计数快照落盘一次——
+      // 这是本 run 唯一一次 usage 写入。
+      await flushUsage();
     }
   }
 

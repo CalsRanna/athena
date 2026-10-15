@@ -24,12 +24,32 @@ final _random = Random();
 /// 而 `Process.run` 在 widget 测试的 fake-async zone 里永不完成——每次保存都无
 /// 条件 chmod，会让所有「写一个已存在的文件」的 UI 路径在测试里挂死。绝大多数
 /// 情况下临时文件已经是 0644、目标也是 0644，这一次 stat 就把进程省掉了。
-Future<void> replaceFileContent(File target, String content) async {
+Future<void> replaceFileContent(File target, String content) =>
+    _replaceContentAtomically(
+      target,
+      (temporary) => temporary.writeAsString(content, flush: true),
+    );
+
+/// [replaceFileContent] 的字节版：内容已经是编码好的字节。
+///
+/// 只改大文件里一行时，String 版要多付一次**全量 UTF-8 编码**（48MB 会话实测
+/// 约 300ms，见 `session_jsonl_store.replaceMessage`）；这里直接写字节省掉它。
+/// 两种入口的原子性与权限位处理完全相同。
+Future<void> replaceFileContentBytes(File target, List<int> content) =>
+    _replaceContentAtomically(
+      target,
+      (temporary) => temporary.writeAsBytes(content, flush: true),
+    );
+
+Future<void> _replaceContentAtomically(
+  File target,
+  Future<void> Function(File temporary) write,
+) async {
   await target.parent.create(recursive: true);
   final existingMode = _existingMode(target);
   final temporary = File('${target.path}.$pid.${_random.nextInt(1 << 32)}.tmp');
   try {
-    await temporary.writeAsString(content, flush: true);
+    await write(temporary);
     if (existingMode != null && _existingMode(temporary) != existingMode) {
       await _applyMode(temporary.path, existingMode);
     }
