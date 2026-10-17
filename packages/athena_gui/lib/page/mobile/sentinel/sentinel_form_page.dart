@@ -60,7 +60,12 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       const SizedBox(height: 32),
       AthenaFormField(
         label: 'Name',
-        control: AthenaInput(controller: nameController, enabled: !isPreset),
+        control: AthenaInput(
+          controller: nameController,
+          enabled: !isPreset,
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+        ),
         trailing: isPreset ? null : _buildGenerateIcon(generateSentinelName),
       ),
       const SizedBox(height: 16),
@@ -83,6 +88,8 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
           controller: tagsController,
           enabled: !isPreset,
           placeholder: 'writing, review',
+          autocorrect: false,
+          enableSuggestions: false,
         ),
         description: 'Comma-separated.',
       ),

@@ -22,6 +22,14 @@ class AthenaInput extends StatefulWidget {
   final String? placeholder;
   final double? radius;
 
+  /// 移动端键盘类型；桌面端忽略。数字、URL、邮箱类字段应显式传，
+  /// 否则移动端会弹出普通字母键盘。
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final bool autocorrect;
+  final bool enableSuggestions;
+
   /// 额外的尾部控件。[obscureText] 为真时排在眼睛键左边。
   final Widget? suffix;
   const AthenaInput({
@@ -36,6 +44,11 @@ class AthenaInput extends StatefulWidget {
     this.onBlur,
     this.placeholder,
     this.radius,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
     this.suffix,
   });
 
@@ -104,6 +117,11 @@ class _AthenaInputState extends State<AthenaInput> {
       maxLines: widget.maxLines,
       minLines: widget.minLines,
       obscureText: widget.obscureText && !revealed,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      textCapitalization: widget.textCapitalization,
+      autocorrect: widget.autocorrect,
+      enableSuggestions: widget.enableSuggestions,
       onSubmitted: widget.onSubmitted,
       onTapOutside: handleTapOutside,
       style: inputTextStyle,

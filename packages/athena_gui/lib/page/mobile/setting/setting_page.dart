@@ -1,3 +1,5 @@
+import 'package:athena_gui/page/mobile/setting/component/section.dart';
+import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
@@ -7,7 +9,6 @@ import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
-import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -20,72 +21,118 @@ class MobileSettingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = [
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.workflow, size: AthenaIcon.largeSize),
-        onTap: () => const MobileAgentRoute().push<void>(context),
-        title: 'Agent',
-        trailing: '',
+    final sections = [
+      MobileSettingsSection(
+        title: 'Assistant',
+        description: 'How the agent runs and which model it uses.',
+        children: [
+          MobileSettingTile(
+            leading: const Icon(
+              LucideIcons.workflow,
+              size: AthenaIcon.largeSize,
+            ),
+            onTap: () => const MobileAgentRoute().push<void>(context),
+            title: 'Agent',
+            subtitle: 'Retries, output limit and tools',
+            trailing: '',
+          ),
+          MobileSettingTile(
+            leading: const Icon(
+              AthenaIcons.connection,
+              size: AthenaIcon.largeSize,
+            ),
+            onTap: () => const MobileProviderListRoute().push<void>(context),
+            title: 'Providers',
+            subtitle: 'API keys and model catalog',
+            trailing: '',
+          ),
+          MobileSettingTile(
+            leading: const Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
+            onTap: () =>
+                const MobileDefaultModelFormRoute().push<void>(context),
+            title: 'Default models',
+            subtitle: 'Model used for new sessions and naming',
+            trailing: '',
+          ),
+        ],
       ),
-      MobileSettingTile(
-        leading: const Icon(AthenaIcons.connection, size: AthenaIcon.largeSize),
-        onTap: () => const MobileProviderListRoute().push<void>(context),
-        title: 'Provider',
-        trailing: '',
+      MobileSettingsSection(
+        title: 'Content',
+        description: 'Roles, skills and lessons saved from sessions.',
+        children: [
+          MobileSettingTile(
+            leading: const Icon(
+              LucideIcons.userRound,
+              size: AthenaIcon.largeSize,
+            ),
+            onTap: () => const MobileSentinelListRoute().push<void>(context),
+            title: 'Sentinels',
+            subtitle: 'Reusable roles and system prompts',
+            trailing: '',
+          ),
+          MobileSettingTile(
+            leading: const Icon(
+              LucideIcons.bookOpen,
+              size: AthenaIcon.largeSize,
+            ),
+            onTap: () => const MobileSkillListRoute().push<void>(context),
+            title: 'Skills',
+            subtitle: 'Instructions the agent can load on demand',
+            trailing: '',
+          ),
+          MobileSettingTile(
+            leading: const Icon(LucideIcons.brain, size: AthenaIcon.largeSize),
+            onTap: () => const MobileExperienceListRoute().push<void>(context),
+            title: 'Experiences',
+            subtitle: 'Lessons the agent saved after a session',
+            trailing: '',
+          ),
+        ],
       ),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.userRound, size: AthenaIcon.largeSize),
-        onTap: () => const MobileSentinelListRoute().push<void>(context),
-        title: 'Sentinel',
-        trailing: '',
-      ),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.bookOpen, size: AthenaIcon.largeSize),
-        onTap: () => const MobileSkillListRoute().push<void>(context),
-        title: 'Skills',
-        trailing: '',
-      ),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.brain, size: AthenaIcon.largeSize),
-        onTap: () => const MobileExperienceListRoute().push<void>(context),
-        title: 'Experiences',
-        trailing: '',
-      ),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
-        onTap: () => const MobileDefaultModelFormRoute().push<void>(context),
-        title: 'Default Model',
-        trailing: '',
-      ),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.database, size: AthenaIcon.largeSize),
-        onTap: () => const MobileDataRoute().push<void>(context),
-        title: 'Data',
-        trailing: '',
-      ),
-      Watch((context) {
-        final mode = GetIt.instance<SettingViewModel>().themeMode.value;
-        return MobileSettingTile(
-          leading: const Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
-          onTap: () => _showAppearanceSheet(context),
-          title: 'Appearance',
-          trailing: _themeModeLabel(mode),
-        );
-      }),
-      MobileSettingTile(
-        leading: const Icon(LucideIcons.info, size: AthenaIcon.largeSize),
-        onTap: () => const MobileAboutRoute().push<void>(context),
-        title: 'About Athena',
-        trailing: '',
+      MobileSettingsSection(
+        title: 'App',
+        description: 'Appearance, local data and about this app.',
+        children: [
+          Watch((context) {
+            final mode = GetIt.instance<SettingViewModel>().themeMode.value;
+            return MobileSettingTile(
+              leading: const Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
+              onTap: () => _showAppearanceSheet(context),
+              title: 'Appearance',
+              subtitle: 'Theme and message text size',
+              trailing: _themeModeLabel(mode),
+            );
+          }),
+          MobileSettingTile(
+            leading: const Icon(
+              LucideIcons.database,
+              size: AthenaIcon.largeSize,
+            ),
+            onTap: () => const MobileDataRoute().push<void>(context),
+            title: 'Data',
+            subtitle: 'Reset local data',
+            trailing: '',
+          ),
+          MobileSettingTile(
+            leading: const Icon(LucideIcons.info, size: AthenaIcon.largeSize),
+            onTap: () => const MobileAboutRoute().push<void>(context),
+            title: 'About Athena',
+            subtitle: 'Version, source code and licenses',
+            trailing: '',
+          ),
+        ],
       ),
     ];
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...sections,
+        const SafeArea(top: false, child: SizedBox(height: AthenaSpace.xxl)),
+      ],
     );
     return AthenaScaffold(
-      appBar: const AthenaAppBar(title: Text('Setting')),
-      body: SingleChildScrollView(child: column),
+      appBar: const AthenaAppBar(title: Text('Settings')),
+      body: SingleChildScrollView(child: content),
     );
   }
 

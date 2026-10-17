@@ -3,6 +3,7 @@ import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
+import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/switch.dart';
@@ -63,11 +64,16 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const AthenaFormTileLabel.large(title: 'Limits'),
+        const SizedBox(height: 16),
         AthenaFormField(
           label: 'Max Retries',
           control: AthenaInput(
             controller: retriesController,
             placeholder: '10',
+            keyboardType: TextInputType.number,
+            autocorrect: false,
+            enableSuggestions: false,
           ),
           description:
               'Maximum network retry attempts for LLM API calls (default: 10)',
@@ -78,6 +84,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           control: AthenaInput(
             controller: outputLimitController,
             placeholder: '128000',
+            keyboardType: TextInputType.number,
+            autocorrect: false,
+            enableSuggestions: false,
           ),
           description:
               'Output token limit for models without their own limit set. '
@@ -102,6 +111,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const AthenaFormTileLabel.large(title: 'Tools'),
+        const SizedBox(height: 16),
         AthenaFormField(
           label: 'Background task reports',
           control: Watch(
@@ -125,6 +136,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             controller: braveApiKeyController,
             obscureText: true,
             placeholder: 'BSA...',
+            autocorrect: false,
+            enableSuggestions: false,
           ),
           description:
               'Required for web_search. Get a free key at brave.com/search/api/',

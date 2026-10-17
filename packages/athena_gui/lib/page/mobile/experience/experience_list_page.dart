@@ -1,6 +1,8 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -16,7 +18,7 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 经验管理列表：All / Shared / Private 过滤 + 归档开关；
+/// 经验管理列表：All / Shared / Private 过滤；活跃与归档分区展示。
 /// 长按归档/恢复或删除，点击进入详情。
 @RoutePage()
 class MobileExperienceListPage extends StatefulWidget {
@@ -82,7 +84,13 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   }
 
   Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
-    if (experiences.isEmpty) {
+    final active = experiences
+        .where((e) => e.status != ExperienceEntity.statusArchived)
+        .toList();
+    final archived = experiences
+        .where((e) => e.status == ExperienceEntity.statusArchived)
+        .toList();
+    if (active.isEmpty && archived.isEmpty) {
       return MobileEmptyState(
         icon: LucideIcons.brain,
         title: scopeFilter == null
@@ -93,31 +101,65 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
             'They appear here once there are some.',
       );
     }
-    return MasonryGridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      itemCount: experiences.length,
-      itemBuilder: (context, index) {
-        final experience = experiences[index];
-        final isArchived = experience.status == ExperienceEntity.statusArchived;
-        final owner = viewModel.ownerLabel(experience);
-        return MobileGridTile(
-          title: experience.lesson,
-          subtitle: '$owner · ${_formatDate(experience.createdAt)}',
-          titleMaxLines: 3,
-          subtitleMaxLines: 2,
-          trailing: isArchived ? const Icon(LucideIcons.archive) : null,
-          onTap: () => _navigateDetailPage(context, experience),
-          onLongPress: () => openBottomSheet(context, experience),
-        );
-      },
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        24 + MediaQuery.paddingOf(context).bottom,
+    return RefreshIndicator(
+      onRefresh: viewModel.load,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (active.isNotEmpty) ...[
+            _sectionTitle(context, 'Experiences'),
+            _grid(context, active),
+          ],
+          if (archived.isNotEmpty) ...[
+            _sectionTitle(context, 'Archived'),
+            _grid(context, archived),
+          ],
+          SliverToBoxAdapter(
+            child: SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String title) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Text(
+          title,
+          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _grid(BuildContext context, List<ExperienceEntity> experiences) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverMasonryGrid.count(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childCount: experiences.length,
+        itemBuilder: (context, index) =>
+            _buildTile(context, experiences[index]),
+      ),
+    );
+  }
+
+  Widget _buildTile(BuildContext context, ExperienceEntity experience) {
+    final isArchived = experience.status == ExperienceEntity.statusArchived;
+    final owner = viewModel.ownerLabel(experience);
+    return MobileGridTile(
+      title: experience.lesson,
+      subtitle: '$owner · ${_formatDate(experience.createdAt)}',
+      titleMaxLines: 3,
+      subtitleMaxLines: 2,
+      trailing: isArchived ? const Icon(LucideIcons.archive) : null,
+      onTap: () => _navigateDetailPage(context, experience),
+      onLongPress: () => openBottomSheet(context, experience),
     );
   }
 

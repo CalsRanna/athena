@@ -9,6 +9,9 @@ class MobileSettingTile extends StatelessWidget {
   final String? subtitle;
   final String title;
   final String? trailing;
+
+  /// 危险操作（重置、删除）：标签与尾部值使用 `dangerText`。
+  final bool danger;
   const MobileSettingTile({
     super.key,
     this.leading,
@@ -16,6 +19,7 @@ class MobileSettingTile extends StatelessWidget {
     this.subtitle,
     required this.title,
     this.trailing,
+    this.danger = false,
   });
 
   @override
@@ -23,15 +27,26 @@ class MobileSettingTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 与桌面设置行同一口径：标签与说明同为 14 / w400，层级只靠颜色区分。
     final titleTextStyle = AthenaTextStyle.row.copyWith(
-      color: colors.textPrimary,
+      color: danger ? colors.dangerText : colors.textPrimary,
     );
     final subtitleTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textSecondary,
     );
     final titleChildren = [
-      Text(title, style: titleTextStyle),
+      Text(
+        title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: titleTextStyle,
+      ),
       if (subtitle != null) const SizedBox(height: AthenaSpace.xs),
-      if (subtitle != null) Text(subtitle!, style: subtitleTextStyle),
+      if (subtitle != null)
+        Text(
+          subtitle!,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: subtitleTextStyle,
+        ),
     ];
     final titleColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

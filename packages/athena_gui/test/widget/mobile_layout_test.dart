@@ -7,6 +7,8 @@ import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/card_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
+import 'package:athena_gui/page/mobile/setting/component/section.dart';
+import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
@@ -50,6 +52,34 @@ void main() {
           title: 'A quite long bottom sheet title that should ellipsize',
           trailing: const Text('A long trailing value'),
           onTap: () {},
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings section fits grouped rows at 2x', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        MobileSettingsSection(
+          title: 'Assistant',
+          description: 'How the agent runs and which model it uses.',
+          children: [
+            MobileSettingTile(
+              leading: const Icon(Icons.abc),
+              title: 'Default models',
+              subtitle: 'Model used for new sessions and naming',
+              trailing: '',
+              onTap: () {},
+            ),
+            MobileSettingTile(
+              leading: const Icon(Icons.abc),
+              title: 'Providers',
+              subtitle: 'API keys and model catalog',
+              trailing: 'System',
+              onTap: () {},
+            ),
+          ],
         ),
       ),
     );

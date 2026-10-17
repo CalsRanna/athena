@@ -33,6 +33,9 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
       controller: controller,
       autoFocus: true,
       placeholder: 'Name',
+      textCapitalization: TextCapitalization.words,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => handleTap(),
     );
     return AthenaScaffold(
       appBar: AthenaAppBar(action: button, title: const Text('New Provider')),

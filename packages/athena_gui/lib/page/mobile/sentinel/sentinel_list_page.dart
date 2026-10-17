@@ -99,29 +99,43 @@ class MobileSentinelListPage extends StatelessWidget {
             'Add one with the button below.',
       );
     }
-    return MasonryGridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      itemCount: sentinels.length,
-      itemBuilder: (context, index) {
-        final sentinel = sentinels[index];
-        return MobileGridTile(
-          title: sentinel.name,
-          subtitle: sentinel.description,
-          trailing: sentinel.isPreset
-              ? const Icon(LucideIcons.lockKeyhole)
-              : null,
-          onTap: () => editSentinel(context, sentinel),
-          onLongPress: () => openBottomSheet(context, sentinel),
-        );
-      },
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        96 + MediaQuery.paddingOf(context).bottom,
-      ),
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text(
+              'Sentinels',
+              style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverMasonryGrid.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childCount: sentinels.length,
+            itemBuilder: (context, index) {
+              final sentinel = sentinels[index];
+              return MobileGridTile(
+                title: sentinel.name,
+                subtitle: sentinel.description,
+                trailing: sentinel.isPreset
+                    ? const Icon(LucideIcons.lockKeyhole)
+                    : null,
+                onTap: () => editSentinel(context, sentinel),
+                onLongPress: () => openBottomSheet(context, sentinel),
+              );
+            },
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(height: 96 + MediaQuery.paddingOf(context).bottom),
+        ),
+      ],
     );
   }
 

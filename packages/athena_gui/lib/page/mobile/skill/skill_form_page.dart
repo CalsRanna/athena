@@ -54,6 +54,9 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
           control: AthenaInput(
             controller: nameController,
             placeholder: 'kebab-case-name',
+            autocorrect: false,
+            enableSuggestions: false,
+            textInputAction: TextInputAction.next,
           ),
           description:
               'Used as the skill directory name; cannot be changed later',

@@ -51,18 +51,32 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       if (!widget.provider.isPreset) ...[
         AthenaFormField(
           label: 'Name',
-          control: AthenaInput(controller: nameController),
+          control: AthenaInput(
+            controller: nameController,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+          ),
         ),
         const SizedBox(height: 16),
       ],
       AthenaFormField(
         label: 'API Key',
-        control: AthenaInput(controller: keyController, obscureText: true),
+        control: AthenaInput(
+          controller: keyController,
+          obscureText: true,
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
       ),
       const SizedBox(height: 16),
       AthenaFormField(
         label: 'API Url',
-        control: AthenaInput(controller: urlController),
+        control: AthenaInput(
+          controller: urlController,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
       ),
       const SizedBox(height: 20),
       const AthenaFormTileLabel.large(title: 'API Format'),

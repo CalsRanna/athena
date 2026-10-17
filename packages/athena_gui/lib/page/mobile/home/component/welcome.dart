@@ -1,7 +1,9 @@
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class MobileHomeWelcome extends StatefulWidget {
@@ -14,9 +16,21 @@ class MobileHomeWelcome extends StatefulWidget {
 class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   @override
   Widget build(BuildContext context) {
+    final settingsButton = AthenaIconButton(
+      icon: LucideIcons.settings,
+      onTap: () => handleTap(context),
+    );
     final padding = Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(children: [_buildText(context), _buildAvatar(context)]),
+      child: Row(
+        children: [
+          _buildText(context),
+          const SizedBox(width: AthenaSpace.sm),
+          settingsButton,
+          const SizedBox(width: AthenaSpace.sm),
+          _buildAvatar(context),
+        ],
+      ),
     );
     // Rebuild when page becomes visible to update the time-based greeting.
     return VisibilityDetector(

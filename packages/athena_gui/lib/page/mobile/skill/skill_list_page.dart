@@ -109,28 +109,59 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
             'matches. Add one with the button below.',
       );
     }
-    return MasonryGridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      itemCount: skills.length,
-      itemBuilder: (context, index) {
-        final skill = skills[index];
-        return MobileGridTile(
-          title: skill.name,
-          subtitle: skill.description,
-          trailing: skill.isBuiltin
-              ? const Icon(LucideIcons.lockKeyhole)
-              : null,
-          onTap: () => navigateDetailPage(context, skill),
-          onLongPress: () => openBottomSheet(context, skill),
-        );
-      },
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        96 + MediaQuery.paddingOf(context).bottom,
+    final user = skills.where((skill) => !skill.isBuiltin).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    final builtin = skills.where((skill) => skill.isBuiltin).toList();
+    return CustomScrollView(
+      slivers: [
+        if (user.isNotEmpty) ...[
+          _sectionTitle(context, 'Skills'),
+          _grid(context, user),
+        ],
+        if (builtin.isNotEmpty) ...[
+          _sectionTitle(context, 'Built-in'),
+          _grid(context, builtin),
+        ],
+        SliverToBoxAdapter(
+          child: SizedBox(height: 96 + MediaQuery.paddingOf(context).bottom),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String title) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Text(
+          title,
+          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _grid(BuildContext context, List<Skill> skills) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverMasonryGrid.count(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childCount: skills.length,
+        itemBuilder: (context, index) {
+          final skill = skills[index];
+          return MobileGridTile(
+            title: skill.name,
+            subtitle: skill.description,
+            trailing: skill.isBuiltin
+                ? const Icon(LucideIcons.lockKeyhole)
+                : null,
+            onTap: () => navigateDetailPage(context, skill),
+            onLongPress: () => openBottomSheet(context, skill),
+          );
+        },
       ),
     );
   }

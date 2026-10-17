@@ -1,4 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/chat_history_entity.dart';
+import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -56,28 +58,57 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
           ),
         );
       }
+      final pinned = histories.where((history) => history.chat.pinned).toList();
+      final recent = histories
+          .where((history) => !history.chat.pinned)
+          .toList();
+      final children = <Widget>[
+        if (pinned.isNotEmpty) _buildGroupLabel(context, 'Pinned'),
+        if (pinned.isNotEmpty) ..._buildGroup(context, pinned),
+        if (recent.isNotEmpty) _buildGroupLabel(context, 'Recent'),
+        if (recent.isNotEmpty) ..._buildGroup(context, recent),
+      ];
       return RefreshIndicator(
         onRefresh: () => viewModel.getChats(),
-        child: ListView.separated(
-          itemCount: histories.length,
-          itemBuilder: _buildItem,
+        child: ListView(
           padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 8,
+            top: 4,
             bottom: 24 + MediaQuery.paddingOf(context).bottom,
           ),
           physics: const AlwaysScrollableScrollPhysics(),
-          separatorBuilder: (context, index) => _buildSeparator(context),
+          children: children,
         ),
       );
     });
   }
 
-  Widget _buildItem(BuildContext context, int index) {
+  List<Widget> _buildGroup(
+    BuildContext context,
+    List<ChatHistoryEntity> histories,
+  ) {
+    final children = <Widget>[];
+    for (var i = 0; i < histories.length; i++) {
+      if (i > 0) children.add(_buildSeparator(context));
+      children.add(_buildItem(context, histories[i]));
+    }
+    return children;
+  }
+
+  Widget _buildGroupLabel(BuildContext context, String label) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final chatHistory = viewModel.chatHistories.value[index];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 16, 28, 4),
+      child: Text(
+        label,
+        style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
+      ),
+    );
+  }
+
+  Widget _buildItem(BuildContext context, ChatHistoryEntity chatHistory) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final chat = chatHistory.chat;
+    final streaming = viewModel.isStreamingChat(chat.id!);
     final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
     );
@@ -89,6 +120,10 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     );
     final titleRow = Row(
       children: [
+        if (streaming) ...[
+          const StreamingIndicator(),
+          const SizedBox(width: 6),
+        ],
         if (chat.pinned) ...[
           Icon(
             LucideIcons.pin,
@@ -114,7 +149,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     final message = Text(
       content,
       style: messageTextStyle,
-      maxLines: 4,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
     final columnChildren = [
@@ -138,7 +173,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: divider,
     );
   }

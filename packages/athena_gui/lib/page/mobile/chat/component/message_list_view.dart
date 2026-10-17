@@ -10,6 +10,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:athena_gui/component/elicit_card.dart';
@@ -51,7 +52,24 @@ class _MessageListViewState extends State<MessageListView> {
   MessageListScrollController get controller => widget.controller;
   String? _displayedChatId;
 
+  /// 是否显示「回到底部」。用户向上翻历史时出现，回到底部后消失。
+  final _showJumpToBottom = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _showJumpToBottom.dispose();
+    super.dispose();
+  }
+
+  void _updateJumpToBottom(ScrollMetrics metrics) {
+    final show = metrics.extentAfter > 200;
+    if (_showJumpToBottom.value != show) _showJumpToBottom.value = show;
+  }
+
   bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth == 0) {
+      _updateJumpToBottom(notification.metrics);
+    }
     if (notification.depth != 0 ||
         notification is! ScrollUpdateNotification ||
         (notification.scrollDelta ?? 0) >= 0 ||
@@ -84,6 +102,7 @@ class _MessageListViewState extends State<MessageListView> {
       controller.isWorking = loading;
       if (_displayedChatId != widget.chat.id) {
         _displayedChatId = widget.chat.id;
+        _showJumpToBottom.value = false;
         controller.followBottom();
       } else {
         controller.maintainBottom();
@@ -108,7 +127,12 @@ class _MessageListViewState extends State<MessageListView> {
       final list = NotificationListener<ScrollNotification>(
         onNotification: _handleScrollNotification,
         child: NotificationListener<ScrollMetricsNotification>(
-          onNotification: controller.handleMetricsNotification,
+          onNotification: (notification) {
+            if (notification.depth == 0) {
+              _updateJumpToBottom(notification.metrics);
+            }
+            return controller.handleMetricsNotification(notification);
+          },
           child: CustomScrollView(
             controller: controller,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -145,7 +169,33 @@ class _MessageListViewState extends State<MessageListView> {
       return LayoutBuilder(
         builder: (context, constraints) => Column(
           children: [
-            Expanded(child: list),
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(child: list),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: _showJumpToBottom,
+                      builder: (context, show, _) {
+                        if (!show) return const SizedBox.shrink();
+                        return Tooltip(
+                          message: 'Scroll to bottom',
+                          child: AthenaIconButton(
+                            icon: LucideIcons.arrowDown,
+                            onTap: () {
+                              controller.followBottom();
+                              _showJumpToBottom.value = false;
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
             // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
             const SizedBox(height: 12),

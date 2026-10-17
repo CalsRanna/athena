@@ -1,9 +1,11 @@
+import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -26,6 +28,7 @@ class MobileProviderListPage extends StatefulWidget {
 
 class _MobileProviderListPageState extends State<MobileProviderListPage> {
   final viewModel = GetIt.instance<ProviderViewModel>();
+  final modelViewModel = GetIt.instance<ModelViewModel>();
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   Future<void> _initializeViewModels() async {
     try {
       await viewModel.initSignals();
+      await modelViewModel.initSignals();
     } catch (e) {
       if (mounted) {
         AthenaDialog.error('Failed to load providers. Please try again.');
@@ -122,9 +126,11 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     }
     final enabled = viewModel.enabledProviders.value;
     final disabled = viewModel.disabledProviders.value;
+    final models = modelViewModel.models.value;
     final children = [
-      if (enabled.isNotEmpty) _buildGroup(context, 'Enabled', enabled),
-      if (disabled.isNotEmpty) _buildGroup(context, 'Disabled', disabled),
+      if (enabled.isNotEmpty) _buildGroup(context, 'Enabled', enabled, models),
+      if (disabled.isNotEmpty)
+        _buildGroup(context, 'Disabled', disabled, models),
     ];
     return RefreshIndicator(
       onRefresh: viewModel.initSignals,
@@ -143,6 +149,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     BuildContext context,
     String title,
     List<ProviderEntity> providers,
+    List<ModelEntity> models,
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Column(
@@ -161,7 +168,12 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
           ),
         ),
         for (final (index, provider) in providers.indexed) ...[
-          _ProviderListTile(provider),
+          _ProviderListTile(
+            provider,
+            modelCount: models
+                .where((model) => model.providerId == provider.id)
+                .length,
+          ),
           if (index != providers.length - 1) _buildSeparator(context),
         ],
       ],
@@ -183,7 +195,8 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
 class _ProviderListTile extends StatelessWidget {
   final ProviderEntity provider;
-  const _ProviderListTile(this.provider);
+  final int modelCount;
+  const _ProviderListTile(this.provider, {required this.modelCount});
 
   @override
   Widget build(BuildContext context) {
@@ -221,11 +234,15 @@ class _ProviderListTile extends StatelessWidget {
       Expanded(child: Row(children: titleChildren)),
       actionButton,
     ];
+    final countLabel = modelCount == 1 ? '1 model' : '$modelCount models';
+    final keyLabel = provider.apiKey.trim().isEmpty
+        ? 'No API key'
+        : 'API key set';
     final columnChildren = [
       Row(children: rowChildren),
       const SizedBox(height: AthenaSpace.xs),
       Text(
-        provider.baseUrl,
+        '$countLabel · $keyLabel',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: subtitleTextStyle,
