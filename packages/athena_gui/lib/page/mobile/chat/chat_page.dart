@@ -11,9 +11,7 @@ import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
-import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -65,30 +63,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final newChatButton = AthenaIconButton(
-      icon: LucideIcons.plus,
-      onTap: () => MobileChatRoute().push<void>(context),
-    );
-    final moreButton = AthenaIconButton(
-      icon: AthenaIcons.more,
-      onTap: () {
-        openBottomSheet(_resolveChat());
-      },
-    );
-    final actionButton = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        newChatButton,
-        const SizedBox(width: AthenaSpace.sm),
-        moreButton,
-      ],
-    );
-
     // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
     return ChatErrorDialogListener(
       errors: viewModel.errors,
       child: AthenaScaffold(
-        appBar: AthenaAppBar(action: actionButton, title: _buildTitle()),
+        appBar: AthenaAppBar(title: _buildTitle()),
         body: Column(
           children: [
             Expanded(child: _buildContent()),
@@ -458,6 +437,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
         onSubmitted: () => sendMessage(chat),
         onTerminated: terminateStreaming,
         onPickImages: pickImages,
+        onMore: () => openBottomSheet(_resolveChat()),
       );
       final queued = viewModel.queuedMessages.value;
       final padding = Padding(

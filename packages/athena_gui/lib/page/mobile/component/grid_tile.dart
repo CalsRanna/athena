@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// `textPrimary` / `textSecondary`。[trailing] 排在标题行末尾（内置锁、
 /// 归档标之类），图标默认 14、用 `iconSecondary`。
 ///
-/// 不用反色面（`surfaceRaised`）：那是桌面图标按钮与提示框的语言，铺成
+/// 不用反色面（`surfaceRaised`）：那是小型指示块与提示框的语言，铺成
 /// 列表卡片会在浅色主题下变成一排深色块、深色主题下变成一排浅色块。
 class MobileGridTile extends StatelessWidget {
   final String title;

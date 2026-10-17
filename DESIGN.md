@@ -49,7 +49,7 @@ TUI 字体与字号由终端设置决定，布局使用终端字符单元。本�
 
 `accent` 同时挂到 `ColorScheme.primary` 与 `secondary`，让 Material 组件的强调与青瓷主操作一致；实心强调色上的前景一律用 `textOnAccent`，不要用 `textPrimary`。
 
-**强调色只用于主路径**：主按钮、选中控件、发送键与链接。运行中状态的反馈按 [WIDGETS.md §3](WIDGETS.md#3-交互与状态) 的组件规则选择。次要导航用中性反色面（`surfaceRaised`），不要渲染成青瓷——满屏青瓷等于没有强调。
+**强调色只用于主路径**：主按钮、选中控件、发送键与链接。运行中状态的反馈按 [WIDGETS.md §3](WIDGETS.md#3-交互与状态) 的组件规则选择。次要导航用中性色块（`surfaceButtonSecondary` + `border`），不要渲染成青瓷，满屏青瓷等于没有强调。反色面 `surfaceRaised` 只用于提示框与小型指示块，不铺成导航按钮或大面积卡片：它在浅色主题下接近黑色，会把整屏的对比度吸走。
 
 ### 表面
 
@@ -63,7 +63,7 @@ TUI 字体与字号由终端设置决定，布局使用终端字符单元。本�
 | `surfaceMobile` | 对话框 / sheet / 弹出层 |
 | `surfaceButtonSecondary` | 次级按钮底 / 中性色块 |
 | `surfaceHover` / `surfaceSelected` | hover 态 / 选中态底 |
-| `surfaceRaised` | 中性**反色**面（卡片 / 提示框 / 导航图标） |
+| `surfaceRaised` | 中性**反色**面（提示框 / 小型指示块） |
 
 `surfaceRaised` 在浅色下是深色（`#202824`）、深色下是浅色（`#E8EDE9`）——它是反色面，不是「更亮的表面」。放在它上面的文字用 `textOnRaised` / `textSecondaryOnRaised`，不要用 `textPrimary`。
 

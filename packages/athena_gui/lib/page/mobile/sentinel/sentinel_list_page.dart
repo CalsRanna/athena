@@ -52,7 +52,8 @@ class MobileSentinelListPage extends StatelessWidget {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: colors.surfaceRaised,
+                          color: colors.surfaceMobile,
+                          border: Border.all(color: colors.border),
                           borderRadius: BorderRadius.circular(
                             AthenaRadius.inline,
                           ),
@@ -63,7 +64,7 @@ class MobileSentinelListPage extends StatelessWidget {
                           LucideIcons.plus,
                           // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
                           size: 12,
-                          color: colors.iconOnRaised,
+                          color: colors.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),

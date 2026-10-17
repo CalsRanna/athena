@@ -8,6 +8,7 @@ import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/card_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -18,11 +19,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-Widget _app(Widget child, {double width = 320, double scale = 2}) {
+Widget _app(
+  Widget child, {
+  double width = 320,
+  double scale = 2,
+  TargetPlatform platform = TargetPlatform.iOS,
+}) {
   return MaterialApp(
     theme: buildAthenaThemeData(
       AthenaColorMode.light,
-    ).copyWith(platform: TargetPlatform.iOS),
+    ).copyWith(platform: platform),
     home: MediaQuery(
       data: MediaQueryData(
         size: Size(width, 700),
@@ -172,6 +178,32 @@ void main() {
     expect(tester.getSize(find.byType(SendButton)), const Size(48, 48));
   });
 
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+    testWidgets('icon buttons use a neutral surface on ${platform.name}', (
+      tester,
+    ) async {
+      final colors = colorsOf(AthenaColorMode.light);
+      await tester.pumpWidget(
+        _app(
+          AthenaIconButton(icon: Icons.more, onTap: () {}),
+          scale: 1,
+          platform: platform,
+        ),
+      );
+      final box = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(AthenaIconButton),
+          matching: find.byType(Container),
+        ),
+      );
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.color, colors.surfaceButtonSecondary);
+      expect(decoration.border, isNotNull);
+      final icon = tester.widget<Icon>(find.byIcon(Icons.more));
+      expect(icon.color, colors.textPrimary);
+    });
+  }
+
   testWidgets('composer exposes an image picker', (tester) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
@@ -188,6 +220,31 @@ void main() {
     );
     await tester.tap(find.byIcon(LucideIcons.paperclip));
     expect(picked, 1);
+  });
+
+  testWidgets('composer orders more, attach and send from left to right', (
+    tester,
+  ) async {
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var moreTaps = 0;
+    await tester.pumpWidget(
+      _app(
+        UserInput(
+          controller: controller,
+          isStreaming: false,
+          onMore: () => moreTaps++,
+        ),
+        scale: 1,
+      ),
+    );
+    final more = tester.getCenter(find.byIcon(AthenaIcons.more));
+    final attach = tester.getCenter(find.byIcon(LucideIcons.paperclip));
+    final send = tester.getCenter(find.byIcon(LucideIcons.arrowUp));
+    expect(more.dx, lessThan(attach.dx));
+    expect(attach.dx, lessThan(send.dx));
+    await tester.tap(find.byIcon(AthenaIcons.more));
+    expect(moreTaps, 1);
   });
 
   testWidgets('mobile switches and checkboxes get a 48 touch target', (

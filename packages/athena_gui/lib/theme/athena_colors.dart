@@ -7,7 +7,9 @@ enum AthenaColorMode { light, dark }
 ///
 /// 以中性瓷白 / 墨绿灰承载正文，青瓷强调色用于主操作、选中态与链接。
 /// 实心强调色单独配套 [textOnAccent]，深色主题使用深色前景保证对比度；
-/// [surfaceRaised] 仍是中性反色面，供卡片、提示框与导航图标使用。
+/// [surfaceRaised] 仍是中性反色面，只供提示框与小型指示块使用；导航按钮
+/// 与列表卡片走 `surfaceButtonSecondary` + `border`，避免浅色主题下出现
+/// 大块接近黑色的反色面。
 @immutable
 class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 表面 ----
@@ -15,7 +17,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color surfacePanel; // 侧栏 / 顶栏 / 次级面板
   final Color surfaceMobile; // 对话框 / sheet / 弹出层
   final Color surfaceDeep; // 深层容器 / 未选中 chip 内层
-  final Color surfaceRaised; // 中性反色面（卡片 / 提示框 / 导航图标）
+  final Color surfaceRaised; // 中性反色面（提示框 / 小型指示块）
   final Color surfaceButtonSecondary; // 次级按钮底 / 中性色块
   final Color surfaceHover; // hover 态底
   final Color surfaceSelected; // 选中态底

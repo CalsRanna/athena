@@ -99,7 +99,7 @@
 | `MobileGridTile` | `page/mobile/component/` | 移动宫格块（Skill / Sentinel / Experience 列表共用） |
 | `MobileEmptyState` | `page/mobile/component/` | 移动列表空态（图标 + 标题 + 说明 + 可选操作） |
 
-**按钮的语义**：主操作（青瓷实心）、次操作（中性面）、文字按钮（前景反馈见 §3）、图标按钮（中性反色面）。图标按钮用反色面是为了**避免把次要导航也渲染成青瓷主操作**。
+**按钮的语义**：主操作（青瓷实心）、次操作（中性面）、文字按钮（前景反馈见 §3）、图标按钮（中性色块 + 描边）。图标按钮不使用青瓷，是为了**避免把次要导航也渲染成青瓷主操作**；也不使用反色面 `surfaceRaised`，因为它在浅色主题下接近黑色，整排顶栏按钮会变成一排黑块。图标按钮统一用 `surfaceButtonSecondary` + `border` + `textPrimary`。
 
 **权限审批卡（桌面与移动）**是待处理的 UI 决策，工具名、调用描述与命令 / 参数统一用常规 UI 档（14 / 22），不随会话 Text size 改变；工具名用 `section` 字重，描述与详情用 `body`。审批行为见 [CONVENTIONS.md §12.1](CONVENTIONS.md#121-权限审批)。执行详情可滚动，审批按钮始终可访问。
 

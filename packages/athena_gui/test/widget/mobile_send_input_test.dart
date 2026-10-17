@@ -4,6 +4,7 @@ import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/mobile/chat/chat_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,10 +43,15 @@ void main() {
   testWidgets('纯空白输入不发送，也不新建对话', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: buildAthenaThemeData(
+          AthenaColorMode.light,
+        ).copyWith(platform: TargetPlatform.iOS),
         home: const MobileChatPage(),
       ),
     );
+
+    expect(find.byIcon(AthenaIcons.more), findsOneWidget);
+    expect(find.byIcon(LucideIcons.plus), findsNothing);
 
     await tester.enterText(find.byType(TextField), '   ');
     await tester.tap(find.byIcon(LucideIcons.arrowUp));

@@ -3,7 +3,11 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 
-/// 导航图标按钮使用中性反色面，避免把次要导航也渲染成青瓷主操作。
+/// 导航图标按钮使用中性色块 + 描边，避免把次要导航也渲染成青瓷主操作。
+///
+/// 不用反色面（`surfaceRaised` + `iconOnRaised`）：反色面在浅色主题下是
+/// 接近黑的深色，铺在单列画布上会成为整屏对比度最高的东西，一排顶栏按钮
+/// 看起来就像一排黑色方块。中性色块仍然不是青瓷，不会和主操作抢强调。
 class AthenaIconButton extends StatelessWidget {
   final IconData icon;
   final void Function()? onTap;
@@ -14,11 +18,12 @@ class AthenaIconButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final iconWidget = Icon(
       icon,
-      color: colors.iconOnRaised,
+      color: colors.textPrimary,
       size: AthenaIcon.regularSize,
     );
     final boxDecoration = BoxDecoration(
-      color: colors.surfaceRaised,
+      color: colors.surfaceButtonSecondary,
+      border: Border.all(color: colors.border),
       borderRadius: BorderRadius.circular(AthenaRadius.control),
     );
     final button = Container(
