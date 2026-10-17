@@ -69,6 +69,7 @@ ToolRegistry buildToolRegistry({
 
   // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
   // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
+  // 提问不是文件/进程能力，移动端已有提问卡，因此和联网工具一样保留。
   registry.registerAll([
     if (!isMobile) ...[
       FileReadTool(),
@@ -78,8 +79,8 @@ ToolRegistry buildToolRegistry({
           ? PowerShellShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks)
           : BashShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks),
       BackgroundTaskTool(tasks),
-      AskUserQuestionTool(),
     ],
+    AskUserQuestionTool(),
     WebFetchTool(),
     WebSearchTool(settings: settings),
     SkillTool(skillRegistry),

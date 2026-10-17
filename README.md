@@ -32,11 +32,11 @@ athena
 
 循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill经验与角色演进)。
 
-**内置工具**（桌面端 17 个，移动端 11 个）
+**内置工具**（桌面端 17 个，移动端 12 个）
 
 `file_read` / `file_write` / `file_update` 精确读改文件（带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` / `skill_evolve` 加载与编写技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` / `sentinel_evolve` / `sentinel_revert` 管理角色并可回滚；`tool_output_read` 分页读回超长输出。
 
-`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网与全部进化类工具。
+`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与全部进化类工具。
 
 **权限模型**
 
@@ -70,8 +70,13 @@ TUI 用 `/rewind` 选择轮次，也可用 `/rewind 3` 回到第 3 轮发送前�
 恢复。完整回退契约与旧版摘要限制见 [CONVENTIONS.md §12.3](CONVENTIONS.md#123-会话回退rewind)。
 
 每次提交前保留完整快照 `~/.athena/sessions/<chatId>.jsonl.rewind-<snapshotId>`，
-不会出现在会话列表里。需要恢复时，先退出 GUI 与 TUI，再把所需快照复制回同名
-`<chatId>.jsonl`；这会替换回退后继续产生的对话，操作前可另存当前文件。
+不会出现在会话列表里。每个会话只保留最近 10 份快照，更早的在创建新快照时清理；
+删除会话会一并删除它的全部快照。需要恢复时，先退出 GUI 与 TUI，再把所需快照复制
+回同名 `<chatId>.jsonl`；这会替换回退后继续产生的对话，操作前可另存当前文件。
+
+桌面端 **设置 → General → Data**、移动端 **设置 → Data** 会显示快照与工具输出的
+占用，并可分别清理。工具输出按内容寻址，清理后旧消息里的 `tool_output_read`
+引用将不可读，需要保留时请先备份。
 
 ## 环境要求
 
@@ -143,6 +148,7 @@ models:
 ```
 ~/.athena/
 ├── sessions/{chatId}.jsonl     # 一个会话一个文件：首行是会话元数据，其后每行一条消息
+├── sessions/{chatId}.jsonl.rewind-*  # 回退快照，每个会话最多保留 10 份
 ├── providers/{id}.yaml         # 一个 provider 一个文件：配置（含 API key）+ 它名下的模型
 ├── sentinels/{id}.yaml         # 一个角色一个文件
 ├── setting.yaml                # 用户偏好，两个前端共用（默认模型、主题、字号、窗口尺寸…）

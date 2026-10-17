@@ -25,6 +25,7 @@ import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
+import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -71,6 +72,7 @@ abstract final class DI {
       root: Directory('${_homeDir(dataDirectory, homeDirOverride)}/.athena'),
     );
     getIt.registerSingleton<FileStorage>(storage);
+    getIt.registerLazySingleton(() => StorageMaintenance(storage));
 
     getIt.registerLazySingleton(
       () => ToolOutputStore(directory: storage.toolOutputsDir),

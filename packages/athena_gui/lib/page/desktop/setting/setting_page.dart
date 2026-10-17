@@ -113,7 +113,16 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         SettingSection.general,
         'General',
         LucideIcons.settings,
-        keywords: ['theme', 'appearance', 'font size', 'reset', 'storage'],
+        keywords: [
+          'theme',
+          'appearance',
+          'font size',
+          'reset',
+          'storage',
+          'snapshot',
+          'tool output',
+          'cleanup',
+        ],
       ),
       _SettingEntry(
         SettingSection.about,

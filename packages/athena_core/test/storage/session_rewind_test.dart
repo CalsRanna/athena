@@ -40,6 +40,11 @@ void main() {
       );
   File getSession() => File(p.join(storage.sessionsDir.path, '$chatId.jsonl'));
 
+  Future<List<File>> snapshots() async => [
+    await for (final entry in storage.sessionsDir.list())
+      if (entry is File && entry.path.contains('.jsonl.rewind-')) entry,
+  ];
+
   test(
     'rewind cuts the entire persisted suffix and preserves exact snapshot bytes',
     () async {
@@ -179,6 +184,35 @@ void main() {
       expect(await getSession().readAsBytes(), original);
     },
   );
+
+  test('deleting a chat removes its rewind snapshots', () async {
+    final target = await append('user', 'A');
+    final result = await repo.rewindToUserMessage(chatId, target.id!);
+    expect(await File(result.snapshotPath).exists(), isTrue);
+
+    await repo.deleteChat(chatId);
+
+    expect(await getSession().exists(), isFalse);
+    expect(await File(result.snapshotPath).exists(), isFalse);
+    expect(await snapshots(), isEmpty);
+  });
+
+  test('rewind keeps only the newest snapshots', () async {
+    final base = DateTime(2026);
+    String? firstSnapshot;
+    for (var i = 0; i < SessionJsonlStore.maxRewindSnapshots + 2; i++) {
+      final target = await append('user', 'q$i');
+      await append('assistant', 'a$i');
+      final result = await repo.rewindToUserMessage(chatId, target.id!);
+      firstSnapshot ??= result.snapshotPath;
+      await File(
+        result.snapshotPath,
+      ).setLastModified(base.add(Duration(minutes: i)));
+    }
+
+    expect(await snapshots(), hasLength(SessionJsonlStore.maxRewindSnapshots));
+    expect(await File(firstSnapshot!).exists(), isFalse);
+  });
 
   test('invalid targets leave bytes and metadata unchanged', () async {
     final assistant = await append('assistant', 'answer');

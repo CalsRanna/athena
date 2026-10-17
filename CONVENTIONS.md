@@ -344,7 +344,7 @@ tag 推送后触发 [release.yml](.github/workflows/release.yml)：先复用 [ci
 - 运行中的会话先取消并等待收尾，同时停止本会话的后台工作和排队输入。另一前端正在运行同一会话时，需要先在那一端停止
 - 回退只影响对话记录与模型上下文；已执行的命令、文件修改、角色演进和经验库不随之恢复
 - 压缩覆盖关系与原文可见性在同次写入中重建；上下文用量在下一次模型响应前隐藏。没有覆盖元数据的旧版摘要无法可靠回退，必须明确报错并保留历史
-- 每次回退提交前保留完整快照 `~/.athena/sessions/<chatId>.jsonl.rewind-<snapshotId>`，快照不出现在会话列表里。手工恢复方法见 [README.md 的回退会话说明](README.md#回退会话rewind)
+- 每次回退提交前保留完整快照 `~/.athena/sessions/<chatId>.jsonl.rewind-<snapshotId>`，快照不出现在会话列表里。每个会话最多保留最近 10 份快照，删除会话时一并删除；手工恢复方法见 [README.md 的回退会话说明](README.md#回退会话rewind)
 
 `AgentRunCoordinator` 负责取消、等待与回退编排，`SessionRewindRepository` 及其存储实现负责历史裁剪、压缩覆盖关系重建与快照，前端负责恢复草稿和附件。验证覆盖记录截断、图片恢复、运行收尾、跨前端占用、压缩元数据与快照保留。
 

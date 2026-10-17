@@ -53,6 +53,10 @@ class SessionJsonlStore {
   static const chatType = 'chat';
   static const messageType = 'message';
 
+  /// 每个会话保留的回退快照上限。快照是整会话副本，长期不清理会让磁盘
+  /// 占用随回退次数线性增长；超出后只保留最新的若干份。
+  static const int maxRewindSnapshots = 10;
+
   /// 进程内串行(读写都排队,读不会夹在本进程写的中间)。
   Future<T> _serialized<T>(Future<T> Function() action) {
     return serialLock(_lock, action, (f) => _lock = f);
@@ -272,6 +276,8 @@ class SessionJsonlStore {
         {...chat.toJson(), 'type': chatType},
         for (final message in kept) {...message.toJson(), 'type': messageType},
       ]);
+      // 提交成功后再淘汰旧快照；写失败时不能连带丢掉已有的恢复点。
+      await _pruneRewindSnapshots(keepPath: snapshot);
       return RewindResult(
         chat: chat,
         input: input,
@@ -435,13 +441,69 @@ class SessionJsonlStore {
     });
   }
 
-  /// 删除整个会话文件。
+  /// 删除整个会话文件及其回退快照。
+  ///
+  /// 快照是完整会话副本，删除会话时必须一起删除：否则用户以为已经清掉的
+  /// 历史仍留在 `sessions/` 里，且不会出现在列表里，既占磁盘也违背删除语义。
+  /// 先删快照再删正文：快照删除失败时正文还在，重试仍能完成整次删除。
   Future<void> deleteFile() {
     return _mutate(() async {
+      await _deleteRewindSnapshots();
       if (await file.exists()) {
         await file.delete();
       }
     });
+  }
+
+  Future<void> _deleteRewindSnapshots() async {
+    final parent = file.parent;
+    if (!await parent.exists()) return;
+    final prefix = '${file.path}.rewind-';
+    await for (final entity in parent.list()) {
+      if (entity is! File || !entity.path.startsWith(prefix)) continue;
+      await entity.delete();
+    }
+  }
+
+  /// 只保留最新的 [maxRewindSnapshots] 份快照。
+  ///
+  /// 按修改时间排序（UUIDv7 在同一毫秒内不保证严格递增）。[keepPath] 是刚
+  /// 创建的这份，始终不参与淘汰：文件系统时间精度不足或同毫秒随机序都可能
+  /// 让新快照排到最旧，删掉它等于这次回退没有恢复点。删除失败只记日志，
+  /// 不能把一次已经成功的回退变成失败（下一次回退会继续尝试清理）。
+  Future<void> _pruneRewindSnapshots({required String keepPath}) async {
+    final parent = file.parent;
+    if (!await parent.exists()) return;
+    final prefix = '${file.path}.rewind-';
+    final snapshots = <({File file, DateTime modified})>[];
+    await for (final entity in parent.list()) {
+      if (entity is! File ||
+          !entity.path.startsWith(prefix) ||
+          entity.path == keepPath) {
+        continue;
+      }
+      try {
+        snapshots.add((file: entity, modified: await entity.lastModified()));
+      } catch (_) {
+        // 快照刚被并发删除：跳过即可。
+      }
+    }
+    final total = snapshots.length + 1;
+    if (total <= maxRewindSnapshots) return;
+    snapshots.sort((a, b) {
+      final byTime = a.modified.compareTo(b.modified);
+      return byTime != 0 ? byTime : a.file.path.compareTo(b.file.path);
+    });
+    final excess = total - maxRewindSnapshots;
+    for (final snapshot in snapshots.take(excess)) {
+      try {
+        await snapshot.file.delete();
+      } catch (e) {
+        LoggerUtil.w(
+          'Failed to prune rewind snapshot ${snapshot.file.path}: $e',
+        );
+      }
+    }
   }
 
   /// 从文件**尾部向前**扫描读取最近 [count] 条消息行(不含会话元数据行),
