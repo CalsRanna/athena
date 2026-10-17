@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/component/rewind_dialog.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
@@ -240,14 +239,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Future<void> rewindMessage(MessageEntity message) async {
     if (viewModel.isRewindingChat(message.chatId)) return;
-    final confirmed = await RewindDialog.confirm(
-      replacesDraft:
-          controller.text.isNotEmpty ||
-          viewModel.pendingImages.value.isNotEmpty,
-    );
-    if (confirmed != true || !mounted || _resolveChat()?.id != message.chatId) {
-      return;
-    }
     final result = await viewModel.rewindMessage(message);
     if (result == null) return;
     if (!mounted || _resolveChat()?.id != message.chatId) {

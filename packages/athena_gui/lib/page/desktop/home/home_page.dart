@@ -8,7 +8,6 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/component/chat_error_dialog_listener.dart';
-import 'package:athena_gui/component/rewind_dialog.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
@@ -153,16 +152,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> rewindMessage(MessageEntity message) async {
     if (chatViewModel.isRewindingChat(message.chatId)) return;
-    final confirmed = await RewindDialog.confirm(
-      replacesDraft:
-          controller.text.isNotEmpty ||
-          chatViewModel.pendingImages.value.isNotEmpty,
-    );
-    if (confirmed != true ||
-        !mounted ||
-        chatViewModel.currentChat.value?.id != message.chatId) {
-      return;
-    }
     final result = await chatViewModel.rewindMessage(message);
     if (result == null) return;
     if (!mounted || chatViewModel.currentChat.value?.id != message.chatId) {
