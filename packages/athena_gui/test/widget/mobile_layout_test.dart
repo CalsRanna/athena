@@ -12,6 +12,7 @@ import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/checkbox.dart';
+import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,6 +61,60 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile canvas uses the workspace surface', (tester) async {
+    final colors = colorsOf(AthenaColorMode.dark);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(
+          AthenaColorMode.dark,
+        ).copyWith(platform: TargetPlatform.iOS),
+        home: const AthenaScaffold(body: SizedBox()),
+      ),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).color == colors.surface,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('grid tiles use neutral surfaces and normal text', (
+    tester,
+  ) async {
+    final colors = colorsOf(AthenaColorMode.light);
+    await tester.pumpWidget(
+      _app(
+        SizedBox(
+          width: 160,
+          child: MobileGridTile(
+            title: 'Skill',
+            subtitle: 'Description',
+            onTap: () {},
+          ),
+        ),
+        scale: 1,
+      ),
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).color ==
+                colors.surfaceButtonSecondary,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Text>(find.text('Skill')).style!.color,
+      colors.textPrimary,
+    );
   });
 
   testWidgets('grid tile keeps long text inside the card at 2x', (

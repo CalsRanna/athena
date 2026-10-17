@@ -39,7 +39,7 @@ class MobileSentinelListPage extends StatelessWidget {
                 onTap: () => navigateSentinelFormPage(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: colors.surfaceDeep,
+                    color: colors.surfaceButtonSecondary,
                     border: Border.all(color: colors.border),
                     borderRadius: BorderRadius.circular(AthenaRadius.control),
                   ),

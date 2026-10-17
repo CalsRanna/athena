@@ -16,7 +16,7 @@ class SentinelTile extends StatelessWidget {
     final innerContainer = Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: colors.surfaceDeep,
+        color: colors.surfaceButtonSecondary,
         border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),

@@ -25,12 +25,13 @@ class ChatTile extends StatelessWidget {
       chat.title.isNotEmpty ? chat.title.trim() : 'New Session',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AthenaTextStyle.body.copyWith(color: colors.textOnRaised),
+      style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
     final body = Container(
       constraints: const BoxConstraints(maxWidth: 240),
       decoration: BoxDecoration(
-        color: colors.surfaceRaised,
+        color: colors.surfaceButtonSecondary,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -41,7 +42,7 @@ class ChatTile extends StatelessWidget {
             Icon(
               LucideIcons.pin,
               size: AthenaIcon.inlineSize,
-              color: colors.textOnRaised,
+              color: colors.iconSecondary,
             ),
             const SizedBox(width: 6),
           ],

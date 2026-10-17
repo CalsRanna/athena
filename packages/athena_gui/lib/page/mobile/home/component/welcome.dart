@@ -50,10 +50,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   Widget _buildAvatar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final circleAvatar = Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.textPrimary.withValues(alpha: 0.5),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.border),
       padding: const EdgeInsets.all(4),
       child: const CircleAvatar(
         backgroundImage: AssetImage('asset/image/avatar.png'),

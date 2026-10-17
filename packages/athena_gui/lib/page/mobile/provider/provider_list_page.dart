@@ -188,11 +188,11 @@ class _ProviderListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleTextStyle = AthenaTextStyle.section.copyWith(
+    final titleTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
     );
-    final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.iconSecondary,
+    final subtitleTextStyle = AthenaTextStyle.row.copyWith(
+      color: colors.textSecondary,
     );
     final titleChildren = [
       Flexible(
@@ -223,6 +223,7 @@ class _ProviderListTile extends StatelessWidget {
     ];
     final columnChildren = [
       Row(children: rowChildren),
+      const SizedBox(height: AthenaSpace.xs),
       Text(
         provider.baseUrl,
         maxLines: 1,

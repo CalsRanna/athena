@@ -55,8 +55,10 @@ class _MobileScaffold extends StatelessWidget {
     ];
     final mediaQuery = MediaQuery.of(context);
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // 页面底色用桌面工作区的 surface；surfaceMobile 只属于对话框 / sheet /
+    // 弹出层，拿它铺整页会让移动端变成另一套明度基线。
     final container = Container(
-      decoration: BoxDecoration(color: colors.surfaceMobile),
+      decoration: BoxDecoration(color: colors.surface),
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );

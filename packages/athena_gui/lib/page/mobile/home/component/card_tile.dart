@@ -3,7 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// 首页卡片行中的单张卡片：宽 160、圆角 [AthenaRadius.container]、
-/// `surfaceButtonSecondary` 底、图标 + 名称 + 描述。
+/// `surfaceButtonSecondary` 底 + 1px `border`、图标 + 名称 + 描述。
 ///
 /// 高度由 [CardListView] 按当前字号计算后统一约束，卡片内部不再写死 160，
 /// 避免系统大字号下名称与描述把固定高度撑破。
@@ -31,6 +31,7 @@ class CardTile extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AthenaRadius.container),
           color: colors.surfaceButtonSecondary,
+          border: Border.all(color: colors.border),
         ),
         padding: const EdgeInsets.all(12),
         width: 160,

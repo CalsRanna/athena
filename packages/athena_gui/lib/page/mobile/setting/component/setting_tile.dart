@@ -21,14 +21,16 @@ class MobileSettingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleTextStyle = AthenaTextStyle.section.copyWith(
+    // 与桌面设置行同一口径：标签与说明同为 14 / w400，层级只靠颜色区分。
+    final titleTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
     );
-    final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
+    final subtitleTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textSecondary,
     );
     final titleChildren = [
       Text(title, style: titleTextStyle),
+      if (subtitle != null) const SizedBox(height: AthenaSpace.xs),
       if (subtitle != null) Text(subtitle!, style: subtitleTextStyle),
     ];
     final titleColumn = Column(

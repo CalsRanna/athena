@@ -98,13 +98,14 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.surfaceRaised,
+        // 与桌面代码块 / 工具输出同一套内容面，而不是反色卡片。
+        color: colors.codeBackground,
         borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       padding: const EdgeInsets.all(12),
       child: SelectableText(
         body,
-        style: AthenaTextStyle.caption.copyWith(color: colors.textOnRaised),
+        style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
       ),
     );
   }

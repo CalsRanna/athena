@@ -66,7 +66,7 @@ class _ModelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final nameTextStyle = AthenaTextStyle.section.copyWith(
+    final nameTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
     );
     final nameText = Text(
@@ -133,9 +133,7 @@ class _ModelTile extends StatelessWidget {
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];
-    final textStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.iconSecondary,
-    );
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textSecondary);
     final text = Text(
       parts.join(' · '),
       maxLines: 1,

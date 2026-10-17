@@ -119,7 +119,11 @@ class _MobileAppBar extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       child: title ?? const SizedBox(),
     );
-    return Padding(
+    return Container(
+      // 与桌面顶栏同一条发丝线：移动端不画的话，标题与正文之间没有分界。
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.neutralHairline)),
+      ),
       // 触摸盒比可见按钮每边多 8；外侧留 8 后，可见按钮仍距页面边缘 16。
       padding: const EdgeInsets.all(AthenaSpace.sm),
       child: SizedBox(

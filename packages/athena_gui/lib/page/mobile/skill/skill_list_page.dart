@@ -53,7 +53,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                 onTap: () => navigateFormPage(context, null),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: colors.surfaceDeep,
+                    color: colors.surfaceButtonSecondary,
                     border: Border.all(color: colors.border),
                     borderRadius: BorderRadius.circular(AthenaRadius.control),
                   ),
