@@ -97,7 +97,11 @@ class DesktopMessageInput extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (queued.isNotEmpty) ...[
-                  QueuedMessages(messages: queued),
+                  QueuedMessages(
+                    messages: queued,
+                    onSteer: chatViewModel.steerQueuedMessage,
+                    onDelete: chatViewModel.removeQueuedMessage,
+                  ),
                   const SizedBox(height: 12),
                 ],
                 // 上下文条：灰底、无描边

@@ -914,6 +914,27 @@ class ChatViewModel {
     return (outcome: SendUserInputOutcome.sent, message: message, chat: target);
   }
 
+  /// 删除一条还没发出的排队输入。
+  ///
+  /// 排队消息在这一刻之前从未落库，丢掉它不需要动会话历史。
+  void removeQueuedMessage(MessageEntity message) {
+    final input = _queue.inputFor(message);
+    if (input != null) _queue.remove(input);
+  }
+
+  /// Steer：停掉当前 run，并把这条排队输入提到同会话队首。
+  ///
+  /// 停止后的出队发生在原来那次 [sendMessage] 的循环里：当前轮先把已产出的
+  /// 内容收尾落库，紧接着发出的就是这条被提上来的输入。后台任务不跟着停：
+  /// 用户是在插话，不是要结束会话。
+  void steerQueuedMessage(MessageEntity message) {
+    final input = _queue.inputFor(message);
+    final chatId = input?.chat.id;
+    if (input == null || chatId == null) return;
+    _queue.prioritize(input);
+    _stream.stop(chatId, stopBackgroundTasks: false);
+  }
+
   Future<void> sendMessage(
     MessageEntity message, {
     required ChatEntity chat,

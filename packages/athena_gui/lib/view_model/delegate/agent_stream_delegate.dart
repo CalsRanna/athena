@@ -118,8 +118,8 @@ class AgentStreamDelegate {
   Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
       _coordinator.rewindToUserMessage(chatId, messageId);
 
-  void stop(String chatId) {
-    _coordinator.stop(chatId);
+  void stop(String chatId, {bool stopBackgroundTasks = true}) {
+    _coordinator.stop(chatId, stopBackgroundTasks: stopBackgroundTasks);
   }
 
   /// 用户对某个审批请求做出决策（由 UI 卡片调用）。

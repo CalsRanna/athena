@@ -312,7 +312,8 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
   }
 
   @override
-  void stop(String chatId) => onStop?.call(chatId);
+  void stop(String chatId, {bool stopBackgroundTasks = true}) =>
+      onStop?.call(chatId);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

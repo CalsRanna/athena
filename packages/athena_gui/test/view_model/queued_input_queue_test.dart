@@ -59,6 +59,19 @@ void main() {
   });
 
   group('按对象标识去重与移除', () {
+    test('inputFor 按对象标识找回排队项', () {
+      final queue = QueuedInputQueue();
+      final first = input('a', 'c1');
+      queue.enqueue(first);
+
+      expect(queue.inputFor(first.message), same(first));
+      expect(
+        queue.inputFor(input('a', 'c1').message),
+        isNull,
+        reason: '内容相同但对象不同，不是同一条输入',
+      );
+    });
+
     test('同一个对象排两次只留一条', () {
       final queue = QueuedInputQueue();
       final same = input('a', 'c1');
@@ -91,6 +104,37 @@ void main() {
 
       queue.remove(input('a', 'c1'));
       expect(queue.all, hasLength(1), reason: '不同对象不该误删');
+    });
+  });
+
+  group('Steer：提到会话队首', () {
+    test('只改变本会话内的先后，其它会话不受影响', () {
+      final queue = QueuedInputQueue();
+      queue.enqueue(input('a', 'c1'));
+      queue.enqueue(input('x', 'c2'));
+      queue.enqueue(input('b', 'c1'));
+      final steered = input('c', 'c1');
+      queue.enqueue(steered);
+
+      queue.prioritize(steered);
+
+      expect(queue.messagesFor('c1').map((m) => m.id), ['c', 'a', 'b']);
+      expect(queue.messagesFor('c2').map((m) => m.id), ['x']);
+      expect(queue.nextFor('c1')?.message.id, 'c');
+    });
+
+    test('已在队首或不在队里时保持原样', () {
+      final queue = QueuedInputQueue();
+      final first = input('a', 'c1');
+      final second = input('b', 'c1');
+      queue.enqueue(first);
+      queue.enqueue(second);
+
+      queue.prioritize(first);
+      expect(queue.all.map((i) => i.message.id), ['a', 'b']);
+
+      queue.prioritize(input('c', 'c1'));
+      expect(queue.all.map((i) => i.message.id), ['a', 'b']);
     });
   });
 

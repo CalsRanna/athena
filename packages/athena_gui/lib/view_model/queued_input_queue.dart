@@ -40,6 +40,11 @@ class QueuedInputQueue {
 
   bool contains(QueuedChatInput input) => _inputs.value.contains(input);
 
+  /// [message] 对应的排队项；不在队里返回 null。
+  QueuedChatInput? inputFor(MessageEntity message) => _inputs.value
+      .where((input) => identical(input.message, message))
+      .firstOrNull;
+
   /// 该会话最早排队的输入；没有就是 null。
   QueuedChatInput? nextFor(String chatId) =>
       _inputs.value.where((input) => input.chat.id == chatId).firstOrNull;
@@ -49,6 +54,20 @@ class QueuedInputQueue {
     _inputs.value = _inputs.value
         .where((queued) => !identical(queued, input))
         .toList();
+  }
+
+  /// 把 [input] 提到它所属会话的队首，其余排队顺序不变（Steer 用）。
+  ///
+  /// 队列跨会话，所以只能提到「同会话最靠前那条」的位置；其它会话的排队项
+  /// 不受插队影响。
+  void prioritize(QueuedChatInput input) {
+    if (!contains(input)) return;
+    final rest = _inputs.value
+        .where((queued) => !identical(queued, input))
+        .toList();
+    final index = rest.indexWhere((queued) => queued.chat.id == input.chat.id);
+    rest.insert(index < 0 ? rest.length : index, input);
+    _inputs.value = rest;
   }
 
   void clear() {

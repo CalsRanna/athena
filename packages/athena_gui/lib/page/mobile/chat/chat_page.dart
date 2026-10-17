@@ -437,7 +437,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (queued.isNotEmpty) ...[
-              QueuedMessages(messages: queued),
+              QueuedMessages(
+                messages: queued,
+                onSteer: viewModel.steerQueuedMessage,
+                onDelete: viewModel.removeQueuedMessage,
+              ),
               const SizedBox(height: 12),
             ],
             if (viewModel.pendingImages.value.isNotEmpty)

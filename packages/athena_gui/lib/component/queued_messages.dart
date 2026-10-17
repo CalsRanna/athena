@@ -2,6 +2,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -9,7 +10,18 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 class QueuedMessages extends StatelessWidget {
   final List<MessageEntity> messages;
 
-  const QueuedMessages({super.key, required this.messages});
+  /// 停掉当前轮，让这条消息立即发出。
+  final void Function(MessageEntity message) onSteer;
+
+  /// 把这条消息从排队区丢弃。
+  final void Function(MessageEntity message) onDelete;
+
+  const QueuedMessages({
+    super.key,
+    required this.messages,
+    required this.onSteer,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +129,21 @@ class QueuedMessages extends StatelessWidget {
                               ],
                             ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Steer (stops current turn)',
+                      child: AthenaGhostIconButton(
+                        icon: LucideIcons.send,
+                        onTap: () => onSteer(message),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Delete',
+                      child: AthenaGhostIconButton(
+                        icon: LucideIcons.x,
+                        onTap: () => onDelete(message),
                       ),
                     ),
                   ],

@@ -572,15 +572,20 @@ class AgentRunCoordinator {
 
   /// 停止指定对话的 Agent 循环。
   ///
-  /// 取消 = 停下来，因此同时停止本会话的后台任务（已产生的输出保留，任务
+  /// 取消 = 停下来，因此默认同时停止本会话的后台任务（已产生的输出保留，任务
   /// 状态记为 cancelled）。会话归属而非 run 归属：用户点停止的意思是「这个
   /// 会话先停下」，而不是「这一轮先停」，且任务正文与新指令冲突时（两个构建
   /// 抢同一把锁）后果由用户承担。
-  void stop(String chatId) {
+  ///
+  /// [stopBackgroundTasks] 为 false 时只打断当前轮：「插话」语义是先处理新
+  /// 输入，后台任务照常跑完并汇报。
+  void stop(String chatId, {bool stopBackgroundTasks = true}) {
     final runId = _runIdByChat[chatId];
     _cancelTokenByChat[chatId]?.cancel();
     if (runId != null) _agentService.abort(runId);
-    unawaited(_agentService.backgroundTasks.stopChatTasks(chatId));
+    if (stopBackgroundTasks) {
+      unawaited(_agentService.backgroundTasks.stopChatTasks(chatId));
+    }
   }
 
   /// 运行中输入：落库并排队，当前 run 结束后自动接续为新 run。
