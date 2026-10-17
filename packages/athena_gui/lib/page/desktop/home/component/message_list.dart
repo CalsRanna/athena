@@ -173,6 +173,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                       Padding(
                         padding: cardPadding,
                         child: PermissionApprovalCard(
+                          key: ObjectKey(request),
                           request: request,
                           maxHeight: cardMaxHeight,
                           onDecision: (approved) =>
@@ -186,6 +187,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                       Padding(
                         padding: cardPadding,
                         child: ElicitCard(
+                          key: ObjectKey(request),
                           request: request,
                           maxHeight: cardMaxHeight,
                           onSubmit: (answers) =>

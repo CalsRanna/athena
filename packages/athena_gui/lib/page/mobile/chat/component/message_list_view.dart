@@ -210,6 +210,7 @@ class _MessageListViewState extends State<MessageListView> {
                   index == approvals.length - 1 && elicits.isEmpty ? 0 : 12,
                 ),
                 child: PermissionApprovalCard(
+                  key: ObjectKey(request),
                   request: request,
                   maxHeight:
                       constraints.maxHeight * permissionCardMaxHeightFraction,
@@ -228,6 +229,7 @@ class _MessageListViewState extends State<MessageListView> {
                   index == elicits.length - 1 ? 0 : 12,
                 ),
                 child: ElicitCard(
+                  key: ObjectKey(request),
                   request: request,
                   maxHeight:
                       constraints.maxHeight * permissionCardMaxHeightFraction,

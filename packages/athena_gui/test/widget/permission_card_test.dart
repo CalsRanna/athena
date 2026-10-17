@@ -61,6 +61,62 @@ void main() {
     });
   }
 
+  testWidgets('审批卡默认展开，点标题行收起为一行，再点恢复', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 640,
+              child: PermissionApprovalCard(
+                request: ApprovalRequest(
+                  chatId: 'chat-1',
+                  toolName: 'file_read',
+                  arguments: '{"path":"/tmp/config.json"}',
+                  completer: Completer<PermissionDecision>(),
+                ),
+                maxHeight: 400,
+                onDecision: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final expandedHeight = tester
+        .getSize(find.byType(PermissionApprovalCard))
+        .height;
+    // 标题行是整行宽的可点区域，不能带按压缩放：0.975 落在几百像素宽的一行上
+    // 是明显的横向收缩，内容会离开卡片内边距，看起来像箭头在抖。
+    expect(
+      find.ancestor(
+        of: find.text('file_read'),
+        matching: find.byType(AnimatedScale),
+      ),
+      findsNothing,
+    );
+    expect(find.text('path: /tmp/config.json'), findsOneWidget);
+    expect(find.text('Allow Once'), findsOneWidget);
+
+    await tester.tap(find.text('file_read'));
+    await tester.pumpAndSettle();
+    expect(find.text('file_read'), findsOneWidget);
+    expect(find.text('Using a tool'), findsOneWidget);
+    expect(find.text('path: /tmp/config.json'), findsNothing);
+    expect(find.text('Allow Once'), findsNothing);
+    expect(
+      tester.getSize(find.byType(PermissionApprovalCard)).height,
+      lessThan(expandedHeight),
+    );
+
+    await tester.tap(find.text('file_read'));
+    await tester.pumpAndSettle();
+    expect(find.text('path: /tmp/config.json'), findsOneWidget);
+    expect(find.text('Allow Once'), findsOneWidget);
+  });
+
   testWidgets('审批标题缺少描述时用占位，完整参数仍在详情中', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -3,6 +3,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -42,6 +43,12 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 当前展示的问题下标：一次只展示一个问题。多问时按步骤推进，
   /// 卡片不会因为问题多而撑高，用户也不会漏看后面的问题。
   int _step = 0;
+
+  /// 默认展开：提问是阻塞中的待办，收起只用于临时腾出消息区空间。
+  /// 收起后卡片只剩标题行，选项与按钮一并藏起来，点开才能作答。
+  bool _expanded = true;
+
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
 
   /// 问题下标 → 自由输入控制器（内容非空即视为选择「其它」）。
   final Map<int, TextEditingController> _other = {};
@@ -153,35 +160,70 @@ class _ElicitCardState extends State<ElicitCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(colors),
-            const SizedBox(height: 8),
-            Flexible(
-              child: Scrollbar(
-                controller: _scrollController,
-                child: SingleChildScrollView(
+            if (_expanded) ...[
+              const SizedBox(height: 8),
+              Flexible(
+                child: Scrollbar(
                   controller: _scrollController,
-                  primary: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [_buildQuestion(colors, _step)],
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    primary: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [_buildQuestion(colors, _step)],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _buildActions(mobile),
+              const SizedBox(height: 12),
+              _buildActions(mobile),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(AthenaColors colors) => Row(
-    children: [
-      Text(
-        'Question',
-        style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
-      ),
-    ],
+  /// 标题行：整行可点，收起后卡片只剩这一行，此时在标题后带上当前问题，
+  /// 否则单看 "Question" 无从辨认在问什么。
+  Widget _buildHeader(AthenaColors colors) => AthenaHover(
+    onTap: _toggleExpanded,
+    pressScale: false,
+    cursor: SystemMouseCursors.click,
+    builder: (context, _) => Row(
+      children: [
+        Text(
+          'Question',
+          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(width: 8),
+        if (_expanded)
+          const Spacer()
+        else
+          Expanded(
+            child: Text(
+              _questions[_step].question,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
+            ),
+          ),
+        const SizedBox(width: 8),
+        _buildChevron(colors),
+      ],
+    ),
+  );
+
+  /// 折叠箭头：展开时朝下、收起时朝右。常驻显示——收起后卡片只剩这一行，
+  /// 没有它就找不到点回去的地方。
+  Widget _buildChevron(AthenaColors colors) => AnimatedRotation(
+    turns: _expanded ? 0.25 : 0,
+    duration: AthenaMotion.hover,
+    child: Icon(
+      LucideIcons.chevronRight,
+      size: AthenaIcon.inlineSize,
+      color: colors.textSecondary,
+    ),
   );
 
   Widget _buildQuestion(AthenaColors colors, int index) {

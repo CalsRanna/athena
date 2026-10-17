@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 /// 内容还多的包装。
 ///
 /// 有 [onTap] 时同时提供按压缩放（0.975）：触屏没有 hover，按下状态是唯一的
-/// 即时反馈。缩放只改绘制、不改布局，命中区域保持原样。
+/// 即时反馈。缩放只改绘制、不改布局，命中区域保持原样。整行宽的可点区域
+/// （卡片标题行）用 [pressScale] 关掉它：大面积横向收缩会把内容从容器内边距里
+/// 拽出来，看起来像在抖。
 ///
 /// ```dart
 /// AthenaHover(
@@ -48,6 +50,10 @@ class AthenaHover extends StatefulWidget {
   /// 可点的控件显式传 [SystemMouseCursors.click]。
   final MouseCursor? cursor;
 
+  /// 按下时是否缩放到 0.975。整行宽的可点区域（卡片标题行）应关掉：
+  /// 0.975 落在几百像素宽的一行上就是十几像素的横向收缩，内容会明显离开容器边缘。
+  final bool pressScale;
+
   const AthenaHover({
     super.key,
     required this.builder,
@@ -55,6 +61,7 @@ class AthenaHover extends StatefulWidget {
     this.onSecondaryTap,
     this.enabled = true,
     this.cursor,
+    this.pressScale = true,
   });
 
   @override
@@ -81,7 +88,7 @@ class _AthenaHoverState extends State<AthenaHover> {
     // 触屏没有 hover，按下状态是唯一的即时反馈；缩放只改绘制、不改布局，
     // 所以按钮的命中区域与按下前保持一致。
     final pressable = widget.enabled && widget.onTap != null;
-    final visual = pressable
+    final visual = pressable && widget.pressScale
         ? AnimatedScale(
             scale: pressed ? 0.975 : 1,
             // 按下立刻跟手；回弹带弹簧，用标准档（DESIGN.md §6）。
