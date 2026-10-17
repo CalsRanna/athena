@@ -25,10 +25,21 @@ class MobileModelListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       final models = modelViewModel.models.value
           .where((m) => m.providerId == provider.id)
           .toList();
-      if (models.isEmpty) return const SizedBox();
+      if (models.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'No models yet',
+            style: AthenaTextStyle.caption.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        );
+      }
       final List<Widget> children = [];
       for (var model in models) {
         final mobileModelTile = _ModelTile(

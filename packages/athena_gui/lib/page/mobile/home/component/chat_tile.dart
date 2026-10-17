@@ -21,15 +21,32 @@ class ChatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    final title = Text(
+      chat.title.isNotEmpty ? chat.title.trim() : 'New Session',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AthenaTextStyle.body.copyWith(color: colors.textOnRaised),
+    );
     final body = Container(
+      constraints: const BoxConstraints(maxWidth: 240),
       decoration: BoxDecoration(
         color: colors.surfaceRaised,
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Text(
-        chat.title.isNotEmpty ? chat.title.trim() : 'New Session',
-        style: AthenaTextStyle.body.copyWith(color: colors.textOnRaised),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (chat.pinned) ...[
+            Icon(
+              LucideIcons.pin,
+              size: AthenaIcon.inlineSize,
+              color: colors.textOnRaised,
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(child: title),
+        ],
       ),
     );
     return GestureDetector(
@@ -51,12 +68,20 @@ class ChatTile extends StatelessWidget {
       title: 'Rename',
       onTap: () => _renameChat(context, viewModel),
     );
+    final pinTile = AthenaBottomSheetTile(
+      leading: Icon(chat.pinned ? LucideIcons.pinOff : LucideIcons.pin),
+      title: chat.pinned ? 'Unpin' : 'Pin',
+      onTap: () {
+        AthenaDialog.dismiss();
+        viewModel.togglePin(chat);
+      },
+    );
     final deleteTile = AthenaBottomSheetTile(
       leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
-      onTap: () => _deleteChat(viewModel),
+      onTap: () => _deleteChat(context, viewModel),
     );
-    final children = [renameTile, deleteTile];
+    final children = [renameTile, pinTile, deleteTile];
     final column = Column(mainAxisSize: MainAxisSize.min, children: children);
     final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -65,9 +90,18 @@ class ChatTile extends StatelessWidget {
     AthenaDialog.show(SafeArea(child: padding));
   }
 
-  void _deleteChat(ChatViewModel viewModel) {
+  Future<void> _deleteChat(
+    BuildContext context,
+    ChatViewModel viewModel,
+  ) async {
     AthenaDialog.dismiss();
-    viewModel.deleteChat(chat);
+    final confirmed = await AthenaDialog.confirm(
+      'Delete this session and all its messages?',
+    );
+    if (confirmed != true) return;
+    await viewModel.deleteChat(chat);
+    final error = viewModel.error.value;
+    if (error != null) AthenaDialog.error(error);
   }
 
   void _renameChat(BuildContext context, ChatViewModel viewModel) async {

@@ -102,31 +102,43 @@ class _MessageListViewState extends State<MessageListView> {
           viewModel.isLoadingMessages.value &&
           viewModel.currentChat.value?.id == widget.chat.id;
 
-      final content = messages.isEmpty
-          ? SentinelPlaceholder(sentinel: sentinel)
-          : NotificationListener<ScrollNotification>(
-              onNotification: _handleScrollNotification,
-              child: NotificationListener<ScrollMetricsNotification>(
-                onNotification: controller.handleMetricsNotification,
-                child: CustomScrollView(
-                  controller: controller,
-                  slivers: [
-                    AthenaWorkspaceTextSize(
-                      size: textSize,
-                      child: MessageCardListSliver(
-                        messages: messages,
-                        loading: loading,
-                        sentinel: sentinel,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        onLongPress: openBottomSheet,
-                        onRewind: widget.onRewind,
-                      ),
-                    ),
-                  ],
+      // 历史加载期间也保留同一个滚动视图，只切换 sliver 内容：换成另一个
+      // 根控件会让 ScrollPosition 从 0 重建，加载完成后先闪一下顶部再被
+      // 贴底校正拉回底部（见 WIDGETS.md「消息列表结构」）。
+      final list = NotificationListener<ScrollNotification>(
+        onNotification: _handleScrollNotification,
+        child: NotificationListener<ScrollMetricsNotification>(
+          onNotification: controller.handleMetricsNotification,
+          child: CustomScrollView(
+            controller: controller,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              if (loadingHistory)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (messages.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: SentinelPlaceholder(sentinel: sentinel),
+                )
+              else
+                AthenaWorkspaceTextSize(
+                  size: textSize,
+                  child: MessageCardListSliver(
+                    messages: messages,
+                    loading: loading,
+                    sentinel: sentinel,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    onLongPress: openBottomSheet,
+                    onRewind: widget.onRewind,
+                  ),
                 ),
-              ),
-            );
-      final list = loadingHistory ? const SizedBox.expand() : content;
+            ],
+          ),
+        ),
+      );
       // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
       // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
       // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
@@ -200,6 +212,14 @@ class _MessageListViewState extends State<MessageListView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AthenaBottomSheetTile(
+                leading: const Icon(LucideIcons.copy),
+                title: 'Copy',
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: message.content));
+                  AthenaDialog.dismiss();
+                },
+              ),
               AthenaBottomSheetTile(
                 leading: const Icon(LucideIcons.history),
                 title: 'Rewind',

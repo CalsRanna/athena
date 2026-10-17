@@ -41,18 +41,33 @@ class AthenaBottomSheetTile extends StatelessWidget {
       style: trailingTextStyle,
       child: trailingIconTheme,
     );
-    final align = Align(
-      alignment: Alignment.centerRight,
-      child: defaultTrailing,
-    );
     final children = [
       IconTheme(data: leadingIconThemeData, child: leading ?? const SizedBox()),
       if (leading != null) const SizedBox(width: 12),
-      Text(title, style: textStyle),
+      Expanded(
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textStyle,
+        ),
+      ),
       if (trailing != null) const SizedBox(width: 12),
-      Flexible(child: align),
+      if (trailing != null)
+        Flexible(
+          fit: FlexFit.loose,
+          child: Align(
+            alignment: Alignment.centerRight,
+            widthFactor: 1,
+            child: defaultTrailing,
+          ),
+        ),
     ];
     final container = Container(
+      alignment: Alignment.center,
+      constraints: const BoxConstraints(
+        minHeight: AthenaIconButtonSize.touchTarget,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       child: Row(children: children),
     );

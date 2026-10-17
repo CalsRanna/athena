@@ -32,10 +32,7 @@ void main() {
       );
       final colors = colorsOf(mode);
       final composer = find.byType(UserInput);
-      final shell = find.descendant(
-        of: composer,
-        matching: find.byType(AnimatedContainer),
-      );
+      final shell = find.byKey(const Key('mobile-composer-shell'));
       Border border() =>
           (tester.widget<AnimatedContainer>(shell).decoration! as BoxDecoration)
                   .border!

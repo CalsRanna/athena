@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -30,7 +31,7 @@ class MobileSentinelListPage extends StatelessWidget {
         appBar: const AthenaAppBar(title: Text('Sentinel')),
         body: Stack(
           children: [
-            _buildData(sentinels),
+            _buildData(context, sentinels),
             Align(
               alignment: Alignment.bottomCenter,
               child: GestureDetector(
@@ -44,7 +45,7 @@ class MobileSentinelListPage extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
                   margin: EdgeInsets.only(
-                    bottom: MediaQuery.paddingOf(context).bottom,
+                    bottom: 16 + MediaQuery.paddingOf(context).bottom,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -87,7 +88,16 @@ class MobileSentinelListPage extends StatelessWidget {
     MobileSentinelFormRoute().push<void>(context);
   }
 
-  Widget _buildData(List<SentinelEntity> sentinels) {
+  Widget _buildData(BuildContext context, List<SentinelEntity> sentinels) {
+    if (sentinels.isEmpty) {
+      return const MobileEmptyState(
+        icon: LucideIcons.userRound,
+        title: 'No Sentinels yet',
+        hint:
+            'Sentinels are reusable roles with their own system prompt. '
+            'Add one with the button below.',
+      );
+    }
     return MasonryGridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 8,
@@ -98,17 +108,55 @@ class MobileSentinelListPage extends StatelessWidget {
         return MobileGridTile(
           title: sentinel.name,
           subtitle: sentinel.description,
+          trailing: sentinel.isPreset
+              ? const Icon(LucideIcons.lockKeyhole)
+              : null,
           onTap: () => editSentinel(context, sentinel),
           onLongPress: () => openBottomSheet(context, sentinel),
         );
       },
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
     );
   }
 
-  void destroySentinel(BuildContext context, SentinelEntity sentinel) {
+  Future<void> destroySentinel(
+    BuildContext context,
+    SentinelEntity sentinel,
+  ) async {
     AthenaDialog.dismiss();
-    GetIt.instance<SentinelViewModel>().deleteSentinel(sentinel);
+    final confirmed = await AthenaDialog.confirm('Delete ${sentinel.name}?');
+    if (confirmed != true) return;
+    final viewModel = GetIt.instance<SentinelViewModel>();
+    await viewModel.deleteSentinel(sentinel);
+    if (!context.mounted) return;
+    final error = viewModel.error.value;
+    if (error != null) AthenaDialog.error(error);
+  }
+
+  Future<void> duplicateSentinel(
+    BuildContext context,
+    SentinelEntity source,
+  ) async {
+    AthenaDialog.dismiss();
+    final copy = SentinelEntity(
+      name: '${source.name} copy',
+      description: source.description,
+      prompt: source.prompt,
+      tags: source.tags,
+    );
+    final viewModel = GetIt.instance<SentinelViewModel>();
+    final created = await viewModel.createSentinel(copy);
+    if (!context.mounted) return;
+    if (created == null) {
+      AthenaDialog.error(viewModel.error.value ?? 'Failed to duplicate');
+      return;
+    }
+    MobileSentinelFormRoute(sentinel: created).push<void>(context);
   }
 
   void editSentinel(BuildContext context, SentinelEntity sentinel) {
@@ -117,18 +165,31 @@ class MobileSentinelListPage extends StatelessWidget {
 
   void openBottomSheet(BuildContext context, SentinelEntity sentinel) {
     HapticFeedback.heavyImpact();
-    if (sentinel.isPreset) return;
-    final editTile = AthenaBottomSheetTile(
-      leading: const Icon(LucideIcons.pencilLine),
-      title: 'Edit',
-      onTap: () => editSentinel(context, sentinel),
+    final duplicateTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.copy),
+      title: 'Duplicate',
+      onTap: () => duplicateSentinel(context, sentinel),
     );
-    final deleteTile = AthenaBottomSheetTile(
-      leading: const Icon(LucideIcons.trash2),
-      title: 'Delete',
-      onTap: () => destroySentinel(context, sentinel),
-    );
-    final children = [editTile, deleteTile];
+    final children = <Widget>[];
+    if (!sentinel.isPreset) {
+      children.add(
+        AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.pencilLine),
+          title: 'Edit',
+          onTap: () => editSentinel(context, sentinel),
+        ),
+      );
+    }
+    children.add(duplicateTile);
+    if (!sentinel.isPreset) {
+      children.add(
+        AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.trash2),
+          title: 'Delete',
+          onTap: () => destroySentinel(context, sentinel),
+        ),
+      );
+    }
     final column = Column(mainAxisSize: MainAxisSize.min, children: children);
     final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),

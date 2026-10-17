@@ -2,8 +2,11 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// 首页卡片行中的单张卡片：160×160、圆角 [AthenaRadius.container]、
+/// 首页卡片行中的单张卡片：宽 160、圆角 [AthenaRadius.container]、
 /// `surfaceButtonSecondary` 底、图标 + 名称 + 描述。
+///
+/// 高度由 [CardListView] 按当前字号计算后统一约束，卡片内部不再写死 160，
+/// 避免系统大字号下名称与描述把固定高度撑破。
 class CardTile extends StatelessWidget {
   final IconData icon;
   final String name;
@@ -30,7 +33,6 @@ class CardTile extends StatelessWidget {
           color: colors.surfaceButtonSecondary,
         ),
         padding: const EdgeInsets.all(12),
-        height: 160,
         width: 160,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,19 +41,19 @@ class CardTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               name,
-              maxLines: 3,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: AthenaTextStyle.section.copyWith(
                 color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
-            Expanded(
-              child: Text(
-                description,
-                style: AthenaTextStyle.caption.copyWith(
-                  color: colors.iconSecondary,
-                ),
+            Text(
+              description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AthenaTextStyle.caption.copyWith(
+                color: colors.iconSecondary,
               ),
             ),
           ],
@@ -74,12 +76,25 @@ class CardListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemBuilder: itemBuilder,
-      itemCount: itemCount,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      separatorBuilder: (context, index) => const SizedBox(width: 12),
+    // 卡片高度按当前字号计算：图标行 + 两行标题 + 三行描述 + 内边距。
+    // 160 是常规字号下的下限，大字号时随之增高，卡片内容不会溢出。
+    final scaler = MediaQuery.textScalerOf(context);
+    final titleLine =
+        scaler.scale(AthenaFontSize.section) * AthenaFontSize.bodyHeight;
+    final captionLine =
+        scaler.scale(AthenaFontSize.caption) * AthenaFontSize.captionHeight;
+    final contentHeight =
+        24 + AthenaIcon.regularSize + 4 + titleLine * 2 + 4 + captionLine * 3;
+    final height = contentHeight < 160 ? 160.0 : contentHeight;
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        itemBuilder: itemBuilder,
+        itemCount: itemCount,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+      ),
     );
   }
 }

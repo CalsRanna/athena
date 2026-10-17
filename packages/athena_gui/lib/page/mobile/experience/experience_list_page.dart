@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -64,32 +63,35 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
         onTap: () => setState(() => scopeFilter = null),
         child: const Text('All'),
       ),
-      const SizedBox(width: 8),
       AthenaTagButton.small(
         selected: scopeFilter == 'shared',
         onTap: () => setState(() => scopeFilter = 'shared'),
         child: const Text('Shared'),
       ),
-      const SizedBox(width: 8),
       AthenaTagButton.small(
         selected: scopeFilter == 'self',
         onTap: () => setState(() => scopeFilter = 'self'),
         child: const Text('Private'),
       ),
     ];
+    // 系统字号放大后三个 chip 会超出屏宽，用 Wrap 换行而不是让 Row 溢出。
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: children),
+      child: Wrap(spacing: 8, runSpacing: 8, children: children),
     );
   }
 
   Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     if (experiences.isEmpty) {
-      final textStyle = AthenaTextStyle.body.copyWith(
-        color: colors.textPrimary,
+      return MobileEmptyState(
+        icon: LucideIcons.brain,
+        title: scopeFilter == null
+            ? 'No experiences yet'
+            : 'No ${scopeFilter == 'shared' ? 'shared' : 'private'} experiences',
+        hint:
+            'Experiences are lessons the agent saves after a session. '
+            'They appear here once there are some.',
       );
-      return Center(child: Text('No experiences yet', style: textStyle));
     }
     return MasonryGridView.count(
       crossAxisCount: 2,
@@ -110,7 +112,12 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
           onLongPress: () => openBottomSheet(context, experience),
         );
       },
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
     );
   }
 

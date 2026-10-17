@@ -176,7 +176,7 @@ class _ModelDropdown extends StatelessWidget {
   }
 
   void showModelSelectorDialog() {
-    if (groupedModels == null) return;
+    if (groupedModels == null || groupedModels!.isEmpty) return;
     AthenaDialog.show(
       MobileModelDialog(groupedModels: groupedModels!, onTap: handleTap),
       barrierDismissible: true,

@@ -28,17 +28,31 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final promptController = TextEditingController();
+  final tagsController = TextEditingController();
 
   late final viewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   Widget build(BuildContext context) {
     final isPreset = widget.sentinel?.isPreset ?? false;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final listViewChildren = [
+      if (isPreset)
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Text(
+            'The built-in Sentinel can be read but not edited.',
+            style: AthenaTextStyle.caption.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+        ),
+      if (isPreset) const SizedBox(height: 16),
       AthenaFormField(
         label: 'Prompt',
         control: AthenaInput(
           controller: promptController,
+          enabled: !isPreset,
           maxLines: 8,
           minLines: 8,
         ),
@@ -46,18 +60,31 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       const SizedBox(height: 32),
       AthenaFormField(
         label: 'Name',
-        control: AthenaInput(controller: nameController),
-        trailing: _buildGenerateIcon(generateSentinelName),
+        control: AthenaInput(controller: nameController, enabled: !isPreset),
+        trailing: isPreset ? null : _buildGenerateIcon(generateSentinelName),
       ),
       const SizedBox(height: 16),
       AthenaFormField(
         label: 'Description',
         control: AthenaInput(
           controller: descriptionController,
+          enabled: !isPreset,
           maxLines: 4,
           minLines: 4,
         ),
-        trailing: _buildGenerateIcon(generateSentinelDescription),
+        trailing: isPreset
+            ? null
+            : _buildGenerateIcon(generateSentinelDescription),
+      ),
+      const SizedBox(height: 16),
+      AthenaFormField(
+        label: 'Tags',
+        control: AthenaInput(
+          controller: tagsController,
+          enabled: !isPreset,
+          placeholder: 'writing, review',
+        ),
+        description: 'Comma-separated.',
       ),
     ];
     final listView = ListView(
@@ -94,6 +121,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     nameController.dispose();
     descriptionController.dispose();
     promptController.dispose();
+    tagsController.dispose();
     super.dispose();
   }
 
@@ -174,6 +202,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     nameController.text = widget.sentinel?.name ?? '';
     descriptionController.text = widget.sentinel?.description ?? '';
     promptController.text = widget.sentinel?.prompt ?? '';
+    tagsController.text = widget.sentinel?.tags ?? '';
   }
 
   Future<void> storeSentinel() async {
@@ -215,11 +244,15 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     final sentinel = SentinelEntity(
       name: nameController.text,
       description: descriptionController.text,
-      tags: '',
+      tags: tagsController.text,
       prompt: promptController.text,
     );
-    await viewModel.createSentinel(sentinel);
+    final created = await viewModel.createSentinel(sentinel);
     if (!mounted) return;
+    if (created == null) {
+      AthenaDialog.warning(viewModel.error.value ?? 'Failed to save Sentinel');
+      return;
+    }
     AutoRouter.of(context).maybePop();
   }
 
@@ -227,10 +260,16 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     final sentinel = widget.sentinel!.copyWith(
       name: nameController.text,
       description: descriptionController.text,
+      tags: tagsController.text,
       prompt: promptController.text,
     );
     await viewModel.updateSentinel(sentinel);
     if (!mounted) return;
+    final error = viewModel.error.value;
+    if (error != null) {
+      AthenaDialog.warning(error);
+      return;
+    }
     AutoRouter.of(context).maybePop();
   }
 

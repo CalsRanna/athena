@@ -108,8 +108,8 @@ class MobileSettingPage extends StatelessWidget {
         children: [
           const SizedBox(height: 8),
           _sheetLabel('Theme', colors),
-          _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
           _appearanceTile(viewModel, ThemeMode.light, 'Light'),
+          _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
           _appearanceTile(viewModel, ThemeMode.system, 'System'),
           const SizedBox(height: 12),
           _sheetLabel('Session text size', colors),

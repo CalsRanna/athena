@@ -19,16 +19,17 @@ class SendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
+      final streaming = isStreaming;
+      final enabled = streaming ? onTerminated != null : onSubmitted != null;
       final shapeDecoration = BoxDecoration(
-        color: colors.accent,
+        color: enabled ? colors.accent : colors.surfaceButtonSecondary,
         borderRadius: BorderRadius.circular(AthenaRadius.pill),
       );
-      final streaming = isStreaming;
       var iconData = LucideIcons.arrowUp;
       if (streaming) iconData = LucideIcons.square;
       final icon = Icon(
         iconData,
-        color: colors.textOnAccent,
+        color: enabled ? colors.textOnAccent : colors.textSecondary,
         size: AthenaIcon.regularSize,
       );
       final container = Container(
@@ -36,10 +37,24 @@ class SendButton extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         child: icon,
       );
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => handleTap(context, streaming),
-        child: container,
+      final mobile = switch (Theme.of(context).platform) {
+        TargetPlatform.android || TargetPlatform.iOS => true,
+        _ => false,
+      };
+      final visual = mobile
+          ? SizedBox.square(
+              dimension: AthenaIconButtonSize.touchTarget,
+              child: Center(child: container),
+            )
+          : container;
+      return Semantics(
+        button: true,
+        label: streaming ? 'Stop generating' : 'Send message',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => handleTap(context, streaming),
+          child: visual,
+        ),
       );
     });
   }

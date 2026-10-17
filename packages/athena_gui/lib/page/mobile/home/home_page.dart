@@ -5,6 +5,8 @@ import 'package:athena_gui/page/mobile/home/component/section_title.dart';
 import 'package:athena_gui/page/mobile/home/component/sentinel_list_view.dart';
 import 'package:athena_gui/page/mobile/home/component/welcome.dart';
 import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -78,22 +80,29 @@ class _MobileHomePageState extends State<MobileHomePage> {
             onTap: () => navigateExperienceList(context),
           ),
           if (experiences.isNotEmpty)
-            SizedBox(
-              height: 160,
-              child: CardListView(
-                itemCount: experiences.length,
-                itemBuilder: (_, index) {
-                  final experience = experiences[index];
-                  return CardTile(
-                    icon: LucideIcons.brain,
-                    name: experience.lesson,
-                    description:
-                        '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
-                    onTap: () => MobileExperienceDetailRoute(
-                      experience: experience,
-                    ).push<void>(context),
-                  );
-                },
+            CardListView(
+              itemCount: experiences.length,
+              itemBuilder: (_, index) {
+                final experience = experiences[index];
+                return CardTile(
+                  icon: LucideIcons.brain,
+                  name: experience.lesson,
+                  description:
+                      '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
+                  onTap: () => MobileExperienceDetailRoute(
+                    experience: experience,
+                  ).push<void>(context),
+                );
+              },
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'No experiences yet',
+                style: AthenaTextStyle.caption.copyWith(
+                  color: Theme.of(context).extension<AthenaColors>()!.textWeak,
+                ),
               ),
             ),
         ],
@@ -116,10 +125,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       spacing: 8,
       children: [
         SectionTitle('Sentinel', onTap: () => navigateSentinelList(context)),
-        SizedBox(
-          height: 156,
-          child: SentinelListView(sentinelViewModel: sentinelViewModel),
-        ),
+        SentinelListView(sentinelViewModel: sentinelViewModel),
       ],
     );
   }
@@ -129,13 +135,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
       spacing: 8,
       children: [
         SectionTitle('Session history', onTap: () => navigateChatList(context)),
-        SizedBox(
-          height: 52,
-          child: Watch(
-            (_) => RecentChatListView(
-              chatHistories: chatViewModel.recentChatHistories.value,
-              viewModel: chatViewModel,
-            ),
+        Watch(
+          (_) => RecentChatListView(
+            chatHistories: chatViewModel.recentChatHistories.value,
+            viewModel: chatViewModel,
           ),
         ),
       ],

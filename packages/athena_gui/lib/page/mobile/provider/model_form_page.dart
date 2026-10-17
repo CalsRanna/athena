@@ -2,10 +2,13 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/util/context_window_util.dart';
+import 'package:athena_gui/util/model_form_util.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/checkbox.dart';
+import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
@@ -26,10 +29,14 @@ class MobileModelFormPage extends StatefulWidget {
 class _MobileModelFormPageState extends State<MobileModelFormPage> {
   final nameController = TextEditingController();
   final valueController = TextEditingController();
+  final releasedAtController = TextEditingController();
+  final contextController = TextEditingController();
   final inputController = TextEditingController();
   final outputController = TextEditingController();
   var supportReasoning = false;
   var supportVisual = false;
+  String? idError;
+  String? nameError;
 
   late final viewModel = GetIt.instance<ModelViewModel>();
 
@@ -37,26 +44,56 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   Widget build(BuildContext context) {
     final listViewChildren = [
       AthenaFormField(
-        label: 'Id',
-        control: AthenaInput(controller: valueController),
+        label: 'Model ID',
+        control: AthenaInput(
+          controller: valueController,
+          placeholder: 'model-id',
+        ),
+        description: 'The id sent to the API, e.g. deepseek-v4-flash.',
+        error: idError,
       ),
       const SizedBox(height: 16),
       AthenaFormField(
-        label: 'Name',
-        control: AthenaInput(controller: nameController),
+        label: 'Display name',
+        control: AthenaInput(
+          controller: nameController,
+          placeholder: 'e.g. DeepSeek V4 Flash',
+        ),
+        error: nameError,
       ),
       const SizedBox(height: 16),
       AthenaFormField(
-        label: 'Input Price',
-        control: AthenaInput(controller: inputController),
+        label: 'Released',
+        control: AthenaInput(
+          controller: releasedAtController,
+          placeholder: 'YYYY-MM-DD',
+        ),
       ),
       const SizedBox(height: 16),
       AthenaFormField(
-        label: 'Output Price',
-        control: AthenaInput(controller: outputController),
+        label: 'Context window',
+        control: AthenaInput(
+          controller: contextController,
+          placeholder: '128K',
+        ),
+        description: 'Accepts plain tokens or K / M suffixes.',
       ),
       const SizedBox(height: 16),
-      AthenaFormField(label: 'Features', control: _buildFeatures(context)),
+      AthenaFormField(
+        label: 'Input price',
+        control: AthenaInput(controller: inputController, placeholder: '0.15'),
+        description: 'USD per million tokens.',
+      ),
+      const SizedBox(height: 16),
+      AthenaFormField(
+        label: 'Output price',
+        control: AthenaInput(controller: outputController, placeholder: '0.60'),
+        description: 'USD per million tokens.',
+      ),
+      const SizedBox(height: 20),
+      AthenaFormField(label: 'Capabilities', control: _buildFeatures(context)),
+      const SizedBox(height: 16),
+      const SafeArea(top: false, child: SizedBox()),
     ];
     final listView = ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -76,6 +113,8 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   void dispose() {
     nameController.dispose();
     valueController.dispose();
+    releasedAtController.dispose();
+    contextController.dispose();
     inputController.dispose();
     outputController.dispose();
     super.dispose();
@@ -86,23 +125,44 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     super.initState();
     nameController.text = widget.model?.name ?? '';
     valueController.text = widget.model?.modelId ?? '';
-    inputController.text = widget.model?.inputPrice ?? '';
-    outputController.text = widget.model?.outputPrice ?? '';
+    releasedAtController.text = stripModelReleasedAt(
+      widget.model?.releasedAt ?? '',
+    );
+    final contextWindow = widget.model?.contextWindow ?? 0;
+    contextController.text = contextWindow > 0
+        ? formatContextWindow(contextWindow)
+        : '';
+    inputController.text = stripModelPrice(widget.model?.inputPrice ?? '');
+    outputController.text = stripModelPrice(widget.model?.outputPrice ?? '');
     supportReasoning = widget.model?.reasoning ?? false;
     supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> submitModel() async {
+    final modelId = valueController.text.trim();
+    final name = nameController.text.trim();
+    setState(() {
+      idError = modelId.isEmpty ? 'Model ID is required.' : null;
+      nameError = name.isEmpty ? 'Display name is required.' : null;
+    });
+    if (idError != null || nameError != null) return;
+
+    final released = stripModelReleasedAt(releasedAtController.text);
+    final releasedAt = released.isEmpty ? '' : 'Released $released';
+    final contextWindow = parseContextWindow(contextController.text);
+    final inputPrice = formatModelPrice(inputController.text);
+    final outputPrice = formatModelPrice(outputController.text);
+
     if (widget.model == null) {
       final now = DateTime.now();
       final newModel = ModelEntity(
-        name: nameController.text,
-        modelId: valueController.text,
+        name: name,
+        modelId: modelId,
         providerId: widget.provider!.id!,
-        contextWindow: 0,
-        inputPrice: inputController.text,
-        outputPrice: outputController.text,
-        releasedAt: '',
+        contextWindow: contextWindow,
+        inputPrice: inputPrice,
+        outputPrice: outputPrice,
+        releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,
         createdAt: now,
@@ -111,16 +171,23 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       await viewModel.createModel(newModel);
     } else {
       final copiedModel = widget.model!.copyWith(
-        name: nameController.text,
-        modelId: valueController.text,
-        inputPrice: inputController.text,
-        outputPrice: outputController.text,
+        name: name,
+        modelId: modelId,
+        contextWindow: contextWindow,
+        inputPrice: inputPrice,
+        outputPrice: outputPrice,
+        releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,
       );
       await viewModel.updateModel(copiedModel);
     }
     if (!mounted) return;
+    final error = viewModel.error.value;
+    if (error != null) {
+      AthenaDialog.error(error);
+      return;
+    }
     AutoRouter.of(context).maybePop();
   }
 
@@ -159,18 +226,17 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       onTap: () => updateSupportVisual(!supportVisual),
       trailing: Text('Visual', style: trailingTextStyle),
     );
-    final children = [
-      reasoningCheckboxGroup,
-      const SizedBox(width: 12),
-      visualCheckboxGroup,
-    ];
-    return Row(children: children);
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [reasoningCheckboxGroup, visualCheckboxGroup],
+    );
   }
 
   Widget _buildSubmitButton(BuildContext context) {
     final button = AthenaPrimaryButton(
       onTap: submitModel,
-      child: const Center(child: Text('Submit')),
+      child: Center(child: Text(widget.model == null ? 'Add model' : 'Save')),
     );
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }

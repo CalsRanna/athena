@@ -70,9 +70,19 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
       width: 16,
       child: widget.value ? _buildCheckIcon() : null,
     );
+    final mobile = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+    final target = mobile
+        ? SizedBox.square(
+            dimension: AthenaIconButtonSize.touchTarget,
+            child: Center(child: animatedContainer),
+          )
+        : animatedContainer;
     final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: animatedContainer,
+      child: target,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

@@ -11,8 +11,17 @@ class MobileModelDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (groupedModels.isEmpty) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    if (groupedModels.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(AthenaSpace.xxl),
+        child: Text(
+          'No enabled models. Add one in Settings → Provider first.',
+          textAlign: TextAlign.center,
+          style: AthenaTextStyle.body.copyWith(color: colors.textSecondary),
+        ),
+      );
+    }
     final titleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textWeak,
     );

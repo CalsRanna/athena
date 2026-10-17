@@ -1,10 +1,12 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
@@ -27,24 +29,49 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final action = AthenaIconButton(
+      icon: LucideIcons.plus,
+      onTap: () => MobileChatRoute().push<void>(context),
+    );
     return AthenaScaffold(
-      appBar: const AthenaAppBar(title: Text('Session history')),
+      appBar: AthenaAppBar(
+        action: action,
+        title: const Text('Session history'),
+      ),
       body: _buildData(),
     );
   }
 
   Widget _buildData() {
-    return Watch(
-      (_) => RefreshIndicator(
+    return Watch((context) {
+      final histories = viewModel.chatHistories.value;
+      if (histories.isEmpty) {
+        return MobileEmptyState(
+          icon: LucideIcons.messageSquare,
+          title: 'No sessions yet',
+          hint: 'Start a new session and it will show up here.',
+          action: AthenaPrimaryButton(
+            onTap: () => MobileChatRoute().push<void>(context),
+            child: const Center(child: Text('New Session')),
+          ),
+        );
+      }
+      return RefreshIndicator(
         onRefresh: () => viewModel.getChats(),
         child: ListView.separated(
-          itemCount: viewModel.chatHistories.value.length,
+          itemCount: histories.length,
           itemBuilder: _buildItem,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 8,
+            bottom: 24 + MediaQuery.paddingOf(context).bottom,
+          ),
+          physics: const AlwaysScrollableScrollPhysics(),
           separatorBuilder: (context, index) => _buildSeparator(context),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Widget _buildItem(BuildContext context, int index) {
@@ -60,13 +87,26 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
-    final icon = Icon(AthenaIcons.more, color: colors.textPrimary);
-    final gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _openBottomSheet(context, chat),
-      child: icon,
+    final titleRow = Row(
+      children: [
+        if (chat.pinned) ...[
+          Icon(
+            LucideIcons.pin,
+            size: AthenaIcon.inlineSize,
+            color: colors.iconSecondary,
+          ),
+          const SizedBox(width: 6),
+        ],
+        Expanded(child: title),
+      ],
     );
-    final rowChildren = [Expanded(child: title), gestureDetector];
+    final moreButton = AthenaGhostIconButton(
+      icon: AthenaIcons.more,
+      box: AthenaIconButtonSize.touchTarget,
+      iconSize: AthenaIcon.regularSize,
+      onTap: () => _openBottomSheet(context, chat),
+    );
+    final rowChildren = [Expanded(child: titleRow), moreButton];
     final content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
     final messageTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
@@ -103,9 +143,15 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     );
   }
 
-  void _destroyChat(BuildContext context, ChatEntity chat) {
+  Future<void> _destroyChat(BuildContext context, ChatEntity chat) async {
     AthenaDialog.dismiss();
-    viewModel.deleteChat(chat);
+    final confirmed = await AthenaDialog.confirm(
+      'Delete this session and all its messages?',
+    );
+    if (confirmed != true) return;
+    await viewModel.deleteChat(chat);
+    final error = viewModel.error.value;
+    if (error != null) AthenaDialog.error(error);
   }
 
   void _navigateMobileChatPage(BuildContext context, ChatEntity chat) {
@@ -118,12 +164,20 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       title: 'Rename',
       onTap: () => _renameChat(context, chat),
     );
+    final pinTile = AthenaBottomSheetTile(
+      leading: Icon(chat.pinned ? LucideIcons.pinOff : LucideIcons.pin),
+      title: chat.pinned ? 'Unpin' : 'Pin',
+      onTap: () {
+        AthenaDialog.dismiss();
+        viewModel.togglePin(chat);
+      },
+    );
     final deleteTile = AthenaBottomSheetTile(
       leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => _destroyChat(context, chat),
     );
-    final children = [editTile, deleteTile];
+    final children = [editTile, pinTile, deleteTile];
     final column = Column(mainAxisSize: MainAxisSize.min, children: children);
     final padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),

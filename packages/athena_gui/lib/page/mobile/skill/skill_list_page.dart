@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -58,7 +59,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                   ),
                   padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
                   margin: EdgeInsets.only(
-                    bottom: MediaQuery.paddingOf(context).bottom,
+                    bottom: 16 + MediaQuery.paddingOf(context).bottom,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -98,12 +99,14 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   }
 
   Widget _buildData(BuildContext context, List<Skill> skills) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     if (skills.isEmpty) {
-      final textStyle = AthenaTextStyle.body.copyWith(
-        color: colors.textPrimary,
+      return const MobileEmptyState(
+        icon: LucideIcons.bookOpen,
+        title: 'No skills yet',
+        hint:
+            'Skills are reusable instructions the agent can load when a task '
+            'matches. Add one with the button below.',
       );
-      return Center(child: Text('No skills yet', style: textStyle));
     }
     return MasonryGridView.count(
       crossAxisCount: 2,
@@ -122,7 +125,12 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
           onLongPress: () => openBottomSheet(context, skill),
         );
       },
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
     );
   }
 

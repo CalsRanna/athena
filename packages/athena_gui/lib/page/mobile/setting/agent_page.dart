@@ -5,9 +5,11 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileAgentPage extends StatefulWidget {
@@ -100,6 +102,23 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        AthenaFormField(
+          label: 'Background task reports',
+          control: Watch(
+            (_) => Align(
+              alignment: Alignment.centerLeft,
+              child: AthenaSwitch(
+                value: viewModel.backgroundTaskReports.value,
+                onChanged: viewModel.updateBackgroundTaskReports,
+              ),
+            ),
+          ),
+          description:
+              'When a background command finishes, start a run that reads its '
+              'output and reports back. That run uses this session\'s model, '
+              'so it costs a request.',
+        ),
+        const SizedBox(height: 16),
         AthenaFormField(
           label: 'Brave API Key',
           control: AthenaInput(

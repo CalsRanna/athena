@@ -1,5 +1,7 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/home/component/sentinel_tile.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -12,37 +14,31 @@ class SentinelListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Watch((context) {
       final sentinels = sentinelViewModel.sentinels.value;
-      return _buildData(sentinels);
+      return _buildData(context, sentinels);
     });
   }
 
-  Widget _buildData(List<SentinelEntity> sentinels) {
-    if (sentinels.isEmpty) return const SizedBox();
-    final List<Widget> children1 = [];
-    final List<Widget> children2 = [];
-    final List<Widget> children3 = [];
-    for (var i = 0; i < sentinels.length; i++) {
-      final tile = SentinelTile(sentinels[i]);
-      if (i % 3 == 0) children1.add(tile);
-      if (i % 3 == 1) children2.add(tile);
-      if (i % 3 == 2) children3.add(tile);
-    }
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 12,
-      children: [
-        Row(spacing: 12, children: children1),
-        Row(spacing: 12, children: children2),
-        Row(spacing: 12, children: children3),
-      ],
-    );
-    return SizedBox(
-      height: 120,
-      child: SingleChildScrollView(
+  Widget _buildData(BuildContext context, List<SentinelEntity> sentinels) {
+    if (sentinels.isEmpty) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
+      return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        child: column,
-      ),
+        child: Text(
+          'No Sentinels yet',
+          style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
+        ),
+      );
+    }
+    // 单行横向排列，高度由 chip 自身决定：固定 120 高在系统大字号下会把
+    // 文字裁掉，三行分栏的阅读顺序也不如一行扫过去直观。
+    final row = Row(
+      spacing: 12,
+      children: [for (final sentinel in sentinels) SentinelTile(sentinel)],
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      scrollDirection: Axis.horizontal,
+      child: row,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -92,12 +93,78 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   Widget _buildBody(BuildContext context) {
     final providers = viewModel.providers.value;
-    if (providers.isEmpty) return const SizedBox();
-    return ListView.separated(
-      itemCount: providers.length,
-      itemBuilder: (_, index) => _ProviderListTile(providers[index]),
-      padding: EdgeInsets.zero,
-      separatorBuilder: (_, __) => _buildSeparator(context),
+    if (providers.isEmpty) {
+      if (viewModel.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return MobileEmptyState(
+        icon: AthenaIcons.connection,
+        title: 'No providers',
+        hint:
+            'Sync the catalog from models.dev to get the preset providers, '
+            'or add one by hand.',
+        action: Wrap(
+          spacing: AthenaSpace.sm,
+          runSpacing: AthenaSpace.sm,
+          alignment: WrapAlignment.center,
+          children: [
+            AthenaSecondaryButton.small(
+              onTap: () => syncFromModelsDev(context),
+              child: const Text('Sync from models.dev'),
+            ),
+            AthenaSecondaryButton.small(
+              onTap: () => navigateProviderNamePage(context),
+              child: const Text('Add provider'),
+            ),
+          ],
+        ),
+      );
+    }
+    final enabled = viewModel.enabledProviders.value;
+    final disabled = viewModel.disabledProviders.value;
+    final children = [
+      if (enabled.isNotEmpty) _buildGroup(context, 'Enabled', enabled),
+      if (disabled.isNotEmpty) _buildGroup(context, 'Disabled', disabled),
+    ];
+    return RefreshIndicator(
+      onRefresh: viewModel.initSignals,
+      child: ListView(
+        padding: EdgeInsets.only(
+          top: AthenaSpace.sm,
+          bottom: AthenaSpace.xxl + MediaQuery.paddingOf(context).bottom,
+        ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildGroup(
+    BuildContext context,
+    String title,
+    List<ProviderEntity> providers,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AthenaSpace.lg,
+            AthenaSpace.sm,
+            AthenaSpace.lg,
+            AthenaSpace.sm,
+          ),
+          child: Text(
+            '$title · ${providers.length}',
+            style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
+          ),
+        ),
+        for (final (index, provider) in providers.indexed) ...[
+          _ProviderListTile(provider),
+          if (index != providers.length - 1) _buildSeparator(context),
+        ],
+      ],
     );
   }
 
@@ -128,7 +195,14 @@ class _ProviderListTile extends StatelessWidget {
       color: colors.iconSecondary,
     );
     final titleChildren = [
-      Flexible(child: Text(provider.name, style: titleTextStyle)),
+      Flexible(
+        child: Text(
+          provider.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: titleTextStyle,
+        ),
+      ),
       if (provider.enabled) const SizedBox(width: AthenaSpace.sm),
       if (provider.enabled)
         Icon(
@@ -137,15 +211,11 @@ class _ProviderListTile extends StatelessWidget {
           color: colors.iconSecondary,
         ),
     ];
-    final icon = Icon(
-      AthenaIcons.more,
-      color: colors.iconSecondary,
-      size: AthenaIcon.regularSize,
-    );
-    final actionButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    final actionButton = AthenaGhostIconButton(
+      icon: AthenaIcons.more,
+      box: AthenaIconButtonSize.touchTarget,
+      iconSize: AthenaIcon.regularSize,
       onTap: () => openBottomSheet(context),
-      child: icon,
     );
     final rowChildren = [
       Expanded(child: Row(children: titleChildren)),
@@ -153,7 +223,12 @@ class _ProviderListTile extends StatelessWidget {
     ];
     final columnChildren = [
       Row(children: rowChildren),
-      Text(provider.baseUrl, style: subtitleTextStyle),
+      Text(
+        provider.baseUrl,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: subtitleTextStyle,
+      ),
     ];
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,10 +245,16 @@ class _ProviderListTile extends StatelessWidget {
     );
   }
 
-  void destroyProvider() {
-    final viewModel = GetIt.instance<ProviderViewModel>();
-    viewModel.deleteProvider(provider);
+  Future<void> destroyProvider() async {
     AthenaDialog.dismiss();
+    final confirmed = await AthenaDialog.confirm(
+      'Delete ${provider.name} and its models?',
+    );
+    if (confirmed != true) return;
+    final viewModel = GetIt.instance<ProviderViewModel>();
+    await viewModel.deleteProvider(provider);
+    final error = viewModel.error.value;
+    if (error != null) AthenaDialog.error(error);
   }
 
   void navigateProviderForm(BuildContext context) {

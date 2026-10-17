@@ -11,10 +11,13 @@ import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
+import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
+import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -22,6 +25,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -61,11 +65,23 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final actionButton = AthenaIconButton(
+    final newChatButton = AthenaIconButton(
+      icon: LucideIcons.plus,
+      onTap: () => MobileChatRoute().push<void>(context),
+    );
+    final moreButton = AthenaIconButton(
       icon: AthenaIcons.more,
       onTap: () {
         openBottomSheet(_resolveChat());
       },
+    );
+    final actionButton = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        newChatButton,
+        const SizedBox(width: AthenaSpace.sm),
+        moreButton,
+      ],
     );
 
     // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
@@ -317,6 +333,25 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (chat != null) viewModel.stopGenerating(chat.id!);
   }
 
+  Future<void> pickImages() async {
+    if (viewModel.isCurrentChatRewinding.value) return;
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+      );
+      if (result == null) return;
+      final paths = [
+        for (final file in result.files)
+          if (file.path != null) file.path!,
+      ];
+      if (paths.isEmpty) return;
+      await viewModel.addPendingImages(paths);
+    } catch (e) {
+      if (mounted) AthenaDialog.error('Unable to pick images: $e');
+    }
+  }
+
   Future<void> updateRetention(int value) async {
     final chat = viewModel.currentChat.value;
     if (chat != null) {
@@ -371,6 +406,47 @@ class _MobileChatPageState extends State<MobileChatPage> {
     }
   }
 
+  Widget _buildPendingImage(PendingImage image) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final Widget preview;
+    if (image.bytes != null) {
+      preview = Image.memory(
+        image.bytes!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Center(
+          child: Icon(
+            LucideIcons.imageOff,
+            size: AthenaIcon.regularSize,
+            color: colors.textSecondary,
+          ),
+        ),
+      );
+    } else if (image.stage == PendingImageStage.failed) {
+      preview = Center(
+        child: Icon(
+          LucideIcons.imageOff,
+          size: AthenaIcon.regularSize,
+          color: colors.textSecondary,
+        ),
+      );
+    } else {
+      preview = Center(
+        child: SizedBox(
+          width: AthenaIcon.regularSize,
+          height: AthenaIcon.regularSize,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: colors.textSecondary,
+          ),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AthenaRadius.control),
+      child: ColoredBox(color: colors.surfaceDeep, child: preview),
+    );
+  }
+
   Widget _buildInput() {
     return Watch((context) {
       final chat = _resolveChat();
@@ -381,6 +457,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
         isStreaming: viewModel.isCurrentChatStreaming.value,
         onSubmitted: () => sendMessage(chat),
         onTerminated: terminateStreaming,
+        onPickImages: pickImages,
       );
       final queued = viewModel.queuedMessages.value;
       final padding = Padding(
@@ -398,31 +475,27 @@ class _MobileChatPageState extends State<MobileChatPage> {
                 children: [
                   for (final (index, image)
                       in viewModel.pendingImages.value.indexed)
-                    Stack(
-                      children: [
-                        if (image.bytes != null)
-                          Image.memory(
-                            image.bytes!,
-                            width: 64,
-                            height: 64,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) =>
-                                const Icon(LucideIcons.imageOff),
-                          ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Tooltip(
-                            message: 'Remove image',
-                            child: AthenaGhostIconButton(
-                              icon: LucideIcons.x,
-                              onTap: viewModel.isCurrentChatRewinding.value
-                                  ? null
-                                  : () => viewModel.removePendingImage(index),
+                    SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: _buildPendingImage(image)),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Tooltip(
+                              message: 'Remove image',
+                              child: AthenaGhostIconButton(
+                                icon: LucideIcons.x,
+                                onTap: viewModel.isCurrentChatRewinding.value
+                                    ? null
+                                    : () => viewModel.removePendingImage(index),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                 ],
               ),

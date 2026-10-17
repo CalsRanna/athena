@@ -161,7 +161,10 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
 
       final padding = Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+        // 系统大字号下五条设置行会超过底部面板的默认最大高度，列表必须可滚。
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: children),
+        ),
       );
       return SafeArea(child: padding);
     });

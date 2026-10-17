@@ -34,6 +34,8 @@ class MobileProviderFormPage extends StatefulWidget {
 }
 
 class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
+  late String _title;
+  final nameController = TextEditingController();
   final keyController = TextEditingController();
   final urlController = TextEditingController();
   ApiFormat _apiFormat = ApiFormat.chatCompletions;
@@ -46,6 +48,13 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       color: colors.textSecondary,
     );
     final children = [
+      if (!widget.provider.isPreset) ...[
+        AthenaFormField(
+          label: 'Name',
+          control: AthenaInput(controller: nameController),
+        ),
+        const SizedBox(height: 16),
+      ],
       AthenaFormField(
         label: 'API Key',
         control: AthenaInput(controller: keyController, obscureText: true),
@@ -113,7 +122,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       _buildSubmitButton(context),
     ];
     return AthenaScaffold(
-      appBar: AthenaAppBar(title: Text(widget.provider.name)),
+      appBar: AthenaAppBar(title: Text(_title)),
       body: SafeArea(top: false, child: Column(children: columnChildren)),
     );
   }
@@ -147,6 +156,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   @override
   void dispose() {
+    nameController.dispose();
     keyController.dispose();
     urlController.dispose();
     super.dispose();
@@ -160,6 +170,8 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   @override
   void initState() {
     super.initState();
+    _title = widget.provider.name;
+    nameController.text = widget.provider.name;
     keyController.text = widget.provider.apiKey;
     urlController.text = widget.provider.baseUrl;
     _apiFormat = widget.provider.apiFormat;
@@ -207,17 +219,31 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Future<void> updateProvider() async {
+    final name = nameController.text.trim();
+    if (!widget.provider.isPreset && name.isEmpty) {
+      AthenaDialog.warning('Name is required');
+      return;
+    }
     final viewModel = GetIt.instance<ProviderViewModel>();
     // 手动选择时传 apiFormat，`copyWith` 会把 apiFormatAuto 落成 false；
     // 选 Auto 时传 apiFormatAuto: true，格式值等下次目录同步覆盖。
     final provider = widget.provider.copyWith(
-      enabled: true,
+      enabled: widget.provider.enabled,
+      name: widget.provider.isPreset ? widget.provider.name : name,
       apiKey: keyController.text,
       baseUrl: urlController.text,
       apiFormat: _apiFormatAuto ? null : _apiFormat,
       apiFormatAuto: _apiFormatAuto,
     );
     await viewModel.updateProvider(provider);
+    if (!mounted) return;
+    final error = viewModel.error.value;
+    if (error != null) {
+      AthenaDialog.error(error);
+      return;
+    }
+    if (!widget.provider.isPreset) setState(() => _title = name);
+    AthenaDialog.success('Provider saved');
   }
 
   String _apiFormatHint() {

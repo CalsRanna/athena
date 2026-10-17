@@ -50,8 +50,8 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
       apiKey: '',
       createdAt: DateTime.now(),
     );
-    await viewModel.storeProvider(provider);
-    if (!mounted) return;
+    final created = await viewModel.storeProvider(provider);
+    if (!mounted || created == null) return;
     AutoRouter.of(context).maybePop();
   }
 }

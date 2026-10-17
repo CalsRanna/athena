@@ -28,6 +28,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Athena needs access to your photos so you can attach them to a message.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need acees your library to store image in your album exported from chat</string>
 	<key>UIApplicationSceneManifest</key>

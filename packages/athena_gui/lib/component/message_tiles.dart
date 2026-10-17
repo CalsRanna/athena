@@ -201,6 +201,11 @@ class _AssistantMessageSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 触屏没有 hover：移动端把工具条常显，复制入口才始终可达。
+    final mobile = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
     // 助手消息没有头像、没有气泡：内容直接铺满列宽。
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +224,7 @@ class _AssistantMessageSegment extends StatelessWidget {
             ValueListenableBuilder<Object?>(
               valueListenable: hover.hoveredCard,
               builder: (context, hoveredCard, _) => MessageActionBar(
-                visible: streaming || hoveredCard == cardId,
+                visible: streaming || mobile || hoveredCard == cardId,
                 leading: streaming ? const StreamingIndicator() : null,
                 onCopy: streaming
                     ? null
@@ -408,7 +413,11 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 内边距 12 × 8。没有头像。
     //
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
-    // 气泡右对齐，操作条也贴右缘。
+    // 气泡右对齐，操作条也贴右缘；移动端没有 hover，改为常显。
+    final mobile = switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
     return AthenaHover(
       // 消息卡片本身不可点，hover 只驱动操作条显形，所以不设 cursor。
       builder: (context, hovered) => Padding(
@@ -444,7 +453,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
             ),
             MessageActionBar(
               // 用户消息不受"本轮未结束"影响：即使正在跑，也照常 hover 显形。
-              visible: hovered,
+              visible: mobile || hovered,
               // Copy 始终可用；Rewind 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
               onRewind: widget.onRewind,

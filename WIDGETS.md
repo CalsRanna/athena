@@ -97,6 +97,7 @@
 | `AthenaSettings*`（`panel` / `row` / `nav` / `control`）、`DesktopSettingFormField` / `DesktopSettingFormActions` | `page/desktop/setting/component/` | 设置面板与设置表单专用一组 |
 | `MobileSettingTile` | `page/mobile/setting/component/` | 移动设置行 |
 | `MobileGridTile` | `page/mobile/component/` | 移动宫格块（Skill / Sentinel / Experience 列表共用） |
+| `MobileEmptyState` | `page/mobile/component/` | 移动列表空态（图标 + 标题 + 说明 + 可选操作） |
 
 **按钮的语义**：主操作（青瓷实心）、次操作（中性面）、文字按钮（前景反馈见 §3）、图标按钮（中性反色面）。图标按钮用反色面是为了**避免把次要导航也渲染成青瓷主操作**。
 
@@ -153,6 +154,8 @@
 
 图标按钮的**可见盒子**与**点击区域**分开：`AthenaIconButtonSize.compact` = 28（ghost、消息操作），`regular` = 32（导航按钮）。移动导航的返回、更多、新增等共用 `AthenaIconButton`，可见盒子 32，外层 `touchTarget` = 48；桌面使用可见盒子本身作为点击区域。移动顶栏按按钮实际宽度分配剩余标题空间，避免多个操作按钮挤出屏幕。窗口控制不参与这两档映射。
 
+移动端的发送键、开关、勾选框与底部面板行，命中区域同样不小于 48；可见图形可以小于命中区域，但不能让用户为了一个可见图形去瞄准 16–32 逻辑像素。消息操作条仍按紧凑档呈现（见上），靠常显与长按菜单保证触屏可达。
+
 
 ---
 
@@ -188,7 +191,7 @@ Flutter 给 macOS 默认装的是 `BouncingScrollPhysics`——那是触摸屏�
 
 运行统计的计算、更新与持久化契约见 [CONVENTIONS.md §12.4](CONVENTIONS.md#124-运行统计)，本节只规定 GUI 的呈现。
 
-- 助手消息底部工具条在 run 进行中常显：运行指示、实时耗时、累计输出 token 与最近一次 LLM 响应的生成速度（保留一位小数）；完成后换成复制、最终耗时、输出 token 与速度，恢复整卡 hover 显形。输出 token 与速度分别在有数值时显示，缺失时隐藏对应项，不补造 `0` 或 `—` 占位。两项均缺失时只保留耗时与运行指示；历史消息缺失耗时时仍显示 `—`
+- 助手消息底部工具条在 run 进行中常显：运行指示、实时耗时、累计输出 token 与最近一次 LLM 响应的生成速度（保留一位小数）；完成后换成复制、最终耗时、输出 token 与速度。桌面恢复整卡 hover 显形；移动端没有 hover，工具条常显，复制入口才始终可达。输出 token 与速度分别在有数值时显示，缺失时隐藏对应项，不补造 `0` 或 `—` 占位。两项均缺失时只保留耗时与运行指示；历史消息缺失耗时时仍显示 `—`
 - 工具条的 `StreamingIndicator` 使用独立圆形进度动画：与 Step Header 图标共用 `AthenaIcon.regularSize`，1.5px 圆头细线、次级文字色，无水平内边距；垂直居中于 `AthenaIconButtonSize.compact` 高的工具条，切换成复制按钮时不改变行高
 - 输出 token 总数在一万以下使用千分位（`1,234`），一万起使用十进制 K / M / B / T 简写（`12.3K`、`1.2M`），最多一位小数并去掉 `.0`
 - 输出 token 总数与生成速度变化时，以 500ms（`AthenaMotion.slower`）线性过渡到新值；途中再次更新从当前显示值继续，首次显示或未知值不补造动画，耗时刷新不重启动画。千分位与简写应用于动画显示值
@@ -200,8 +203,8 @@ Flutter 给 macOS 默认装的是 `BouncingScrollPhysics`——那是触摸屏�
 
 共享回退行为见 [CONVENTIONS.md §12.3](CONVENTIONS.md#123-会话回退rewind)，本节规定 GUI 的操作入口与界面反馈。
 
-用户消息操作条使用 `Rewind` 与 history 图标，桌面沿用 hover 显形，移动端长按
-菜单提供同一入口。确认文案说明回退点、现有草稿替换、停止排队输入与后台工作，
+用户消息操作条使用 `Rewind` 与 history 图标；桌面沿用 hover 显形，移动端常显。
+移动端长按用户消息仍会弹出底部菜单，提供 `Copy` / `Rewind` / `Delete`。确认文案说明回退点、现有草稿替换、停止排队输入与后台工作，
 以及文件和已执行命令不撤销。提交后恢复原文与图片，输入框聚焦，消息列表滚到底。
 回退期间输入框只读，避免等待收尾时新草稿被恢复内容覆盖。
 

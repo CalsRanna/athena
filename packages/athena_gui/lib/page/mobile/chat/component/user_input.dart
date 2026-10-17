@@ -1,13 +1,16 @@
 import 'package:athena_gui/page/mobile/chat/component/send_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class UserInput extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode? focusNode;
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
+  final void Function()? onPickImages;
   final bool isStreaming;
   final bool readOnly;
   const UserInput({
@@ -16,6 +19,7 @@ class UserInput extends StatefulWidget {
     this.focusNode,
     this.onSubmitted,
     this.onTerminated,
+    this.onPickImages,
     required this.isStreaming,
     this.readOnly = false,
   });
@@ -62,20 +66,30 @@ class _UserInputState extends State<UserInput> {
       scrollController: _scrollController,
       cursorColor: colors.textInput,
       decoration: inputDecoration,
-      maxLines: 2,
-      minLines: 2,
+      maxLines: 4,
+      minLines: 1,
       onTapOutside: (_) => handleTapOutside(context),
       onChanged: (_) => _scrollToCaret(),
       style: textStyle,
       textInputAction: TextInputAction.newline,
     );
     final sendButton = SendButton(
-      onSubmitted: widget.onSubmitted,
-      onTerminated: widget.onTerminated,
+      onSubmitted: widget.readOnly ? null : widget.onSubmitted,
+      onTerminated: widget.readOnly ? null : widget.onTerminated,
       isStreaming: widget.isStreaming,
+    );
+    final attachButton = Tooltip(
+      message: 'Add images',
+      child: AthenaGhostIconButton(
+        icon: LucideIcons.paperclip,
+        box: AthenaIconButtonSize.touchTarget,
+        iconSize: AthenaIcon.regularSize,
+        onTap: widget.readOnly ? null : widget.onPickImages,
+      ),
     );
     // 与桌面端共用圆角、柔阴影和青瓷聚焦边框，输入在上、操作在下。
     return AnimatedContainer(
+      key: const Key('mobile-composer-shell'),
       duration: AthenaMotion.hover,
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
@@ -92,7 +106,7 @@ class _UserInputState extends State<UserInput> {
         children: [
           textField,
           const SizedBox(height: 8),
-          Row(children: [const Spacer(), sendButton]),
+          Row(children: [attachButton, const Spacer(), sendButton]),
         ],
       ),
     );

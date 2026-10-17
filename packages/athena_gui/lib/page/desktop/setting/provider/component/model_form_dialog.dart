@@ -5,6 +5,7 @@ import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/context_window_util.dart';
+import 'package:athena_gui/util/model_form_util.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/checkbox.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -45,11 +46,13 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     super.initState();
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
-    releasedAtController.text = _stripReleased(widget.model?.releasedAt ?? '');
+    releasedAtController.text = stripModelReleasedAt(
+      widget.model?.releasedAt ?? '',
+    );
     final cw = widget.model?.contextWindow ?? 0;
     contextController.text = cw > 0 ? formatContextWindow(cw) : '';
-    inputController.text = _stripPrice(widget.model?.inputPrice ?? '');
-    outputController.text = _stripPrice(widget.model?.outputPrice ?? '');
+    inputController.text = stripModelPrice(widget.model?.inputPrice ?? '');
+    outputController.text = stripModelPrice(widget.model?.outputPrice ?? '');
     supportReasoning = widget.model?.reasoning ?? false;
     supportVisual = widget.model?.vision ?? false;
   }
@@ -210,8 +213,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
         name: name,
         providerId: widget.provider.id!,
         contextWindow: parseContextWindow(contextController.text),
-        inputPrice: _formatPrice(inputController.text),
-        outputPrice: _formatPrice(outputController.text),
+        inputPrice: formatModelPrice(inputController.text),
+        outputPrice: formatModelPrice(outputController.text),
         releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,
@@ -224,8 +227,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
         modelId: modelId,
         name: name,
         contextWindow: parseContextWindow(contextController.text),
-        inputPrice: _formatPrice(inputController.text),
-        outputPrice: _formatPrice(outputController.text),
+        inputPrice: formatModelPrice(inputController.text),
+        outputPrice: formatModelPrice(outputController.text),
         releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,
@@ -233,28 +236,5 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       await viewModel.updateModel(copiedModel);
     }
     if (mounted) AthenaDialog.dismiss();
-  }
-
-  /// `Released 2026-09-10` → `2026-09-10`（编辑框里只放日期）。
-  static String _stripReleased(String raw) {
-    return raw.replaceFirst(RegExp(r'^Released\s+'), '').trim();
-  }
-
-  /// `$0.15/M input tokens` / `$0.15/M` → `0.15`；自由文本原样保留。
-  static String _stripPrice(String raw) {
-    final match = RegExp(r'^\$?(\d+(?:\.\d+)?)/M').firstMatch(raw.trim());
-    return match?.group(1) ?? raw.trim();
-  }
-
-  /// `0.15` → `$0.15/M`；空串留空；非数字原样保存（用户自己的写法）。
-  static String _formatPrice(String raw) {
-    final text = raw.trim();
-    if (text.isEmpty) return '';
-    final value = double.tryParse(text.replaceFirst(r'$', ''));
-    if (value == null) return text;
-    var s = value.toStringAsFixed(4);
-    s = s.replaceAll(RegExp(r'0+$'), '');
-    s = s.replaceAll(RegExp(r'\.$'), '');
-    return '\$$s/M';
   }
 }
