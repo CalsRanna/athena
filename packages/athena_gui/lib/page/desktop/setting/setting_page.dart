@@ -16,7 +16,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// **下标不能当路由标识**（旧的 `int index` 就踩过这个前提）。
 enum SettingSection {
   provider,
-  defaultModel,
   agent,
   sentinel,
   skill,
@@ -76,16 +75,21 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
       ),
       _SettingEntry(
-        SettingSection.defaultModel,
-        'Default models',
-        LucideIcons.cpu,
-        keywords: ['session', 'chat', 'topic naming', 'sentinel metadata'],
-      ),
-      _SettingEntry(
         SettingSection.agent,
         'Agent',
         LucideIcons.workflow,
-        keywords: ['retries', 'brave', 'web search', 'effort', 'reasoning'],
+        keywords: [
+          'models',
+          'session',
+          'chat',
+          'topic naming',
+          'sentinel metadata',
+          'retries',
+          'brave',
+          'web search',
+          'effort',
+          'reasoning',
+        ],
       ),
     ]),
     const _SettingGroup('Customize', [
@@ -217,9 +221,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     if (name == DesktopSettingProviderRoute.name) {
       return SettingSection.provider;
     }
-    if (name == DesktopSettingDefaultModelRoute.name) {
-      return SettingSection.defaultModel;
-    }
     if (name == DesktopSettingAgentRoute.name) return SettingSection.agent;
     if (name == DesktopSettingSentinelRoute.name) {
       return SettingSection.sentinel;
@@ -250,7 +251,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     setState(() => this.section = section);
     final route = switch (section) {
       SettingSection.provider => const DesktopSettingProviderRoute(),
-      SettingSection.defaultModel => const DesktopSettingDefaultModelRoute(),
       SettingSection.agent => const DesktopSettingAgentRoute(),
       SettingSection.sentinel => const DesktopSettingSentinelRoute(),
       SettingSection.skill => const DesktopSettingSkillRoute(),

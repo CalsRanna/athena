@@ -17,7 +17,6 @@ class AthenaRouter extends RootStackRouter {
   List<AutoRoute> get routes {
     final desktopSettingChildren = [
       DesktopRoute(page: DesktopSettingProviderRoute.page),
-      DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
       DesktopRoute(page: DesktopSettingSentinelRoute.page),
       DesktopRoute(page: DesktopSettingSkillRoute.page),
       DesktopRoute(page: DesktopSettingExperienceRoute.page),
@@ -50,7 +49,6 @@ class AthenaRouter extends RootStackRouter {
       AutoRoute(page: MobileProviderFormRoute.page),
       AutoRoute(page: MobileProviderNameRoute.page),
       AutoRoute(page: MobileModelFormRoute.page),
-      AutoRoute(page: MobileDefaultModelFormRoute.page),
       AutoRoute(page: MobileAboutRoute.page),
       AutoRoute(page: MobileDataRoute.page),
       AutoRoute(page: MobileSettingRoute.page),

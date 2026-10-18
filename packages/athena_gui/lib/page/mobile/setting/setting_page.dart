@@ -33,7 +33,7 @@ class MobileSettingPage extends StatelessWidget {
             ),
             onTap: () => const MobileAgentRoute().push<void>(context),
             title: 'Agent',
-            subtitle: 'Retries, output limit, effort and tools',
+            subtitle: 'Default models, retries, output limit and tools',
             trailing: '',
           ),
           MobileSettingTile(
@@ -44,14 +44,6 @@ class MobileSettingPage extends StatelessWidget {
             onTap: () => const MobileProviderListRoute().push<void>(context),
             title: 'Providers',
             subtitle: 'API keys and model catalog',
-            trailing: '',
-          ),
-          MobileSettingTile(
-            leading: const Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
-            onTap: () =>
-                const MobileDefaultModelFormRoute().push<void>(context),
-            title: 'Default models',
-            subtitle: 'Model used for new sessions and naming',
             trailing: '',
           ),
         ],
