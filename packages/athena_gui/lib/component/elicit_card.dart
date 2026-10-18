@@ -188,7 +188,6 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 否则单看 "Question" 无从辨认在问什么。
   Widget _buildHeader(AthenaColors colors) => AthenaHover(
     onTap: _toggleExpanded,
-    pressScale: false,
     cursor: SystemMouseCursors.click,
     builder: (context, _) => Row(
       children: [

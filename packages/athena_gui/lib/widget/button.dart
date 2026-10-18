@@ -1,6 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
+import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 
 /// 导航图标按钮使用中性色块 + 描边，避免把次要导航也渲染成青瓷主操作。
@@ -88,24 +89,27 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
                 colors.accent,
               )
             : colors.accent;
-        return AnimatedContainer(
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(AthenaRadius.control),
-          ),
-          duration: AthenaMotion.hover,
-          padding: widget.padding,
-          child: DefaultTextStyle(
-            style: AthenaTextStyle.label.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w600,
+        return AthenaPressScale(
+          enabled: !disabled,
+          child: AnimatedContainer(
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
             ),
-            child: IconTheme.merge(
-              data: IconThemeData(
+            duration: AthenaMotion.hover,
+            padding: widget.padding,
+            child: DefaultTextStyle(
+              style: AthenaTextStyle.label.copyWith(
                 color: foreground,
-                size: AthenaIcon.inlineSize,
+                fontWeight: FontWeight.w600,
               ),
-              child: widget.child,
+              child: IconTheme.merge(
+                data: IconThemeData(
+                  color: foreground,
+                  size: AthenaIcon.inlineSize,
+                ),
+                child: widget.child,
+              ),
             ),
           ),
         );
@@ -142,24 +146,30 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
       enabled: !disabled,
       onTap: widget.onTap,
       cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        decoration: BoxDecoration(
-          // 同样不能用 Colors.transparent：它的 RGB 是黑，插值会闪深色
-          color: hover && !disabled
-              ? colors.surfaceHover
-              : colors.surfaceHover.withValues(alpha: 0),
-          border: Border.all(
-            color: hover && !disabled ? colors.borderStrong : colors.border,
+      builder: (context, hover) => AthenaPressScale(
+        enabled: !disabled,
+        child: AnimatedContainer(
+          decoration: BoxDecoration(
+            // 同样不能用 Colors.transparent：它的 RGB 是黑，插值会闪深色
+            color: hover && !disabled
+                ? colors.surfaceHover
+                : colors.surfaceHover.withValues(alpha: 0),
+            border: Border.all(
+              color: hover && !disabled ? colors.borderStrong : colors.border,
+            ),
+            borderRadius: BorderRadius.circular(AthenaRadius.control),
           ),
-          borderRadius: BorderRadius.circular(AthenaRadius.control),
-        ),
-        duration: AthenaMotion.hover,
-        padding: widget.padding,
-        child: DefaultTextStyle(
-          style: AthenaTextStyle.label.copyWith(color: foreground),
-          child: IconTheme.merge(
-            data: IconThemeData(color: foreground, size: AthenaIcon.inlineSize),
-            child: widget.child,
+          duration: AthenaMotion.hover,
+          padding: widget.padding,
+          child: DefaultTextStyle(
+            style: AthenaTextStyle.label.copyWith(color: foreground),
+            child: IconTheme.merge(
+              data: IconThemeData(
+                color: foreground,
+                size: AthenaIcon.inlineSize,
+              ),
+              child: widget.child,
+            ),
           ),
         ),
       ),
@@ -183,21 +193,24 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
     return AthenaHover(
       onTap: widget.onTap,
       cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        duration: AthenaMotion.hover,
-        decoration: BoxDecoration(
-          color: hover
-              ? colors.surfaceHover
-              : colors.surfaceHover.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(AthenaRadius.control),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: AnimatedDefaultTextStyle(
+      builder: (context, hover) => AthenaPressScale(
+        enabled: widget.onTap != null,
+        child: AnimatedContainer(
           duration: AthenaMotion.hover,
-          style: AthenaTextStyle.label.copyWith(
-            color: hover ? colors.textPrimary : colors.textSecondary,
+          decoration: BoxDecoration(
+            color: hover
+                ? colors.surfaceHover
+                : colors.surfaceHover.withValues(alpha: 0),
+            borderRadius: BorderRadius.circular(AthenaRadius.control),
           ),
-          child: Text(widget.text),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: AnimatedDefaultTextStyle(
+            duration: AthenaMotion.hover,
+            style: AthenaTextStyle.label.copyWith(
+              color: hover ? colors.textPrimary : colors.textSecondary,
+            ),
+            child: Text(widget.text),
+          ),
         ),
       ),
     );
@@ -237,17 +250,20 @@ class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
     return AthenaHover(
       onTap: widget.onTap,
       cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
-          color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-          borderRadius: BorderRadius.circular(AthenaRadius.row),
+      builder: (context, hover) => AthenaPressScale(
+        enabled: widget.onTap != null,
+        child: AnimatedContainer(
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+            borderRadius: BorderRadius.circular(AthenaRadius.row),
+          ),
+          duration: AthenaMotion.hover,
+          height: widget.box,
+          width: widget.box,
+          child: icon,
         ),
-        duration: AthenaMotion.hover,
-        height: widget.box,
-        width: widget.box,
-        child: icon,
       ),
     );
   }

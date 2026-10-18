@@ -81,7 +81,6 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return AthenaHover(
       onTap: _toggle,
-      pressScale: false,
       cursor: SystemMouseCursors.click,
       builder: (context, _) => Row(
         children: [

@@ -1,6 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
+import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 
 /// 筛选 chip：胶囊 + 1px 实线边框，没有渐变边框。
@@ -102,22 +103,25 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
       enabled: !disabled,
       onTap: widget.onTap,
       cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        duration: AthenaMotion.hover,
-        decoration: BoxDecoration(
-          // 选中态靠"提亮底色 + 加粗文字"表达，不做明暗反转的实心填充。
-          color: selected
-              ? colors.surfaceSelected
-              : hover
-              ? colors.surfaceHover
-              : colors.surfaceDeep,
-          border: Border.all(
-            color: selected || hover ? colors.borderStrong : colors.border,
+      builder: (context, hover) => AthenaPressScale(
+        enabled: !disabled,
+        child: AnimatedContainer(
+          duration: AthenaMotion.hover,
+          decoration: BoxDecoration(
+            // 选中态靠"提亮底色 + 加粗文字"表达，不做明暗反转的实心填充。
+            color: selected
+                ? colors.surfaceSelected
+                : hover
+                ? colors.surfaceHover
+                : colors.surfaceDeep,
+            border: Border.all(
+              color: selected || hover ? colors.borderStrong : colors.border,
+            ),
+            borderRadius: BorderRadius.circular(AthenaRadius.pill),
           ),
-          borderRadius: BorderRadius.circular(AthenaRadius.pill),
+          padding: widget.padding,
+          child: child,
         ),
-        padding: widget.padding,
-        child: child,
       ),
     );
   }
@@ -191,52 +195,55 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
                   ? Color.alphaBlend(hoverFill, colors.surfaceButtonSecondary)
                   : hoverFill)
             : resting;
-        return AnimatedContainer(
-          decoration: BoxDecoration(
-            color: background,
-            // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
-            // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
-            borderRadius: BorderRadius.circular(AthenaRadius.xs),
-          ),
-          duration: AthenaMotion.hover,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.leading != null) ...[
-                IconTheme(
-                  data: IconThemeData(
-                    color: foreground,
-                    size: AthenaIcon.inlineSize,
+        return AthenaPressScale(
+          enabled: canTap,
+          child: AnimatedContainer(
+            decoration: BoxDecoration(
+              color: background,
+              // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
+              // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
+              borderRadius: BorderRadius.circular(AthenaRadius.xs),
+            ),
+            duration: AthenaMotion.hover,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.leading != null) ...[
+                  IconTheme(
+                    data: IconThemeData(
+                      color: foreground,
+                      size: AthenaIcon.inlineSize,
+                    ),
+                    child: widget.leading!,
                   ),
-                  child: widget.leading!,
+                  const SizedBox(width: 6),
+                ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AthenaTextStyle.label.copyWith(color: foreground),
+                  ),
                 ),
-                const SizedBox(width: 6),
-              ],
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AthenaTextStyle.label.copyWith(color: foreground),
-                ),
-              ),
-              if (widget.trailing != null) ...[
-                const SizedBox(width: 4),
-                IgnorePointer(
-                  ignoring: !hover,
-                  child: AnimatedOpacity(
-                    opacity: hover ? 1 : 0,
-                    duration: AthenaMotion.hover,
-                    child: IconTheme(
-                      data: IconThemeData(color: foreground),
-                      child: widget.trailing!,
+                if (widget.trailing != null) ...[
+                  const SizedBox(width: 4),
+                  IgnorePointer(
+                    ignoring: !hover,
+                    child: AnimatedOpacity(
+                      opacity: hover ? 1 : 0,
+                      duration: AthenaMotion.hover,
+                      child: IconTheme(
+                        data: IconThemeData(color: foreground),
+                        child: widget.trailing!,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },

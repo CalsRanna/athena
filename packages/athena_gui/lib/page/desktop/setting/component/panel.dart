@@ -12,6 +12,7 @@ import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/hover.dart';
+import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -225,18 +226,21 @@ class AthenaSettingsBackLink extends StatelessWidget {
     return AthenaHover(
       onTap: onTap,
       cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        decoration: BoxDecoration(
-          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
-          color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+      builder: (context, hover) => AthenaPressScale(
+        enabled: onTap != null,
+        child: AnimatedContainer(
+          decoration: BoxDecoration(
+            // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+            borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+          ),
+          duration: AthenaMotion.hover,
+          height: 28,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AthenaSettings.rowInset,
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: children),
         ),
-        duration: AthenaMotion.hover,
-        height: 28,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthenaSettings.rowInset,
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: children),
       ),
     );
   }

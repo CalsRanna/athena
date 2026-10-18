@@ -513,6 +513,28 @@ void main() {
     });
   });
 
+  testWidgets('头部按下不缩放：整行宽的可点行不做按压缩放', (tester) async {
+    await pumpCard(tester, [
+      tool('{"call_description":"读取配置文件"}'),
+    ], live: false);
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(StepHeader)),
+    );
+    await tester.pump();
+
+    // 0.975 落在整行宽上会让内容横向收缩再回弹，看起来像在抖
+    expect(
+      find.descendant(
+        of: find.byType(StepCard),
+        matching: find.byType(AnimatedScale),
+      ),
+      findsNothing,
+    );
+
+    await gesture.up();
+  });
+
   testWidgets('运行中的工具也能展开：正文是一句占位，不铺参数', (tester) async {
     const args = '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
     await pumpCard(tester, [tool(args, result: null)]);

@@ -14,6 +14,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -683,9 +684,9 @@ class _SendButton extends StatelessWidget {
   }
 }
 
-/// 按压缩放按钮。
+/// 带 hover 填充的按压缩放按钮。
 ///
-/// 按压缩放 0.975：按下用快档、回弹用标准档且带弹簧曲线（`easeOutBack`）。
+/// 按下反馈交给 [AthenaPressScale]，这里只负责 hover 填充与点击。
 class _SquishButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -709,10 +710,10 @@ class _SquishButton extends StatefulWidget {
 }
 
 class _SquishButtonState extends State<_SquishButton> {
-  bool _pressed = false;
   bool _hover = false;
 
   bool get _interactive => widget.onTap != null || widget.hoverFill != null;
+
   @override
   Widget build(BuildContext context) {
     Widget result = widget.hoverFill == null
@@ -727,32 +728,13 @@ class _SquishButtonState extends State<_SquishButton> {
             ),
             child: Padding(padding: widget.padding, child: widget.child),
           );
-    result = AnimatedScale(
-      scale: _pressed ? 0.975 : 1,
-      // 按下要立刻跟手（快档）；回弹带弹簧、位移只有 2.5%，用标准档，
-      // 不用为"大位移"准备的慢档。
-      duration: _pressed ? AthenaMotion.fast : AthenaMotion.hover,
-      curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
-      child: result,
-    );
+    result = AthenaPressScale(enabled: _interactive, child: result);
     result = MouseRegion(
       cursor: _interactive
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
-      child: result,
-    );
-    result = Listener(
-      onPointerDown: (_) {
-        if (_interactive) setState(() => _pressed = true);
-      },
-      onPointerUp: (_) {
-        if (_pressed) setState(() => _pressed = false);
-      },
-      onPointerCancel: (_) {
-        if (_pressed) setState(() => _pressed = false);
-      },
       child: result,
     );
     if (widget.onTap == null) return result;

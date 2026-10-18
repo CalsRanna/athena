@@ -12,6 +12,7 @@ import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/markdown.dart';
+import 'package:athena_gui/widget/press_scale.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -705,18 +706,21 @@ class _MessageActionButton extends StatelessWidget {
       child: AthenaHover(
         onTap: onTap,
         cursor: SystemMouseCursors.click,
-        builder: (context, hover) => AnimatedContainer(
-          duration: AthenaMotion.hover,
-          height: AthenaIconButtonSize.compact,
-          constraints: const BoxConstraints(
-            minWidth: AthenaIconButtonSize.compact,
+        builder: (context, hover) => AthenaPressScale(
+          enabled: onTap != null,
+          child: AnimatedContainer(
+            duration: AthenaMotion.hover,
+            height: AthenaIconButtonSize.compact,
+            constraints: const BoxConstraints(
+              minWidth: AthenaIconButtonSize.compact,
+            ),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+              borderRadius: BorderRadius.circular(AthenaRadius.row),
+            ),
+            child: child,
           ),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-            borderRadius: BorderRadius.circular(AthenaRadius.row),
-          ),
-          child: child,
         ),
       ),
     );
