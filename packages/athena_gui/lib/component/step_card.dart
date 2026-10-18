@@ -71,10 +71,10 @@ class StepCard extends StatefulWidget {
   }
 
   /// 工具仍在运行、参数里还没有可用的 call_description 时的头部文案。
-  static const runningToolLabel = 'Running a tool…';
+  static const runningToolLabel = 'Running a tool';
 
   /// 工具结果尚未返回时，展开正文的占位文案。
-  static const waitingForResultLabel = 'Waiting for result…';
+  static const waitingForResultLabel = 'Waiting for result';
 
   /// 工具已结束但缺少 call_description 时的头部文案。
   static const completedToolLabel = 'Used a tool';

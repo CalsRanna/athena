@@ -16,7 +16,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 1. **文案只认 call_description**：解析得出就用模型自述，解析不出（缺该字段，
 ///    或参数还是流式中的半截 JSON）时按状态退回占位文案，不把原始参数摆到头部。
 /// 2. **组头图标跟随当前步骤**：进行中使用当前工具 / 推理 / 压缩自己的图标；
-///    工具文案可能只是通用的 `Running a tool…`，图标负责说明是哪个工具；结束态
+///    工具文案可能只是通用的 `Running a tool`，图标负责说明是哪个工具；结束态
 ///    是汇总文案，仍用通用图标。
 void main() {
   ToolCallStep tool(
@@ -95,20 +95,20 @@ void main() {
     test('缺 call_description 时退回运行中占位', () {
       expect(
         StepCard.currentLabel(tool('{"path":"a.dart"}')),
-        'Running a tool…',
+        'Running a tool',
       );
-      expect(StepCard.currentLabel(tool('{}')), 'Running a tool…');
-      expect(StepCard.currentLabel(tool('')), 'Running a tool…');
+      expect(StepCard.currentLabel(tool('{}')), 'Running a tool');
+      expect(StepCard.currentLabel(tool('')), 'Running a tool');
       expect(
         StepCard.currentLabel(tool('{"call_description":"   "}')),
-        'Running a tool…',
+        'Running a tool',
       );
     });
 
     test('流式半截 JSON 解析不出时同样退回运行中占位', () {
       expect(
         StepCard.currentLabel(tool('{"call_description":"读取配')),
-        'Running a tool…',
+        'Running a tool',
       );
     });
   });
@@ -152,11 +152,11 @@ void main() {
       const completeArgs =
           '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
       const stages = [
-        ('', 'Running a tool…'),
-        ('{"path":"/tmp/config', 'Running a tool…'),
-        ('{"path":"/tmp/config.json"}', 'Running a tool…'),
-        ('{"call_description":"   "}', 'Running a tool…'),
-        ('{"call_description":"读取配', 'Running a tool…'),
+        ('', 'Running a tool'),
+        ('{"path":"/tmp/config', 'Running a tool'),
+        ('{"path":"/tmp/config.json"}', 'Running a tool'),
+        ('{"call_description":"   "}', 'Running a tool'),
+        ('{"call_description":"读取配', 'Running a tool'),
         (completeArgs, description),
       ];
       final thought = reasoning();
@@ -223,7 +223,7 @@ void main() {
       await pumpCard(tester, [reasoning(), tool('{"path":"a.dart"}')]);
 
       expect(
-        find.text('Running a tool… · Used 1 tool · Thought 0.0 seconds'),
+        find.text('Running a tool · Used 1 tool · Thought 0.0 seconds'),
         findsOneWidget,
       );
       expect(find.byIcon(LucideIcons.file), findsOneWidget);
