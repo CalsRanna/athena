@@ -103,7 +103,7 @@ void main() {
     await tester.tap(find.text('file_read'));
     await tester.pumpAndSettle();
     expect(find.text('file_read'), findsOneWidget);
-    expect(find.text('Using a tool'), findsOneWidget);
+    expect(find.text('Needs your approval'), findsOneWidget);
     expect(find.text('path: /tmp/config.json'), findsNothing);
     expect(find.text('Allow Once'), findsNothing);
     expect(
@@ -117,7 +117,7 @@ void main() {
     expect(find.text('Allow Once'), findsOneWidget);
   });
 
-  testWidgets('审批标题缺少描述时用占位，完整参数仍在详情中', (tester) async {
+  testWidgets('审批标题缺少描述时用审批占位，完整参数仍在详情中', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
@@ -142,7 +142,10 @@ void main() {
     final headerTexts = tester.widgetList<Text>(
       find.descendant(of: header, matching: find.byType(Text)),
     );
-    expect(headerTexts.map((text) => text.data), ['file_read', 'Using a tool']);
+    expect(headerTexts.map((text) => text.data), [
+      'file_read',
+      'Needs your approval',
+    ]);
     expect(find.text('path: /tmp/config.json'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

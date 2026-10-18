@@ -70,15 +70,30 @@ class StepCard extends StatefulWidget {
     };
   }
 
-  /// 解析不出模型自述时的通用文案：头部与「结果返回前」的正文共用这一句。
-  static const usingToolLabel = 'Using a tool';
+  /// 工具仍在运行、参数里还没有可用的 call_description 时的头部文案。
+  static const runningToolLabel = 'Running a tool…';
 
-  /// 单步、组头、嵌套工具项与审批卡共用的标题，不展示参数预览。
+  /// 工具结果尚未返回时，展开正文的占位文案。
+  static const waitingForResultLabel = 'Waiting for result…';
+
+  /// 工具已结束但缺少 call_description 时的头部文案。
+  static const completedToolLabel = 'Used a tool';
+
+  /// 审批卡缺少 call_description 时的标题后缀：工具还没开始执行，
+  /// 不能用运行中的文案。
+  static const approvalFallbackLabel = 'Needs your approval';
+
+  /// 单步、组头与嵌套工具项共用的标题，不展示参数预览。
   ///
-  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则显示
-  /// [usingToolLabel]。
-  static String toolLabel(String arguments) =>
-      toolCallDescription(arguments) ?? usingToolLabel;
+  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则按
+  /// [running] 选择运行中或完成态占位。
+  static String toolLabel(String arguments, {required bool running}) =>
+      toolCallDescription(arguments) ??
+      (running ? runningToolLabel : completedToolLabel);
+
+  /// 审批卡标题：工具尚未执行，缺少描述时用审批占位。
+  static String approvalLabel(String arguments) =>
+      toolCallDescription(arguments) ?? approvalFallbackLabel;
 
   /// 推理结束态标题：`Thought 2.0 seconds`。
   static String thoughtLabel(MessageEntity message) {
@@ -128,7 +143,7 @@ class StepCard extends StatefulWidget {
   /// 组进行中折叠头文案：当前（最后一个）步骤。
   static String currentLabel(AssistantStep last) => switch (last) {
     ReasoningStep() => 'Thinking',
-    final ToolCallStep step => toolLabel(step.arguments),
+    final ToolCallStep step => toolLabel(step.arguments, running: true),
     final ContextCompactionStep step => compactionLabel(step),
   };
 
@@ -220,11 +235,11 @@ class _StepCardState extends State<StepCard> {
     ),
     final ToolCallStep tool => (
       icon: StepCard.toolIcon(tool.toolName),
-      label: StepCard.toolLabel(tool.arguments),
+      label: StepCard.toolLabel(tool.arguments, running: !tool.hasResult),
       running: !tool.hasResult,
       // 结果未返回时正文只有一句占位：参数不铺进消息列表（它可能又长又敏感），
       // 展开只是确认"它已经在跑了"。结果到了换成结果本身，展开态保持不变。
-      body: _resultBody(tool.result ?? StepCard.usingToolLabel),
+      body: _resultBody(tool.result ?? StepCard.waitingForResultLabel),
     ),
     final ContextCompactionStep compaction => (
       icon: LucideIcons.fileArchive,

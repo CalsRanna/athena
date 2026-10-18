@@ -98,7 +98,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              StepCard.toolLabel(request.arguments),
+              StepCard.approvalLabel(request.arguments),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
