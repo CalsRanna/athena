@@ -114,18 +114,32 @@ void main() {
     // 下一帧才排空，下一个 I/O 又需要新的真实异步窗口。所以交替「真实异步窗口
     // + pump」，把这条链推完。
     //
-    // **不看焦点提前退出**：composer 首帧就可能持焦，用它当「init 走完」的标志
-    // 会让循环立刻结束，剩下的链只能靠下面那 10 轮 settle 推——设置改走
-    // `setting.yaml`（原先是一次 SharedPreferences 平台调用）后，链尾的
-    // 「读设置 → 取角色 → 落草稿」需要约 50 轮才走完，10 轮远远不够。
-    // 固定跑满这个预算，别让它随 I/O 段数变化而失效。
-    for (var i = 0; i < 50; i++) {
+    // 等到「草稿默认值已经落好」为止：`_initState` 是 setting → chat（含
+    // `prepareNewChatDraft` 的角色/工作文件夹）→ 焦点 的串行 await 链，链上
+    // 每一段都要一整轮真实异步窗口 + pump 才推得动。按迭代次数卡上限时，预算
+    // ≈链上的 await 段数：本地实测焦点要到第 53 轮才落位，整文件并发跑时
+    // 66~73 轮，余量只剩十几次——CI runner 慢一点、又并发跑多个测试文件，
+    // 多占几次就越过上限，断言便读到中间态（与 workspace_text_size_test 的
+    // 修复口径一致，见 ee7fb66）。
+    //
+    // 条件用 `currentSentinel` 而不是焦点：焦点正是本文件要验证的东西，拿它当
+    // 「init 走完」的标志，后面的断言就成了同义反复。`resetToDraftDefaults`
+    // 设完它之后 `_initState` 才 `requestFocus`，正好是焦点之前的最后一个信号。
+    final deadline = DateTime.now().add(const Duration(seconds: 10));
+    while (GetIt.instance<ChatViewModel>().currentSentinel.value == null &&
+        DateTime.now().isBefore(deadline)) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump();
     }
-    // 草稿的角色/工作文件夹是链尾才设的信号：再走几轮，别让断言读到中间态。
+    expect(
+      GetIt.instance<ChatViewModel>().currentSentinel.value,
+      isNotNull,
+      reason: '启动链没在预算内走完，下面的焦点断言就无从谈起',
+    );
+    // 焦点是在 `currentSentinel` 之后才请求的：再走几轮，让这次 requestFocus
+    // 完成那一帧，别让断言抢在它前面。
     await settle(tester);
   }
 
