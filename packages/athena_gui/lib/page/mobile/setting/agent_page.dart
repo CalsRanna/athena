@@ -5,8 +5,10 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/switch.dart';
+import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -91,6 +93,30 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           description:
               'Output token limit for models without their own limit set. '
               'Applies to the Messages protocol only (default: 128000)',
+        ),
+        const SizedBox(height: 16),
+        AthenaFormField(
+          label: 'Default Effort',
+          control: Watch(
+            (_) => Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in reasoningEffortOptions)
+                  AthenaTagButton.small(
+                    selected:
+                        viewModel.defaultReasoningEffort.value == option.$1,
+                    onTap: () =>
+                        viewModel.updateDefaultReasoningEffort(option.$1),
+                    child: Text(option.$2),
+                  ),
+              ],
+            ),
+          ),
+          description:
+              'Reasoning effort new sessions start with. A session can still '
+              'change it from the composer.',
+          descriptionGap: 8,
         ),
         const SizedBox(height: 16),
         Align(

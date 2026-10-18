@@ -2,6 +2,7 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -82,6 +83,22 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                   onSubmitted: (_) => _commitOutputLimit(),
                 ),
               ),
+            ),
+            AthenaSettingsRow(
+              label: 'Default effort',
+              description:
+                  'Reasoning effort new sessions start with. A session can '
+                  'still change it from the composer.',
+              control: Watch((context) {
+                return AthenaSettingsSegmented<String>(
+                  selected: viewModel.defaultReasoningEffort.value,
+                  onChanged: viewModel.updateDefaultReasoningEffort,
+                  options: [
+                    for (final option in reasoningEffortOptions)
+                      AthenaSegmentOption(value: option.$1, label: option.$2),
+                  ],
+                );
+              }),
             ),
           ],
         ),

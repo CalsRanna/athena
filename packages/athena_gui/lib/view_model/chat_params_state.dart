@@ -18,9 +18,9 @@ import 'package:signals/signals.dart';
 ///   所以入口是 [setFromChat] 而不是八个散落的赋值；
 /// - **角色要过 [displaySentinel]**：显式选择「不用角色」（[ChatEntity.noSentinelId]）
 ///   得显示成 directChatSentinel，而不是当成「没选」去回退默认角色；
-/// - **草稿起点只从两处取**：设置里的默认模型与审批档位，加上会话默认（保留策略、
-///   温度、推理强度）。只有工作文件夹与角色会从来源对话继承——审批档位刻意不继承
-///   （见 [resetToDraftDefaults]）。
+/// - **草稿起点只从两处取**：设置里的默认模型、审批档位与推理强度，加上会话默认
+///   （保留策略、温度）。只有工作文件夹与角色会从来源对话继承——审批档位刻意
+///   不继承（见 [resetToDraftDefaults]）。
 class ChatParamsState {
   ChatParamsState({
     required SettingViewModel settingViewModel,
@@ -145,7 +145,8 @@ class ChatParamsState {
         inherited ?? _sentinelViewModel.defaultSentinel.value;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
-    currentReasoningEffort.value = ChatEntity.defaultReasoningEffort;
+    currentReasoningEffort.value =
+        _settingViewModel.defaultReasoningEffort.value;
     currentWorkspacePath.value = inheritWorkspace
         ? inheritFrom?.workspacePath
         : null;

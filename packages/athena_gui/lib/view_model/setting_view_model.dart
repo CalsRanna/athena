@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/approval_mode.dart';
+import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
@@ -27,6 +28,7 @@ class SettingViewModel {
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
   static const String _keyMaxRetries = 'max_retries';
+  static const String _keyDefaultReasoningEffort = 'default_reasoning_effort';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyTextSize = 'text_size';
 
@@ -57,6 +59,11 @@ class SettingViewModel {
   Signal<int> get defaultOutputLimit => _agentSettings.defaultOutputLimit;
 
   final maxRetries = signal(10);
+
+  /// 新会话的推理强度起点（设置 → Agent）。会话自己的档位在
+  /// `ChatEntity.reasoningEffort`。
+  final defaultReasoningEffort = signal(ChatEntity.defaultReasoningEffort);
+
   final braveApiKey = signal('');
   // 主题模式：默认浅色，可在设置中切换深色/浅色/跟随系统
   final themeMode = signal<ThemeMode>(ThemeMode.light);
@@ -113,6 +120,9 @@ class SettingViewModel {
     await _agentSettings.init();
     maxRetries.value = await _settings.getInt(_keyMaxRetries) ?? 10;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
+    defaultReasoningEffort.value = ChatEntity.normalizeReasoningEffort(
+      await _settings.getString(_keyDefaultReasoningEffort),
+    );
     braveApiKey.value = await _settings.loadBraveApiKey() ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
@@ -206,6 +216,13 @@ class SettingViewModel {
     await _settings.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: max));
+  }
+
+  /// 更新新会话的默认推理强度。
+  Future<void> updateDefaultReasoningEffort(String effort) async {
+    final normalized = ChatEntity.normalizeReasoningEffort(effort);
+    await _settings.setString(_keyDefaultReasoningEffort, normalized);
+    defaultReasoningEffort.value = normalized;
   }
 
   /// 更新 Brave Search API Key。

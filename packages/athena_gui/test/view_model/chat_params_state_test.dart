@@ -179,6 +179,17 @@ void main() {
       });
     });
 
+    testWidgets('推理强度起点取设置里的默认档', (tester) async {
+      final settings = GetIt.instance<SettingViewModel>();
+      await tester.runAsync(() async {
+        await settings.updateDefaultReasoningEffort('low');
+
+        await params.resetToDraftDefaults(chatWith(reasoningEffort: 'max'));
+
+        expect(params.currentReasoningEffort.value, 'low');
+      });
+    });
+
     testWidgets('审批档位取设置里播种的那一档，不继承来源会话', (tester) async {
       // 决策：档位是「这条会话里我打算放行到什么程度」。从一条 bypass 的会话点
       // 新建对话时，用户多半正要开始改动别的项目，不该顺带把上一条的放行程度带过去。
