@@ -280,6 +280,13 @@ class _AssistantMessageContent extends StatelessWidget {
   }
 }
 
+/// 用户消息的发送时刻，24 小时制 `HH:mm`。
+String _formatSentTime(DateTime sentAt) {
+  final local = sentAt.toLocal();
+  String pad(int value) => value.toString().padLeft(2, '0');
+  return '${pad(local.hour)}:${pad(local.minute)}';
+}
+
 /// 写系统剪贴板。用户消息与助手消息共用这一个出口。
 void _copyMessageContent(String content) {
   Clipboard.setData(ClipboardData(text: content));
@@ -454,6 +461,19 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
             MessageActionBar(
               // 用户消息不受"本轮未结束"影响：即使正在跑，也照常 hover 显形。
               visible: mobile || hovered,
+              // 用户消息没有独立的创建时间字段；reasoningStartedAt 在构造时
+              // 写入、之后不再更新，就是这条消息的发送时刻。
+              leading: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  _formatSentTime(widget.message.reasoningStartedAt),
+                  // 与助手消息工具条上的 tokens 数值同一套等宽样式。
+                  style: athenaMono(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
               // Copy 始终可用；Rewind 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
               onRewind: widget.onRewind,

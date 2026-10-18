@@ -22,12 +22,14 @@ void main() {
     String role = 'assistant',
     String content = '',
     RunStatistics? runStatistics,
+    DateTime? reasoningStartedAt,
   }) => MessageEntity(
     id: id,
     chatId: 'chat-1',
     role: role,
     content: content,
     runStatistics: runStatistics,
+    reasoningStartedAt: reasoningStartedAt,
   );
 
   Future<void> pumpMessages(
@@ -185,6 +187,32 @@ void main() {
     expect(find.textContaining('tokens'), findsOneWidget);
     expect(find.textContaining('— tokens'), findsNothing);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('用户消息操作条在复制键前显示发送时刻', (tester) async {
+    await pumpMessages(tester, [
+      message(
+        id: 'user-1',
+        role: 'user',
+        content: 'Question',
+        reasoningStartedAt: DateTime(2026, 9, 29, 14, 5),
+      ),
+    ], streaming: false);
+
+    final sentTime = find.text('14:05');
+    expect(sentTime, findsOneWidget);
+    final style = tester.widget<Text>(sentTime).style;
+    expect(
+      style?.fontFamily,
+      AthenaFont.mono,
+      reason: '发送时刻与助手工具条的 tokens 数值同为等宽字体',
+    );
+    expect(style?.fontSize, AthenaFontSize.mono);
+    expect(
+      tester.getTopLeft(sentTime).dx,
+      lessThan(tester.getTopLeft(find.byIcon(LucideIcons.copy)).dx),
+      reason: '发送时刻排在复制键之前',
+    );
   });
 
   testWidgets('旧消息缺少统计时仅显示未知耗时', (tester) async {

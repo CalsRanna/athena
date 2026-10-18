@@ -203,7 +203,7 @@ Flutter 给 macOS 默认装的是 `BouncingScrollPhysics`——那是触摸屏�
 
 共享回退行为见 [CONVENTIONS.md §12.3](CONVENTIONS.md#123-会话回退rewind)，本节规定 GUI 的操作入口与界面反馈。
 
-用户消息操作条使用 `Rewind` 与 history 图标；桌面沿用 hover 显形，移动端常显。
+用户消息操作条使用 `Rewind` 与 history 图标，复制键前显示发送时刻（24 小时制 `HH:mm`）；桌面沿用 hover 显形，移动端常显。
 移动端长按用户消息仍会弹出底部菜单，提供 `Copy` / `Rewind` / `Delete`。确认文案说明回退点、现有草稿替换、停止排队输入与后台工作，
 以及文件和已执行命令不撤销。提交后恢复原文与图片，输入框聚焦，消息列表滚到底。
 回退期间输入框只读，避免等待收尾时新草稿被恢复内容覆盖。
