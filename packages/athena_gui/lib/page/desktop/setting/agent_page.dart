@@ -13,7 +13,7 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 桌面端 Agent 设置：默认模型、限额与工具。
+/// 桌面端 Agent 设置：默认模型、请求设置与工具。
 ///
 /// 每一行**改了即存**，没有页面级 Save：模型下拉与分段控件点选即生效；
 /// 数字与密钥输入在失焦或回车时提交，非法值就地报错并回退。
@@ -68,28 +68,29 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
             first: true,
             title: 'Default models',
             description:
-                'Which model each job starts with. A session can still switch '
-                'models from the composer.',
+                'The model each job starts with. You can still switch models '
+                'inside a session.',
             children: [
               if (!hasModels)
                 const AthenaSettingsEmptyState(
                   icon: LucideIcons.cpu,
                   title: 'No enabled models',
                   hint:
-                      'Enable a provider and add an API key under Providers '
-                      'to pick default models.',
+                      'Enable a provider and add an API key to pick default '
+                      'models.',
                 ),
               if (hasModels) ...[
                 AthenaSettingsRow(
-                  label: 'Session',
-                  description: 'Used by new sessions and the agent loop.',
+                  label: 'Session model',
+                  description:
+                      'The model new sessions and the agent loop start with.',
                   control: _buildModelSelect(
                     viewModel.chatModelId.value,
                     viewModel.updateChatModelId,
                   ),
                 ),
                 AthenaSettingsRow(
-                  label: 'Topic naming',
+                  label: 'Session naming model',
                   description:
                       'Names a session after its first exchange. Falls back to '
                       'the session model.',
@@ -100,10 +101,10 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                   ),
                 ),
                 AthenaSettingsRow(
-                  label: 'Sentinel metadata',
+                  label: 'Sentinel metadata model',
                   description:
                       'Generates a Sentinel\'s name, description '
-                      'and tags from its prompt.',
+                      'and tags from its system prompt.',
                   control: _buildModelSelect(
                     viewModel.sentinelMetadataGenerationModelId.value,
                     viewModel.updateSentinelMetadataGenerationModelId,
@@ -115,12 +116,13 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
           );
         }),
         AthenaSettingsSection(
-          title: 'Limits',
+          title: 'Model requests',
           children: [
             AthenaSettingsRow(
-              label: 'Max retries',
+              label: 'Max attempts',
               description:
-                  'Attempts for a model request that fails on the network.',
+                  'Total tries for a model request that fails on the network, '
+                  'including the first attempt.',
               error: retriesError,
               control: _buildNumberField(
                 controller: retriesController,
@@ -131,8 +133,8 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
             AthenaSettingsRow(
               label: 'Default output limit',
               description:
-                  'Output token limit for models without their own limit set. '
-                  'Applies to the Messages protocol only.',
+                  'Output token limit for models without their own limit. '
+                  'Applies only to the Messages API format.',
               error: outputLimitError,
               control: SizedBox(
                 width: AthenaSettingsControlWidth.narrow,
@@ -147,10 +149,10 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
               ),
             ),
             AthenaSettingsRow(
-              label: 'Default effort',
+              label: 'Default reasoning effort',
               description:
-                  'Reasoning effort new sessions start with. A session can '
-                  'still change it from the composer.',
+                  'Reasoning effort new sessions start with. You can still '
+                  'change it in the composer.',
               control: Watch((context) {
                 return AthenaSettingsSegmented<String>(
                   selected: viewModel.defaultReasoningEffort.value,
@@ -169,7 +171,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
           children: [
             Watch((context) {
               return AthenaSettingsRow(
-                label: 'Report finished background tasks',
+                label: 'Background task reports',
                 description:
                     'When a background command finishes, start a run that '
                     'reads its output and reports back. That run uses this '
@@ -185,7 +187,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
             AthenaSettingsRow(
               label: 'Brave Search API key',
               description:
-                  'Required by the web_search tool. Get a free key at '
+                  'Used by web_search. Get a free key at '
                   'brave.com/search/api.',
               control: SizedBox(
                 width: AthenaSettingsControlWidth.wide,

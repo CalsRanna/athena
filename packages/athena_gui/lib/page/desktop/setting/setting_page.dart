@@ -15,12 +15,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 用枚举而不是列表下标：导航带搜索过滤，过滤后下标会变，
 /// **下标不能当路由标识**（旧的 `int index` 就踩过这个前提）。
 enum SettingSection {
-  provider,
   agent,
+  provider,
   sentinel,
   skill,
   experience,
-  general,
+  appearance,
+  data,
   about,
 }
 
@@ -67,13 +68,7 @@ class DesktopSettingPage extends StatefulWidget {
 
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   static final groups = <_SettingGroup>[
-    const _SettingGroup('Settings', [
-      _SettingEntry(
-        SettingSection.provider,
-        'Providers',
-        AthenaIcons.connection,
-        keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
-      ),
+    const _SettingGroup('Agent', [
       _SettingEntry(
         SettingSection.agent,
         'Agent',
@@ -81,18 +76,28 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         keywords: [
           'models',
           'session',
-          'chat',
-          'topic naming',
+          'naming',
           'sentinel metadata',
+          'attempts',
           'retries',
+          'output',
+          'limit',
+          'reasoning',
+          'effort',
+          'tools',
+          'background',
           'brave',
           'web search',
-          'effort',
-          'reasoning',
         ],
       ),
+      _SettingEntry(
+        SettingSection.provider,
+        'Providers',
+        AthenaIcons.connection,
+        keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
+      ),
     ]),
-    const _SettingGroup('Customize', [
+    const _SettingGroup('Content', [
       _SettingEntry(
         SettingSection.sentinel,
         'Sentinels',
@@ -112,19 +117,25 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         keywords: ['lesson', 'memory', 'archive'],
       ),
     ]),
-    const _SettingGroup('Desktop app', [
+    const _SettingGroup('App', [
       _SettingEntry(
-        SettingSection.general,
-        'General',
-        LucideIcons.settings,
+        SettingSection.appearance,
+        'Appearance',
+        LucideIcons.palette,
+        keywords: ['theme', 'font size', 'text size'],
+      ),
+      _SettingEntry(
+        SettingSection.data,
+        'Data',
+        LucideIcons.database,
         keywords: [
-          'theme',
-          'appearance',
-          'font size',
+          'data folder',
           'reset',
           'storage',
           'snapshot',
+          'snapshots',
           'tool output',
+          'tool outputs',
           'cleanup',
         ],
       ),
@@ -229,9 +240,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     if (name == DesktopSettingExperienceRoute.name) {
       return SettingSection.experience;
     }
-    if (name == DesktopSettingGeneralRoute.name) {
-      return SettingSection.general;
+    if (name == DesktopSettingAppearanceRoute.name) {
+      return SettingSection.appearance;
     }
+    if (name == DesktopSettingDataRoute.name) return SettingSection.data;
     if (name == DesktopSettingAboutRoute.name) return SettingSection.about;
     return null;
   }
@@ -255,7 +267,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       SettingSection.sentinel => const DesktopSettingSentinelRoute(),
       SettingSection.skill => const DesktopSettingSkillRoute(),
       SettingSection.experience => const DesktopSettingExperienceRoute(),
-      SettingSection.general => const DesktopSettingGeneralRoute(),
+      SettingSection.appearance => const DesktopSettingAppearanceRoute(),
+      SettingSection.data => const DesktopSettingDataRoute(),
       SettingSection.about => const DesktopSettingAboutRoute(),
     };
     AutoRouter.of(context).replace(route);

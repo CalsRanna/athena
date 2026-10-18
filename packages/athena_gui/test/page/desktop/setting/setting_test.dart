@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/main.dart';
-import 'package:athena_gui/page/desktop/setting/general_page.dart';
+import 'package:athena_gui/page/desktop/setting/appearance_page.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -56,9 +56,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  void expectTextColor(WidgetTester tester, String text, Color color) {
+  void expectTextColor(
+    WidgetTester tester,
+    String text,
+    Color color, {
+    Finder? within,
+  }) {
+    final textFinder = within == null
+        ? find.text(text)
+        : find.descendant(of: within, matching: find.text(text));
     final paragraph = tester.renderObject<RenderParagraph>(
-      find.descendant(of: find.text(text), matching: find.byType(RichText)),
+      find.descendant(of: textFinder, matching: find.byType(RichText)),
     );
     expect(paragraph.text.style!.color, color, reason: text);
   }
@@ -73,11 +81,12 @@ void main() {
     await settle(tester);
     unawaited(
       router.push(
-        const DesktopSettingRoute(children: [DesktopSettingGeneralRoute()]),
+        const DesktopSettingRoute(children: [DesktopSettingAppearanceRoute()]),
       ),
     );
     await settle(tester);
-    final pageState = tester.state(find.byType(DesktopSettingGeneralPage));
+    final pageState = tester.state(find.byType(DesktopSettingAppearancePage));
+    final content = find.byType(DesktopSettingAppearancePage);
 
     for (final (mode, colors) in [
       (ThemeMode.light, AthenaColors.light),
@@ -88,18 +97,22 @@ void main() {
       await settle(tester);
       expect(GetIt.instance<SettingViewModel>().themeMode.value, mode);
       expect(
-        find.text('Appearance'),
+        find.descendant(of: content, matching: find.text('Appearance')),
         findsOneWidget,
         reason: '切换到 ${mode.name} 后仍显示当前设置分区',
       );
-      expectTextColor(tester, 'Appearance', colors.textPrimary);
+      expectTextColor(
+        tester,
+        'Appearance',
+        colors.textPrimary,
+        within: content,
+      );
       expectTextColor(tester, 'Theme', colors.textPrimary);
       expectTextColor(
         tester,
         'System follows the appearance selected on this device.',
         colors.textSecondary,
       );
-      expectTextColor(tester, 'Show in Finder', colors.textPrimary);
       expectTextColor(
         tester,
         mode == ThemeMode.dark ? 'Dark' : 'Light',
@@ -111,7 +124,7 @@ void main() {
         colors.textWeak,
       );
       expect(
-        tester.state(find.byType(DesktopSettingGeneralPage)),
+        tester.state(find.byType(DesktopSettingAppearancePage)),
         same(pageState),
         reason: '主题切换保留设置页面状态',
       );

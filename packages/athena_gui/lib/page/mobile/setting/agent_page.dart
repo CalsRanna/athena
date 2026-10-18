@@ -7,7 +7,6 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
@@ -42,6 +41,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     text: viewModel.braveApiKey.value,
   );
 
+  String? retriesError;
+  String? outputLimitError;
+
   @override
   void initState() {
     super.initState();
@@ -60,7 +62,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   @override
   Widget build(BuildContext context) {
     return AthenaScaffold(
-      appBar: const AthenaAppBar(title: Text('Agent Settings')),
+      appBar: const AthenaAppBar(title: Text('Agent')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
@@ -69,7 +71,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             const SizedBox(height: 12),
             _buildModelsSection(context),
             const SizedBox(height: 32),
-            _buildGeneralSection(context),
+            _buildRequestSection(context),
             const SizedBox(height: 32),
             _buildToolsSection(context),
             const SafeArea(top: false, child: SizedBox()),
@@ -84,34 +86,37 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AthenaFormTileLabel.large(title: 'Models'),
+          const AthenaFormTileLabel.large(title: 'Default models'),
           const SizedBox(height: 16),
           AthenaFormField(
-            label: 'Agent Model',
+            label: 'Session model',
             control: _ModelDropdown(
               groupedModels: modelViewModel.groupedEnabledModels.value,
               model: viewModel.chatModel.value,
               onChanged: viewModel.updateChatModelId,
               provider: viewModel.chatModelProvider.value,
             ),
-            description: 'Model designated for new session',
+            description:
+                'The model new sessions and the agent loop start with.',
             descriptionGap: 8,
           ),
           const SizedBox(height: 16),
           AthenaFormField(
-            label: 'Session Naming Model',
+            label: 'Session naming model',
             control: _ModelDropdown(
               groupedModels: modelViewModel.groupedEnabledModels.value,
               model: viewModel.chatNamingModel.value,
               onChanged: viewModel.updateChatNamingModelId,
               provider: viewModel.chatNamingModelProvider.value,
             ),
-            description: 'Model designated for automatic session renaming',
+            description:
+                'Names a session after its first exchange. Falls back to the '
+                'session model.',
             descriptionGap: 8,
           ),
           const SizedBox(height: 16),
           AthenaFormField(
-            label: 'Sentinel Metadata Generation Model',
+            label: 'Sentinel metadata model',
             control: _ModelDropdown(
               groupedModels: modelViewModel.groupedEnabledModels.value,
               model: viewModel.sentinelMetadataGenerationModel.value,
@@ -119,8 +124,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
               provider: viewModel.sentinelMetadataGenerationModelProvider.value,
             ),
             description:
-                'Model designated for generating sentinel name, description, '
-                'and tags',
+                'Generates a Sentinel\'s name, description and tags from its '
+                'system prompt.',
             descriptionGap: 8,
           ),
         ],
@@ -128,41 +133,50 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     });
   }
 
-  Widget _buildGeneralSection(BuildContext context) {
+  Widget _buildRequestSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AthenaFormTileLabel.large(title: 'Limits'),
+        const AthenaFormTileLabel.large(title: 'Model requests'),
         const SizedBox(height: 16),
         AthenaFormField(
-          label: 'Max Retries',
+          label: 'Max attempts',
           control: AthenaInput(
             controller: retriesController,
             placeholder: '10',
             keyboardType: TextInputType.number,
             autocorrect: false,
             enableSuggestions: false,
+            onBlur: _commitRetries,
+            onSubmitted: (_) => _commitRetries(),
           ),
           description:
-              'Maximum network retry attempts for LLM API calls (default: 10)',
+              'Total tries for a model request that fails on the network, '
+              'including the first attempt.',
+          error: retriesError,
+          descriptionGap: 8,
         ),
         const SizedBox(height: 16),
         AthenaFormField(
-          label: 'Default Output Limit',
+          label: 'Default output limit',
           control: AthenaInput(
             controller: outputLimitController,
             placeholder: '128000',
             keyboardType: TextInputType.number,
             autocorrect: false,
             enableSuggestions: false,
+            onBlur: _commitOutputLimit,
+            onSubmitted: (_) => _commitOutputLimit(),
           ),
           description:
-              'Output token limit for models without their own limit set. '
-              'Applies to the Messages protocol only (default: 128000)',
+              'Output token limit for models without their own limit. '
+              'Applies only to the Messages API format.',
+          error: outputLimitError,
+          descriptionGap: 8,
         ),
         const SizedBox(height: 16),
         AthenaFormField(
-          label: 'Default Effort',
+          label: 'Default reasoning effort',
           control: Watch(
             (_) => Wrap(
               spacing: 8,
@@ -180,20 +194,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             ),
           ),
           description:
-              'Reasoning effort new sessions start with. A session can still '
-              'change it from the composer.',
+              'Reasoning effort new sessions start with. You can still change '
+              'it in the composer.',
           descriptionGap: 8,
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerRight,
-          child: AthenaPrimaryButton(
-            onTap: _saveGeneral,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Save'),
-            ),
-          ),
         ),
       ],
     );
@@ -223,56 +226,52 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         ),
         const SizedBox(height: 16),
         AthenaFormField(
-          label: 'Brave API Key',
+          label: 'Brave Search API key',
           control: AthenaInput(
             controller: braveApiKeyController,
             obscureText: true,
             placeholder: 'BSA...',
             autocorrect: false,
             enableSuggestions: false,
+            onBlur: _commitBraveApiKey,
+            onSubmitted: (_) => _commitBraveApiKey(),
           ),
           description:
-              'Required for web_search. Get a free key at brave.com/search/api/',
+              'Used by web_search. Get a free key at brave.com/search/api.',
           descriptionGap: 8,
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerRight,
-          child: AthenaPrimaryButton(
-            onTap: _saveTools,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Save'),
-            ),
-          ),
         ),
       ],
     );
   }
 
-  Future<void> _saveGeneral() async {
-    final retries = int.tryParse(retriesController.text.trim());
-    if (retries == null || retries < 1) {
-      AthenaDialog.warning('Max Retries must be a valid number (minimum 1)');
+  Future<void> _commitRetries() async {
+    final value = int.tryParse(retriesController.text.trim());
+    if (value == null || value < 1) {
+      setState(() => retriesError = 'Enter a whole number of at least 1.');
       return;
     }
-    final outputLimit = int.tryParse(outputLimitController.text.trim());
-    if (outputLimit == null || outputLimit < 1) {
-      AthenaDialog.warning(
-        'Default Output Limit must be a valid number (minimum 1)',
-      );
-      return;
-    }
-    await viewModel.updateMaxRetries(retries);
-    await viewModel.updateDefaultOutputLimit(outputLimit);
-    if (!mounted) return;
-    AthenaDialog.success('Settings saved');
+    setState(() => retriesError = null);
+    if (value == viewModel.maxRetries.value) return;
+    await viewModel.updateMaxRetries(value);
   }
 
-  Future<void> _saveTools() async {
-    await viewModel.updateBraveApiKey(braveApiKeyController.text.trim());
-    if (!mounted) return;
-    AthenaDialog.success('API key saved');
+  Future<void> _commitOutputLimit() async {
+    final value = int.tryParse(outputLimitController.text.trim());
+    if (value == null || value < 1) {
+      final fallback = viewModel.defaultOutputLimit.value;
+      setState(() => outputLimitError = 'Enter a whole number of at least 1.');
+      outputLimitController.text = fallback.toString();
+      return;
+    }
+    setState(() => outputLimitError = null);
+    if (value == viewModel.defaultOutputLimit.value) return;
+    await viewModel.updateDefaultOutputLimit(value);
+  }
+
+  Future<void> _commitBraveApiKey() async {
+    final value = braveApiKeyController.text.trim();
+    if (value == viewModel.braveApiKey.value) return;
+    await viewModel.updateBraveApiKey(value);
   }
 }
 

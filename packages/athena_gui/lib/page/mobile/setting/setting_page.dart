@@ -23,8 +23,8 @@ class MobileSettingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final sections = [
       MobileSettingsSection(
-        title: 'Assistant',
-        description: 'How the agent runs and which model it uses.',
+        title: 'Agent',
+        description: 'How the agent runs and which models it uses.',
         children: [
           MobileSettingTile(
             leading: const Icon(
@@ -33,7 +33,7 @@ class MobileSettingPage extends StatelessWidget {
             ),
             onTap: () => const MobileAgentRoute().push<void>(context),
             title: 'Agent',
-            subtitle: 'Default models, retries, output limit and tools',
+            subtitle: 'Default models, limits and tools',
             trailing: '',
           ),
           MobileSettingTile(
@@ -50,7 +50,7 @@ class MobileSettingPage extends StatelessWidget {
       ),
       MobileSettingsSection(
         title: 'Content',
-        description: 'Roles, skills and lessons saved from sessions.',
+        description: 'Roles, skills and lessons the agent can reuse.',
         children: [
           MobileSettingTile(
             leading: const Icon(
@@ -83,7 +83,7 @@ class MobileSettingPage extends StatelessWidget {
       ),
       MobileSettingsSection(
         title: 'App',
-        description: 'Appearance, local data and about this app.',
+        description: 'Appearance, local data and app info.',
         children: [
           Watch((context) {
             final mode = GetIt.instance<SettingViewModel>().themeMode.value;
@@ -102,7 +102,7 @@ class MobileSettingPage extends StatelessWidget {
             ),
             onTap: () => const MobileDataRoute().push<void>(context),
             title: 'Data',
-            subtitle: 'Reset local data',
+            subtitle: 'Storage, cleanup and reset',
             trailing: '',
           ),
           MobileSettingTile(
@@ -151,7 +151,7 @@ class MobileSettingPage extends StatelessWidget {
           _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
           _appearanceTile(viewModel, ThemeMode.system, 'System'),
           const SizedBox(height: 12),
-          _sheetLabel('Session text size', colors),
+          _sheetLabel('Text size', colors),
           for (final size in AthenaTextSize.values)
             _textSizeTile(viewModel, size),
         ],

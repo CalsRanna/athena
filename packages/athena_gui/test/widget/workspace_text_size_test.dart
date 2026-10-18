@@ -229,7 +229,9 @@ void main() {
 
       unawaited(
         router.push(
-          const DesktopSettingRoute(children: [DesktopSettingGeneralRoute()]),
+          const DesktopSettingRoute(
+            children: [DesktopSettingAppearanceRoute()],
+          ),
         ),
       );
       await settle(tester);

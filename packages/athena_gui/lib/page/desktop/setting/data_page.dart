@@ -1,34 +1,28 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// 桌面端 General（应用本身的设置）：Appearance / Data / Danger zone。
-///
-/// 这里放的是主题、字号、数据目录这些最常用的项，不是「高级」选项。
+/// 桌面端 Data：数据目录、存储清理与重置。
 @RoutePage()
-class DesktopSettingGeneralPage extends StatefulWidget {
-  const DesktopSettingGeneralPage({super.key});
+class DesktopSettingDataPage extends StatefulWidget {
+  const DesktopSettingDataPage({super.key});
 
   @override
-  State<DesktopSettingGeneralPage> createState() =>
-      _DesktopSettingGeneralPageState();
+  State<DesktopSettingDataPage> createState() => _DesktopSettingDataPageState();
 }
 
-class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
+class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
   final viewModel = GetIt.instance<SettingViewModel>();
 
   StorageUsage? _usage;
@@ -48,44 +42,6 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
       children: [
         AthenaSettingsSection(
           first: true,
-          title: 'Appearance',
-          children: [
-            AthenaSettingsRow(
-              label: 'Theme',
-              description:
-                  'System follows the appearance selected on this device.',
-              control: Watch((context) {
-                return AthenaSettingsSegmented<ThemeMode>(
-                  selected: viewModel.themeMode.value,
-                  onChanged: viewModel.setThemeMode,
-                  options: const [
-                    AthenaSegmentOption(value: ThemeMode.light, label: 'Light'),
-                    AthenaSegmentOption(value: ThemeMode.dark, label: 'Dark'),
-                    AthenaSegmentOption(
-                      value: ThemeMode.system,
-                      label: 'System',
-                    ),
-                  ],
-                );
-              }),
-            ),
-            AthenaSettingsRow(
-              label: 'Text size',
-              description: 'Applies to message text and code in conversations.',
-              control: Watch((context) {
-                return AthenaSettingsSegmented<AthenaTextSize>(
-                  selected: viewModel.textSize.value,
-                  onChanged: viewModel.setTextSize,
-                  options: [
-                    for (final option in AthenaTextSize.values)
-                      AthenaSegmentOption(value: option, label: option.label),
-                  ],
-                );
-              }),
-            ),
-          ],
-        ),
-        AthenaSettingsSection(
           title: 'Data',
           children: [
             AthenaSettingsRow(
@@ -93,7 +49,7 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
               description: dataDirectory,
               control: AthenaSecondaryButton.small(
                 onTap: () => _openFolder(dataDirectory),
-                child: const Text('Show in Finder'),
+                child: const Text('Show in folder'),
               ),
             ),
             AthenaSettingsRow(

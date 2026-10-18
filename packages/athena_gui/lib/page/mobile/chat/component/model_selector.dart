@@ -16,7 +16,7 @@ class MobileModelDialog extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(AthenaSpace.xxl),
         child: Text(
-          'No enabled models. Add one in Settings → Provider first.',
+          'No enabled models. Add one under Settings → Providers first.',
           textAlign: TextAlign.center,
           style: AthenaTextStyle.body.copyWith(color: colors.textSecondary),
         ),
