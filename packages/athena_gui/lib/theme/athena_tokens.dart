@@ -111,6 +111,17 @@ abstract final class AthenaFontSize {
 ///
 /// 每个预设都携带所属层级的行盒，组件不再各自覆盖比例行高。
 ///
+/// 每个预设都显式写明 `leadingDistribution: even`，而不是留空交给环境样式：
+/// 行盒（22 / 18）比字体自身的 em 盒高，多出的 4–6px 是"行距"，Flutter 默认
+/// 按 ascender/descender 比例分配（`proportional`），而系统字体的 ascender
+/// 明显大于 descender，于是这几像素几乎全压在字上方，字在行盒里整体偏下
+/// （SF Pro 14/22 实测偏 2px）。`even` 上下平分，字形落在行盒中心。
+///
+/// 必须写在预设里：Material 的 `bodyMedium` 本来就带 `even`，但 `Text` 的
+/// `style:` 参数与 `DefaultTextStyle`（替换式）会整体换掉环境样式，只有
+/// `DefaultTextStyle.merge` 能继承到；同一个按钮走两条路径就会一个居中、
+/// 一个偏低。写进预设后两条路径一致。
+///
 /// 等宽不在这里：只有 [athenaMono] 用等宽，而它只服务随运行刷新的数字。
 abstract final class AthenaTextStyle {
   /// 空态欢迎大标题：20 / 28 / w600。
@@ -118,6 +129,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.hero,
     fontWeight: FontWeight.w600,
     height: AthenaFontSize.heroHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 页 / 对话框 / 设置分区标题：16 / 24 / w600。
@@ -125,6 +137,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.title,
     fontWeight: FontWeight.w600,
     height: AthenaFontSize.titleHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 卡片标题、列表项标题与表单标签：14 / 22 / w600。
@@ -132,6 +145,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.section,
     fontWeight: FontWeight.w600,
     height: AthenaFontSize.bodyHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 菜单条目、选择器行、设置行：14 / w400。
@@ -139,6 +153,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.row,
     fontWeight: FontWeight.w400,
     height: AthenaFontSize.bodyHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 消息正文（Markdown）：默认 14 / w400，行盒 22。
@@ -146,6 +161,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.prose,
     fontWeight: FontWeight.w400,
     height: AthenaFontSize.proseHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// UI 正文、输入框、侧栏行：14 / 22 / w400。
@@ -153,6 +169,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.body,
     fontWeight: FontWeight.w400,
     height: AthenaFontSize.bodyHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 按钮、选择器与可操作标签：14 / 22 / w500。
@@ -160,6 +177,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.label,
     fontWeight: FontWeight.w500,
     height: AthenaFontSize.bodyHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 
   /// 辅助说明、元信息、分组标题：12 / 18 / w400。
@@ -167,6 +185,7 @@ abstract final class AthenaTextStyle {
     fontSize: AthenaFontSize.caption,
     fontWeight: FontWeight.w400,
     height: AthenaFontSize.captionHeight,
+    leadingDistribution: TextLeadingDistribution.even,
   );
 }
 
@@ -343,5 +362,8 @@ TextStyle athenaMono({
     fontSize: fontSize,
     fontWeight: fontWeight,
     height: height,
+    // 与 [AthenaTextStyle] 的各预设同一口径：行盒内居中，不因字体的
+    // ascender 偏大而下坠。
+    leadingDistribution: TextLeadingDistribution.even,
   );
 }

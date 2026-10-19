@@ -157,6 +157,8 @@ TUI 按深色终端设计，背景不设色（沿用终端默认），只靠文�
 
 每个预设都携带自己的行盒，**组件不再各自覆盖比例行高**——这是「同档复用」在排版上的落点：行盒属于层级，不属于组件。
 
+预设同时写死 `leadingDistribution: even`。行盒（22 / 18）比字体自身的 em 盒高，多出来的几像素是行距；Flutter 默认按 ascender/descender 比例分配，而系统字体的 ascender 明显更大，于是这几像素几乎全压在字上方，字在行盒里整体偏下（SF Pro 14 / 22 偏约 2px）——`even` 上下平分，字形回到行盒中心。**这一项必须写在预设里**：Material 的 `bodyMedium` 本身就带 `even`，但 `Text` 的 `style:` 与替换式 `DefaultTextStyle`（按钮、Tag 用）会整体换掉环境样式，只有 `DefaultTextStyle.merge` 能继承到，同一类控件走两条路径就会一个居中、一个偏低。
+
 ### 会话字号档位
 
 设置里的 Text size 只作用于**消息列表**（正文、代码，以及代码块语言条与步骤卡折叠头这类与正文并排的文字）——composer、placeholder、侧栏、顶栏、设置与菜单均不受影响：
