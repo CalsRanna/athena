@@ -357,7 +357,9 @@ class _DesktopSettingSentinelPageState
                   onTap: () => destroySentinels([sentinel]),
                   child: Text(
                     'Delete…',
-                    style: TextStyle(color: colors.dangerText),
+                    style: AthenaTextStyle.label.copyWith(
+                      color: colors.dangerText,
+                    ),
                   ),
                 ),
               ),

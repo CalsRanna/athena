@@ -96,7 +96,7 @@ abstract final class AthenaDialog {
     final messenger = scaffoldMessengerKey.currentState;
     if (messenger == null) return;
     final style = _AthenaMessageVisualStyle.fromType(type, _colors);
-    final textStyle = TextStyle(color: _colors.textPrimary);
+    final textStyle = AthenaTextStyle.body.copyWith(color: _colors.textPrimary);
     final content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [

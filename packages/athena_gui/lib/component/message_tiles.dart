@@ -389,7 +389,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     final title = reference['title'] as String?;
     final textSpan = TextSpan(
       text: title,
-      style: TextStyle(color: colors.markdownLink),
+      style: AthenaTextStyle.section.copyWith(color: colors.markdownLink),
       recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
     );
     final children = [TextSpan(text: '${index + 1}. '), textSpan];

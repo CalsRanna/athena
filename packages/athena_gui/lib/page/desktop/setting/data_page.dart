@@ -1,6 +1,7 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -91,7 +92,9 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
                 onTap: _handleReset,
                 child: Text(
                   'Reset…',
-                  style: TextStyle(color: colors.dangerText),
+                  style: AthenaTextStyle.label.copyWith(
+                    color: colors.dangerText,
+                  ),
                 ),
               ),
             ),

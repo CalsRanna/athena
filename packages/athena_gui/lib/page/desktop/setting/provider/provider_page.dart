@@ -400,7 +400,9 @@ class _DesktopSettingProviderPageState
                   onTap: () => destroyProviders([provider]),
                   child: Text(
                     'Delete…',
-                    style: TextStyle(color: colors.dangerText),
+                    style: AthenaTextStyle.label.copyWith(
+                      color: colors.dangerText,
+                    ),
                   ),
                 ),
               ),

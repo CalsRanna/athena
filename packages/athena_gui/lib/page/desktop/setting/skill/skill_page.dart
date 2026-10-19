@@ -1,6 +1,7 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -281,7 +282,9 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
                   onTap: () => destroySkills([skill]),
                   child: Text(
                     'Delete…',
-                    style: TextStyle(color: colors.dangerText),
+                    style: AthenaTextStyle.label.copyWith(
+                      color: colors.dangerText,
+                    ),
                   ),
                 ),
               ),
