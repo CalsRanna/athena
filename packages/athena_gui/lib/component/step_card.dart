@@ -287,10 +287,10 @@ class _StepCardState extends State<StepCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
         children: [
-          for (final (index, step) in steps.indexed)
+          for (final (index, key) in _childKeysOf(steps).indexed)
             StepCard(
-              key: _childKey(step),
-              steps: [step],
+              key: key,
+              steps: [steps[index]],
               live: widget.live && index == steps.length - 1,
               nested: true,
             ),
@@ -299,13 +299,42 @@ class _StepCardState extends State<StepCard> {
     );
   }
 
-  static Key _childKey(AssistantStep step) => ValueKey(switch (step) {
+  /// 组内子项的 key：**以步骤自身 id 为基底，同组内重复时追加出现序号**。
+  ///
+  /// 两个性质各由谁保证：
+  /// - **唯一性**不能只靠 id。工具 id 只在单个响应内唯一，而同一 run 的多轮
+  ///   迭代会合并进同一个组（只有正文才切断序列）；一旦两轮撞上同一个 id，
+  ///   `ValueKey` 就重复了——debug 下展开该组直接抛 `Duplicate keys found`，
+  ///   release 下两行抢同一个 State（展开态互相串）。出现序号把唯一性变成
+  ///   代码自己保证的性质，跟 provider 给什么 id 无关。
+  /// - **身份稳定**不能只靠下标。步骤序列通常是只追加，但并非绝对：某条消息
+  ///   的工具调用先到、推理后到时，那段推理会插到它自己工具步骤之前，其后
+  ///   所有下标一起平移，展开态就会跟着跳到别的步骤上。基底仍用 id，正是为了
+  ///   让 key 跟着"这一步"走，而不是跟着位置走。
+  ///
+  /// 序号只加给**同组成员里的重复者**（首次出现保持原样），所以常见路径下
+  /// key 与 id 一一对应；只有真撞车时才退化出 `#2`、`#3` 这样的后缀。
+  static List<Key> _childKeysOf(List<AssistantStep> steps) {
+    final seen = <String, int>{};
+    final keys = <Key>[];
+    for (final step in steps) {
+      final base = _stepIdentity(step);
+      final count = (seen[base] ?? 0) + 1;
+      seen[base] = count;
+      keys.add(ValueKey(count == 1 ? base : '$base#$count'));
+    }
+    return keys;
+  }
+
+  /// 步骤的身份基底：[ToolCallStep] 用工具 id，[ContextCompactionStep] 用压缩
+  /// id，推理没有可靠 id（消息可能尚未落库，`id` 为空）才退回对象身份。
+  static String _stepIdentity(AssistantStep step) => switch (step) {
     ReasoningStep(:final message) =>
       'reasoning-${message.id ?? identityHashCode(message)}',
     final ToolCallStep tool => 'tool-${tool.id}',
     final ContextCompactionStep compaction =>
       'compaction-${compaction.step.compactionId}',
-  });
+  };
 }
 
 /// 推理正文：与消息正文同档（跟随 Text size）、点击整块收起。

@@ -347,6 +347,89 @@ void main() {
       expect(find.byIcon(LucideIcons.fileArchive), findsOneWidget);
       expect(find.byIcon(LucideIcons.sparkles), findsNothing);
     });
+
+    testWidgets('组内工具 id 相同也能展开：重复时由出现序号区分 key', (tester) async {
+      // 同一 run 的多轮迭代会合并进同一个组，而工具 id 只在单个响应内唯一。
+      // 纯按 id 生成子项 key 时这里会撞成同一个 key，展开直接抛
+      // Duplicate keys found；重复者带上出现序号后各归各行。
+      await pumpCard(tester, [
+        tool('{"call_description":"读取配置文件"}', id: 'call_0'),
+        tool('{"call_description":"运行测试"}', name: 'bash', id: 'call_0'),
+      ], live: false);
+
+      await tester.tap(find.byType(StepHeader));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      final headers = find.byType(StepHeader);
+      expect(
+        tester
+            .widgetList<StepHeader>(headers)
+            .skip(1)
+            .map((header) => header.label),
+        ['读取配置文件', '运行测试'],
+        reason: '首条是组头汇总，后两条是展开后的子项',
+      );
+
+      // 子项 key 撞车时两行会共用一个 State：点第二行会把第一行的展开态一起改掉。
+      await tester.tap(headers.at(2));
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<StepHeader>(headers)
+            .skip(1)
+            .map((header) => header.expanded),
+        [false, true],
+        reason: '展开态各归各行',
+      );
+    });
+
+    testWidgets('前面插入一步时，展开态跟着它自己那一步走（key 认 id 不认位置）', (tester) async {
+      // 复合 key 的基底是步骤自己的 id，所以下标整体平移不该把展开态挪到别的
+      // 步骤上。纯下标方案会在这里失败：step-1 从"运行测试"平移成了别的步骤。
+      Future<void> pumpWith(List<AssistantStep> steps) =>
+          pumpCard(tester, steps, live: false);
+
+      final read = tool('{"call_description":"读取配置文件"}', id: 'read-1');
+      final run = tool(
+        '{"call_description":"运行测试"}',
+        name: 'bash',
+        id: 'run-1',
+      );
+
+      await pumpWith([read, run]);
+      await tester.tap(find.byType(StepHeader));
+      await tester.pump();
+      // 展开子项里的第二行（组头 → 第 1 步 → 第 2 步）
+      await tester.tap(find.byType(StepHeader).at(2));
+      await tester.pump();
+      expect(
+        tester
+            .widgetList<StepHeader>(find.byType(StepHeader))
+            .skip(1)
+            .map((header) => header.expanded),
+        [false, true],
+      );
+
+      // 在序列最前面插入另一个步骤，原来的两步整体后移一位。
+      // 组本身没有 key 变化，展开态保持展开，这里不需要再点组头。
+      await pumpWith([
+        tool('{"call_description":"抓取文档"}', name: 'web_search', id: 'new-1'),
+        read,
+        run,
+      ]);
+      await tester.pump();
+
+      final expanded = <String, bool>{
+        for (final header in tester.widgetList<StepHeader>(
+          find.byType(StepHeader),
+        ))
+          if (header.label != 'Used 3 tools') header.label: header.expanded,
+      };
+      expect(expanded['运行测试'], isTrue, reason: '展开态留在"运行测试"上，没有跟着下标平移走');
+      expect(expanded['读取配置文件'], isFalse);
+      expect(expanded['抓取文档'], isFalse);
+    });
   });
 
   group('头部 hover 提亮', () {
