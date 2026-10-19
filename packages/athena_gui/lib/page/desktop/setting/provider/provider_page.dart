@@ -187,7 +187,9 @@ class _DesktopSettingProviderPageState
       provider.apiKey.trim().isEmpty ? 'No API key' : 'API key set',
     ];
     final dot = AthenaSettingsDot(
-      color: provider.enabled ? colors.statusSuccess : colors.switchTrackOff,
+      color: provider.enabled
+          ? colors.statusSuccess
+          : colors.neutralBorderStrong,
     );
     return AthenaSettingsListRow(
       label: provider.name,

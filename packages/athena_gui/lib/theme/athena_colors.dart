@@ -65,7 +65,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
 
   // ---- 控件 ----
   final Color switchKnob; // 开关滑块
-  final Color switchTrackOff; // 开关关闭轨道
+  final Color switchTrackOff; // 开关关闭轨道（中性填充）
   final Color checkboxOff; // Checkbox 未选中描边
   final Color iconSecondary; // 次级图标
   final Color iconOnRaised; // 中性反色面上的图标
@@ -169,7 +169,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     statusWarning: Color(0xFF8E6019),
     statusError: Color(0xFFB24141),
     switchKnob: Color(0xFFFFFFFF),
-    switchTrackOff: Color(0xFF83998C),
+    switchTrackOff: Color(0xFFDCE3DE),
     checkboxOff: Color(0xFF718078),
     iconSecondary: Color(0xFF626E67),
     iconOnRaised: Color(0xFFFFFFFF),
@@ -219,7 +219,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     statusWarning: Color(0xFFE5B975),
     statusError: Color(0xFFEB9595),
     switchKnob: Color(0xFFE8EDE9),
-    switchTrackOff: Color(0xFF6D8778),
+    switchTrackOff: Color(0xFF35413B),
     checkboxOff: Color(0xFF81978A),
     iconSecondary: Color(0xFFA1AEA7),
     iconOnRaised: Color(0xFF202824),

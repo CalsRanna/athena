@@ -107,6 +107,8 @@
 
 **`AthenaTag`**：胶囊 + 1px 实线边框，没有渐变边框。选中态靠「提亮底色 + 加粗文字」，**不做明暗反转的实心填充**——反转填充会在安静的灰阶层次里跳出一块高对比色块。
 
+**`AthenaSwitch`**：胶囊轨道 34 × 18（`pill` 圆角）、内边距 2、滑块直径 14 并压一档 `raised` 阴影（DESIGN.md §5「控件内的滑块」）。开启轨道 `accent` 配 `textOnAccent` 滑块；关闭轨道是**中性填充 `switchTrackOff`** 配 `switchKnob` 滑块。关闭态不能做成与开启态同重量的深色条——那样两态只靠色相区分，扫视一串开关时读不出状态；两态的区分要同时落在明度上。
+
 ### Desktop Dialog
 
 桌面对话框外壳 = `surfaceMobile` 底 + `AthenaRadius.panel` 圆角 + `AthenaShadow.modal`，内边距 24，宽 320–520。给 `title` 就渲染标题行（`AthenaTextStyle.title`），再给 `onClose` 会在标题行右端放一个 ghost 关闭键。
