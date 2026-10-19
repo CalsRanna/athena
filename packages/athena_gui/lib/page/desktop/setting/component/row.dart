@@ -89,9 +89,6 @@ class AthenaSettingsListRow extends StatelessWidget {
   /// 标签后面的小徽标（`Built-in` / `Custom`）。
   final String? badge;
 
-  /// 标签左侧的小元素（状态点等），盒 20。
-  final Widget? leading;
-
   /// 多选态：底色 `neutralSelected`。
   final bool selected;
 
@@ -110,7 +107,6 @@ class AthenaSettingsListRow extends StatelessWidget {
     required this.label,
     this.description,
     this.badge,
-    this.leading,
     this.selected = false,
     this.dimmed = false,
     this.labelMaxLines,
@@ -138,7 +134,6 @@ class AthenaSettingsListRow extends StatelessWidget {
                 label: label,
                 description: description,
                 badge: badge,
-                leading: leading,
                 dimmed: dimmed,
                 labelMaxLines: labelMaxLines,
                 descriptionMaxLines: descriptionMaxLines,
@@ -207,16 +202,14 @@ class AthenaSettingsLinkRow extends StatelessWidget {
   }
 }
 
-/// 设置行与列表行共用的标签区：标签（+ 可选 leading + 可选徽标）+ 说明 + 错误。
+/// 设置行与列表行共用的标签区：标签（+ 可选徽标）+ 说明 + 错误。
 ///
-/// 三者同号 14：标签 `textPrimary`、说明 `textSecondary`、错误 `dangerText`；
-/// 有 leading 时说明与错误左缘跳过 leading 的宽度（30），与标签文字对齐。
+/// 三者同号 14：标签 `textPrimary`、说明 `textSecondary`、错误 `dangerText`。
 class _SettingsRowLabel extends StatelessWidget {
   final String label;
   final String? description;
   final String? error;
   final String? badge;
-  final Widget? leading;
   final bool dimmed;
   final int? labelMaxLines;
   final int? descriptionMaxLines;
@@ -226,7 +219,6 @@ class _SettingsRowLabel extends StatelessWidget {
     this.description,
     this.error,
     this.badge,
-    this.leading,
     this.dimmed = false,
     this.labelMaxLines,
     this.descriptionMaxLines,
@@ -252,10 +244,6 @@ class _SettingsRowLabel extends StatelessWidget {
     final labelRow = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (leading != null) ...[
-          SizedBox(width: 20, height: 20, child: Center(child: leading)),
-          const SizedBox(width: 10),
-        ],
         Flexible(child: labelText),
         if (badge != null) ...[
           const SizedBox(width: 8),
@@ -263,30 +251,22 @@ class _SettingsRowLabel extends StatelessWidget {
         ],
       ],
     );
-    final textIndent = leading == null ? 0.0 : 30.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         labelRow,
         if (hasDescription) const SizedBox(height: AthenaSettings.rowLabelGap),
         if (hasDescription)
-          Padding(
-            padding: EdgeInsets.only(left: textIndent),
-            child: Text(
-              description!,
-              maxLines: descriptionMaxLines,
-              overflow: descriptionMaxLines == null
-                  ? null
-                  : TextOverflow.ellipsis,
-              style: descriptionStyle,
-            ),
+          Text(
+            description!,
+            maxLines: descriptionMaxLines,
+            overflow: descriptionMaxLines == null
+                ? null
+                : TextOverflow.ellipsis,
+            style: descriptionStyle,
           ),
         if (error != null) const SizedBox(height: AthenaSettings.rowLabelGap),
-        if (error != null)
-          Padding(
-            padding: EdgeInsets.only(left: textIndent),
-            child: Text(error!, style: errorStyle),
-          ),
+        if (error != null) Text(error!, style: errorStyle),
       ],
     );
   }
@@ -350,21 +330,6 @@ class AthenaSettingsParagraph extends StatelessWidget {
         vertical: AthenaSettings.rowLabelGap,
       ),
       child: SelectableText(text, style: textStyle),
-    );
-  }
-}
-
-/// 行首的状态点（直径 6）：启用 / 停用之类的二元状态。
-class AthenaSettingsDot extends StatelessWidget {
-  final Color color;
-  const AthenaSettingsDot({super.key, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

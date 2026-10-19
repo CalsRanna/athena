@@ -169,33 +169,23 @@ class _DesktopSettingProviderPageState
         AthenaSettingsGroup(
           children: [
             for (final provider in providers)
-              _buildProviderRow(provider, models, colors),
+              _buildProviderRow(provider, models),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildProviderRow(
-    ProviderEntity provider,
-    List<ModelEntity> models,
-    AthenaColors colors,
-  ) {
+  Widget _buildProviderRow(ProviderEntity provider, List<ModelEntity> models) {
     final count = models.where((m) => m.providerId == provider.id).length;
     final parts = <String>[
       count == 1 ? '1 model' : '$count models',
       provider.apiKey.trim().isEmpty ? 'No API key' : 'API key set',
     ];
-    final dot = AthenaSettingsDot(
-      color: provider.enabled
-          ? colors.statusSuccess
-          : colors.neutralBorderStrong,
-    );
     return AthenaSettingsListRow(
       label: provider.name,
       badge: provider.isPreset ? null : 'Custom',
       description: parts.join(' · '),
-      leading: dot,
       dimmed: !provider.enabled,
       selected: _selection.selectedIds.contains(provider.id),
       onTap: () => _handleProviderTap(provider),
