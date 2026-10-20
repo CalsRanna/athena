@@ -148,11 +148,11 @@ class DesktopContextMenuTile extends StatefulWidget {
   /// 给了它就是两行条目（内边距与单行一致，高度由内容撑开）。
   final String? description;
 
-  /// 选中态：行尾补一枚 `check`，并让条目带上「按钮 + 选中」的语义。
+  /// 选中态：行尾补一枚 `check`。
   ///
-  /// `null`（默认）= 这条不是选择项（右键菜单的 Edit / Delete），什么也不加；
-  /// 非 null 才声明语义，所以**未选中的选择项会如实报 `selected: false`**。
-  /// 与 [trailing] 同时给出时 [trailing] 负责渲染，本字段只驱动语义。
+  /// `null`（默认）= 这条不是选择项（右键菜单的 Edit / Delete），行尾不留勾选槽位；
+  /// 非 null 时槽位常驻，未选中画空白。与 [trailing] 同时给出时 [trailing] 负责渲染，
+  /// 本字段只驱动行尾槽位。
   final bool? selected;
 
   /// 紧跟在标题后面的小标（如模型行的 `Default`）。
@@ -303,10 +303,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
         child: content,
       ),
     );
-    // 只有选择类条目才声称自己是按钮 / 选中项；普通右键菜单条目保持
-    // 原样，避免给无选中语义的菜单项平白加上 selected: false。
-    if (selected == null) return tile;
-    return Semantics(button: true, selected: selected, child: tile);
+    return tile;
   }
 }
 

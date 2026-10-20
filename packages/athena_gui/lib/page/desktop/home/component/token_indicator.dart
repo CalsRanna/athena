@@ -68,10 +68,6 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         strokeCap: StrokeCap.round,
         backgroundColor: colors.border,
         color: stats.nearLimit ? colors.statusWarning : colors.textSecondary,
-        semanticsLabel: 'Context window usage',
-        // 进度控件的语义值只能是数字（框架按 min/max 解析它），摘要文本
-        // 放在 tooltip 里；这里给百分比，读屏才报得出「用了多少」。
-        semanticsValue: _percent(stats.used, stats.window),
       ),
     );
     // tooltip 是深色底白字的一句话，明细留给点击。

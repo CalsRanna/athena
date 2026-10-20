@@ -103,11 +103,10 @@ void main() {
   ///
   /// 不能直接用 `find.byType(CircularProgressIndicator)`：composer 工具行右端
   /// 的 token 圆环也是同一类型，且它**常驻**（无数据时画空轨道），按类型全局
-  /// 查找会永远命中。这里按各自的语义标签分开。
-  Finder imagePlaceholderSpinner() => find.byWidgetPredicate(
-    (widget) =>
-        widget is CircularProgressIndicator &&
-        widget.semanticsLabel == 'Loading image',
+  /// 查找会永远命中。这里从占位符自己的 tooltip 往下找，把范围限定在这一格。
+  Finder imagePlaceholderSpinner() => find.descendant(
+    of: find.byTooltip('Loading image'),
+    matching: find.byType(CircularProgressIndicator),
   );
 
   testWidgets(

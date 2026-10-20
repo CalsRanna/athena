@@ -527,19 +527,15 @@ class _PendingImageStrip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: colors.surfaceMobile,
     );
-    final removeButton = Semantics(
-      label: 'Remove image',
-      button: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onRemoved?.call(index),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            decoration: decoration,
-            padding: const EdgeInsets.all(2),
-            child: icon,
-          ),
+    final removeButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onRemoved?.call(index),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: decoration,
+          padding: const EdgeInsets.all(2),
+          child: icon,
         ),
       ),
     );
@@ -584,14 +580,12 @@ class _ImageProgress extends StatelessWidget {
                   // 24 方形容器内的图片占位图标，按容器比例取 12，不套用三档映射
                   size: 12,
                   color: failed ? colors.statusError : colors.textWeak,
-                  semanticLabel: failed ? 'Could not load image' : null,
                 ),
                 if (!failed)
                   Positioned.fill(
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: colors.accent,
-                      semanticsLabel: 'Loading image',
                     ),
                   ),
               ],

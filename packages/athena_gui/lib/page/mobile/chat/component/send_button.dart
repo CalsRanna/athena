@@ -47,14 +47,10 @@ class SendButton extends StatelessWidget {
               child: Center(child: container),
             )
           : container;
-      return Semantics(
-        button: true,
-        label: streaming ? 'Stop generating' : 'Send message',
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => handleTap(context, streaming),
-          child: visual,
-        ),
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => handleTap(context, streaming),
+        child: visual,
       );
     });
   }

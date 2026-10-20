@@ -321,7 +321,6 @@ class StreamingIndicator extends StatelessWidget {
           strokeAlign: CircularProgressIndicator.strokeAlignInside,
           strokeCap: StrokeCap.round,
           color: colors.textSecondary,
-          semanticsLabel: 'Streaming',
         ),
       ),
     );

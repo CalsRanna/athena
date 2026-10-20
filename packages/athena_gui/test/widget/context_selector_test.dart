@@ -46,10 +46,7 @@ void main() {
       .first;
 
   Finder selectedOption() => find.byWidgetPredicate(
-    (widget) =>
-        widget is Semantics &&
-        widget.properties.button == true &&
-        widget.properties.selected == true,
+    (widget) => widget is DesktopContextMenuTile && widget.selected == true,
   );
 
   tearDown(() => DesktopContextMenuManager.instance.dismiss());
