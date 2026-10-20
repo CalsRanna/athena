@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// composer 右下的当前模型名。只负责显示：点击由外层的 `_SquishButton` 接管，
+/// composer 右下的当前模型名。只负责显示：点击由外层的 `AthenaGhostButton` 接管，
 /// 它拿得到整块（含 hover 填充）的矩形，模型菜单要锚在那上面。
 class DesktopModelIndicator extends StatelessWidget {
   const DesktopModelIndicator({super.key});

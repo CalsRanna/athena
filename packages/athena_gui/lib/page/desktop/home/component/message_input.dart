@@ -14,7 +14,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/press_scale.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -72,8 +72,6 @@ class DesktopMessageInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // ghost 按钮 hover 填充：前景色 5%
-    final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
     return Watch((context) {
       final queued = chatViewModel.queuedMessages.value;
       // 在 Watch 内订阅；放进下方 builder 会延迟到另一个 build，图片变化就不重绘。
@@ -175,9 +173,10 @@ class DesktopMessageInput extends StatelessWidget {
                     // 左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
                     // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
                     // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
+                    // 文字控件的 hover 底按内容整形：左右各 6、上下 3（行盒 22
+                    // 撑到 28），与裸字形补出来的方盒同高。
                     Builder(
-                      builder: (context) => _SquishButton(
-                        hoverFill: ghostHover,
+                      builder: (context) => AthenaGhostButton(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 3,
@@ -194,15 +193,12 @@ class DesktopMessageInput extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _SquishButton(
-                      hoverFill: ghostHover,
-                      child: DesktopImageSelector(onSelected: onImageSelected),
-                    ),
+                    // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
+                    DesktopImageSelector(onSelected: onImageSelected),
                     const Spacer(),
                     // 用 Builder 拿到这一整块的矩形回传，菜单右边要与它对齐
                     Builder(
-                      builder: (context) => _SquishButton(
-                        hoverFill: ghostHover,
+                      builder: (context) => AthenaGhostButton(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 3,
@@ -216,8 +212,7 @@ class DesktopMessageInput extends StatelessWidget {
                       const SizedBox(width: 4),
                       // Effort 面板锚在这一整块上方、右对齐
                       Builder(
-                        builder: (context) => _SquishButton(
-                          hoverFill: ghostHover,
+                        builder: (context) => AthenaGhostButton(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 3,
@@ -234,7 +229,9 @@ class DesktopMessageInput extends StatelessWidget {
                         ),
                       ),
                     ],
-                    // `High` 与右侧圆环之间约 20
+                    // 圆环的 hover 底是 28 方盒、右缘与上方输入容器对齐，圆环居中
+                    // 其中，因此静止位置比原先（裸 12 圆环顶到容器右缘）左移 8；
+                    // 与 `High` 的间距因此是 12 + 8 = 20。
                     const SizedBox(width: 12),
                     const DesktopTokenIndicator(),
                   ],
@@ -658,17 +655,14 @@ class _SendButton extends StatelessWidget {
       final imagesReady = chatViewModel.pendingImages.value.every(
         (image) => image.isReady,
       );
-      // ghost 按钮 hover 填充：前景色 5%
-      final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
       // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
       // 取 step4 档：22×22。
-      return _SquishButton(
+      return AthenaGhostButton(
         onTap: streaming
             ? onTerminated
             : imagesReady
             ? onSubmitted
             : null,
-        hoverFill: ghostHover,
         child: Container(
           alignment: Alignment.center,
           height: 22,
@@ -681,68 +675,6 @@ class _SendButton extends StatelessWidget {
         ),
       );
     });
-  }
-}
-
-/// 带 hover 填充的按压缩放按钮。
-///
-/// 按下反馈交给 [AthenaPressScale]，这里只负责 hover 填充与点击。
-class _SquishButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-
-  /// hover 时的圆角填充：前景色 5%（暗色 7.5%）。
-  /// 传 null 表示不做 hover 反馈。
-  final Color? hoverFill;
-
-  /// 填充与内容之间的内边距（文字类控件需要，纯图标不需要）。
-  final EdgeInsetsGeometry padding;
-
-  const _SquishButton({
-    required this.child,
-    this.onTap,
-    this.hoverFill,
-    this.padding = EdgeInsets.zero,
-  });
-
-  @override
-  State<_SquishButton> createState() => _SquishButtonState();
-}
-
-class _SquishButtonState extends State<_SquishButton> {
-  bool _hover = false;
-
-  bool get _interactive => widget.onTap != null || widget.hoverFill != null;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget result = widget.hoverFill == null
-        ? widget.child
-        : AnimatedContainer(
-            duration: AthenaMotion.hover,
-            decoration: BoxDecoration(
-              color: _hover
-                  ? widget.hoverFill
-                  : widget.hoverFill!.withValues(alpha: 0),
-              borderRadius: BorderRadius.circular(AthenaRadius.xs),
-            ),
-            child: Padding(padding: widget.padding, child: widget.child),
-          );
-    result = AthenaPressScale(enabled: _interactive, child: result);
-    result = MouseRegion(
-      cursor: _interactive
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: result,
-    );
-    if (widget.onTap == null) return result;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: result,
-    );
   }
 }
 

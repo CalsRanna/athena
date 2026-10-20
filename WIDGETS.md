@@ -75,7 +75,7 @@
 
 | 控件 | 平台 | 说明 |
 |---|---|---|
-| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaTextButton` / `AthenaIconButton` / `AthenaGhostIconButton` | 桌面与移动 | 五种按钮角色。**主路径操作按钮一律从 Primary CTA 派生** |
+| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaTextButton` / `AthenaIconButton` / `AthenaGhostIconButton` / `AthenaGhostButton` | 桌面与移动 | 按钮角色。**主路径操作按钮一律从 Primary CTA 派生**；两种 ghost 见下（方形图标键 / 按内容整形的行内键） |
 | `AthenaInput` / `AthenaFormField` / `AthenaFormTileLabel` | 桌面与移动 | 输入框 / 带标签与校验的字段 / 表单标签 |
 | `AthenaSwitch` / `AthenaCheckbox` | 桌面与移动 | 开关 / 勾选框 |
 | `AthenaTag` / `AthenaTagButton` / `AthenaContextChip` | 桌面与移动 | 筛选 chip / 可点 tag 按钮 / composer 上的上下文 chip |
@@ -175,6 +175,7 @@ hover 的视觉反馈按组件角色选择，不使用覆盖所有控件的文�
 | 文字按钮、可展开的步骤头 | 前景从 `textSecondary` 提亮到 `textPrimary`；文字按钮可同时出现 hover 底色 | 步骤运行中由 shimmer 接管前景，见 §2 |
 | 主按钮与次按钮 | 调整填充或底色，保留该表面配套的前景色 | 禁用态不能按可操作状态反馈 |
 | Ghost 图标按钮 | 背景使用 `textPrimary` 的 5% 透明度，前景保持稳定 | 点击区域与图标尺寸见 §2 |
+| 行内 ghost 按钮（`AthenaGhostButton`） | 同上，圆角 `xs` | 填充与点击区域按内容整形：文字类左右 6 / 上下 3，裸字形补到 28 方盒。**同一行里的 ghost 控件必须同高**，否则填充会在视觉上分成两种尺寸 |
 
 颜色过渡使用 [DESIGN.md §6](DESIGN.md#6-动效) 的 `AthenaMotion.hover`。移动触屏的操作入口必须能通过可见控件或明确的长按交互访问，不能依赖 hover。
 

@@ -26,15 +26,17 @@ class DesktopImageSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (compact) return _buildCompactButton(context);
-    // 附件入口是一个裸加号，不是图片字形
-    final iconWidget = Icon(
-      LucideIcons.plus,
-      color: colors.textPrimary,
-      size: AthenaIcon.regularSize,
-    );
-    return GestureDetector(
+    // 附件入口是一个裸加号，不是图片字形。图标 16 + 上下左右各 6 = 28 的
+    // hover 方盒，与同一行文字控件的 hover 底同高；不加内边距的话填充会紧贴
+    // 字形，看起来比旁边的按钮小一圈。
+    return AthenaGhostButton(
       onTap: selectImages,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: iconWidget),
+      padding: const EdgeInsets.all(6),
+      child: Icon(
+        LucideIcons.plus,
+        color: colors.textPrimary,
+        size: AthenaIcon.regularSize,
+      ),
     );
   }
 

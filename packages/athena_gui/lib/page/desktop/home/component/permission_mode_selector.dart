@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 /// composer 左下角的审批模式文字（如 `Bypass permissions`）。
 ///
-/// 只负责显示当前档；点击由外层 `_SquishButton` 接管，弹出
+/// 只负责显示当前档；点击由外层 `AthenaGhostButton` 接管，弹出
 /// [DesktopPermissionModeMenu]。
 ///
 /// 档位是**会话级**的，所以值由页面传入（`ChatViewModel.currentApprovalMode`）

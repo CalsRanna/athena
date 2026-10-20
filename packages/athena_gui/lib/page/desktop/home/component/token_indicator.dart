@@ -4,6 +4,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -11,9 +12,14 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 输入框工具栏最右的上下文占用指示器。
 ///
-/// 12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 只给一句
-/// 深色 tooltip（`Context 181.6k / 1M (18%)`），点击才在圆环上方弹出明细面板
-/// （标题行 + 分段占用条 + 缓存命中 / 未命中 / 剩余三行图例）。
+/// 12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 给一句深色 tooltip
+/// （`Context 181.6k / 1M (18%)`）和 ghost 底色（与其他控件同一份
+/// [AthenaGhostButton] 实现），点击才在圆环上方弹出明细面板（标题行 +
+/// 分段占用条 + 缓存命中 / 未命中 / 剩余三行图例）。
+///
+/// 圆环只有 12，但 hover 底与点击区域是 28 方盒：底要够大才摸得到、也才和
+/// 同一行其他控件的命中区一致。方盒中心比圆环偏右 8，所以宿主让这一格整体
+/// 左移 8，使底的右缘与上方输入容器对齐。
 ///
 /// 只看上下文：数据是最近一次推理的 prompt token 快照（`chat.contextTokens`）
 /// 及其中的缓存命中数，不统计会话累计用量。没有数据（无会话，或模型未配置
@@ -55,7 +61,9 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         backgroundColor: colors.border,
         color: stats.nearLimit ? colors.statusWarning : colors.textSecondary,
         semanticsLabel: 'Context window usage',
-        semanticsValue: stats.summary,
+        // 进度控件的语义值只能是数字（框架按 min/max 解析它），摘要文本
+        // 放在 tooltip 里；这里给百分比，读屏才报得出「用了多少」。
+        semanticsValue: _percent(stats.used, stats.window),
       ),
     );
     // tooltip 是深色底白字的一句话，明细留给点击。
@@ -69,10 +77,11 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       textStyle: AthenaTextStyle.caption.copyWith(color: colors.textOnRaised),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
+      // 12 圆环 + 8 内边距 = 28 方盒，与同一行的 ghost 控件同档
+      child: AthenaGhostButton(
         onTap: () => _openDetails(stats),
-        child: MouseRegion(cursor: SystemMouseCursors.click, child: ring),
+        padding: const EdgeInsets.all(8),
+        child: ring,
       ),
     );
   }

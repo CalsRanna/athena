@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 工具栏上的推理强度文字（如 `High`）。只负责显示：点击由外层
-/// `_SquishButton` 接管，弹出 [DesktopReasoningEffortMenu]。
+/// `AthenaGhostButton` 接管，弹出 [DesktopReasoningEffortMenu]。
 class DesktopReasoningEffortLabel extends StatelessWidget {
   final String current;
   const DesktopReasoningEffortLabel({super.key, required this.current});

@@ -200,7 +200,7 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
           child: AnimatedContainer(
             decoration: BoxDecoration(
               color: background,
-              // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
+              // 与 composer 里「模型名」那个可点控件同档（`AthenaGhostButton` 的 hover 底
               // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
               borderRadius: BorderRadius.circular(AthenaRadius.xs),
             ),

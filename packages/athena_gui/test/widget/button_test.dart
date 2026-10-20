@@ -68,6 +68,93 @@ void main() {
       expect(background(), resting);
     });
   }
+  for (final mode in AthenaColorMode.values) {
+    testWidgets('$mode ghost 按钮 hover 填充前景色 5%，移开还原', (tester) async {
+      final theme = buildAthenaThemeData(mode);
+      final colors = theme.extension<AthenaColors>()!;
+      var taps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: Center(
+              child: AthenaGhostButton(
+                onTap: () => taps++,
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  LucideIcons.plus,
+                  color: colors.textPrimary,
+                  size: AthenaIcon.regularSize,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final button = find.byType(AthenaGhostButton);
+      Color background() =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find.descendant(
+                          of: button,
+                          matching: find.byType(DecoratedBox),
+                        ),
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color!;
+      final resting = colors.textPrimary.withValues(alpha: 0);
+      // 图标 16 + 内边距 6×2：填充和命中区都是 28 方盒，不贴着字形
+      expect(tester.getSize(button), const Size(28, 28));
+      expect(background(), resting);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      addTearDown(mouse.removePointer);
+      await mouse.moveTo(tester.getCenter(button));
+      await tester.pump();
+      await tester.pump(AthenaMotion.hover);
+      expect(background(), colors.textPrimary.withValues(alpha: 0.05));
+
+      await mouse.moveTo(Offset.zero);
+      await tester.pump();
+      await tester.pump(AthenaMotion.hover);
+      expect(background(), resting, reason: '移开后填充要收回去');
+
+      // 连内边距一起可点：不要求瞄准 16px 的图标
+      await tester.tapAt(tester.getTopLeft(button) + const Offset(1, 1));
+      expect(taps, 1);
+    });
+  }
+
+  testWidgets('不可点的 ghost 按钮不给 hover 填充与手型光标', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: const Scaffold(
+          body: Center(child: AthenaGhostButton(child: Text('Disabled'))),
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(find.byType(AthenaGhostButton)));
+    await tester.pump();
+    await tester.pump(AthenaMotion.hover);
+    final decoration =
+        tester
+                .widget<DecoratedBox>(
+                  find.descendant(
+                    of: find.byType(AthenaGhostButton),
+                    matching: find.byType(DecoratedBox),
+                  ),
+                )
+                .decoration
+            as BoxDecoration;
+    expect(decoration.color!.a, 0, reason: '不可点时不该出现 hover 底');
+  });
+
   for (final platform in [
     TargetPlatform.macOS,
     TargetPlatform.windows,
