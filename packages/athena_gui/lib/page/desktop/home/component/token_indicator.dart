@@ -21,9 +21,14 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 同一行其他控件的命中区一致。方盒中心比圆环偏右 8，所以宿主让这一格整体
 /// 左移 8，使底的右缘与上方输入容器对齐。
 ///
+/// **始终占位、始终可点**：没有数据时画一圈空轨道（弧为 0），不摘控件——
+/// 这格在最右侧，来回显隐会让同一行的控件横向跳动。数据缺口有两种来源，
+/// tooltip 与面板都如实说明而不是编造数字：没有会话（还没跑过推理）按 0
+/// 计；模型没配上下文窗口时窗口未知，占用率无从计算。
+///
 /// 只看上下文：数据是最近一次推理的 prompt token 快照（`chat.contextTokens`）
-/// 及其中的缓存命中数，不统计会话累计用量。没有数据（无会话，或模型未配置
-/// 上下文窗口）时不渲染。
+/// 及其中的缓存命中数，不统计会话累计用量。回退后该字段是
+/// [ChatEntity.unknownContextTokens]（-1），同样按 0 计。
 class DesktopTokenIndicator extends StatefulWidget {
   const DesktopTokenIndicator({super.key});
 
@@ -38,9 +43,12 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
   Widget build(BuildContext context) {
     return Watch((context) {
       final chat = viewModel.currentChat.value;
-      final used = chat?.contextTokens ?? 0;
-      final window = viewModel.currentModel.value?.contextWindow ?? 0;
-      if (used <= 0 || window <= 0) return const SizedBox.shrink();
+      // 负数只出现在回退后的"未知"，与"还没跑过推理"一样按 0 展示
+      final used = math.max(chat?.contextTokens ?? 0, 0);
+      final window = math.max(
+        viewModel.currentModel.value?.contextWindow ?? 0,
+        0,
+      );
       final stats = _ContextStats(
         used: used,
         window: window,
@@ -115,14 +123,18 @@ class _ContextStats {
     required this.cached,
   });
 
+  /// 模型没配上下文窗口：占用率无从计算，圆环只有空轨道。
+  bool get windowUnknown => window <= 0;
+
   int get uncached => used - cached;
   int get free => math.max(window - used, 0);
-  double get ratio => (used / window).clamp(0.0, 1.0);
-  bool get nearLimit => ratio >= 0.8;
+  double get ratio => windowUnknown ? 0 : (used / window).clamp(0.0, 1.0);
+  bool get nearLimit => !windowUnknown && ratio >= 0.8;
 
-  /// `181.6k / 1M (18%)`，tooltip 与面板标题共用。
-  String get summary =>
-      '${_compact(used)} / ${_compact(window)} (${_percent(used, window)})';
+  /// `181.6k / 1M (18%)`，tooltip 与面板标题共用。窗口未知时只说用了多少。
+  String get summary => windowUnknown
+      ? '${_compact(used)} (window unknown)'
+      : '${_compact(used)} / ${_compact(window)} (${_percent(used, window)})';
 }
 
 /// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
@@ -181,10 +193,13 @@ class _ContextDetails extends StatelessWidget {
       child: CustomPaint(
         painter: _UsageBarPainter(
           track: freeColor,
-          segments: [
-            (stats.cached / stats.window, cachedColor),
-            (stats.uncached / stats.window, uncachedColor),
-          ],
+          // 窗口未知时没有任何可信的分母，整条留空轨道
+          segments: stats.windowUnknown
+              ? const []
+              : [
+                  (stats.cached / stats.window, cachedColor),
+                  (stats.uncached / stats.window, uncachedColor),
+                ],
         ),
       ),
     );
@@ -271,7 +286,8 @@ class _LegendRow extends StatelessWidget {
           SizedBox(
             width: 40,
             child: Text(
-              _percent(tokens, window),
+              // 窗口未知时占比无从计算，用 `—` 而不是 0%：0% 会被读成"量为零"
+              window <= 0 ? '—' : _percent(tokens, window),
               textAlign: TextAlign.right,
               style: valueStyle,
             ),

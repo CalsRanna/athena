@@ -129,4 +129,57 @@ void main() {
       reason: '圆环底要贴齐输入框右缘，悬出去或缩在里面都会和上方错开',
     );
   });
+
+  testWidgets('没有会话时圆环照样显示，画一圈空轨道', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    // 刻意不给 currentChat / currentModel：新建对话、还没跑过任何推理
+    final controller = TextEditingController();
+    final focus = FocusNode();
+    addTearDown(controller.dispose);
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: Scaffold(
+          body: DesktopMessageInput(controller: controller, focusNode: focus),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final token = find.byType(DesktopTokenIndicator);
+    expect(token, findsOneWidget, reason: '圆环常驻，不随数据缺席消失');
+    final ring = find.descendant(
+      of: token,
+      matching: find.byType(CircularProgressIndicator),
+    );
+    expect(ring, findsOneWidget);
+    expect(
+      tester.widget<CircularProgressIndicator>(ring).value,
+      0,
+      reason: '无数据画空轨道，而不是转圈的不确定态',
+    );
+    // 窗口也是 0（没有模型）：面板/占用条的除法不能被除零污染
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('回退后 contextTokens = -1 按 0 展示，不出现负数', (tester) async {
+    await pumpComposer(tester);
+    final viewModel = GetIt.instance<ChatViewModel>();
+    viewModel.currentChat.value = viewModel.currentChat.value!.copyWith(
+      contextTokens: ChatEntity.unknownContextTokens,
+      cachedTokens: ChatEntity.unknownContextTokens,
+    );
+    await tester.pump();
+
+    final ring = tester.widget<CircularProgressIndicator>(
+      find.descendant(
+        of: find.byType(DesktopTokenIndicator),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+    );
+    expect(ring.value, 0);
+  });
 }

@@ -99,6 +99,17 @@ void main() {
     );
   }
 
+  /// 图片占位符里的进度环。
+  ///
+  /// 不能直接用 `find.byType(CircularProgressIndicator)`：composer 工具行右端
+  /// 的 token 圆环也是同一类型，且它**常驻**（无数据时画空轨道），按类型全局
+  /// 查找会永远命中。这里按各自的语义标签分开。
+  Finder imagePlaceholderSpinner() => find.byWidgetPredicate(
+    (widget) =>
+        widget is CircularProgressIndicator &&
+        widget.semanticsLabel == 'Loading image',
+  );
+
   testWidgets(
     'standard paste shows progress before bytes arrive and then renders image',
     (tester) async {
@@ -120,13 +131,11 @@ void main() {
         viewModel.pendingImages.value.single.stage,
         PendingImageStage.reading,
       );
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(imagePlaceholderSpinner(), findsOneWidget);
       for (final label in ['Reading', 'Preparing', 'Decoding']) {
         expect(find.text(label), findsNothing, reason: '占位不展示阶段名称');
       }
-      final placeholderSize = tester.getSize(
-        find.byType(CircularProgressIndicator),
-      );
+      final placeholderSize = tester.getSize(imagePlaceholderSpinner());
       expect(placeholderSize.width, greaterThan(0));
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.tap(find.byIcon(LucideIcons.arrowUp));
@@ -143,7 +152,7 @@ void main() {
 
       expect(viewModel.pendingImages.value.single.isReady, isTrue);
       expect(viewModel.pendingImages.value.single.bytes, png);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(imagePlaceholderSpinner(), findsNothing);
       expect(
         find.byWidgetPredicate((w) => w is RawImage && w.image != null),
         findsOneWidget,
@@ -226,7 +235,7 @@ void main() {
     await settle(tester);
     expect(controller.text, 'hello world');
     expect(viewModel.pendingImages.value, isEmpty);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(imagePlaceholderSpinner(), findsNothing);
   });
 
   testWidgets('removing placeholder prevents late image from reappearing', (
@@ -261,7 +270,7 @@ void main() {
       viewModel.pendingImages.value.single.stage,
       PendingImageStage.failed,
     );
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(imagePlaceholderSpinner(), findsNothing);
     await tester.tap(find.byIcon(LucideIcons.x));
     await tester.pump();
     expect(viewModel.pendingImages.value, isEmpty);
@@ -294,7 +303,7 @@ void main() {
     await tester.pump();
     await tester.runAsync(() => viewModel.selectChat(chat));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(imagePlaceholderSpinner(), findsNothing);
     reading.complete(png);
     await settle(tester);
     expect(viewModel.pendingImages.value, isEmpty);
