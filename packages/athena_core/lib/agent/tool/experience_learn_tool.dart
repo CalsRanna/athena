@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/evolution/memory_capacity.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
@@ -160,6 +161,16 @@ class ExperienceLearnTool extends Tool {
             );
           }
         }
+        final targetShared = (scope ?? 'self') == 'shared';
+        if (MemoryCapacity.exceedsCapacity(
+          existing: existing,
+          lesson: lesson.trim(),
+          shared: targetShared,
+        )) {
+          return ToolExecutionResult.error(
+            _capacityExceededMessage(existing, targetShared),
+          );
+        }
         final entity = await _repository.save(
           lesson: lesson.trim(),
           context: context.trim(),
@@ -229,6 +240,49 @@ class ExperienceLearnTool extends Tool {
     } catch (e) {
       return ToolExecutionResult.error('Error $action experience: $e');
     }
+  }
+
+  /// 容量已满时返回给模型的提示。
+  ///
+  /// 只说"写不进去"会让模型反复重试同一句话；这里必须给出可立即执行的
+  /// 后续动作，并列出最旧的几条作为候选。模型据此调用 `archive`，用户则
+  /// 在对话里直接看到"记忆满了"——而不是几个月后才发现新经验没生效。
+  String _capacityExceededMessage(
+    List<ExperienceEntity> existing,
+    bool targetShared,
+  ) {
+    final used = MemoryCapacity.catalogChars(existing);
+    // 最旧的排在前面：记忆的价值不随年龄消失，但归档时先动最可能与当前
+    // 工作无关的旧条目，比让模型随机挑一条安全。
+    final oldest = [...existing]
+      ..sort((a, b) {
+        final byDate = (a.updatedAt ?? a.createdAt).compareTo(
+          b.updatedAt ?? b.createdAt,
+        );
+        return byDate != 0 ? byDate : a.id.compareTo(b.id);
+      });
+    final candidates = oldest
+        .take(5)
+        .map((e) {
+          final lesson = e.lesson.replaceAll(RegExp(r'\s+'), ' ').trim();
+          final preview = lesson.length <= 60
+              ? lesson
+              : '${lesson.substring(0, 60)}…';
+          return '- ${e.id} (${e.scope}): $preview';
+        })
+        .join('\n');
+
+    return 'Error: Experience not recorded — the memory catalog is full '
+        '($used / ${MemoryCapacity.maxCatalogChars} chars, '
+        '${existing.length} entries).\n'
+        'Nothing was written. Superseded lessons must be archived (or '
+        'several related ones consolidated into a skill with skill_evolve) '
+        'before adding a new one.\n'
+        'Candidates, oldest first:\n$candidates\n'
+        'Call experience_learn with action="archive" and the experience_id '
+        'of the lessons that no longer apply, then retry this lesson.'
+        '${targetShared ? '\nNote: this lesson targets the shared catalog, '
+                  'which is visible to every Sentinel.' : ''}';
   }
 }
 

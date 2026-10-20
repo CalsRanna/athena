@@ -100,6 +100,30 @@ void main() {
 
       expect(text, contains('第一行 第二行'));
     });
+
+    test('近期被修订过的经验排在前面（容量不足时优先保留）', () async {
+      final older = await repo.save(lesson: 'older lesson', sentinelId: '1');
+      await repo.save(lesson: 'newer lesson', sentinelId: '1');
+      await repo.update(
+        sentinelId: '1',
+        id: older.id,
+        lesson: 'older lesson reinforced',
+      );
+
+      final text =
+          ((await MemoryDigest.messagesForSentinel(
+                    repository: repo,
+                    sentinelId: '1',
+                  ))!.single
+                  as SystemMessage)
+              .content;
+
+      expect(
+        text.indexOf('reinforced'),
+        lessThan(text.indexOf('newer lesson')),
+        reason: '最近被强化过的经验应先保留',
+      );
+    });
   });
 
   group('ReflectionPolicy', () {
