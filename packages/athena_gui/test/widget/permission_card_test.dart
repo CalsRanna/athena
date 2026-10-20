@@ -53,7 +53,7 @@ void main() {
       expect(find.textContaining('query: project rules'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Allow Once'));
+      await tester.tap(find.text('Allow'));
       expect(decision, isTrue);
       expect(find.text('Always Allow'), findsNothing);
       await tester.tap(find.text('Deny'));
@@ -98,14 +98,14 @@ void main() {
       findsNothing,
     );
     expect(find.text('path: /tmp/config.json'), findsOneWidget);
-    expect(find.text('Allow Once'), findsOneWidget);
+    expect(find.text('Allow'), findsOneWidget);
 
     await tester.tap(find.text('file_read'));
     await tester.pumpAndSettle();
     expect(find.text('file_read'), findsOneWidget);
     expect(find.text('Needs your approval'), findsOneWidget);
     expect(find.text('path: /tmp/config.json'), findsNothing);
-    expect(find.text('Allow Once'), findsNothing);
+    expect(find.text('Allow'), findsNothing);
     expect(
       tester.getSize(find.byType(PermissionApprovalCard)).height,
       lessThan(expandedHeight),
@@ -114,7 +114,7 @@ void main() {
     await tester.tap(find.text('file_read'));
     await tester.pumpAndSettle();
     expect(find.text('path: /tmp/config.json'), findsOneWidget);
-    expect(find.text('Allow Once'), findsOneWidget);
+    expect(find.text('Allow'), findsOneWidget);
   });
 
   testWidgets('审批标题缺少描述时用审批占位，完整参数仍在详情中', (tester) async {

@@ -1183,7 +1183,7 @@ class ChatViewModel {
     );
   }
 
-  /// 用户对当前审批请求做出决策（Allow Once / Deny）。
+  /// 用户对当前审批请求做出决策（Allow / Deny）。
   void respondApproval(ApprovalRequest request, PermissionDecision decision) {
     _stream.respondApproval(request, decision);
   }

@@ -145,13 +145,13 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
         platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 
     if (mobile) {
-      // 移动：全宽按钮，主操作（Allow Once）在最上
+      // 移动：全宽按钮，主操作在最上
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AthenaPrimaryButton(
             onTap: () => widget.onDecision(true),
-            child: const Center(child: Text('Allow Once')),
+            child: const Center(child: Text('Allow')),
           ),
           const SizedBox(height: 8),
           AthenaSecondaryButton(
@@ -162,7 +162,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
       );
     }
 
-    // 桌面：行内按钮，主操作（Allow Once）在最右
+    // 桌面：行内按钮，主操作在最右
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -173,7 +173,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
         const SizedBox(width: 12),
         AthenaPrimaryButton(
           onTap: () => widget.onDecision(true),
-          child: const Text('Allow Once'),
+          child: const Text('Allow'),
         ),
       ],
     );
