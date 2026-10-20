@@ -100,15 +100,12 @@ class QueuedMessages extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (text.isNotEmpty)
-                            Tooltip(
-                              message: text,
-                              child: Text(
-                                text,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: AthenaTextStyle.body.copyWith(
-                                  color: colors.textInput,
-                                ),
+                            Text(
+                              text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AthenaTextStyle.body.copyWith(
+                                color: colors.textInput,
                               ),
                             ),
                           if (imageCount > 0)
@@ -132,19 +129,13 @@ class QueuedMessages extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Steer (stops current turn)',
-                      child: AthenaGhostIconButton(
-                        icon: LucideIcons.send,
-                        onTap: () => onSteer(message),
-                      ),
+                    AthenaGhostIconButton(
+                      icon: LucideIcons.send,
+                      onTap: () => onSteer(message),
                     ),
-                    Tooltip(
-                      message: 'Delete',
-                      child: AthenaGhostIconButton(
-                        icon: LucideIcons.x,
-                        onTap: () => onDelete(message),
-                      ),
+                    AthenaGhostIconButton(
+                      icon: LucideIcons.x,
+                      onTap: () => onDelete(message),
                     ),
                   ],
                 );
