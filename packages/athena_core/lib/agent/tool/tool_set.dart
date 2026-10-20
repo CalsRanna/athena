@@ -54,6 +54,10 @@ ToolRegistry buildToolRegistry({
   /// `$HOME`，由 GUI 装配层传入沙盒内 Application Support 目录）。
   String? mobileHomeDir,
 
+  /// 角色演进快照的共享实例。前端另有入口（删除角色时级联清理快照）需要
+  /// 读到同一目录，此时传入；不传则按与技能/经验相同的口径自建。
+  SentinelHistoryStore? historyStore,
+
   /// 覆盖平台判定，仅供测试。
   @visibleForTesting bool? mobile,
 }) {
@@ -64,8 +68,12 @@ ToolRegistry buildToolRegistry({
   );
   final tasks = registry.backgroundTasks;
   registry.register(ToolOutputReadTool(registry.outputStore));
-  // sentinel 演进历史快照：与经验/技能同根的 .athena 沙盒目录
-  final historyStore = SentinelHistoryStore(homeDir: mobileHomeDir);
+  // 快照与经验、技能落在同一个用户级根目录：桌面 `$HOME`、移动端沙盒。
+  // 这里必须与 SkillEvolveTool 的 [mobileHomeDir] 口径一致——桌面端无条件
+  // 采用沙盒目录会把演进历史写到一个 TUI 看不到的地方。
+  final snapshots =
+      historyStore ??
+      SentinelHistoryStore(homeDir: isMobile ? mobileHomeDir : null);
 
   // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
   // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
@@ -94,12 +102,12 @@ ToolRegistry buildToolRegistry({
     SentinelGetTool(repository: sentinelRepository),
     SentinelEvolveTool(
       repository: sentinelRepository,
-      historyStore: historyStore,
+      historyStore: snapshots,
       onChanged: onSentinelChanged,
     ),
     SentinelRevertTool(
       repository: sentinelRepository,
-      historyStore: historyStore,
+      historyStore: snapshots,
       onChanged: onSentinelChanged,
     ),
   ]);

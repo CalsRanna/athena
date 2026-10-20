@@ -352,7 +352,8 @@ class _DesktopSettingSentinelPageState
                 label: 'Delete Sentinel',
                 description:
                     'Sessions that used ${sentinel.name} keep their history but '
-                    'lose the persona.',
+                    'lose the persona. Its private experiences and evolution '
+                    'history are deleted too.',
                 control: AthenaSecondaryButton.small(
                   onTap: () => destroySentinels([sentinel]),
                   child: Text(
@@ -485,8 +486,13 @@ class _DesktopSettingSentinelPageState
     if (deletable.isEmpty) return;
     final confirmed = await AthenaDialog.confirm(
       deletable.length == 1
-          ? 'Delete ${deletable.single.name}?'
-          : 'Delete ${deletable.length} Sentinels?',
+          ? 'Delete ${deletable.single.name}?\n\n'
+                'Its private experiences and evolution history are deleted '
+                'with it. Shared experiences are kept. This cannot be undone.'
+          : 'Delete ${deletable.length} Sentinels?\n\n'
+                'Their private experiences and evolution history are deleted '
+                'with them. Shared experiences are kept. This cannot be '
+                'undone.',
     );
     if (confirmed != true) return;
     for (final sentinel in deletable) {

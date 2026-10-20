@@ -17,6 +17,13 @@ const toolChatIdKey = '_chat_id';
 /// 让它再启动后台任务会形成「任务→汇报→任务」的无限链。
 const toolBackgroundDisabledKey = '_background_disabled';
 
+/// 引擎注入：这条经验是谁写进来的（`auto` / `reflection`）。
+///
+/// 来源是运行上下文而不是模型可填的字段：同一份 `experience_learn` 调用，
+/// 可能来自模型主动记录，也可能来自反思通道的程序化写入，只有引擎知道是
+/// 哪一种。与 [_sentinel_id] 同样在权限门之后注入，模型既看不到也改不了。
+const toolExperienceSourceKey = '_experience_source';
+
 /// Remove model-authored metadata before rule matching or tool execution.
 Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
     Map<String, dynamic>.of(args)..remove(toolCallDescriptionKey);

@@ -25,7 +25,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         CancellableTool,
         toolBackgroundDisabledKey,
         toolChatIdKey,
-        toolExecutionArguments;
+        toolExecutionArguments,
+        toolExperienceSourceKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -269,6 +270,10 @@ class AgentService {
 
     /// 本轮 run 是否允许启动后台任务（自动汇报回合为 false）。
     bool allowBackgroundTasks = true,
+
+    /// 这条工具调用产生的经验应记为哪种来源（反思通道传 `reflection`）。
+    /// 只有引擎知道本次调用来自哪条通路，模型无法自行填写。
+    String? experienceSource,
   }) async {
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
@@ -360,6 +365,9 @@ class AgentService {
     }
     if (!allowBackgroundTasks) {
       args[toolBackgroundDisabledKey] = true;
+    }
+    if (experienceSource != null) {
+      args[toolExperienceSourceKey] = experienceSource;
     }
 
     late String rawResult;
@@ -1399,13 +1407,19 @@ class _AgentLoop {
       name: 'experience_learn',
       arguments: arguments,
     );
-    final data = await _executeOneTool(tc: toolCall);
+    final data = await _executeOneTool(
+      tc: toolCall,
+      experienceSource: 'reflection',
+    );
     yield data.event;
     yield AgentEvent.iterationComplete(toolCalls: [data.record], content: '');
   }
 
   /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
-  Future<_ToolExecutionData> _executeOneTool({required ToolCall tc}) async {
+  Future<_ToolExecutionData> _executeOneTool({
+    required ToolCall tc,
+    String? experienceSource,
+  }) async {
     final result = await _service.executeToolCallInternal(
       toolCall: tc,
       cancelToken: _token,
@@ -1415,6 +1429,7 @@ class _AgentLoop {
       workspace: _workspace,
       chatId: _chat.id,
       allowBackgroundTasks: _allowBackgroundTasks,
+      experienceSource: experienceSource,
     );
     return _ToolExecutionData(
       event: result.event,

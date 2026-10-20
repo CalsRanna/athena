@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 import 'package:athena_core/entity/experience_entity.dart';
 
@@ -184,7 +185,7 @@ class ExperienceRepository {
     if (query.trim().isEmpty) return all;
     final scored = <(ExperienceEntity, int)>[];
     for (final e in all) {
-      final score = matchScore(e, query);
+      final score = _matchScore(e, query);
       if (score > 0) scored.add((e, score));
     }
     scored.sort((a, b) {
@@ -196,9 +197,7 @@ class ExperienceRepository {
   }
 
   /// 匹配评分：lesson token 命中 3 分、tags 命中 2 分、context 命中 1 分。
-  ///
-  /// 公开供注入侧（MemoryDigest）记录匹配质量，形成可观测性。
-  static int matchScore(ExperienceEntity e, String query) {
+  static int _matchScore(ExperienceEntity e, String query) {
     if (e.id == query.trim()) return 1000;
     final queryTerms = _searchTerms(query);
     if (queryTerms.isEmpty) return 0;
@@ -311,8 +310,11 @@ class ExperienceRepository {
       try {
         final json = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
         entities.add(ExperienceEntity.fromJson(json));
-      } catch (_) {
-        // 跳过损坏文件
+      } catch (e) {
+        // 损坏的经验只跳过、不中断整目录，但**不能没有声音**：文件仍在磁盘上
+        // 却从所有检索与副本里消失，没有日志时用户无从查起。口径与技能加载
+        // （SkillLoader）和坏权限规则一致：跳过 + 记日志。
+        LoggerUtil.w('Experience unreadable (${f.path}): $e');
       }
     }
     entities.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -382,7 +384,7 @@ class ExperienceRepository {
         : '$_basePath/$sentinelId';
     _ensureDir(targetDir);
     final targetFile = File('$targetDir/${entity.id}.json');
-    await targetFile.writeAsString(_prettyJson(entity.toJson()));
+    await atomicWriteString(targetFile, _prettyJson(entity.toJson()));
     if (file.path != targetFile.path) {
       await file.delete();
     }
@@ -405,43 +407,15 @@ class ExperienceRepository {
     return false;
   }
 
-  /// 清空指定 Sentinel 的所有私有经验。
-  Future<void> clearPrivate(String sentinelId) async {
+  /// 删除某个 Sentinel 的全部私有经验（shared 不受影响）。
+  ///
+  /// 删除角色时级联调用：角色的 id 是 UUIDv7、不会被复用，留下的私有经验
+  /// 再也进不了任何角色的检索范围，只会在管理页显示成一串裸 id。
+  Future<void> deleteAllPrivate(String sentinelId) async {
     final dir = Directory('$_basePath/$sentinelId');
     if (dir.existsSync()) {
       await dir.delete(recursive: true);
     }
-  }
-
-  /// 清空所有 shared 经验。
-  Future<void> clearShared() async {
-    final dir = Directory(_sharedPath);
-    if (dir.existsSync()) {
-      for (final f in dir.listSync()) {
-        if (f is File && f.path.endsWith('.json')) {
-          await f.delete();
-        }
-      }
-    }
-  }
-
-  /// 经验总数统计。
-  Future<Map<String, int>> get counts async {
-    final result = <String, int>{'shared': 0};
-    final baseDir = Directory(_basePath);
-    if (!await baseDir.exists()) return result;
-
-    await for (final entry in baseDir.list()) {
-      if (entry is! Directory) continue;
-      final name = entry.path.split(RegExp(r'[/\\]')).last;
-      final count = (await _listDir(entry)).length;
-      if (name == 'shared') {
-        result['shared'] = count;
-      } else {
-        result[name] = count;
-      }
-    }
-    return result;
   }
 
   // === 工具 ===

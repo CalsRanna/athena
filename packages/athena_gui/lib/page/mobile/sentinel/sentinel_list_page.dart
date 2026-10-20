@@ -144,7 +144,11 @@ class MobileSentinelListPage extends StatelessWidget {
     SentinelEntity sentinel,
   ) async {
     AthenaDialog.dismiss();
-    final confirmed = await AthenaDialog.confirm('Delete ${sentinel.name}?');
+    final confirmed = await AthenaDialog.confirm(
+      'Delete ${sentinel.name}?\n\n'
+      'Its private experiences and evolution history are deleted with it. '
+      'Shared experiences are kept. This cannot be undone.',
+    );
     if (confirmed != true) return;
     final viewModel = GetIt.instance<SentinelViewModel>();
     await viewModel.deleteSentinel(sentinel);

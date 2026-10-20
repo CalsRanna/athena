@@ -89,4 +89,31 @@ void main() {
       );
     }
   });
+
+  test('删除角色的快照不影响别的角色的历史', () async {
+    final doomed = await createSentinel('Reviewer', 'v1');
+    await evolve.execute({
+      'sentinel_name': 'Reviewer',
+      'improvements': 'sharpen',
+      'new_prompt': 'v2',
+    });
+    final kept = await createSentinel('Critic', 'other');
+    await evolve.execute({
+      'sentinel_name': 'Critic',
+      'improvements': 'sharpen',
+      'new_prompt': 'other v2',
+    });
+    final keptSentinel = (await storage.sentinelRepository.getSentinelById(
+      kept,
+    ))!;
+    expect(await history.list(keptSentinel), hasLength(1));
+
+    await history.deleteAllFor(doomed);
+
+    final doomedDir = Directory(
+      '${temp.path}/.athena/sentinels/by-id/$doomed/history',
+    );
+    expect(doomedDir.existsSync(), isFalse);
+    expect(await history.list(keptSentinel), hasLength(1));
+  });
 }

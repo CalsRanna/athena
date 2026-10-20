@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:path/path.dart' as p;
@@ -138,6 +139,29 @@ class SentinelHistoryStore {
     return null;
   }
 
+  /// 删除某个角色的全部快照（含旧布局里属于它的那些）。
+  ///
+  /// 删除角色时级联调用：快照只用于回滚该角色，角色不存在后它们再也无法
+  /// 被任何入口读到，只会在磁盘上无限累积。
+  Future<void> deleteAllFor(String sentinelId) async {
+    for (final file in await _snapshotFilesById(sentinelId)) {
+      try {
+        await file.delete();
+      } catch (e) {
+        // 个别文件删不掉不应让整个级联失败：其余快照仍要清理干净。
+        LoggerUtil.w('Failed to delete sentinel snapshot ${file.path}: $e');
+      }
+    }
+    final dir = Directory(_historyDirOf(sentinelId));
+    if (await dir.exists()) {
+      try {
+        await dir.delete(recursive: true);
+      } catch (e) {
+        LoggerUtil.w('Failed to delete sentinel history dir ${dir.path}: $e');
+      }
+    }
+  }
+
   static final _validSnapshotId = RegExp(r'^[A-Za-z0-9_-]+$');
 
   /// [sentinel] 名下的快照文件：`by-id/{id}/history` 全部，加上旧布局
@@ -145,6 +169,11 @@ class SentinelHistoryStore {
   Future<List<File>> _snapshotFiles(SentinelEntity sentinel) async {
     final sentinelId = sentinel.id;
     if (sentinelId == null) return const [];
+    return _snapshotFilesById(sentinelId);
+  }
+
+  /// 按角色 id 收集快照文件（不依赖角色实体是否还在库里）。
+  Future<List<File>> _snapshotFilesById(String sentinelId) async {
     final files = <File>[];
     final current = Directory(_historyDirOf(sentinelId));
     if (await current.exists()) {

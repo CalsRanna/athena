@@ -116,6 +116,7 @@ class ExperienceLearnTool extends Tool {
     final action = args['action'] as String? ?? 'create';
     final experienceId = args['experience_id'] as String?;
     final sentinelId = args['_sentinel_id'] as String? ?? 'default';
+    final source = args[toolExperienceSourceKey] as String? ?? 'auto';
     final tags = tagsStr
         .split(',')
         .map((t) => t.trim())
@@ -163,7 +164,7 @@ class ExperienceLearnTool extends Tool {
           lesson: lesson.trim(),
           context: context.trim(),
           tags: tags,
-          source: 'auto',
+          source: source,
           scope: scope ?? 'self',
           sentinelId: sentinelId,
         );

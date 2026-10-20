@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
+import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -136,6 +137,8 @@ abstract final class DI {
         providerRepository: getIt<ProviderRepository>(),
         modelRepository: getIt<ModelRepository>(),
         sentinelService: getIt<SentinelService>(),
+        experienceRepository: getIt<ExperienceRepository>(),
+        historyStore: getIt<SentinelHistoryStore>(),
       ),
     );
 
@@ -199,6 +202,14 @@ abstract final class DI {
       return registry;
     });
 
+    // 角色演进快照：工具（演进/回滚）与删除角色时的级联清理必须指向
+    // 同一目录，因此注册成单例后两处共用。
+    getIt.registerLazySingleton(
+      () => SentinelHistoryStore(
+        homeDir: PlatformUtil.isMobile ? userHomeDir : null,
+      ),
+    );
+
     // 工具清单是引擎的事实，统一在 athena_core 的 buildToolRegistry 里；
     // 这里只提供 GUI 特有的差异项。
     getIt.registerLazySingleton(
@@ -211,6 +222,7 @@ abstract final class DI {
         backgroundTasks: getIt<BackgroundTaskService>(),
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
         mobileHomeDir: dataDirectory,
+        historyStore: getIt<SentinelHistoryStore>(),
       ),
     );
 

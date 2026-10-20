@@ -35,7 +35,10 @@ class ExperienceEntity {
   /// 检索标签
   final List<String> tags;
 
-  /// 经验来源："auto" / "manual" / "reflection" / "evolution"
+  /// 经验来源："auto"（模型主动记录）| "reflection"（失败反思通道写入）。
+  ///
+  /// 由引擎按调用通路注入（见 `toolExperienceSourceKey`），模型无法自填。
+  /// 旧数据可能带 "manual" / "evolution"，读回时原样保留。
   final String source;
 
   /// 作用域："self"（仅当前 Sentinel 可见）| "shared"（所有 Sentinel 可见）
