@@ -40,7 +40,6 @@ void main() {
     outputStore: ToolOutputStore(directory: storage.toolOutputsDir),
     backgroundTasks: tasks,
     defaultWorkdir: temp.path,
-    mobileHomeDir: temp.path,
     mobile: mobile,
   );
 
@@ -49,7 +48,7 @@ void main() {
     expect(registryFor(mobile: true).get('ask_user_question'), isNotNull);
   });
 
-  test('mobile keeps network, question and evolution tools', () {
+  test('mobile keeps network, question, skill and memory tools', () {
     final names = registryFor(mobile: true).all.map((t) => t.name).toSet();
     expect(names, {
       'tool_output_read',
@@ -57,14 +56,10 @@ void main() {
       'web_fetch',
       'web_search',
       'skill',
-      'skill_evolve',
-      'skill_revert',
       'experience_learn',
       'experience_recall',
       'sentinel_list',
       'sentinel_get',
-      'sentinel_evolve',
-      'sentinel_revert',
     });
     expect(names.intersection(kFileToolNames), isEmpty);
     expect(names.intersection(kShellToolNames), isEmpty);
@@ -76,6 +71,22 @@ void main() {
     expect(names.intersection(kFileToolNames), hasLength(3));
     expect(names.intersection(kShellToolNames), hasLength(1));
     expect(names, contains('background_task'));
-    expect(names, hasLength(18));
+    expect(names, hasLength(14));
+  });
+
+  test('no tool lets the agent rewrite skills or its own role', () {
+    final names = registryFor(mobile: false).all.map((t) => t.name).toSet();
+
+    for (final removed in [
+      'skill_evolve',
+      'skill_revert',
+      'sentinel_evolve',
+      'sentinel_revert',
+    ]) {
+      expect(names, isNot(contains(removed)), reason: removed);
+    }
+    // 只读能力仍在：技能按需加载、角色可查看。
+    expect(names, contains('skill'));
+    expect(names, contains('sentinel_get'));
   });
 }

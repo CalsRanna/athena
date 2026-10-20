@@ -1,9 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
-import 'package:athena_core/agent/evolution/evolution_prompt.dart';
-import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
-import 'package:athena_core/agent/evolution/skill_history_store.dart';
+import 'package:athena_core/agent/memory/memory_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -44,7 +42,7 @@ import 'package:flutter/foundation.dart';
 abstract final class DI {
   /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
   /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
-  /// ([dataDirectory])。写入端(skill_evolve / experience 工具)必须与
+  /// ([dataDirectory])。写入端(experience 工具)必须与
   /// 这里读同一目录。
   static String _homeDir(String? dataDirectory, String? homeDirOverride) {
     // 测试专用:把用户级数据根整个指到临时目录。生产调用一律不传——
@@ -139,7 +137,6 @@ abstract final class DI {
         modelRepository: getIt<ModelRepository>(),
         sentinelService: getIt<SentinelService>(),
         experienceRepository: getIt<ExperienceRepository>(),
-        historyStore: getIt<SentinelHistoryStore>(),
       ),
     );
 
@@ -169,10 +166,7 @@ abstract final class DI {
     );
 
     getIt.registerLazySingleton(
-      () => SkillViewModel(
-        skillRegistry: getIt<SkillRegistry>(),
-        historyStore: getIt<SkillHistoryStore>(),
-      ),
+      () => SkillViewModel(skillRegistry: getIt<SkillRegistry>()),
     );
 
     getIt.registerLazySingleton(
@@ -199,26 +193,12 @@ abstract final class DI {
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry();
       // 移动端无可靠 $HOME，用户级数据根目录用 Application Support（与
-      // FileStorage 同根）；写入端（skill_evolve / experience 工具）必须与
-      // 这里读同一目录。测试里由 homeDirOverride 指到临时目录。
+      // FileStorage 同根）；写入端（experience 工具）必须与这里读同一目录。
+      // 测试里由 homeDirOverride 指到临时目录。
       registry.loadAll(homeDir: userHomeDir);
-      registry.registerBuiltin(kSelfEvolveSkill);
+      registry.registerBuiltin(kMemorySkill);
       return registry;
     });
-
-    // 角色演进快照：工具（演进/回滚）与删除角色时的级联清理必须指向
-    // 同一目录，因此注册成单例后两处共用。
-    getIt.registerLazySingleton(
-      () => SentinelHistoryStore(
-        homeDir: PlatformUtil.isMobile ? userHomeDir : null,
-      ),
-    );
-    // 技能快照同理：进化/回滚工具与删除技能的清理路径共享同一实例。
-    getIt.registerLazySingleton(
-      () => SkillHistoryStore(
-        homeDir: PlatformUtil.isMobile ? userHomeDir : null,
-      ),
-    );
 
     // 工具清单是引擎的事实，统一在 athena_core 的 buildToolRegistry 里；
     // 这里只提供 GUI 特有的差异项。
@@ -230,10 +210,6 @@ abstract final class DI {
         settings: storage.userSettings,
         outputStore: getIt<ToolOutputStore>(),
         backgroundTasks: getIt<BackgroundTaskService>(),
-        onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
-        mobileHomeDir: dataDirectory,
-        historyStore: getIt<SentinelHistoryStore>(),
-        skillHistoryStore: getIt<SkillHistoryStore>(),
       ),
     );
 

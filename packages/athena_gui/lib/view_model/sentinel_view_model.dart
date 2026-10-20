@@ -1,4 +1,3 @@
-import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
@@ -30,7 +29,6 @@ class SentinelViewModel {
   final ModelRepository _modelRepository;
   final SentinelService _sentinelService;
   final ExperienceRepository _experienceRepository;
-  final SentinelHistoryStore _historyStore;
 
   SentinelViewModel({
     required SentinelRepository sentinelRepository,
@@ -38,13 +36,11 @@ class SentinelViewModel {
     required ModelRepository modelRepository,
     required SentinelService sentinelService,
     required ExperienceRepository experienceRepository,
-    required SentinelHistoryStore historyStore,
   }) : _sentinelRepository = sentinelRepository,
        _providerRepository = providerRepository,
        _modelRepository = modelRepository,
        _sentinelService = sentinelService,
-       _experienceRepository = experienceRepository,
-       _historyStore = historyStore;
+       _experienceRepository = experienceRepository;
 
   // Signals 状态
   final sentinels = listSignal<SentinelEntity>([]);
@@ -283,9 +279,9 @@ class SentinelViewModel {
 
   /// 删除角色，并级联清理只属于它的数据。
   ///
-  /// 角色 id 是 UUIDv7、不会被复用，所以它名下的私有经验与演进快照在角色
-  /// 删除后再也进不了任何角色的检索或回滚范围——留下只是无主的垃圾（管理页
-  /// 还会把它们显示成一串裸 id）。shared 经验不属于任何角色，不受影响。
+  /// 角色 id 是 UUIDv7、不会被复用，所以它名下的私有经验在角色删除后再也
+  /// 进不了任何角色的检索范围——留下只是无主的垃圾（管理页还会把它们显示成
+  /// 一串裸 id）。shared 经验不属于任何角色，不受影响。
   ///
   /// 顺序是「先删角色，再清理附件」：角色本身删除失败时附件仍在，可重试；
   /// 反过来则会先丢掉数据却留下一个还能用的角色。附件清理失败只记日志——
@@ -300,7 +296,6 @@ class SentinelViewModel {
       sentinels.value = sentinels.value.where((s) => s.id != id).toList();
       try {
         await _experienceRepository.deleteAllPrivate(id);
-        await _historyStore.deleteAllFor(id);
       } catch (e) {
         LoggerUtil.w('Failed to clean up data of deleted sentinel $id: $e');
       }

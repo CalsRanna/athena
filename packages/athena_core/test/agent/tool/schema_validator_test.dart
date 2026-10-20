@@ -1,8 +1,5 @@
-import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
-import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
-import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -22,29 +19,6 @@ void main() {
       expect(SchemaValidator.validate(schema, args), isNotNull);
     }
     expect(SchemaValidator.validate(schema, {'path': 'a.dart'}), isNull);
-  });
-
-  test('unknown skill actions fail before execution', () {
-    final tool = SkillEvolveTool(
-      skillRegistry: SkillRegistry(),
-      historyStore: SkillHistoryStore(),
-    );
-    expect(
-      SchemaValidator.validate(tool.parameters, {
-        'name': 'demo',
-        'action': 'archive',
-        'body': 'demo',
-      }),
-      contains('action'),
-    );
-    // delete 是合法动作：不需要 body，也不该被 schema 拦下。
-    expect(
-      SchemaValidator.validate(tool.parameters, {
-        'name': 'demo',
-        'action': 'delete',
-      }),
-      isNull,
-    );
   });
 
   test('nested questions, option types and header lengths are checked', () {

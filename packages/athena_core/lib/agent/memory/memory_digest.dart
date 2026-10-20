@@ -1,4 +1,4 @@
-import 'package:athena_core/agent/evolution/memory_capacity.dart';
+import 'package:athena_core/agent/memory/memory_capacity.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/util/logger_util.dart';

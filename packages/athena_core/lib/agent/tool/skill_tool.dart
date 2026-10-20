@@ -155,14 +155,6 @@ class SkillTool extends Tool implements CancellableTool {
           'Error: Resource must stay inside the skill directory.',
         );
       }
-      // `history/` 是 skill_evolve 存放旧版快照的内部目录，不是技能资源：
-      // 让模型把它当参考资料读进来，等于把已废弃的指令重新喂回上下文。
-      if (p.isWithin(p.join(root, 'history'), path)) {
-        return const ToolExecutionResult.error(
-          'Error: "history" holds previous versions of this skill and is not '
-          'a resource. Read SKILL.md or the files the skill body references.',
-        );
-      }
       final resolved = await File(path).resolveSymbolicLinks();
       if (!p.isWithin(root, resolved)) {
         return const ToolExecutionResult.error(

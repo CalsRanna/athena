@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/evolution/memory_capacity.dart';
-import 'package:athena_core/agent/evolution/memory_digest.dart';
+import 'package:athena_core/agent/memory/memory_capacity.dart';
+import 'package:athena_core/agent/memory/memory_digest.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
@@ -184,8 +184,6 @@ void main() {
 
       expect(result, contains('Candidates, oldest first'));
       expect(result, contains('action="archive"'));
-      expect(result, contains('experience_id'));
-      expect(result, contains('skill_evolve'));
     });
 
     test('归档一条后又能写入', () async {

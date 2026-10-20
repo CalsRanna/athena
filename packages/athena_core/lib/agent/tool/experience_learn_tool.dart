@@ -1,4 +1,4 @@
-import 'package:athena_core/agent/evolution/memory_capacity.dart';
+import 'package:athena_core/agent/memory/memory_capacity.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
@@ -275,9 +275,8 @@ class ExperienceLearnTool extends Tool {
     return 'Error: Experience not recorded — the memory catalog is full '
         '($used / ${MemoryCapacity.maxCatalogChars} chars, '
         '${existing.length} entries).\n'
-        'Nothing was written. Superseded lessons must be archived (or '
-        'several related ones consolidated into a skill with skill_evolve) '
-        'before adding a new one.\n'
+        'Nothing was written. Superseded lessons must be archived before '
+        'adding a new one.\n'
         'Candidates, oldest first:\n$candidates\n'
         'Call experience_learn with action="archive" and the experience_id '
         'of the lessons that no longer apply, then retry this lesson.'

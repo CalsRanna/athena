@@ -2,7 +2,7 @@
 
 跨平台 AI Agent 应用：一个 UI 无关的 Agent 引擎，两个前端。
 
-完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置工具集、可自我进化的 Skill 与经验库、可回滚的角色（Sentinel）演进，以及一套按调用逐次判定的权限模型。桌面 GUI（Flutter）与终端 TUI（nocterm）共享同一个引擎、同一份数据，可同时运行。
+完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置工具集、跨会话的经验记忆、由用户维护的 Skill 与角色（Sentinel），以及一套按调用逐次判定的权限模型。桌面 GUI（Flutter）与终端 TUI（nocterm）共享同一个引擎、同一份数据，可同时运行。
 
 ## 组成
 
@@ -30,13 +30,13 @@ athena
 - 上下文预算与自动压缩，原消息保留可回溯
 - 工具失败反思与经验沉淀
 
-循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill经验与角色演进)。
+循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill-与经验记忆)。
 
 **内置工具**（桌面端 17 个，移动端 12 个）
 
-`file_read` / `file_write` / `file_update` 精确读改文件（带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` / `skill_evolve` 加载与编写技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` / `sentinel_evolve` / `sentinel_revert` 管理角色并可回滚；`tool_output_read` 分页读回超长输出。
+`file_read` / `file_write` / `file_update` 精确读改文件（带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` 按需加载技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` 查看角色；`tool_output_read` 分页读回超长输出。
 
-`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与全部进化类工具。
+`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与经验记忆工具。
 
 **权限模型**
 
@@ -44,11 +44,11 @@ athena
 
 **Skill 与经验**
 
-按需加载 Skill，通过内置 `self-evolve` 指导技能、经验与角色改进；经验可按角色隔离或全局共享。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill经验与角色演进)。
+按需加载 Skill，通过内置 `memory` 指导经验记录；经验可按角色隔离或全局共享。技能与角色的创建、编辑属于用户的编辑权，Agent 只有读取能力。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
 
 **Sentinel（角色）**
 
-角色以 system prompt 定义，支持带快照的演进与回滚。历史归属与回滚契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill经验与角色演进)。
+角色以 system prompt 定义，由用户在设置中创建与编辑；Agent 只能查看。契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
 
 **前端**
 
@@ -66,7 +66,7 @@ athena
 TUI 用 `/rewind` 选择轮次，也可用 `/rewind 3` 回到第 3 轮发送前。
 历史图片随原文恢复，下一次发送会携带它们；`/clearimages` 可移除这些附件。
 
-回退只影响对话记录与模型上下文，已执行的命令、文件修改、角色演进和经验库不随之
+回退只影响对话记录与模型上下文，已执行的命令、文件修改和经验库不随之
 恢复。完整回退契约与旧版摘要限制见 [CONVENTIONS.md §12.3](CONVENTIONS.md#123-会话回退rewind)。
 
 每次提交前保留完整快照 `~/.athena/sessions/<chatId>.jsonl.rewind-<snapshotId>`，
@@ -156,7 +156,6 @@ models:
 ├── tool_outputs/{sha256}.txt   # 超长工具输出，内容寻址
 ├── background_tasks/           # 后台任务登记表（用于清理上次强杀遗留的进程）
 ├── experiences/{scope}/        # 经验，一条一个 JSON 文件
-├── sentinels/by-id/{id}/history/  # 角色演进快照
 └── skills/{name}/SKILL.md      # 用户级技能
 ```
 
@@ -173,7 +172,7 @@ models:
 | 文档 | 内容 |
 |---|---|
 | [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
-| [CONVENTIONS.md](CONVENTIONS.md) | 工程约定、架构边界与共享行为契约（审批、Agent 循环与上下文、回退、运行统计、技能与角色演进） |
+| [CONVENTIONS.md](CONVENTIONS.md) | 工程约定、架构边界与共享行为契约（审批、Agent 循环与上下文、回退、运行统计、技能与经验记忆） |
 | [DESIGN.md](DESIGN.md) | 共享视觉原则、GUI 色板与排版 / 几何 / 阴影 / 动效规范、TUI 色彩映射 |
 | [WIDGETS.md](WIDGETS.md) | GUI 控件清单与平台范围、具体交互与状态、桌面设置面板几何 |
 

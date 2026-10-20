@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
-import 'package:athena_core/agent/evolution/evolution_prompt.dart';
+import 'package:athena_core/agent/memory/memory_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -177,7 +177,7 @@ class TuiDi {
     );
     skillRegistry = SkillRegistry();
     skillRegistry.loadAll(homeDir: _homeDir);
-    skillRegistry.registerBuiltin(kSelfEvolveSkill);
+    skillRegistry.registerBuiltin(kMemorySkill);
 
     // ── 工具 ──
     // 清单在 athena_core 的 buildToolRegistry;TUI 只额外指定工作目录。

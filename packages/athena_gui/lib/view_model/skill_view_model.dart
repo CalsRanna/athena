@@ -1,4 +1,3 @@
-import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:signals/signals.dart';
@@ -6,20 +5,16 @@ import 'package:signals/signals.dart';
 /// SkillViewModel：Skill（技能）的可视化管理。
 ///
 /// 数据源是 core 的 [SkillRegistry]（用户级目录 `~/.athena/skills`，
-/// 移动端为沙盒内目录），与 Agent 的 skill / skill_evolve 工具同源；
+/// 移动端为沙盒内目录），与 Agent 的 skill 工具同源；
 /// 写入复用 [SkillLoader.saveSkill]，保证 front matter 格式一致。
-/// 内置 Skill（self-evolve）只读，不可编辑或删除。
+/// 内置 Skill（memory）只读，不可编辑或删除。
 class SkillViewModel {
   final SkillRegistry _skillRegistry;
-  final SkillHistoryStore _historyStore;
 
-  SkillViewModel({
-    required SkillRegistry skillRegistry,
-    required SkillHistoryStore historyStore,
-  }) : _skillRegistry = skillRegistry,
-       _historyStore = historyStore;
+  SkillViewModel({required SkillRegistry skillRegistry})
+    : _skillRegistry = skillRegistry;
 
-  /// 全部 Skill（含内置 self-evolve）。
+  /// 全部 Skill（含内置 memory）。
   final skills = listSignal<Skill>([]);
   final isLoading = signal(false);
   final error = signal<String?>(null);
@@ -107,8 +102,6 @@ class SkillViewModel {
         error.value = 'Skill "${skill.name}" not found';
         return false;
       }
-      // 快照随技能目录一并清理：技能删掉后历史再没有入口能读到。
-      await _historyStore.deleteAllFor(skill.name);
       skills.value = _skillRegistry.all;
       return true;
     } catch (e) {

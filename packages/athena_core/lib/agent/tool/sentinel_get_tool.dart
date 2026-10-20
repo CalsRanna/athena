@@ -3,7 +3,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 
 /// 按名称查询单个 Sentinel 的详情（只读工具）。
 ///
-/// 返回完整内容（含 prompt 全文），供 sentinel_evolve 前对照当前
+/// 返回完整内容（含 prompt 全文），供用户对照当前
 /// 提示词;也可用于确认某个名字/描述是否如预期。名字来自
 /// sentinel_list 的输出。
 class SentinelGetTool extends Tool {

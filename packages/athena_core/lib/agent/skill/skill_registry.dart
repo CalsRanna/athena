@@ -123,7 +123,7 @@ class SkillRegistry {
     _contextStack.clear();
   }
 
-  /// skill_evolve 创建/更新 Skill 后重新加载单个文件（写入即生效，无需全量 reload）。
+  /// 用户新建或编辑 Skill 后重新加载单个文件（写入即生效，无需全量 reload）。
   void reloadSkill(String skillName, String directoryPath) {
     final skillFile = File('$directoryPath/SKILL.md');
     if (!skillFile.existsSync()) {
@@ -143,7 +143,7 @@ class SkillRegistry {
 
   /// 删除用户级 Skill：删除其目录并从内存移除。
   ///
-  /// 内置 Skill（如 self-evolve）或未找到时返回 false，不做任何删除。
+  /// 内置 Skill（如 memory）或未找到时返回 false，不做任何删除。
   bool deleteSkill(String name) {
     final skill = _skills[name];
     if (skill == null) return false;

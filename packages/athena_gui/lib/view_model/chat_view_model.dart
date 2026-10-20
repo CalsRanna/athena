@@ -1067,7 +1067,7 @@ class ChatViewModel {
           _updateChatInLists(chat);
         }
       case RunOutcomeChanged():
-        // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
+        // 结构化结果供诊断链路消费，GUI 暂无额外展示。
         break;
       case RunAutoRename():
         unawaited(renameChat(chat));

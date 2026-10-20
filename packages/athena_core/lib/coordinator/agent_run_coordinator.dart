@@ -6,8 +6,8 @@ import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/task/background_task.dart';
-import 'package:athena_core/agent/evolution/evolution_prompt.dart';
-import 'package:athena_core/agent/evolution/memory_digest.dart';
+import 'package:athena_core/agent/memory/memory_prompt.dart';
+import 'package:athena_core/agent/memory/memory_digest.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -424,7 +424,7 @@ class AgentRunCoordinator {
         provider: provider,
         model: model,
         baseMessages: baseMessages,
-        evolutionPrompt: EvolutionPrompt.hint,
+        memoryPrompt: MemoryPrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment, workspace: workspace),
@@ -790,7 +790,7 @@ class AgentRunCoordinator {
         provider: provider,
         model: model,
         baseMessages: baseMessages,
-        evolutionPrompt: EvolutionPrompt.hint,
+        memoryPrompt: MemoryPrompt.hint,
         // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
         // 汇报说明在上面的末条 user 消息里，不能顶替掉它
         runtimePrompt: _runtimeEnvironment == null

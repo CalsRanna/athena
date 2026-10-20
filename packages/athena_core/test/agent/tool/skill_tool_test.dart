@@ -65,21 +65,6 @@ void main() {
     }
   });
 
-  test('history 目录是内部快照，不作为资源提供', () async {
-    Directory(
-      '${root.path}/.athena/skills/demo/history',
-    ).createSync(recursive: true);
-    File(
-      '${root.path}/.athena/skills/demo/history/old.json',
-    ).writeAsStringSync('{"content":"obsolete instructions"}');
-
-    final result = await tool.execute(args({'resource': 'history/old.json'}));
-
-    expect(result, startsWith('Error:'));
-    expect(result, isNot(contains('obsolete instructions')));
-    expect(result, contains('previous versions'));
-  });
-
   test('内置技能没有资源目录', () async {
     registry.registerBuiltin(
       const Skill(

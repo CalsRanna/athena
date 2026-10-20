@@ -61,8 +61,8 @@ class SentinelEntity {
   /// 内置角色的名字不可更改。
   ///
   /// 内置角色的身份由名字承载——默认角色回退、直连会话判定、展示白名单都按
-  /// 名字匹配,改掉名字会让这些引用同时失准。prompt / description / tags 仍可
-  /// 被 `sentinel_evolve` 改进,只是名字要留在原地。
+  /// 名字匹配,改掉名字会让这些引用同时失准。prompt / description / tags 可以
+  /// 由用户在设置中编辑,只是名字要留在原地。
   bool get isNameLocked => isPreset;
 
   /// 将 tags 字符串转换为列表，用于页面渲染

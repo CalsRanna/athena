@@ -20,7 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// 桌面端 Skills：单列列表 → 点进一个技能的编辑页。
 ///
 /// 与 Sentinels 同一套交互：改动先攒着，底部粘性「未保存」栏；内置技能
-/// （self-evolve）只读。技能名是目录名，创建后不可改（要改名就删了重建）。
+/// （memory）只读。技能名是目录名，创建后不可改（要改名就删了重建）。
 @RoutePage()
 class DesktopSettingSkillPage extends StatefulWidget {
   const DesktopSettingSkillPage({super.key});

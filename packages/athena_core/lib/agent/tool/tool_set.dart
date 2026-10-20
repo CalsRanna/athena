@@ -1,5 +1,3 @@
-import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
-import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
@@ -10,12 +8,8 @@ import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
-import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
-import 'package:athena_core/agent/tool/skill_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
@@ -35,7 +29,12 @@ import 'package:meta/meta.dart';
 /// 装配层的选择。此前两处各自铺开同一份清单，只靠注释断言一致——加一个
 /// 工具就必须同时改两个包，漏一处就是两端能力静默漂移。
 ///
-/// 前端只提供自己特有的差异项（工作目录、变更回调），清单本身在这里。
+/// 前端只提供自己特有的差异项（工作目录），清单本身在这里。
+///
+/// **这里没有自我改写类工具**：Agent 不能新建或改写技能，也不能改写自己的
+/// 系统提示词。技能与角色是用户的编辑权（GUI 设置页），Agent 只有读取权
+/// ——`skill` 按需加载、`sentinel_list` / `sentinel_get` 查看。经验记忆是
+/// 唯一的自我积累通道，且它记录的是参考，不是生效中的规则。
 ToolRegistry buildToolRegistry({
   required SkillRegistry skillRegistry,
   required ExperienceRepository experienceRepository,
@@ -49,20 +48,6 @@ ToolRegistry buildToolRegistry({
   /// Shell 工具的默认工作目录。null = 使用用户主目录。
   String? defaultWorkdir,
 
-  /// Sentinel 被 `sentinel_evolve` 改写后的回调（GUI 用它刷新角色列表）。
-  void Function()? onSentinelChanged,
-
-  /// 移动端用户级 `.athena` 根目录（Skill/进化数据根目录；移动端无可靠
-  /// `$HOME`，由 GUI 装配层传入沙盒内 Application Support 目录）。
-  String? mobileHomeDir,
-
-  /// 角色演进快照的共享实例。前端另有入口（删除角色时级联清理快照）需要
-  /// 读到同一目录，此时传入；不传则按与技能/经验相同的口径自建。
-  SentinelHistoryStore? historyStore,
-
-  /// 技能演进快照的共享实例，用途同 [historyStore]。
-  SkillHistoryStore? skillHistoryStore,
-
   /// 覆盖平台判定，仅供测试。
   @visibleForTesting bool? mobile,
 }) {
@@ -73,21 +58,10 @@ ToolRegistry buildToolRegistry({
   );
   final tasks = registry.backgroundTasks;
   registry.register(ToolOutputReadTool(registry.outputStore));
-  // 快照与经验、技能落在同一个用户级根目录：桌面 `$HOME`、移动端沙盒。
-  // 这里必须与 SkillEvolveTool 的 [mobileHomeDir] 口径一致——桌面端无条件
-  // 采用沙盒目录会把演进历史写到一个 TUI 看不到的地方。
-  final snapshots =
-      historyStore ??
-      SentinelHistoryStore(homeDir: isMobile ? mobileHomeDir : null);
-  // 技能快照与 SKILL.md 同根（`skills/<name>/history/`），因此与
-  // skill_evolve 的 homeDir 取同一个值。
-  final skillHomeDir = isMobile ? mobileHomeDir : null;
-  final skillSnapshots =
-      skillHistoryStore ?? SkillHistoryStore(homeDir: skillHomeDir);
 
-  // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
-  // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
-  // 提问不是文件/进程能力，移动端已有提问卡，因此和联网工具一样保留。
+  // 移动端不注册任意文件/进程工具；经验记忆只写自己的 `.athena` 沙盒目录，
+  // 属于移动端可用能力。提问不是文件/进程能力，移动端已有提问卡，因此和
+  // 联网工具一样保留。
   registry.registerAll([
     if (!isMobile) ...[
       FileReadTool(),
@@ -102,26 +76,10 @@ ToolRegistry buildToolRegistry({
     WebFetchTool(),
     WebSearchTool(settings: settings),
     SkillTool(skillRegistry),
-    SkillEvolveTool(
-      skillRegistry: skillRegistry,
-      historyStore: skillSnapshots,
-      homeDir: skillHomeDir,
-    ),
-    SkillRevertTool(skillRegistry: skillRegistry, historyStore: skillSnapshots),
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
     SentinelListTool(repository: sentinelRepository),
     SentinelGetTool(repository: sentinelRepository),
-    SentinelEvolveTool(
-      repository: sentinelRepository,
-      historyStore: snapshots,
-      onChanged: onSentinelChanged,
-    ),
-    SentinelRevertTool(
-      repository: sentinelRepository,
-      historyStore: snapshots,
-      onChanged: onSentinelChanged,
-    ),
   ]);
   return registry;
 }

@@ -31,7 +31,6 @@ void main() {
           locks: LockRegistry(temp),
         ),
         defaultWorkdir: temp.path,
-        mobileHomeDir: temp.path,
         mobile: mobile,
       );
       addTearDown(registry.backgroundTasks.dispose);

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/evolution/memory_digest.dart';
-import 'package:athena_core/agent/evolution/reflection.dart';
+import 'package:athena_core/agent/memory/memory_digest.dart';
+import 'package:athena_core/agent/memory/reflection.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/experience_entity.dart';

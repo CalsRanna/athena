@@ -18,7 +18,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Experiences：单列列表（活跃 / 已归档两个分区）→ 点进只读详情。
 ///
-/// 经验由 Agent 进化产出，不支持手工新建/编辑；归档、恢复、删除走行尾
+/// 经验由 Agent 的记忆工具产出，不支持手工新建/编辑；归档、恢复、删除走行尾
 /// `⋯` 菜单或右键，多选后批量归档 / 删除。
 @RoutePage()
 class DesktopSettingExperiencePage extends StatefulWidget {

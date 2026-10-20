@@ -1,11 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
-import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -14,7 +10,6 @@ import 'package:test/test.dart';
 void main() {
   late Directory temp;
   late FileStorage storage;
-  late SentinelHistoryStore history;
   final legacy = <String, dynamic>{
     'id': '7',
     'name': 'Reviewer',
@@ -39,7 +34,6 @@ void main() {
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('athena_sentinel_legacy_');
     storage = FileStorage(root: Directory(p.join(temp.path, '.athena')));
-    history = SentinelHistoryStore(homeDir: temp.path);
     await storage.root.create(recursive: true);
     // 新布局:一个角色一个文件。这里直接手写文件内容,连"旧版遗留的 avatar
     // 字段"一起带上——读取侧要忽略它,编辑后不再写出。
@@ -82,71 +76,5 @@ isPreset: false
     expect(details, contains('Find correctness issues.'));
     expect('$listing\n$details', isNot(contains('Avatar')));
     expect('$listing\n$details', isNot(contains('legacy-avatar')));
-  });
-
-  test('旧头像快照仍可回滚，后续演进快照只保存有效字段', () async {
-    final snapshot = File(
-      p.join(
-        temp.path,
-        '.athena',
-        'sentinels',
-        'Reviewer',
-        'history',
-        'legacy.json',
-      ),
-    );
-    await snapshot.parent.create(recursive: true);
-    await snapshot.writeAsString(
-      jsonEncode({
-        'snapshot_id': 'legacy',
-        'saved_at': '2025-01-01T00:00:00Z',
-        'reason': 'Older version',
-        'sentinel': {...legacy, 'prompt': 'Previous instructions.'},
-      }),
-    );
-    final repository = storage.sentinelRepository;
-    final reverted = await SentinelRevertTool(
-      repository: repository,
-      historyStore: history,
-    ).execute({'sentinel_name': 'Reviewer', 'snapshot_id': 'legacy'});
-    expect(reverted, isNot(startsWith('Error:')));
-    expect((await repository.getSentinelById('7'))!.toJson(), {
-      ...currentFields,
-      'prompt': 'Previous instructions.',
-    });
-
-    final evolve = SentinelEvolveTool(
-      repository: repository,
-      historyStore: history,
-    );
-    expect(evolve.parameters['properties'], isNot(contains('new_avatar')));
-    final result = await evolve.execute({
-      'sentinel_name': 'Reviewer',
-      'improvements': 'Clarify instructions',
-      'new_prompt': 'Improved instructions.',
-    });
-    expect(result, isNot(startsWith('Error:')));
-    expect((await repository.getSentinelById('7'))!.toJson(), {
-      ...currentFields,
-      'prompt': 'Improved instructions.',
-    });
-    final current = (await repository.getSentinelById('7'))!;
-    final snapshots = await history.list(current);
-    expect(snapshots, hasLength(3), reason: '旧布局的快照按 id 认领，与新快照合并');
-    final byId = p.join(
-      temp.path,
-      '.athena',
-      'sentinels',
-      'by-id',
-      '7',
-      'history',
-    );
-    for (final meta in snapshots.where((meta) => meta.id != 'legacy')) {
-      final file = File(p.join(byId, '${meta.id}.json'));
-      final data =
-          jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      expect(data['sentinel'], isNot(contains('avatar')));
-      expect((await history.load(current, meta.id))!.id, '7');
-    }
   });
 }

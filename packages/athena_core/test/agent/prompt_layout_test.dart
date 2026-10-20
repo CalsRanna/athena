@@ -30,7 +30,7 @@ void main() {
         base: baseMessages(),
         runtimeText: runtimeText,
         hasSentinelPrompt: true,
-        evolutionPrompt: 'evolution hint',
+        memoryPrompt: 'evolution hint',
         skillPrompt: 'skill catalog',
         projectPrompt: 'project conventions',
       );
@@ -51,7 +51,7 @@ void main() {
       base: baseMessages(),
       runtimeText: runtimeText,
       hasSentinelPrompt: true,
-      evolutionPrompt: 'evolution hint',
+      memoryPrompt: 'evolution hint',
       skillPrompt: 'skill catalog',
       projectPrompt: 'project conventions',
     );
@@ -88,7 +88,7 @@ void main() {
       ],
       runtimeText: runtimeText,
       hasSentinelPrompt: false,
-      evolutionPrompt: 'evolution hint',
+      memoryPrompt: 'evolution hint',
       projectPrompt: 'project conventions',
     );
 
