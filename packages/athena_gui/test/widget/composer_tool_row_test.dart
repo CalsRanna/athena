@@ -108,6 +108,34 @@ void main() {
     expect(tester.getSize(tokenBox).height, 28);
   });
 
+  testWidgets('发送/停止键的 hover 底与其他 ghost 控件同档', (tester) async {
+    await pumpComposer(tester);
+
+    // 输入容器里唯一的 ghost 按钮就是发送键
+    final inputBox = find
+        .ancestor(
+          of: find.byType(TextField),
+          matching: find.byType(AnimatedContainer),
+        )
+        .first;
+    final send = find.descendant(
+      of: inputBox,
+      matching: find.byType(AthenaGhostButton),
+    );
+    expect(send, findsOneWidget);
+    expect(
+      tester.getSize(send),
+      const Size(28, 28),
+      reason: '容器外那一行的 ghost 都是 28 方盒，发送键不能比它们小',
+    );
+    // 输入容器的高度不能因为这一格变大而被撑开
+    expect(
+      tester.getSize(inputBox).height,
+      lessThanOrEqualTo(48),
+      reason: '28 方盒要落在容器内容区之内',
+    );
+  });
+
   testWidgets('圆环的 hover 底右缘与上方输入容器右缘对齐', (tester) async {
     await pumpComposer(tester);
 

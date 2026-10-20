@@ -655,14 +655,16 @@ class _SendButton extends StatelessWidget {
       final imagesReady = chatViewModel.pendingImages.value.every(
         (image) => image.isReady,
       );
-      // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
-      // 取 step4 档：22×22。
+      // 字形盒取"嵌套档" 22×22；hover 底按通用的 22 + 3×2 = 28 方盒补一圈，
+      // 与容器外那一行的 ghost 控件同高（否则这一格 hover 时明显小一圈）。
+      // 加高的 6 落在输入框内容区的 38 之内，不会把容器撑高。
       return AthenaGhostButton(
         onTap: streaming
             ? onTerminated
             : imagesReady
             ? onSubmitted
             : null,
+        padding: const EdgeInsets.all(3),
         child: Container(
           alignment: Alignment.center,
           height: 22,
