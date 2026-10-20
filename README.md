@@ -44,7 +44,7 @@ athena
 
 **Skill 与经验**
 
-按需加载 Skill，通过内置 `memory` 指导经验记录；经验可按角色隔离或全局共享。技能与角色的创建、编辑属于用户的编辑权，Agent 只有读取能力。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
+技能按需加载；经验可按角色隔离或全局共享。技能与角色的创建、编辑属于用户的编辑权，Agent 只有读取能力。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
 
 **Sentinel（角色）**
 

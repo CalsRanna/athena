@@ -167,7 +167,7 @@ class AgentService {
     permissionService?.resetSession(runId);
 
     // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
-    // 本轮就会带上可用技能清单（含内置 memory）；显式传入可覆盖。
+    // 本轮就会带上可用技能清单；显式传入可覆盖。
     final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
 
     // 工作文件夹根目录的项目约定（AGENTS.md）：存在即全文注入、不裁剪。

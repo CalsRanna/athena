@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
-import 'package:athena_core/agent/memory/memory_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -196,7 +195,6 @@ abstract final class DI {
       // FileStorage 同根）；写入端（experience 工具）必须与这里读同一目录。
       // 测试里由 homeDirOverride 指到临时目录。
       registry.loadAll(homeDir: userHomeDir);
-      registry.registerBuiltin(kMemorySkill);
       return registry;
     });
 
