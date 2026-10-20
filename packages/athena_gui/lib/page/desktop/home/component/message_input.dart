@@ -136,7 +136,7 @@ class DesktopMessageInput extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
                 _ComposerInputBox(
                   focusNode: focusNode,
@@ -192,7 +192,7 @@ class DesktopMessageInput extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
                     DesktopImageSelector(onSelected: onImageSelected),
                     const Spacer(),
@@ -229,10 +229,7 @@ class DesktopMessageInput extends StatelessWidget {
                         ),
                       ),
                     ],
-                    // 圆环的 hover 底是 28 方盒、右缘与上方输入容器对齐，圆环居中
-                    // 其中，因此静止位置比原先（裸 12 圆环顶到容器右缘）左移 8；
-                    // 与 `High` 的间距因此是 12 + 8 = 20。
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 4),
                     const DesktopTokenIndicator(),
                   ],
                 ),
