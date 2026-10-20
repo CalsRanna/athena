@@ -18,9 +18,7 @@ void main() {
         MaterialApp(
           theme: theme,
           home: Scaffold(
-            body: Center(
-              child: AthenaSwitch(value: false, onChanged: (_) {}),
-            ),
+            body: Center(child: AthenaSwitch(value: false, onChanged: (_) {})),
           ),
         ),
       );
@@ -56,7 +54,10 @@ void main() {
   }
 
   testWidgets('关闭态轨道明显轻于开启态：不是两条同重量的深色条', (tester) async {
-    Future<double> trackContrast(WidgetTester tester, {required bool value}) async {
+    Future<double> trackContrast(
+      WidgetTester tester, {
+      required bool value,
+    }) async {
       final theme = buildAthenaThemeData(AthenaColorMode.light);
       await tester.pumpWidget(
         MaterialApp(
@@ -80,11 +81,7 @@ void main() {
 
     final off = await trackContrast(tester, value: false);
     final on = await trackContrast(tester, value: true);
-    expect(
-      on,
-      lessThan(off * 0.5),
-      reason: '浅色画布上开启态是深青瓷、关闭态是浅中性轨道，明度必须拉开',
-    );
+    expect(on, lessThan(off * 0.5), reason: '浅色画布上开启态是深青瓷、关闭态是浅中性轨道，明度必须拉开');
   });
 
   testWidgets('点击在开与关之间切换', (tester) async {
