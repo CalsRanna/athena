@@ -163,8 +163,9 @@ class SentinelEvolveTool extends Tool {
 
       // 更新前写入快照：旧态 + 变更原因，供追溯与 sentinel_revert 回滚。
       // 快照失败不阻断进化（历史记录缺失不应阻止合法修改）。
+      String? snapshotId;
       try {
-        await _historyStore.save(original, reason: improvements);
+        snapshotId = await _historyStore.save(original, reason: improvements);
       } catch (e) {
         // 快照失败仅告警，进化仍继续
         LoggerUtil.w(
@@ -184,6 +185,7 @@ class SentinelEvolveTool extends Tool {
         improvements: improvements,
         originalPrompt: original.prompt,
         newPrompt: newPrompt,
+        snapshotId: snapshotId,
       );
 
       return ToolExecutionResult.success(
@@ -191,8 +193,9 @@ class SentinelEvolveTool extends Tool {
         'Updated "$sentinelName"'
         '${effectiveName != sentinelName ? ' → "$effectiveName"' : ''}.\n\n'
         '$changeReport\n\n'
-        'The sentinel has been updated in place. '
-        'The changes take effect immediately in the current chat.',
+        'The sentinel has been updated in place. The new prompt applies from '
+        'the next message in this chat; the current turn keeps the prompt it '
+        'started with.',
       );
     } catch (e) {
       return ToolExecutionResult.error('Error updating sentinel: $e');
@@ -205,9 +208,22 @@ class SentinelEvolveTool extends Tool {
     required String improvements,
     required String originalPrompt,
     required String newPrompt,
+    String? snapshotId,
   }) {
     final buffer = StringBuffer();
     buffer.writeln('## Evolution Report');
+    buffer.writeln();
+    if (snapshotId != null) {
+      buffer.writeln('**Snapshot:** $snapshotId');
+      buffer.writeln(
+        'Use sentinel_revert with this snapshot_id (or omit it for the most '
+        'recent one) to undo this change.',
+      );
+    } else {
+      buffer.writeln(
+        '**Snapshot:** not saved — this change cannot be reverted.',
+      );
+    }
     buffer.writeln();
     if (originalName != newName) {
       buffer.writeln('**From:** $originalName → **To:** $newName');

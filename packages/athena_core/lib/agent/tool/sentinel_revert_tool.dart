@@ -30,9 +30,12 @@ class SentinelRevertTool extends Tool {
       'Use this when:\n'
       '- A sentinel evolution turned out worse and should be rolled back\n'
       '- You want to undo a rename or restore an earlier role definition\n'
-      'The current state is saved as a snapshot before reverting, so the '
-      'revert itself can be reverted. Always explain what you reverted to '
-      'and why.';
+      'Each sentinel_evolve report shows the snapshot_id it saved. Set '
+      'list_only=true to list a sentinel\'s snapshots without restoring '
+      'anything (newest first). Omit snapshot_id to restore the most recent '
+      'snapshot. Note that restoring also snapshots the state being replaced, '
+      'so calling this twice in a row returns you to where you started. '
+      'Always explain what you reverted to and why.';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -49,13 +52,19 @@ class SentinelRevertTool extends Tool {
         'description':
             'ID of the snapshot to restore (omit to restore the most '
             'recent snapshot). Snapshot IDs are shown in sentinel_evolve '
-            'change reports and in the history listing.',
+            'change reports and by list_only=true.',
       },
       'reason': {
         'type': 'string',
         'description':
             'Why this revert is needed. This is recorded in the history '
             'snapshot for future reference.',
+      },
+      'list_only': {
+        'type': 'boolean',
+        'description':
+            'When true, only list this sentinel\'s snapshots (newest first) '
+            'without restoring anything. Use it to find a snapshot_id.',
       },
     },
     'required': ['sentinel_name'],
@@ -81,11 +90,16 @@ class SentinelRevertTool extends Tool {
     }
 
     // 确定目标快照：显式指定或取最近一条
+    final listOnly = args['list_only'] as bool? ?? false;
+    final metas = await _historyStore.list(original);
+    if (listOnly) {
+      return ToolExecutionResult.success(_formatHistory(sentinelName, metas));
+    }
+
     String targetId;
     if (snapshotId != null && snapshotId.isNotEmpty) {
       targetId = snapshotId;
     } else {
-      final metas = await _historyStore.list(original);
       if (metas.isEmpty) {
         return ToolExecutionResult.error(
           'Error: No history snapshots found for "$sentinelName". '
@@ -99,8 +113,8 @@ class SentinelRevertTool extends Tool {
     final target = await _historyStore.load(original, targetId);
     if (target == null) {
       return ToolExecutionResult.error(
-        'Error: Snapshot "$targetId" not found or corrupt. '
-        'Use a snapshot_id listed in the history.',
+        'Error: Snapshot "$targetId" not found or corrupt.\n'
+        '${_formatHistory(sentinelName, metas)}',
       );
     }
 
@@ -179,4 +193,29 @@ class SentinelRevertTool extends Tool {
     );
     return buffer.toString();
   }
+
+  String _formatHistory(String sentinelName, List<SentinelSnapshotMeta> metas) {
+    if (metas.isEmpty) {
+      return 'No history snapshots for "$sentinelName".';
+    }
+    final buffer = StringBuffer()
+      ..writeln(
+        'Snapshots for "$sentinelName" (newest first, '
+        '${metas.length} total):',
+      );
+    for (final meta in metas) {
+      buffer.writeln(
+        '- ${meta.id} (${_formatTime(meta.savedAt)})'
+        '${meta.reason.isEmpty ? '' : ' — ${meta.reason}'}',
+      );
+    }
+    buffer.writeln('Restore one with sentinel_revert and that snapshot_id.');
+    return buffer.toString();
+  }
+
+  String _formatTime(DateTime time) =>
+      '${time.year}-${_pad(time.month)}-${_pad(time.day)} '
+      '${_pad(time.hour)}:${_pad(time.minute)}';
+
+  String _pad(int n) => n.toString().padLeft(2, '0');
 }

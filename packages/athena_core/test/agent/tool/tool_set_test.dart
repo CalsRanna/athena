@@ -58,6 +58,7 @@ void main() {
       'web_search',
       'skill',
       'skill_evolve',
+      'skill_revert',
       'experience_learn',
       'experience_recall',
       'sentinel_list',
@@ -75,6 +76,6 @@ void main() {
     expect(names.intersection(kFileToolNames), hasLength(3));
     expect(names.intersection(kShellToolNames), hasLength(1));
     expect(names, contains('background_task'));
-    expect(names, hasLength(17));
+    expect(names, hasLength(18));
   });
 }

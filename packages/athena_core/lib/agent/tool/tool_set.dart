@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
+import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
@@ -14,6 +15,7 @@ import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
+import 'package:athena_core/agent/tool/skill_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
@@ -58,6 +60,9 @@ ToolRegistry buildToolRegistry({
   /// 读到同一目录，此时传入；不传则按与技能/经验相同的口径自建。
   SentinelHistoryStore? historyStore,
 
+  /// 技能演进快照的共享实例，用途同 [historyStore]。
+  SkillHistoryStore? skillHistoryStore,
+
   /// 覆盖平台判定，仅供测试。
   @visibleForTesting bool? mobile,
 }) {
@@ -74,6 +79,11 @@ ToolRegistry buildToolRegistry({
   final snapshots =
       historyStore ??
       SentinelHistoryStore(homeDir: isMobile ? mobileHomeDir : null);
+  // 技能快照与 SKILL.md 同根（`skills/<name>/history/`），因此与
+  // skill_evolve 的 homeDir 取同一个值。
+  final skillHomeDir = isMobile ? mobileHomeDir : null;
+  final skillSnapshots =
+      skillHistoryStore ?? SkillHistoryStore(homeDir: skillHomeDir);
 
   // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
   // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
@@ -94,8 +104,10 @@ ToolRegistry buildToolRegistry({
     SkillTool(skillRegistry),
     SkillEvolveTool(
       skillRegistry: skillRegistry,
-      homeDir: isMobile ? mobileHomeDir : null,
+      historyStore: skillSnapshots,
+      homeDir: skillHomeDir,
     ),
+    SkillRevertTool(skillRegistry: skillRegistry, historyStore: skillSnapshots),
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
     SentinelListTool(repository: sentinelRepository),

@@ -45,6 +45,13 @@ class SentinelSnapshotMeta {
 class SentinelHistoryStore {
   SentinelHistoryStore({String? homeDir}) : _homeDir = homeDir;
 
+  /// 每个角色保留的快照条数上限。
+  ///
+  /// 每条快照存整份 prompt，且 `StorageMaintenance` 明确不清理角色目录——
+  /// 没有上限时这些文件只增不减。演进是偶发动作，50 条足以覆盖「改坏后想
+  /// 退几步」；超出后删最旧的，与 `SkillHistoryStore` 同一口径。
+  static const int maxSnapshotsPerSentinel = 50;
+
   final String? _homeDir;
 
   String get _basePath {
@@ -91,7 +98,32 @@ class SentinelHistoryStore {
       target,
       const JsonEncoder.withIndent('  ').convert(json),
     );
+    await _prune(sentinelId);
     return id;
+  }
+
+  /// 超出上限时删最旧的。删除失败只记日志：留着多余快照不影响正确性。
+  Future<void> _prune(String sentinelId) async {
+    final current = Directory(_historyDirOf(sentinelId));
+    if (!await current.exists()) return;
+    final byTime = <(File, DateTime)>[];
+    await for (final entry in current.list()) {
+      if (entry is! File || !entry.path.endsWith('.json')) continue;
+      try {
+        byTime.add((entry, await entry.lastModified()));
+      } catch (_) {
+        // 读不到修改时间就跳过，下轮再清
+      }
+    }
+    if (byTime.length <= maxSnapshotsPerSentinel) return;
+    byTime.sort((a, b) => b.$2.compareTo(a.$2));
+    for (final (file, _) in byTime.skip(maxSnapshotsPerSentinel)) {
+      try {
+        await file.delete();
+      } catch (e) {
+        LoggerUtil.w('Failed to prune sentinel snapshot ${file.path}: $e');
+      }
+    }
   }
 
   /// 列出 [sentinel] 的全部快照（含旧布局里属于它的），按时间倒序。

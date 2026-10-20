@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
+import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -168,7 +169,10 @@ abstract final class DI {
     );
 
     getIt.registerLazySingleton(
-      () => SkillViewModel(skillRegistry: getIt<SkillRegistry>()),
+      () => SkillViewModel(
+        skillRegistry: getIt<SkillRegistry>(),
+        historyStore: getIt<SkillHistoryStore>(),
+      ),
     );
 
     getIt.registerLazySingleton(
@@ -209,6 +213,12 @@ abstract final class DI {
         homeDir: PlatformUtil.isMobile ? userHomeDir : null,
       ),
     );
+    // 技能快照同理：进化/回滚工具与删除技能的清理路径共享同一实例。
+    getIt.registerLazySingleton(
+      () => SkillHistoryStore(
+        homeDir: PlatformUtil.isMobile ? userHomeDir : null,
+      ),
+    );
 
     // 工具清单是引擎的事实，统一在 athena_core 的 buildToolRegistry 里；
     // 这里只提供 GUI 特有的差异项。
@@ -223,6 +233,7 @@ abstract final class DI {
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
         mobileHomeDir: dataDirectory,
         historyStore: getIt<SentinelHistoryStore>(),
+        skillHistoryStore: getIt<SkillHistoryStore>(),
       ),
     );
 

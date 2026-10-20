@@ -116,4 +116,65 @@ void main() {
     expect(doomedDir.existsSync(), isFalse);
     expect(await history.list(keptSentinel), hasLength(1));
   });
+
+  test('演进报告带出快照 id，回滚才能定位到具体一步', () async {
+    final id = await createSentinel('Reviewer', 'v1');
+
+    final report = await evolve.execute({
+      'sentinel_name': 'Reviewer',
+      'improvements': 'sharpen',
+      'new_prompt': 'v2',
+    });
+
+    final sentinel = (await storage.sentinelRepository.getSentinelById(id))!;
+    final snapshotId = (await history.list(sentinel)).single.id;
+    expect(report, contains(snapshotId));
+    expect(report, contains('sentinel_revert'));
+  });
+
+  test('list_only 列出快照而不执行回滚', () async {
+    final id = await createSentinel('Reviewer', 'v1');
+    await evolve.execute({
+      'sentinel_name': 'Reviewer',
+      'improvements': 'sharpen',
+      'new_prompt': 'v2',
+    });
+    final sentinel = (await storage.sentinelRepository.getSentinelById(id))!;
+    final snapshotId = (await history.list(sentinel)).single.id;
+
+    final listed = await revert.execute({
+      'sentinel_name': 'Reviewer',
+      'list_only': true,
+    });
+
+    expect(listed, contains(snapshotId));
+    expect(
+      (await storage.sentinelRepository.getSentinelById(id))!.prompt,
+      'v2',
+      reason: '列举不应改动角色',
+    );
+  });
+
+  test('快照按角色保留上限，超出后删最旧的', () async {
+    await createSentinel('Reviewer', 'v0');
+    for (
+      var i = 1;
+      i <= SentinelHistoryStore.maxSnapshotsPerSentinel + 5;
+      i++
+    ) {
+      await evolve.execute({
+        'sentinel_name': 'Reviewer',
+        'improvements': 'step $i',
+        'new_prompt': 'v$i',
+      });
+    }
+
+    final sentinel = (await storage.sentinelRepository.getSentinelByName(
+      'Reviewer',
+    ))!;
+    expect(
+      await history.list(sentinel),
+      hasLength(SentinelHistoryStore.maxSnapshotsPerSentinel),
+    );
+  });
 }

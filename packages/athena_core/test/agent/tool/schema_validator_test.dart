@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
@@ -24,14 +25,25 @@ void main() {
   });
 
   test('unknown skill actions fail before execution', () {
-    final tool = SkillEvolveTool(skillRegistry: SkillRegistry());
+    final tool = SkillEvolveTool(
+      skillRegistry: SkillRegistry(),
+      historyStore: SkillHistoryStore(),
+    );
+    expect(
+      SchemaValidator.validate(tool.parameters, {
+        'name': 'demo',
+        'action': 'archive',
+        'body': 'demo',
+      }),
+      contains('action'),
+    );
+    // delete 是合法动作：不需要 body，也不该被 schema 拦下。
     expect(
       SchemaValidator.validate(tool.parameters, {
         'name': 'demo',
         'action': 'delete',
-        'body': 'demo',
       }),
-      contains('action'),
+      isNull,
     );
   });
 

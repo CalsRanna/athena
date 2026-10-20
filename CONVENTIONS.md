@@ -360,11 +360,13 @@ core 的 `TokenUsage` 记录单次响应的用量与输出时长，`RunStatistic
 
 ### 12.5 Skill、经验与角色演进
 
-- 用户级 Skill 位于 `~/.athena/skills/<name>/SKILL.md`，front matter 只有 `name` 与 `description`。注入分两段：常驻技能目录最多 20 条、按最近使用排序，技能正文由模型按需加载
+- 用户级 Skill 位于 `~/.athena/skills/<name>/SKILL.md`，front matter 只有 `name` 与 `description`。注入分两段：常驻技能目录最多 20 条、按最近使用排序，技能正文由模型按需加载。访问时间落盘在 `skills/.usage.json`，并列时按名称定序——两者都是为了让目录内容跨重启逐字节稳定，不破坏 prompt 前缀缓存
+- 技能正文上限 8000 字符（`SkillEvolveTool.maxBodyChars`）。`skill` 的工具结果超过 24000 字符后只把前 2000 字符交给模型，上限远低于该阈值，保证「写进去的」与「读得回的」一致；更长的参考资料应拆成技能目录下的独立文件按需读取
+- `skill_evolve` 支持 create / update / delete。update 前把旧版 SKILL.md 存入 `skills/<name>/history/`，报告回传快照 id；`skill_revert` 可指定 id 或用 `list_only` 列出历史。回滚前也存快照，因此连续两次回滚等于回到原位。删除技能连同快照一并清理；`skill` 工具的 resource 参数拒绝读取 `history/`
 - 内置 `self-evolve` 技能由代码注册，指导模型何时沉淀技能、经验与角色改进
 - 经验按角色隔离，`scope="shared"` 才是全局。每次 run 注入当前角色可见的经验目录，保持内容稳定以复用 prompt 缓存；完整内容按需检索
 - 经验目录有固定字符预算（`MemoryCapacity`，16k）。装满时 `experience_learn` 拒绝新增并列出最旧的候选，要求先归档或合并成技能——遗忘是显式决策，不靠注入端静默丢弃；注入端只在升级前的超限数据上兜底截断并注明剩余条数
 - 同一工具累计失败两次以上时，用一次独立 LLM 调用提炼教训，并复用标准工具路径写入经验库
-- Sentinel 是一段 system prompt。演进前自动存快照，可回滚，回滚本身也可回滚。快照按角色 id 归档而非按名字，因此改名不丢失或错认历史
+- Sentinel 是一段 system prompt。演进前自动存快照，报告回传快照 id，`sentinel_revert` 可指定 id 或用 `list_only` 列出历史。快照按角色 id 归档而非按名字，因此改名不丢失或错认历史；每个角色保留最近 50 条，超出删最旧的。新提示词从下一条消息起生效，当前 turn 仍用本轮开始时的提示词
 
-core 的 `agent/skill/`、`agent/evolution/` 与对应工具负责加载、反思和演进，存储层负责经验隔离与角色快照。验证覆盖技能目录与加载、经验可见范围与来源标注、目录容量边界与写入拦截、失败反思，以及角色改名后的历史与回滚、删除角色时的经验与快照级联清理。
+core 的 `agent/skill/`、`agent/evolution/` 与对应工具负责加载、反思和演进，存储层负责经验隔离与角色快照。验证覆盖技能目录排序与排序持久化、技能正文上限与快照回滚、资源读取边界、经验可见范围与来源标注、目录容量边界与写入拦截、失败反思，以及角色改名后的历史与回滚、快照保留上限、删除角色时的经验与快照级联清理。

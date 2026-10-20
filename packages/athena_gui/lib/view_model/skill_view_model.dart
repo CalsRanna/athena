@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/evolution/skill_history_store.dart';
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:signals/signals.dart';
@@ -10,9 +11,13 @@ import 'package:signals/signals.dart';
 /// 内置 Skill（self-evolve）只读，不可编辑或删除。
 class SkillViewModel {
   final SkillRegistry _skillRegistry;
+  final SkillHistoryStore _historyStore;
 
-  SkillViewModel({required SkillRegistry skillRegistry})
-    : _skillRegistry = skillRegistry;
+  SkillViewModel({
+    required SkillRegistry skillRegistry,
+    required SkillHistoryStore historyStore,
+  }) : _skillRegistry = skillRegistry,
+       _historyStore = historyStore;
 
   /// 全部 Skill（含内置 self-evolve）。
   final skills = listSignal<Skill>([]);
@@ -102,6 +107,8 @@ class SkillViewModel {
         error.value = 'Skill "${skill.name}" not found';
         return false;
       }
+      // 快照随技能目录一并清理：技能删掉后历史再没有入口能读到。
+      await _historyStore.deleteAllFor(skill.name);
       skills.value = _skillRegistry.all;
       return true;
     } catch (e) {
