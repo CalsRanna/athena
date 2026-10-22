@@ -1,5 +1,5 @@
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
@@ -65,7 +65,7 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
     );
     final animatedContainer = AnimatedContainer(
       decoration: boxDecoration,
-      duration: Durations.short2,
+      duration: AthenaMotion.fast,
       height: 16,
       width: 16,
       child: widget.value ? _buildCheckIcon() : null,

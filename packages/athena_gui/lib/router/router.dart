@@ -72,7 +72,7 @@ class DesktopRoute<R extends Object?> extends CustomRoute<R> {
     super.opaque,
   }) : super(
          transitionsBuilder: TransitionsBuilders.noTransition,
-         durationInMilliseconds: 0,
-         reverseDurationInMilliseconds: 0,
+         duration: Duration.zero,
+         reverseDuration: Duration.zero,
        );
 }

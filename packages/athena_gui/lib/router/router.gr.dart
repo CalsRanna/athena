@@ -1,3 +1,4 @@
+// dart format width=80
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
 // **************************************************************************
@@ -8,11 +9,12 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:athena_core/agent/skill/skill_loader.dart' as _i37;
+
+import 'package:athena_core/agent/skill/skill_loader.dart' as _i38;
 import 'package:athena_core/entity/chat_entity.dart' as _i32;
-import 'package:athena_core/entity/experience_entity.dart' as _i34;
-import 'package:athena_core/entity/model_entity.dart' as _i35;
-import 'package:athena_core/entity/provider_entity.dart' as _i36;
+import 'package:athena_core/entity/experience_entity.dart' as _i35;
+import 'package:athena_core/entity/model_entity.dart' as _i36;
+import 'package:athena_core/entity/provider_entity.dart' as _i37;
 import 'package:athena_core/entity/sentinel_entity.dart' as _i33;
 import 'package:athena_gui/page/desktop/home/home_page.dart' as _i1;
 import 'package:athena_gui/page/desktop/setting/about_page.dart' as _i2;
@@ -56,6 +58,7 @@ import 'package:athena_gui/page/mobile/skill/skill_form_page.dart' as _i28;
 import 'package:athena_gui/page/mobile/skill/skill_list_page.dart' as _i29;
 import 'package:auto_route/auto_route.dart' as _i30;
 import 'package:flutter/material.dart' as _i31;
+import 'package:flutter/widgets.dart' as _i34;
 
 /// generated route for
 /// [_i1.DesktopHomePage]
@@ -285,6 +288,16 @@ class MobileChatConfigurationRouteArgs {
   String toString() {
     return 'MobileChatConfigurationRouteArgs{key: $key, chat: $chat}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileChatConfigurationRouteArgs) return false;
+    return key == other.key && chat == other.chat;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ chat.hashCode;
 }
 
 /// generated route for
@@ -347,6 +360,16 @@ class MobileChatRouteArgs {
   String toString() {
     return 'MobileChatRouteArgs{key: $key, chat: $chat, sentinel: $sentinel}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileChatRouteArgs) return false;
+    return key == other.key && chat == other.chat && sentinel == other.sentinel;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ chat.hashCode ^ sentinel.hashCode;
 }
 
 /// generated route for
@@ -370,8 +393,8 @@ class MobileDataRoute extends _i30.PageRouteInfo<void> {
 class MobileExperienceDetailRoute
     extends _i30.PageRouteInfo<MobileExperienceDetailRouteArgs> {
   MobileExperienceDetailRoute({
-    _i31.Key? key,
-    required _i34.ExperienceEntity experience,
+    _i34.Key? key,
+    required _i35.ExperienceEntity experience,
     List<_i30.PageRouteInfo>? children,
   }) : super(
          MobileExperienceDetailRoute.name,
@@ -399,14 +422,24 @@ class MobileExperienceDetailRoute
 class MobileExperienceDetailRouteArgs {
   const MobileExperienceDetailRouteArgs({this.key, required this.experience});
 
-  final _i31.Key? key;
+  final _i34.Key? key;
 
-  final _i34.ExperienceEntity experience;
+  final _i35.ExperienceEntity experience;
 
   @override
   String toString() {
     return 'MobileExperienceDetailRouteArgs{key: $key, experience: $experience}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileExperienceDetailRouteArgs) return false;
+    return key == other.key && experience == other.experience;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ experience.hashCode;
 }
 
 /// generated route for
@@ -446,9 +479,9 @@ class MobileHomeRoute extends _i30.PageRouteInfo<void> {
 class MobileModelFormRoute
     extends _i30.PageRouteInfo<MobileModelFormRouteArgs> {
   MobileModelFormRoute({
-    _i31.Key? key,
-    _i35.ModelEntity? model,
-    _i36.ProviderEntity? provider,
+    _i34.Key? key,
+    _i36.ModelEntity? model,
+    _i37.ProviderEntity? provider,
     List<_i30.PageRouteInfo>? children,
   }) : super(
          MobileModelFormRoute.name,
@@ -480,16 +513,28 @@ class MobileModelFormRoute
 class MobileModelFormRouteArgs {
   const MobileModelFormRouteArgs({this.key, this.model, this.provider});
 
-  final _i31.Key? key;
+  final _i34.Key? key;
 
-  final _i35.ModelEntity? model;
+  final _i36.ModelEntity? model;
 
-  final _i36.ProviderEntity? provider;
+  final _i37.ProviderEntity? provider;
 
   @override
   String toString() {
     return 'MobileModelFormRouteArgs{key: $key, model: $model, provider: $provider}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileModelFormRouteArgs) return false;
+    return key == other.key &&
+        model == other.model &&
+        provider == other.provider;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ model.hashCode ^ provider.hashCode;
 }
 
 /// generated route for
@@ -497,8 +542,8 @@ class MobileModelFormRouteArgs {
 class MobileProviderFormRoute
     extends _i30.PageRouteInfo<MobileProviderFormRouteArgs> {
   MobileProviderFormRoute({
-    _i31.Key? key,
-    required _i36.ProviderEntity provider,
+    _i34.Key? key,
+    required _i37.ProviderEntity provider,
     List<_i30.PageRouteInfo>? children,
   }) : super(
          MobileProviderFormRoute.name,
@@ -523,14 +568,24 @@ class MobileProviderFormRoute
 class MobileProviderFormRouteArgs {
   const MobileProviderFormRouteArgs({this.key, required this.provider});
 
-  final _i31.Key? key;
+  final _i34.Key? key;
 
-  final _i36.ProviderEntity provider;
+  final _i37.ProviderEntity provider;
 
   @override
   String toString() {
     return 'MobileProviderFormRouteArgs{key: $key, provider: $provider}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileProviderFormRouteArgs) return false;
+    return key == other.key && provider == other.provider;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ provider.hashCode;
 }
 
 /// generated route for
@@ -570,7 +625,7 @@ class MobileProviderNameRoute extends _i30.PageRouteInfo<void> {
 class MobileSentinelFormRoute
     extends _i30.PageRouteInfo<MobileSentinelFormRouteArgs> {
   MobileSentinelFormRoute({
-    _i31.Key? key,
+    _i34.Key? key,
     _i33.SentinelEntity? sentinel,
     List<_i30.PageRouteInfo>? children,
   }) : super(
@@ -598,7 +653,7 @@ class MobileSentinelFormRoute
 class MobileSentinelFormRouteArgs {
   const MobileSentinelFormRouteArgs({this.key, this.sentinel});
 
-  final _i31.Key? key;
+  final _i34.Key? key;
 
   final _i33.SentinelEntity? sentinel;
 
@@ -606,6 +661,16 @@ class MobileSentinelFormRouteArgs {
   String toString() {
     return 'MobileSentinelFormRouteArgs{key: $key, sentinel: $sentinel}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileSentinelFormRouteArgs) return false;
+    return key == other.key && sentinel == other.sentinel;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ sentinel.hashCode;
 }
 
 /// generated route for
@@ -646,7 +711,7 @@ class MobileSkillDetailRoute
     extends _i30.PageRouteInfo<MobileSkillDetailRouteArgs> {
   MobileSkillDetailRoute({
     _i31.Key? key,
-    required _i37.Skill skill,
+    required _i38.Skill skill,
     List<_i30.PageRouteInfo>? children,
   }) : super(
          MobileSkillDetailRoute.name,
@@ -670,12 +735,22 @@ class MobileSkillDetailRouteArgs {
 
   final _i31.Key? key;
 
-  final _i37.Skill skill;
+  final _i38.Skill skill;
 
   @override
   String toString() {
     return 'MobileSkillDetailRouteArgs{key: $key, skill: $skill}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileSkillDetailRouteArgs) return false;
+    return key == other.key && skill == other.skill;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ skill.hashCode;
 }
 
 /// generated route for
@@ -683,8 +758,8 @@ class MobileSkillDetailRouteArgs {
 class MobileSkillFormRoute
     extends _i30.PageRouteInfo<MobileSkillFormRouteArgs> {
   MobileSkillFormRoute({
-    _i31.Key? key,
-    _i37.Skill? skill,
+    _i34.Key? key,
+    _i38.Skill? skill,
     List<_i30.PageRouteInfo>? children,
   }) : super(
          MobileSkillFormRoute.name,
@@ -708,14 +783,24 @@ class MobileSkillFormRoute
 class MobileSkillFormRouteArgs {
   const MobileSkillFormRouteArgs({this.key, this.skill});
 
-  final _i31.Key? key;
+  final _i34.Key? key;
 
-  final _i37.Skill? skill;
+  final _i38.Skill? skill;
 
   @override
   String toString() {
     return 'MobileSkillFormRouteArgs{key: $key, skill: $skill}';
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! MobileSkillFormRouteArgs) return false;
+    return key == other.key && skill == other.skill;
+  }
+
+  @override
+  int get hashCode => key.hashCode ^ skill.hashCode;
 }
 
 /// generated route for
