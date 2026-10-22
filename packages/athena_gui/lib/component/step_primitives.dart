@@ -118,7 +118,7 @@ class _StepHeaderState extends State<StepHeader> {
   }
 }
 
-/// 展开后的结果正文：与消息正文同族、最多 10 行、`Error:` 前缀标红；点击整块收起。
+/// 展开后的结果正文：与代码块同族、最多 10 行、`Error:` 前缀标红；点击整块收起。
 class StepResultBody extends StatelessWidget {
   final String text;
   final VoidCallback? onTap;

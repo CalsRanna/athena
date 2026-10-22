@@ -122,7 +122,7 @@ void main() {
     await pumpMessages(tester, [first, done], streaming: false);
     expect(find.byType(StreamingIndicator), findsNothing);
     expect(find.byTooltip('Copy'), findsOneWidget);
-    expect(find.text('1m 5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
+    expect(find.text('1m5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
     expect(tester.getSize(find.byType(MessageActionBar)).height, height);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -152,7 +152,7 @@ void main() {
     await tester.tap(find.byTooltip('Copy'));
     expect(copied, 'First answer\n\nSecond answer');
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('1m 5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
+    expect(find.text('1m5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
     await mouse.removePointer();
   });
 
@@ -204,10 +204,10 @@ void main() {
     final style = tester.widget<Text>(sentTime).style;
     expect(
       style?.fontFamily,
-      AthenaFont.mono,
-      reason: '发送时刻与助手工具条的 tokens 数值同为等宽字体',
+      AthenaFont.code,
+      reason: '发送时刻与助手工具条的 tokens 数值同为等宽字族',
     );
-    expect(style?.fontSize, AthenaFontSize.mono);
+    expect(style?.fontSize, AthenaFontSize.caption);
     expect(
       tester.getTopLeft(sentTime).dx,
       lessThan(tester.getTopLeft(find.byIcon(LucideIcons.copy)).dx),

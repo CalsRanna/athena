@@ -98,7 +98,7 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
             ),
             duration: AthenaMotion.hover,
             padding: widget.padding,
-            child: DefaultTextStyle(
+            child: DefaultTextStyle.merge(
               style: AthenaTextStyle.label.copyWith(
                 color: foreground,
                 fontWeight: FontWeight.w600,
@@ -161,7 +161,7 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
           ),
           duration: AthenaMotion.hover,
           padding: widget.padding,
-          child: DefaultTextStyle(
+          child: DefaultTextStyle.merge(
             style: AthenaTextStyle.label.copyWith(color: foreground),
             child: IconTheme.merge(
               data: IconThemeData(
@@ -206,8 +206,12 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: AnimatedDefaultTextStyle(
             duration: AthenaMotion.hover,
-            style: AthenaTextStyle.label.copyWith(
-              color: hover ? colors.textPrimary : colors.textSecondary,
+            // 与 DefaultTextStyle.merge 同一口径：Animated 版本没有 merge 构造，
+            // 这里手动并上环境样式，避免整体替换把字族等继承项丢掉。
+            style: DefaultTextStyle.of(context).style.merge(
+              AthenaTextStyle.label.copyWith(
+                color: hover ? colors.textPrimary : colors.textSecondary,
+              ),
             ),
             child: Text(widget.text),
           ),

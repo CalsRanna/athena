@@ -82,8 +82,8 @@ class _RunStatisticsLabelState
     if (elapsed == null) return '—';
     final seconds = elapsed.isNegative ? 0 : elapsed.inSeconds;
     if (seconds < 60) return '${seconds}s';
-    if (seconds < 3600) return '${seconds ~/ 60}m ${seconds % 60}s';
-    return '${seconds ~/ 3600}h ${seconds ~/ 60 % 60}m ${seconds % 60}s';
+    if (seconds < 3600) return '${seconds ~/ 60}m${seconds % 60}s';
+    return '${seconds ~/ 3600}h${seconds ~/ 60 % 60}m${seconds % 60}s';
   }
 
   String _groupedTokens(int tokens) => tokens.toString().replaceAllMapped(
@@ -125,10 +125,7 @@ class _RunStatisticsLabelState
     ];
     return Text(
       labels.join(' · '),
-      style: athenaMono(
-        color: colors.textSecondary,
-        fontWeight: FontWeight.w400,
-      ),
+      style: AthenaTextStyle.captionCode.copyWith(color: colors.textSecondary),
     );
   }
 }

@@ -27,8 +27,11 @@ void main() {
     });
   }
 
-  test('等宽动态数值与预设同一口径', () {
-    expect(athenaMono().leadingDistribution, TextLeadingDistribution.even);
+  test('等宽元信息与预设同一口径', () {
+    expect(
+      AthenaTextStyle.captionCode.leadingDistribution,
+      TextLeadingDistribution.even,
+    );
   });
 
   for (final label in ['AthenaPrimaryButton', 'AthenaSecondaryButton']) {
@@ -68,6 +71,74 @@ void main() {
       ),
     );
     _expectGlyphsCentered(tester, text: 'TAG', box: find.byType(AthenaTag));
+  });
+
+  // 分工：UI 走平台默认（fontFamily 为 null 或环境注入的值），只有代码与
+  // 运行统计显式用 Fira Code。这里断言两件事——预设不夹带字族（否则按钮、
+  // chip、顶栏会偏离平台默认），captionCode 确实带 Fira Code。
+  testWidgets('UI 预设不带字族，元信息带 Fira Code', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: Scaffold(
+          body: Column(
+            children: [
+              for (final entry in _presets.entries)
+                DefaultTextStyle(
+                  style: entry.value,
+                  child: Text('preset-${entry.key}'),
+                ),
+              const Text('mono', style: AthenaTextStyle.captionCode),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    for (final key in _presets.keys) {
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.text('preset-$key'),
+      );
+      expect(
+        paragraph.text.style?.fontFamily,
+        isNot(AthenaFont.code),
+        reason: '$key 不该夹带等宽字族，UI 文字应走平台默认',
+      );
+    }
+
+    final mono = tester.renderObject<RenderParagraph>(find.text('mono'));
+    expect(mono.text.style?.fontFamily, AthenaFont.code);
+    expect(mono.text.style?.fontFamilyFallback, AthenaFont.codeFallback);
+  });
+
+  testWidgets('真实组件文字不夹带等宽字族', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: Scaffold(
+          body: Column(
+            children: [
+              const AthenaTag(text: 'tag-text'),
+              AthenaPrimaryButton(onTap: () {}, child: const Text('primary')),
+              AthenaSecondaryButton(
+                onTap: () {},
+                child: const Text('secondary'),
+              ),
+              AthenaTextButton(onTap: () {}, text: 'text-button'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    for (final text in ['tag-text', 'primary', 'secondary', 'text-button']) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
+      expect(
+        paragraph.text.style?.fontFamily,
+        isNot(AthenaFont.code),
+        reason: '$text 不该用等宽字族',
+      );
+    }
   });
 }
 

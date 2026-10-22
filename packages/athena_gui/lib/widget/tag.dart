@@ -46,7 +46,8 @@ class AthenaTag extends StatelessWidget {
       padding: padding,
       child: AnimatedDefaultTextStyle(
         duration: AthenaMotion.hover,
-        style: textStyle,
+        // 同 button.dart：Animated 版本没有 merge 构造，手动并上环境样式。
+        style: DefaultTextStyle.of(context).style.merge(textStyle),
         child: Text(text),
       ),
     );

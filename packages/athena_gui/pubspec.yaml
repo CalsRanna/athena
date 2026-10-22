@@ -63,6 +63,24 @@ flutter:
     - asset/
     - asset/image/
 
+  # Fira Code：只含拉丁字母、数字与符号，汉字交给系统中文（macOS 苹方 /
+  # Windows 雅黑）。只打包 Regular 一档，约 290KB。
+  #
+  # 不需要其他字重：用它的两处都只取 w400——消息里的代码（由 prose 派生）
+  # 与运行统计（captionCode）。界面上的 w500/w600 走的是系统字族，命中不了
+  # 这个族。将来若给代码加粗体，再补文件。
+  #
+  # 它本身不含 CJK，无需裁剪；版权声明里没有 Reserved Font Name，
+  # 因此可以沿用原族名，不必改名。
+  # 无斜体文件：Markdown 的 em 由 Flutter 合成倾斜。
+  #
+  # 许可证在包根目录的 OFL-FiraCode.txt，不在 asset/ 下：OFL 第 2 条要求
+  # 再分发时附带版权声明与许可证，放在包根即可随源码分发，又不额外占包体。
+  fonts:
+    - family: FiraCode
+      fonts:
+        - asset: asset/font/FiraCode-Regular.ttf
+
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

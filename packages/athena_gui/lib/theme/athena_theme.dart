@@ -22,10 +22,9 @@ AthenaColors colorsOf(AthenaColorMode mode) =>
 
 /// 构建指定模式下的 [ThemeData]。
 ///
-/// **字体**：UI、正文与消息里的代码走系统字体（[AthenaFont.ui] 为 `null`，
-/// 用平台默认），只有随运行刷新的动态数值显式走 [athenaMono]——等宽保证数字
-/// 更新时行宽不抖。侧栏、设置、按钮、正文都是比例字体——
-/// 把整个 UI 做成等宽、或单独给代码换一种字体，都是对它的误读。
+/// **字体**：UI、正文与标题走平台默认字体（[AthenaFont.ui] 为 `null`）——
+/// 比例字体的中英文比例最自然。只有代码块、行内代码与运行统计显式走
+/// [AthenaFont.code]（打包的 Fira Code）：前者要列对齐，后者要数字不抖。
 ///
 /// **强调色**：[AthenaColors.accent] 挂到 `ColorScheme.primary`，
 /// 让 Material 组件的强调与青瓷主操作一致，前景同步使用配套的 textOnAccent。

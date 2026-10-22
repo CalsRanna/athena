@@ -4,7 +4,7 @@
 /// 随主题切换），本文件管不随主题变化的常量。
 ///
 /// Athena 青瓷主题的视觉规则：
-/// - UI、正文与代码用**系统字体**，等宽仅用于随运行刷新的动态数值；
+/// - UI 与正文走平台默认字体，等宽只用于代码块与运行统计（Fira Code）；
 /// - 圆角按角色分为 4 / 8 / 12 / 16，筛选 chip 与头像保留胶囊 / 圆形；
 /// - 静态内容靠底色与细线分层，输入区、菜单、模态依次使用三档柔阴影；
 /// - 画布使用青瓷中性色，输入框聚焦时使用青瓷强调色边框。
@@ -98,9 +98,6 @@ abstract final class AthenaFontSize {
 
   /// 辅助说明、元信息与分组标签。
   static const caption = 12.0;
-
-  /// 技术标签的默认等宽字号；会话代码使用 [AthenaTextSize.code]。
-  static const mono = 12.0;
 }
 
 /// 文字样式预设：一个角色 = 字号 + 默认字重（+ 行盒）。
@@ -111,18 +108,19 @@ abstract final class AthenaFontSize {
 ///
 /// 每个预设都携带所属层级的行盒，组件不再各自覆盖比例行高。
 ///
+/// **预设不写字族**，交给主题（[AthenaFont.ui] 为 `null`＝平台默认）。代码是
+/// 唯一的例外，见 [AthenaTextSize.code]。
+///
 /// 每个预设都显式写明 `leadingDistribution: even`，而不是留空交给环境样式：
-/// 行盒（22 / 18）比字体自身的 em 盒高，多出的 4–6px 是"行距"，Flutter 默认
-/// 按 ascender/descender 比例分配（`proportional`），而系统字体的 ascender
-/// 明显大于 descender，于是这几像素几乎全压在字上方，字在行盒里整体偏下
-/// （SF Pro 14/22 实测偏 2px）。`even` 上下平分，字形落在行盒中心。
+/// 行盒（22 / 18）比字体自身的 em 盒高，多出的部分 Flutter 默认按 ascender/
+/// descender 比例分配（`proportional`），而系统字体的 ascender 明显大于
+/// descender，于是这些像素几乎全压在字上方，字在行盒里整体偏下
+/// （SF Pro 14/22 曾实测偏 2px）。`even` 上下平分，字形落在行盒中心。
 ///
 /// 必须写在预设里：Material 的 `bodyMedium` 本来就带 `even`，但 `Text` 的
 /// `style:` 参数与 `DefaultTextStyle`（替换式）会整体换掉环境样式，只有
 /// `DefaultTextStyle.merge` 能继承到；同一个按钮走两条路径就会一个居中、
 /// 一个偏低。写进预设后两条路径一致。
-///
-/// 等宽不在这里：只有 [athenaMono] 用等宽，而它只服务随运行刷新的数字。
 abstract final class AthenaTextStyle {
   /// 空态欢迎大标题：20 / 28 / w600。
   static const hero = TextStyle(
@@ -187,6 +185,22 @@ abstract final class AthenaTextStyle {
     height: AthenaFontSize.captionHeight,
     leadingDistribution: TextLeadingDistribution.even,
   );
+
+  /// 用等宽字体的元信息：运行统计、消息发送时刻。
+  ///
+  /// 与 [caption] 同号同行盒，只换字族。数字每秒都在变，等宽保证同位数字
+  /// 宽度一致，整条标签不会随数值更新左右跳。
+  ///
+  /// 不跟随会话「Text size」档位：这是元信息，不是阅读内容，跟档位放大会
+  /// 抢正文的注意力。代码块本身要跟档位，走 [AthenaTextSize.code]。
+  static const captionCode = TextStyle(
+    fontFamily: AthenaFont.code,
+    fontFamilyFallback: AthenaFont.codeFallback,
+    fontSize: AthenaFontSize.caption,
+    fontWeight: FontWeight.w400,
+    height: AthenaFontSize.captionHeight,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
 }
 
 /// 会话消息字号档位（设置里的「Text size」）。
@@ -215,44 +229,58 @@ enum AthenaTextSize {
     height: lineHeight / fontSize,
   );
 
-  /// 消息里的代码与工具输出：**与 [prose] 完全同值**，只是名字不同。
+  /// 消息里的代码块、行内代码与工具输出：与正文同号同卷，但换用 [AthenaFont.code]。
   ///
-  /// 不用等宽：等宽的列对齐只在代码块内成立，而它与正文并排时字号观感会大一号
-  /// （Menlo 的 x-height 比系统字体高约 7%）——消息列表里只保留一种文字质感。
-  /// 保留这个名字是为了让调用点仍然读作「代码」，也留一个回退点（改回等宽只需
-  /// 改这一处）。
-  TextStyle get code => prose;
+  /// 这里必须显式声明字族：主题其余部分走平台默认（比例字体），代码块需要
+  /// 等宽来保证列对齐——ASCII 图、`=` 对齐的配置、右对齐的注释都依赖它。
+  /// 中文（注释、工具输出的中文）按 [AthenaFont.codeFallback] 回退。
+  TextStyle get code => prose.copyWith(
+    fontFamily: AthenaFont.code,
+    fontFamilyFallback: AthenaFont.codeFallback,
+  );
 }
 
-/// 字体族。
+/// 字体族：UI 走平台默认，只有代码与动态数值用打包的等宽字体。
 ///
-/// **UI、正文与代码走系统字体**（`null` = 平台默认：macOS SF Pro / Windows Segoe UI）——
-/// 侧栏、设置、按钮、正文、消息里的代码块与工具输出都是比例字体，
-/// 等宽只剩 [athenaMono] 一个用处：随运行刷新的动态数值。
-/// 早期实现把整个 UI 做成等宽，那是误读。
+/// [ui] 为 `null`＝平台默认（macOS SF Pro / Windows Segoe UI，含各自的中文
+/// 回退）。侧栏、设置、按钮、正文、标题都走它——比例字体的中英文比例最自然，
+/// 也符合「平台默认是对的，除非它有明确的错」。
+///
+/// [code] 是打包在 `asset/font/` 的 Fira Code，只服务两处：消息里的代码块与
+/// 行内代码，以及助手消息底部的运行统计。这两处需要列对齐或数字不抖，等宽
+/// 是功能需求而不是风格选择。
+///
+/// [Fira Code]: https://github.com/tonsky/FiraCode
 abstract final class AthenaFont {
-  /// UI 与正文：交给平台默认字体（含 CJK 回退）。
+  /// UI、正文与标题：交给平台默认字体（含 CJK 回退）。
   static const String? ui = null;
 
-  /// 手动指定时的回退链（仅当需要显式覆盖平台字体时使用）。
+  /// 显式指定 UI 字体时的中文回退链。
   static const uiFallback = <String>[
     'PingFang SC',
     'Microsoft YaHei',
     'Noto Sans CJK SC',
   ];
 
-  /// 动态数值（运行统计）：等宽让数字更新时行宽不抖。
-  static const mono = 'Menlo';
+  /// 代码块、行内代码与运行统计：Fira Code。
+  ///
+  /// 只打包 Regular：用它的两处都取 w400，其他字重命中不了这个族。
+  /// 它只含拉丁字母、数字与符号，不含 CJK——中文出现在代码块里时按
+  /// [codeFallback] 回退。
+  ///
+  /// 无斜体文件，`em` 里的英文由 Flutter 合成倾斜。自带 `calt` 连字
+  /// （`->`、`=>`、`!=` 渲染成单个字形），Flutter 默认启用。
+  static const code = 'FiraCode';
 
-  static const monoFallback = <String>[
-    'SF Mono',
-    'Consolas',
-    'Cascadia Mono',
-    'DejaVu Sans Mono',
-    'monospace',
+  /// 代码里出现中文时的回退链。Fira Code 不含 CJK，代码块里的注释、
+  /// 工具输出与统计里的中文都靠它。
+  static const codeFallback = <String>[
     'PingFang SC',
     'Microsoft YaHei',
     'Noto Sans CJK SC',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Noto Color Emoji',
   ];
 }
 
@@ -342,28 +370,4 @@ abstract final class AthenaShadow {
       offset: const Offset(0, 2),
     ),
   ];
-}
-
-/// 统一的等宽文字样式入口，只服务**随运行刷新的动态数值**（运行统计）。
-///
-/// 正文、代码块、行内代码、工具输出、设置里的技术值一律不传 `fontFamily`，
-/// 走主题里的系统字体：等宽在同字号下比系统字体高约 7%（Menlo 的 x-height
-/// 0.547em 对 SF Pro 的 0.508em），并列时会显得大一号。
-TextStyle athenaMono({
-  Color? color,
-  double fontSize = AthenaFontSize.mono,
-  FontWeight? fontWeight,
-  double? height = AthenaFontSize.captionHeight,
-}) {
-  return TextStyle(
-    color: color,
-    fontFamily: AthenaFont.mono,
-    fontFamilyFallback: AthenaFont.monoFallback,
-    fontSize: fontSize,
-    fontWeight: fontWeight,
-    height: height,
-    // 与 [AthenaTextStyle] 的各预设同一口径：行盒内居中，不因字体的
-    // ascender 偏大而下坠。
-    leadingDistribution: TextLeadingDistribution.even,
-  );
 }

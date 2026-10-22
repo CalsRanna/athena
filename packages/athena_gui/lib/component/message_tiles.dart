@@ -468,9 +468,8 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
                 child: Text(
                   _formatSentTime(widget.message.reasoningStartedAt),
                   // 与助手消息工具条上的 tokens 数值同一套等宽样式。
-                  style: athenaMono(
+                  style: AthenaTextStyle.captionCode.copyWith(
                     color: colors.textSecondary,
-                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),

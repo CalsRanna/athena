@@ -103,12 +103,9 @@ void main() {
     );
   }
 
-  /// [notMono] 为真时额外断言**没有声明等宽的字族与回退链**：代码与工具输出
-  /// 曾走 `athenaMono`，现在与正文同族、随主题的系统字体。
-  ///
-  /// 只断言"不是等宽"，不断言字族的字面值——`Text` 会把 `DefaultTextStyle` 的
-  /// 字族与 CJK 回退并进来（测试环境是 Roboto + `AthenaFont.uiFallback`），
-  /// 正文侧压根不声明字族，两侧的字面值因此本就不同。
+  /// [notMono] 为真时额外断言**字族是 [AthenaFont.code]**：这组断言的对象是
+  /// 代码块、行内代码与工具输出，它们是全应用仅有的、显式用等宽字体的地方；
+  /// 正文与其余 UI 走平台默认，不在此断言。
   void expectTypography(
     WidgetTester tester,
     String text,
@@ -139,12 +136,8 @@ void main() {
       expect(style.fontSize, fontSize, reason: text);
       expect(style.height! * style.fontSize!, closeTo(lineHeight, 0.001));
       if (notMono) {
-        expect(style.fontFamily, isNot(AthenaFont.mono), reason: text);
-        expect(
-          style.fontFamilyFallback,
-          isNot(AthenaFont.monoFallback),
-          reason: text,
-        );
+        expect(style.fontFamily, AthenaFont.code, reason: text);
+        expect(style.fontFamilyFallback, AthenaFont.codeFallback, reason: text);
       }
       expect(
         paragraph.textScaler.scale(style.fontSize!),

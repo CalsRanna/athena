@@ -113,7 +113,7 @@ class _MobileAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
-    final wrappedTitle = DefaultTextStyle(
+    final wrappedTitle = DefaultTextStyle.merge(
       style: textStyle,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
