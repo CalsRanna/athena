@@ -8,6 +8,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 const permissionCardMaxHeightFraction = 0.5;
 
@@ -46,7 +47,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: widget.maxHeight),
       child: Container(
@@ -78,7 +79,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
   ///
   /// 整行可点：点它收起/展开，收起后卡片就只剩这一行。
   Widget _buildHeader(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return AthenaHover(
       onTap: _toggle,
       cursor: SystemMouseCursors.click,
@@ -124,7 +125,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
 
   /// 完整命令/参数展示：无背景的直接文字。
   Widget _buildCommand(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Scrollbar(
       child: SingleChildScrollView(
         primary: false,
@@ -140,7 +141,7 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
   }
 
   Widget _buildActions(BuildContext context) {
-    final platform = Theme.of(context).platform;
+    final platform = context.athenaPlatform;
     final mobile =
         platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 

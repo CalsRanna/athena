@@ -4,6 +4,8 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   for (final mode in AthenaColorMode.values) {
@@ -16,6 +18,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAthenaThemeData(mode),
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: SizedBox(

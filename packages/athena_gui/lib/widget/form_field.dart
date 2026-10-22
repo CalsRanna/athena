@@ -1,7 +1,7 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 移动端表单的一个字段：标签 → 控件 →（可选）说明 / 校验错误。
 ///
@@ -55,7 +55,7 @@ class AthenaFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final note = error ?? description;
     final noteStyle = AthenaTextStyle.caption.copyWith(
       color: error != null ? colors.dangerText : colors.textSecondary,

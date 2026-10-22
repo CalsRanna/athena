@@ -3,6 +3,7 @@ import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileSettingPage extends StatelessWidget {
@@ -128,18 +130,18 @@ class MobileSettingPage extends StatelessWidget {
     );
   }
 
-  String _themeModeLabel(ThemeMode mode) {
+  String _themeModeLabel(AthenaThemeMode mode) {
     return switch (mode) {
-      ThemeMode.dark => 'Dark',
-      ThemeMode.light => 'Light',
-      ThemeMode.system => 'System',
+      AthenaThemeMode.dark => 'Dark',
+      AthenaThemeMode.light => 'Light',
+      AthenaThemeMode.system => 'System',
     };
   }
 
   /// 外观选择：bottom sheet 内使用行列表，主题与字号各一组，
   /// 样式与其他移动端选择弹窗一致。
   void _showAppearanceSheet(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final viewModel = GetIt.instance<SettingViewModel>();
     AthenaDialog.show(
       ListView(
@@ -147,9 +149,9 @@ class MobileSettingPage extends StatelessWidget {
         children: [
           const SizedBox(height: 8),
           _sheetLabel('Theme', colors),
-          _appearanceTile(viewModel, ThemeMode.light, 'Light'),
-          _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
-          _appearanceTile(viewModel, ThemeMode.system, 'System'),
+          _appearanceTile(viewModel, AthenaThemeMode.light, 'Light'),
+          _appearanceTile(viewModel, AthenaThemeMode.dark, 'Dark'),
+          _appearanceTile(viewModel, AthenaThemeMode.system, 'System'),
           const SizedBox(height: 12),
           _sheetLabel('Text size', colors),
           for (final size in AthenaTextSize.values)
@@ -182,7 +184,7 @@ class MobileSettingPage extends StatelessWidget {
 
   Widget _appearanceTile(
     SettingViewModel viewModel,
-    ThemeMode mode,
+    AthenaThemeMode mode,
     String label,
   ) {
     return AthenaBottomSheetTile(

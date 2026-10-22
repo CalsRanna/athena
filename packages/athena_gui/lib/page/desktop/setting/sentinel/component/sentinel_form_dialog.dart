@@ -5,7 +5,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
 /// 新建 Sentinel 的对话框：只问名字，其余在编辑页填。

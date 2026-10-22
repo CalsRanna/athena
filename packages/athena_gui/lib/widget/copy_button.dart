@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 「已复制」反馈的状态机：点击进入已复制态，[AthenaMotion.linger] 后复原。
 ///
@@ -79,7 +79,7 @@ class CopiedLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = Icon(LucideIcons.check, size: iconSize, color: color);
-    final isDesktop = switch (Theme.of(context).platform) {
+    final isDesktop = switch (context.athenaPlatform) {
       TargetPlatform.macOS ||
       TargetPlatform.windows ||
       TargetPlatform.linux => true,
@@ -109,7 +109,7 @@ class CopyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final base = color ?? colors.textOnRaised;
     return CopyFeedback(
       onTap: onTap,

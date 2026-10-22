@@ -1,7 +1,7 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileSettingTile extends StatelessWidget {
   final Widget? leading;
@@ -24,7 +24,7 @@ class MobileSettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 与桌面设置行同一口径：标签与说明同为 14 / w400，层级只靠颜色区分。
     final titleTextStyle = AthenaTextStyle.row.copyWith(
       color: danger ? colors.dangerText : colors.textPrimary,

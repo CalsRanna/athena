@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopContextMenu extends StatelessWidget {
   final Offset offset;
@@ -49,7 +49,7 @@ class DesktopContextMenu extends StatelessWidget {
   }
 
   Widget _buildMenu(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaRadius.menu),
@@ -62,7 +62,7 @@ class DesktopContextMenu extends StatelessWidget {
     );
     final container = Container(
       decoration: boxDecoration,
-      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+      foregroundDecoration: context.athenaBrightness == Brightness.dark
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(AthenaRadius.menu),
               border: Border.all(color: colors.border),
@@ -195,7 +195,7 @@ class DesktopContextMenuTile extends StatefulWidget {
 class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 浮层不在 Material 之下，文字样式要写全（含 decoration）。
     final textColor = !widget.enabled || widget.muted
         ? colors.textSecondary
@@ -321,7 +321,7 @@ class DesktopContextMenuSubItem extends StatefulWidget {
 class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
@@ -374,7 +374,7 @@ class _DesktopContextMenuTileWithSubmenuState
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textColor = widget.enabled
         ? colors.textPrimary
         : colors.textSecondary;
@@ -449,7 +449,7 @@ class _DesktopContextMenuTileWithSubmenuState
     final offset = renderBox.localToGlobal(Offset.zero);
     final width = DesktopContextMenuConfiguration.widthOf(context);
 
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaRadius.menu),
@@ -462,7 +462,7 @@ class _DesktopContextMenuTileWithSubmenuState
     );
     final container = Container(
       decoration: boxDecoration,
-      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+      foregroundDecoration: context.athenaBrightness == Brightness.dark
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(AthenaRadius.menu),
               border: Border.all(color: colors.border),
@@ -585,7 +585,7 @@ class DesktopContextMenuGroupLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
     return Container(
       width: width,
@@ -610,7 +610,7 @@ class DesktopContextMenuSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
     return Container(
       width: width,

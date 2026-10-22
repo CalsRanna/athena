@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// Unsent messages waiting above the composer, separate from chat history.
 class QueuedMessages extends StatelessWidget {
@@ -26,7 +26,7 @@ class QueuedMessages extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (messages.isEmpty) return const SizedBox.shrink();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),

@@ -1,14 +1,14 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 About：应用标识 + 版本，下面是几条可点的资源行。
 ///
@@ -38,7 +38,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final nameStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     final taglineStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final mark = ClipRRect(

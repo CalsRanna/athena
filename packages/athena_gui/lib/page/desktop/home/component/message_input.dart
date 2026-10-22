@@ -9,7 +9,6 @@ import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
@@ -20,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
@@ -71,7 +71,7 @@ class DesktopMessageInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Watch((context) {
       final queued = chatViewModel.queuedMessages.value;
       // 在 Watch 内订阅；放进下方 builder 会延迟到另一个 build，图片变化就不重绘。
@@ -316,7 +316,7 @@ class _InputState extends State<_Input> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final hintTextStyle = AthenaTextStyle.body.copyWith(
       // 占位符是**浅灰** #898782，不是深色。
       color: colors.textWeak,
@@ -505,7 +505,7 @@ class _PendingImageStrip extends StatelessWidget {
   }
 
   Widget _buildItem(BuildContext context, int index) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final pending = images[index];
     final image = !pending.isReady
         ? _ImageProgress(stage: pending.stage)
@@ -561,7 +561,7 @@ class _ImageProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final failed = stage == PendingImageStage.failed;
     return Tooltip(
       message: failed
@@ -640,7 +640,7 @@ class _SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Watch((context) {
       final streaming = chatViewModel.isCurrentChatStreaming.value;
       final imagesReady = chatViewModel.pendingImages.value.every(
@@ -712,7 +712,7 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return AnimatedContainer(
       decoration: BoxDecoration(
         color: colors.surfaceMobile,

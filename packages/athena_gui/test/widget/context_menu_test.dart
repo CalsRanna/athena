@@ -1,10 +1,12 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 菜单面板必须贴合内容高：`DesktopContextMenu` 里的 `Column` 若拿到有界
 /// 高度约束（`CustomSingleChildLayout` 给的是窗口尺寸）又没写
@@ -27,6 +29,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Builder(
             builder: (context) {
@@ -60,7 +63,7 @@ void main() {
   ]) {
     testWidgets('${item.runtimeType} hover 底色渐变且不改变布局', (tester) async {
       final context = await pumpHost(tester);
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       DesktopContextMenuManager.instance.show(
         context,
         DesktopContextMenu(

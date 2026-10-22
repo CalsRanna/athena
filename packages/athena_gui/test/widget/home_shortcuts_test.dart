@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
 
 /// 新建对话快捷键的生效范围：首页持焦（含输入框失焦回到页面）时触发；
 /// 设置页 / 对话框这类压在首页之上的路由打开时不触发，关掉后恢复。
@@ -26,6 +27,7 @@ void main() {
 
   Widget buildHome({required VoidCallback onNewChat, Key? canvasKey}) {
     return MaterialApp(
+      builder: (context, child) => AthenaTestScope(child: child!),
       home: Scaffold(
         body: DesktopHomeShortcuts(
           onNewChat: onNewChat,

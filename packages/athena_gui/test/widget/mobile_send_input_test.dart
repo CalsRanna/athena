@@ -5,12 +5,13 @@ import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/mobile/chat/chat_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 移动端发送入口的接线：页面必须走 [ChatViewModel.prepareUserInput]。
 ///
@@ -46,6 +47,7 @@ void main() {
         theme: buildAthenaThemeData(
           AthenaColorMode.light,
         ).copyWith(platform: TargetPlatform.iOS),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: const MobileChatPage(),
       ),
     );

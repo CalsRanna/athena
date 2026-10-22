@@ -4,10 +4,12 @@ import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_gui/component/permission_card.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 
 void main() {
   for (final platform in [TargetPlatform.macOS, TargetPlatform.android]) {
@@ -20,6 +22,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -47,7 +50,7 @@ void main() {
       expect(iconFinder, findsOneWidget);
       final icon = tester.widget<Icon>(iconFinder);
       expect(icon.size, 16);
-      expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
+      expect(icon.color, colorsOf(AthenaColorMode.light).textPrimary);
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);
       expect(find.textContaining('query: project rules'), findsOneWidget);
@@ -65,6 +68,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(
             child: SizedBox(
@@ -121,6 +125,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: PermissionApprovalCard(
             request: ApprovalRequest(

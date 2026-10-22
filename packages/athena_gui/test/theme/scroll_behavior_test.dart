@@ -1,6 +1,7 @@
 import 'package:athena_gui/theme/athena_scroll_behavior.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
 
 /// 渲染一棵可滚动的树并返回其 [ScrollPosition]。
 ///
@@ -18,6 +19,7 @@ Future<ScrollPosition> _pumpScrollable(
   await tester.pumpWidget(
     MaterialApp(
       theme: ThemeData(platform: platform),
+      builder: (context, child) => AthenaTestScope(child: child!),
       scrollBehavior: const AthenaScrollBehavior(),
       home: Scaffold(
         body: ListView(

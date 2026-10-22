@@ -1,6 +1,6 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 移动端网格里的实体卡（Skill / Sentinel / Experience 列表共用）。
 ///
@@ -34,7 +34,7 @@ class MobileGridTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
     );

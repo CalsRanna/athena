@@ -1,6 +1,6 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 移动端列表空态：图标 + 标题 + 一句说明 + 可选操作。
 ///
@@ -22,7 +22,7 @@ class MobileEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final children = [
       Icon(icon, size: AthenaIcon.largeSize, color: colors.textWeak),
       const SizedBox(height: AthenaSpace.md),

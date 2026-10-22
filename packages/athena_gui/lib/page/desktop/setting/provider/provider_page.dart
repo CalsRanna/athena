@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Providers：单列列表 → 点进一家的详情（标题带里出现 `← Providers`）。
 ///
@@ -86,7 +87,7 @@ class _DesktopSettingProviderPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildList(List<ProviderEntity> providers) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final models = modelViewModel.models.value;
     var rows = <Widget>[
       _buildProviderGroup(
@@ -292,7 +293,7 @@ class _DesktopSettingProviderPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildDetail(ProviderEntity provider) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final models = modelViewModel.models.value
         .where((m) => m.providerId == provider.id)
         .toList();

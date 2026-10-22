@@ -1,8 +1,9 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   for (final platform in TargetPlatform.values) {
@@ -13,6 +14,7 @@ void main() {
           theme: buildAthenaThemeData(
             AthenaColorMode.light,
           ).copyWith(platform: platform),
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: const MediaQuery(
             data: MediaQueryData(padding: EdgeInsets.only(top: 24)),
             child: AthenaScaffold(

@@ -1,12 +1,12 @@
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// composer 里的模型选择菜单：不放数字快捷键与
 /// 模型描述，每行只有模型名。
@@ -63,7 +63,7 @@ class _DefaultBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(

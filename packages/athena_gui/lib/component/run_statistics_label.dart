@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:athena_core/entity/run_statistics.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// The run time, cumulative output tokens and latest LLM response's output rate.
 class RunStatisticsLabel extends ImplicitlyAnimatedWidget {
@@ -109,7 +109,7 @@ class _RunStatisticsLabelState
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final statistics = widget.statistics;
     final now = DateTime.now();
     final hasDuration =

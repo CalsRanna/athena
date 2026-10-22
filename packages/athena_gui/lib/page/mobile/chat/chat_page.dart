@@ -10,7 +10,6 @@ import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -27,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileChatPage extends StatefulWidget {
@@ -79,7 +79,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Widget _buildTitle() {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       final chat = _resolveChat();
       final isRenaming =
           chat != null &&
@@ -377,7 +377,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Widget _buildPendingImage(PendingImage image) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final Widget preview;
     if (image.bytes != null) {
       preview = Image.memory(

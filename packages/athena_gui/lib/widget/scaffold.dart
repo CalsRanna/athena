@@ -1,5 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 页面骨架。桌面端是"侧栏面板 + 画布工作区"，移动端是单列。
 ///
@@ -12,7 +13,7 @@ class AthenaScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = switch (Theme.of(context).platform) {
+    final isDesktop = switch (context.athenaPlatform) {
       TargetPlatform.macOS ||
       TargetPlatform.windows ||
       TargetPlatform.linux => true,
@@ -30,7 +31,7 @@ class _DesktopScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final children = [
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
@@ -54,7 +55,7 @@ class _MobileScaffold extends StatelessWidget {
       Expanded(child: body ?? const SizedBox()),
     ];
     final mediaQuery = MediaQuery.of(context);
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 页面底色用桌面工作区的 surface；surfaceMobile 只属于对话框 / sheet /
     // 弹出层，拿它铺整页会让移动端变成另一套明度基线。
     final container = Container(

@@ -6,7 +6,8 @@ import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/chat_turn_util.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 工作区左侧的轮次指示器：**一条 = 一轮**，深色那条是视口当前所在的一轮。
 ///
@@ -289,7 +290,7 @@ class _TurnIndicatorState extends State<TurnIndicator> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return LayoutBuilder(
       builder: (context, constraints) {
         final rows = _rowCount;

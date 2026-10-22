@@ -2,11 +2,12 @@ import 'dart:ui' show ImageByteFormat;
 
 import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 状态点的三条口径：
 /// 1. **形状分状态**：不在跑（静止 / hover / 重命名）是 1px 描边的圆环，
@@ -32,11 +33,13 @@ void main() {
   }) => tester.pumpWidget(
     MaterialApp(
       theme: buildAthenaThemeData(AthenaColorMode.light),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(disableAnimations: disableAnimations),
-        child: child!,
+      builder: (context, child) => AthenaTestScope(
+        child: MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(disableAnimations: disableAnimations),
+          child: child!,
+        ),
       ),
       home: Scaffold(
         body: Center(
@@ -139,11 +142,13 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAthenaThemeData(AthenaColorMode.light),
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(disableAnimations: disableAnimations),
-            child: child!,
+          builder: (context, child) => AthenaTestScope(
+            child: MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(disableAnimations: disableAnimations),
+              child: child!,
+            ),
           ),
           home: Scaffold(
             body: Center(

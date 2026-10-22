@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -17,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Sentinels：单列列表 → 点进一个角色的编辑页。
 ///
@@ -217,7 +217,7 @@ class _DesktopSettingSentinelPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildEditor(SentinelEntity sentinel) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final readOnly = sentinel.isPreset;
     final generating = viewModel.isGenerating.value;
     final header = Row(

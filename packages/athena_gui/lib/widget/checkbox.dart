@@ -1,7 +1,7 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为青瓷实心块。
 class AthenaCheckbox extends StatefulWidget {
@@ -50,7 +50,7 @@ class AthenaCheckboxGroup extends StatelessWidget {
 class _AthenaCheckboxState extends State<AthenaCheckbox> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final border = Border.all(
       color: widget.value ? colors.accent : colors.checkboxOff,
     );
@@ -70,7 +70,7 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
       width: 16,
       child: widget.value ? _buildCheckIcon() : null,
     );
-    final mobile = switch (Theme.of(context).platform) {
+    final mobile = switch (context.athenaPlatform) {
       TargetPlatform.android || TargetPlatform.iOS => true,
       _ => false,
     };
@@ -92,7 +92,7 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   }
 
   Widget _buildCheckIcon() {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Icon(LucideIcons.check, color: colors.textOnAccent, size: 11);
   }
 }

@@ -2,6 +2,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 标准输入框：小圆角（[AthenaRadius.control]）+ 1px 实线边框 + 平涂底色。
 ///
@@ -87,7 +88,7 @@ class _AthenaInputState extends State<AthenaInput> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final focused = focusNode.hasFocus;
     final boxDecoration = BoxDecoration(
       color: colors.inputBackground,

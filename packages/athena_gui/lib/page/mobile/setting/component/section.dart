@@ -1,6 +1,6 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 移动设置页的一个分区：标题 + 可选说明 + 一张分组卡片。
 ///
@@ -20,7 +20,7 @@ class MobileSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.title.copyWith(
       color: colors.textPrimary,
     );

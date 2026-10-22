@@ -4,6 +4,8 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 开关的视觉口径：胶囊轨道、滑块抬一层阴影、关闭态是中性的浅轨道。
 ///
@@ -13,10 +15,11 @@ void main() {
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode 轨道是胶囊、滑块压 raised 阴影', (tester) async {
       final theme = buildAthenaThemeData(mode);
-      final colors = theme.extension<AthenaColors>()!;
+      final colors = colorsOf(mode);
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(child: AthenaSwitch(value: false, onChanged: (_) {})),
           ),
@@ -62,6 +65,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             backgroundColor: colorsOf(AthenaColorMode.light).surface,
             body: Center(
@@ -89,6 +93,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(
             child: StatefulBuilder(

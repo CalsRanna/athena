@@ -7,7 +7,7 @@ import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

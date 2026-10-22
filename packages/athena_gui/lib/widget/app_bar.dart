@@ -1,10 +1,10 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/window_button.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaAppBar extends StatelessWidget {
   final Widget? action;
@@ -13,7 +13,7 @@ class AthenaAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = switch (Theme.of(context).platform) {
+    final isDesktop = switch (context.athenaPlatform) {
       TargetPlatform.macOS ||
       TargetPlatform.windows ||
       TargetPlatform.linux => true,
@@ -54,7 +54,7 @@ class _DesktopAppBar extends StatelessWidget {
       const Spacer(),
       const SizedBox(width: 16),
     ];
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 顶栏底色与画布相同（相当于透明），只有侧栏上方那条与侧栏同色。
     //
     // 这块左条必须**满高**（0..46）并且自带右边线：它是侧栏右边线在顶栏里的
@@ -111,7 +111,7 @@ class _MobileAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     final wrappedTitle = DefaultTextStyle.merge(
       style: textStyle,

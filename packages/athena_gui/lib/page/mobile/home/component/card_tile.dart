@@ -1,6 +1,6 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 首页卡片行中的单张卡片：宽 160、圆角 [AthenaRadius.container]、
 /// `surfaceButtonSecondary` 底 + 1px `border`、图标 + 名称 + 描述。
@@ -23,7 +23,7 @@ class CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,

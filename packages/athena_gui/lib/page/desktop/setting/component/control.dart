@@ -7,7 +7,6 @@
 /// 外壳与分区见 `panel.dart`，行类组件见 `row.dart`。
 library;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -17,6 +16,7 @@ import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 行尾控件的几档宽度（别名，便于页面按语义取用）。
 abstract final class AthenaSettingsControlWidth {
@@ -42,7 +42,7 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final decoration = BoxDecoration(
       color: colors.neutralRule,
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
@@ -58,7 +58,7 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
   }
 
   Widget _buildSegment(BuildContext context, AthenaSegmentOption<T> option) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 未选中态不能用 `Colors.transparent`：它的 RGB 是黑，AnimatedContainer
     // 切换档位时会先闪一下半透明深灰（同 menu.dart 的说明）。用目标色的 0
     // 透明度版本，填充与边框全程同色只有 alpha 在动。
@@ -127,7 +127,7 @@ class AthenaSettingsSelect extends StatefulWidget {
 class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final label = Text(
       widget.label,
       maxLines: 1,
@@ -239,7 +239,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final focused = focusNode.hasFocus;
     final decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
@@ -337,7 +337,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final focused = focusNode.hasFocus;
     final decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
@@ -385,7 +385,7 @@ class AthenaSettingsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(

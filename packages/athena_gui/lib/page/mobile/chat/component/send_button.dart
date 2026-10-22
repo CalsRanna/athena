@@ -1,8 +1,8 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class SendButton extends StatelessWidget {
   final void Function()? onSubmitted;
@@ -18,7 +18,7 @@ class SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       final streaming = isStreaming;
       final enabled = streaming ? onTerminated != null : onSubmitted != null;
       final shapeDecoration = BoxDecoration(
@@ -37,7 +37,7 @@ class SendButton extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         child: icon,
       );
-      final mobile = switch (Theme.of(context).platform) {
+      final mobile = switch (context.athenaPlatform) {
         TargetPlatform.android || TargetPlatform.iOS => true,
         _ => false,
       };

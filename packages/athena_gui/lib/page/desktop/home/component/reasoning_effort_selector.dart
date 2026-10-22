@@ -1,9 +1,9 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 工具栏上的推理强度文字（如 `High`）。只负责显示：点击由外层
 /// `AthenaGhostButton` 接管，弹出 [DesktopReasoningEffortMenu]。
@@ -13,7 +13,7 @@ class DesktopReasoningEffortLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Text(
       reasoningEffortLabel(current),
       // 与模型名同字号同字重（都是常规字重）
@@ -104,7 +104,7 @@ class _EffortPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
     // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
     final titleStyle = AthenaTextStyle.row.copyWith(
@@ -169,7 +169,7 @@ class _EffortPanel extends StatelessWidget {
 class _HelpIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Tooltip(
       message:
           'Higher effort lets the model think longer before answering. '
@@ -215,7 +215,7 @@ class _EffortSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;

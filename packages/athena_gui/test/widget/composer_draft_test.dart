@@ -7,12 +7,13 @@ import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/home_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// composer 的输入内容（文字与待发图片）按对话分开存：A 里打的字不该跟着进 B，
 /// 切回 A 时原来那句还在。
@@ -80,6 +81,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: const DesktopHomePage(),
       ),
     );

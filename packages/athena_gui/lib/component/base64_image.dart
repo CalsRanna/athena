@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class Base64Image extends StatefulWidget {
   final String base64;

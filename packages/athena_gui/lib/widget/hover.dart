@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 /// 桌面 hover 的公共骨架：状态机 + [MouseRegion] + [GestureDetector]。
 ///

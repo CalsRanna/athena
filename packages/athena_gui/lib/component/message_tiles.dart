@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话内单条消息的渲染，以及消息底部的操作条。
 ///
@@ -203,7 +204,7 @@ class _AssistantMessageSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 触屏没有 hover：移动端把工具条常显，复制入口才始终可达。
-    final mobile = switch (Theme.of(context).platform) {
+    final mobile = switch (context.athenaPlatform) {
       TargetPlatform.android || TargetPlatform.iOS => true,
       _ => false,
     };
@@ -306,7 +307,7 @@ class StreamingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return SizedBox(
       width: AthenaIcon.regularSize,
       height: AthenaIconButtonSize.compact,
@@ -349,7 +350,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
         spacing: 4,
         children: children,
       );
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       final boxDecoration = BoxDecoration(
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         color: colors.codeBackground,
@@ -383,7 +384,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     Map<String, dynamic> reference, {
     required int index,
   }) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final url = reference['url'] as String?;
     final title = reference['title'] as String?;
     final textSpan = TextSpan(
@@ -415,13 +416,13 @@ class _UserMessageListTile extends StatefulWidget {
 class _UserMessageListTileState extends State<_UserMessageListTile> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 用户消息：**右对齐的浅灰气泡**，最大宽度为列宽的 77%、圆角 12、
     // 内边距 12 × 8。没有头像。
     //
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
     // 气泡右对齐，操作条也贴右缘；移动端没有 hover，改为常显。
-    final mobile = switch (Theme.of(context).platform) {
+    final mobile = switch (context.athenaPlatform) {
       TargetPlatform.android || TargetPlatform.iOS => true,
       _ => false,
     };
@@ -484,7 +485,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
   }
 
   Widget _buildContent(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
     // 字号 / 行高与助手正文同一档，否则一轮对话里
     // 问与答的字号会不一致。
@@ -596,7 +597,7 @@ class MessageActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Padding(
       // 与正文之间的呼吸位。这块高度常驻，hover 前后不变。
       padding: const EdgeInsets.only(top: 4),
@@ -650,7 +651,7 @@ class _CopyActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return CopyFeedback(
       onTap: onTap,
       builder: (context, copied) => _MessageActionButton(
@@ -698,7 +699,7 @@ class _MessageActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Tooltip(
       message: tooltip,
       child: AthenaHover(

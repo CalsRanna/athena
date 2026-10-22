@@ -6,7 +6,6 @@
 /// 行内控件见 `control.dart`，行类组件见 `row.dart`。
 library;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -16,6 +15,7 @@ import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置面板外壳：居中浮层 + 遮罩。
 ///
@@ -52,7 +52,7 @@ class AthenaSettingsPanel extends StatelessWidget {
   /// 遮罩只吸收点击，**不关闭面板**：Sentinel / Skill 的编辑区有显式 Save，
   /// 误触遮罩会丢掉未保存的编辑。关闭走右上角的 X 或 Esc。
   Widget _buildScrim(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Positioned.fill(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -63,7 +63,7 @@ class AthenaSettingsPanel extends StatelessWidget {
   }
 
   Widget _buildPanel(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final decoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
@@ -100,7 +100,7 @@ class AthenaSettingsPanel extends StatelessWidget {
           foregroundDecoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
             border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
+              color: context.athenaBrightness == Brightness.dark
                   ? colors.border
                   : colors.border.withValues(alpha: 0),
             ),
@@ -151,7 +151,7 @@ class AthenaSettingsPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     const horizontal = AthenaSettings.panePadding - AthenaSettings.rowInset;
     final list = ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -212,7 +212,7 @@ class AthenaSettingsBackLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(color: colors.textRowLabel);
     final children = [
       Icon(
@@ -270,7 +270,7 @@ class AthenaSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.title.copyWith(
       color: colors.textPrimary,
     );
@@ -319,7 +319,7 @@ class AthenaSettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final spacer = Padding(
       padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
       child: Container(height: 1, color: colors.neutralRule),
@@ -374,7 +374,7 @@ class AthenaSettingsSaveBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [
       Expanded(child: Text(message, maxLines: 1, style: textStyle)),
@@ -415,7 +415,7 @@ class AthenaSettingsEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
     final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [

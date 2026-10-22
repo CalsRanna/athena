@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_core/storage/user_settings_store.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
 enum WindowEvent { shown }

@@ -1,5 +1,5 @@
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 /// 仅给会话正文与代码提供固定排版，完整保留系统的文字缩放规则。
 class AthenaWorkspaceTextSize extends InheritedWidget {

@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -17,6 +16,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 经验管理列表：All / Shared / Private 过滤；活跃与归档分区展示。
 /// 长按归档/恢复或删除，点击进入详情。
@@ -123,7 +123,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   }
 
   Widget _sectionTitle(BuildContext context, String title) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),

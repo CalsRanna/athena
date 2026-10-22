@@ -1,6 +1,5 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -12,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// Skill 详情页：展示 SKILL.md 内容（描述/允许工具/正文/路径），
 /// 提供编辑与删除入口；内置 Skill 只读。
@@ -36,7 +36,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       var skill = viewModel.skills.value
           .where((s) => s.name == widget.skill.name)
           .firstOrNull;
@@ -86,7 +86,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   Widget _label(BuildContext context, String text) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Text(
       text,
       style: AthenaTextStyle.label.copyWith(color: colors.textWeak),
@@ -94,7 +94,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   Widget _buildBody(BuildContext context, String body) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(

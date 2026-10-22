@@ -3,17 +3,17 @@ import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/component/menu.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopChatListView extends StatelessWidget {
   final void Function()? onCreateChat;
@@ -90,7 +90,7 @@ class DesktopChatListView extends StatelessWidget {
   }
 
   Widget _buildGroupLabel(BuildContext context, String label) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
       child: Text(
@@ -171,7 +171,7 @@ class DesktopChatListView extends StatelessWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -266,7 +266,7 @@ class _MoreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -340,7 +340,7 @@ class _ShortcutHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Text(
       DesktopHomeShortcuts.newChatLabel(context),
       style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),

@@ -2,10 +2,11 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/api_format_menu.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// API 格式选择：自动同步时显示 `Auto · <推断出的格式>`，手动指定时只显示格式名；
 /// 选中后必须把「交还给目录同步」与「手动指定某种协议」区分开交给上层——
@@ -34,6 +35,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(
             child: SizedBox(

@@ -1,6 +1,6 @@
 /// Athena 的设计 token：几何、排版、字体族、阴影。
 ///
-/// 与 [AthenaColors] 的分工：`athena_colors.dart` 管颜色（挂 ThemeExtension，
+/// 与 [AthenaColors] 的分工：`athena_colors.dart` 管颜色（由 [AthenaTheme] 注入，
 /// 随主题切换），本文件管不随主题变化的常量。
 ///
 /// Athena 青瓷主题的视觉规则：
@@ -10,7 +10,7 @@
 /// - 画布使用青瓷中性色，输入框聚焦时使用青瓷强调色边框。
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 /// 圆角等级：同类组件共用数值，嵌套菜单用外层 12 + 内边距 4 + 行 8。
 ///

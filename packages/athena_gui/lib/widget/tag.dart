@@ -1,8 +1,8 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/press_scale.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 筛选 chip：胶囊 + 1px 实线边框，没有渐变边框。
 ///
@@ -30,7 +30,7 @@ class AthenaTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = base.copyWith(
       color: selected ? colors.textPrimary : colors.textSecondary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
@@ -81,7 +81,7 @@ class AthenaTagButton extends StatefulWidget {
 class _AthenaTagButtonState extends State<AthenaTagButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final selected = widget.selected;
     final foregroundColor = selected
         ? colors.textPrimary
@@ -169,7 +169,7 @@ class AthenaContextChip extends StatefulWidget {
 class _AthenaContextChipState extends State<AthenaContextChip> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final foreground = widget.onTap == null
         ? colors.textWeak
         : colors.textSecondary;

@@ -1,5 +1,4 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -11,9 +10,11 @@ import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileSentinelFormPage extends StatefulWidget {
@@ -35,7 +36,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   @override
   Widget build(BuildContext context) {
     final isPreset = widget.sentinel?.isPreset ?? false;
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final listViewChildren = [
       if (isPreset)
         Padding(
@@ -221,7 +222,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   /// 标签行右端的「生成」星标，点一下让模型填这个字段。
   Widget _buildGenerateIcon(VoidCallback onTap) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,

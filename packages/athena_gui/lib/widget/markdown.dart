@@ -13,6 +13,7 @@ import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaMarkdown extends StatelessWidget {
   final MessageEntity message;
@@ -33,7 +34,7 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.cardHeader,
@@ -80,7 +81,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final container = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AthenaRadius.inline),
@@ -129,7 +130,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     final displayText = rawText.endsWith('\n')
         ? rawText.substring(0, rawText.length - 1)
         : rawText;
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 无边框：代码块靠 codeBackground 与页面底色的差自成一层，
     // header 再用 cardHeader 提亮一档划分标题与正文。
     final boxDecoration = BoxDecoration(
@@ -171,7 +172,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       topLeft: Radius.circular(AthenaRadius.container),
       topRight: Radius.circular(AthenaRadius.container),
     );
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
       color: colors.cardHeader,
@@ -238,7 +239,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
   ) {
     if (!_hasClass(element, 'footnote-backref')) return null;
 
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final button = Tooltip(
       message: 'Back to reference',
       child: GestureDetector(
@@ -338,7 +339,7 @@ class _FlutterMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final base = MarkdownStyleSheet.fromTheme(theme);
     final body = base.p
         ?.merge(AthenaWorkspaceTextSize.of(context).prose)
@@ -476,7 +477,7 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       color: colors.codeBackground,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
@@ -528,7 +529,7 @@ class _SupBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final boxDecoration = BoxDecoration(
       color: colors.codeBackground,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),

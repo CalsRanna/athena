@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 
 /// 外观模式：青瓷色板的浅色 / 深色。
 enum AthenaColorMode { light, dark }
 
-/// Athena 青瓷语义色（挂载于 ThemeData.extensions）。
+/// Athena 青瓷语义色（由 [AthenaTheme] 注入，经 `context.athenaColors` 读取）。
 ///
 /// 以中性瓷白 / 墨绿灰承载正文，青瓷强调色用于主操作、选中态与链接。
 /// 实心强调色单独配套 [textOnAccent]，深色主题使用深色前景保证对比度；
@@ -11,7 +13,7 @@ enum AthenaColorMode { light, dark }
 /// 与列表卡片走 `surfaceButtonSecondary` + `border`，避免浅色主题下出现
 /// 大块接近黑色的反色面。
 @immutable
-class AthenaColors extends ThemeExtension<AthenaColors> {
+class AthenaColors {
   // ---- 表面 ----
   final Color surface; // 主画布
   final Color surfacePanel; // 侧栏 / 顶栏 / 次级面板
@@ -230,183 +232,4 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     markdownStrikethrough: Color(0xFFA1AEA7),
     markdownMath: Color(0xFFE8EDE9),
   );
-
-  @override
-  AthenaColors copyWith({
-    Color? surface,
-    Color? surfacePanel,
-    Color? surfaceMobile,
-    Color? surfaceDeep,
-    Color? surfaceRaised,
-    Color? surfaceButtonSecondary,
-    Color? surfaceHover,
-    Color? surfaceSelected,
-    Color? textPrimary,
-    Color? textInput,
-    Color? textSecondary,
-    Color? textWeak,
-    Color? textRowLabel,
-    Color? dangerText,
-    Color? textOnRaised,
-    Color? textSecondaryOnRaised,
-    Color? textOnCode,
-    Color? textSecondaryOnCode,
-    Color? border,
-    Color? borderStrong,
-    Color? divider,
-    Color? borderChrome,
-    Color? neutralHairline,
-    Color? neutralRule,
-    Color? neutralBorder,
-    Color? neutralBorderStrong,
-    Color? neutralSelected,
-    Color? neutralControlFill,
-    Color? scrim,
-    Color? inputBackground,
-    Color? accent,
-    Color? textOnAccent,
-    Color? statusSuccess,
-    Color? statusWarning,
-    Color? statusError,
-    Color? switchKnob,
-    Color? switchTrackOff,
-    Color? checkboxOff,
-    Color? iconSecondary,
-    Color? iconOnRaised,
-    Color? shadow,
-    Color? cardHeader,
-    Color? codeBackground,
-    Color? markdownLink,
-    Color? markdownStrikethrough,
-    Color? markdownMath,
-  }) {
-    return AthenaColors(
-      surface: surface ?? this.surface,
-      surfacePanel: surfacePanel ?? this.surfacePanel,
-      surfaceMobile: surfaceMobile ?? this.surfaceMobile,
-      surfaceDeep: surfaceDeep ?? this.surfaceDeep,
-      surfaceRaised: surfaceRaised ?? this.surfaceRaised,
-      surfaceButtonSecondary:
-          surfaceButtonSecondary ?? this.surfaceButtonSecondary,
-      surfaceHover: surfaceHover ?? this.surfaceHover,
-      surfaceSelected: surfaceSelected ?? this.surfaceSelected,
-      textPrimary: textPrimary ?? this.textPrimary,
-      textInput: textInput ?? this.textInput,
-      textSecondary: textSecondary ?? this.textSecondary,
-      textWeak: textWeak ?? this.textWeak,
-      textRowLabel: textRowLabel ?? this.textRowLabel,
-      dangerText: dangerText ?? this.dangerText,
-      textOnRaised: textOnRaised ?? this.textOnRaised,
-      textSecondaryOnRaised:
-          textSecondaryOnRaised ?? this.textSecondaryOnRaised,
-      textOnCode: textOnCode ?? this.textOnCode,
-      textSecondaryOnCode: textSecondaryOnCode ?? this.textSecondaryOnCode,
-      border: border ?? this.border,
-      borderStrong: borderStrong ?? this.borderStrong,
-      divider: divider ?? this.divider,
-      borderChrome: borderChrome ?? this.borderChrome,
-      neutralHairline: neutralHairline ?? this.neutralHairline,
-      neutralRule: neutralRule ?? this.neutralRule,
-      neutralBorder: neutralBorder ?? this.neutralBorder,
-      neutralBorderStrong: neutralBorderStrong ?? this.neutralBorderStrong,
-      neutralSelected: neutralSelected ?? this.neutralSelected,
-      neutralControlFill: neutralControlFill ?? this.neutralControlFill,
-      scrim: scrim ?? this.scrim,
-      inputBackground: inputBackground ?? this.inputBackground,
-      accent: accent ?? this.accent,
-      textOnAccent: textOnAccent ?? this.textOnAccent,
-      statusSuccess: statusSuccess ?? this.statusSuccess,
-      statusWarning: statusWarning ?? this.statusWarning,
-      statusError: statusError ?? this.statusError,
-      switchKnob: switchKnob ?? this.switchKnob,
-      switchTrackOff: switchTrackOff ?? this.switchTrackOff,
-      checkboxOff: checkboxOff ?? this.checkboxOff,
-      iconSecondary: iconSecondary ?? this.iconSecondary,
-      iconOnRaised: iconOnRaised ?? this.iconOnRaised,
-      shadow: shadow ?? this.shadow,
-      cardHeader: cardHeader ?? this.cardHeader,
-      codeBackground: codeBackground ?? this.codeBackground,
-      markdownLink: markdownLink ?? this.markdownLink,
-      markdownStrikethrough:
-          markdownStrikethrough ?? this.markdownStrikethrough,
-      markdownMath: markdownMath ?? this.markdownMath,
-    );
-  }
-
-  @override
-  AthenaColors lerp(ThemeExtension<AthenaColors>? other, double t) {
-    if (other is! AthenaColors) return this;
-    return AthenaColors(
-      surface: Color.lerp(surface, other.surface, t)!,
-      surfacePanel: Color.lerp(surfacePanel, other.surfacePanel, t)!,
-      surfaceMobile: Color.lerp(surfaceMobile, other.surfaceMobile, t)!,
-      surfaceDeep: Color.lerp(surfaceDeep, other.surfaceDeep, t)!,
-      surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
-      surfaceButtonSecondary: Color.lerp(
-        surfaceButtonSecondary,
-        other.surfaceButtonSecondary,
-        t,
-      )!,
-      surfaceHover: Color.lerp(surfaceHover, other.surfaceHover, t)!,
-      surfaceSelected: Color.lerp(surfaceSelected, other.surfaceSelected, t)!,
-      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
-      textInput: Color.lerp(textInput, other.textInput, t)!,
-      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
-      textWeak: Color.lerp(textWeak, other.textWeak, t)!,
-      textRowLabel: Color.lerp(textRowLabel, other.textRowLabel, t)!,
-      dangerText: Color.lerp(dangerText, other.dangerText, t)!,
-      textOnRaised: Color.lerp(textOnRaised, other.textOnRaised, t)!,
-      textSecondaryOnRaised: Color.lerp(
-        textSecondaryOnRaised,
-        other.textSecondaryOnRaised,
-        t,
-      )!,
-      textOnCode: Color.lerp(textOnCode, other.textOnCode, t)!,
-      textSecondaryOnCode: Color.lerp(
-        textSecondaryOnCode,
-        other.textSecondaryOnCode,
-        t,
-      )!,
-      border: Color.lerp(border, other.border, t)!,
-      borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
-      divider: Color.lerp(divider, other.divider, t)!,
-      borderChrome: Color.lerp(borderChrome, other.borderChrome, t)!,
-      neutralHairline: Color.lerp(neutralHairline, other.neutralHairline, t)!,
-      neutralRule: Color.lerp(neutralRule, other.neutralRule, t)!,
-      neutralBorder: Color.lerp(neutralBorder, other.neutralBorder, t)!,
-      neutralBorderStrong: Color.lerp(
-        neutralBorderStrong,
-        other.neutralBorderStrong,
-        t,
-      )!,
-      neutralSelected: Color.lerp(neutralSelected, other.neutralSelected, t)!,
-      neutralControlFill: Color.lerp(
-        neutralControlFill,
-        other.neutralControlFill,
-        t,
-      )!,
-      scrim: Color.lerp(scrim, other.scrim, t)!,
-      inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
-      accent: Color.lerp(accent, other.accent, t)!,
-      textOnAccent: Color.lerp(textOnAccent, other.textOnAccent, t)!,
-      statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,
-      statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
-      statusError: Color.lerp(statusError, other.statusError, t)!,
-      switchKnob: Color.lerp(switchKnob, other.switchKnob, t)!,
-      switchTrackOff: Color.lerp(switchTrackOff, other.switchTrackOff, t)!,
-      checkboxOff: Color.lerp(checkboxOff, other.checkboxOff, t)!,
-      iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
-      iconOnRaised: Color.lerp(iconOnRaised, other.iconOnRaised, t)!,
-      shadow: Color.lerp(shadow, other.shadow, t)!,
-      cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
-      codeBackground: Color.lerp(codeBackground, other.codeBackground, t)!,
-      markdownLink: Color.lerp(markdownLink, other.markdownLink, t)!,
-      markdownStrikethrough: Color.lerp(
-        markdownStrikethrough,
-        other.markdownStrikethrough,
-        t,
-      )!,
-      markdownMath: Color.lerp(markdownMath, other.markdownMath, t)!,
-    );
-  }
 }

@@ -1,13 +1,13 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/util/context_window_util.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileModelListView extends StatelessWidget {
   final void Function(ModelEntity)? onLongPress;
@@ -25,7 +25,7 @@ class MobileModelListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       final models = modelViewModel.models.value
           .where((m) => m.providerId == provider.id)
           .toList();
@@ -65,7 +65,7 @@ class _ModelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final nameTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
     );
@@ -124,7 +124,7 @@ class _ModelTile extends StatelessWidget {
   }
 
   Widget _buildSubtitle(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final contextWindow = model.contextWindow;
     final inputPrice = model.inputPrice;
     final outputPrice = model.outputPrice;

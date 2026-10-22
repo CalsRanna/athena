@@ -11,10 +11,11 @@ import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Experiences：单列列表（活跃 / 已归档两个分区）→ 点进只读详情。
 ///
@@ -190,7 +191,7 @@ class _DesktopSettingExperiencePageState
   // ---------------------------------------------------------------------------
 
   Widget _buildDetail(ExperienceEntity experience) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final archived = _isArchived(experience);
     final header = Row(
       children: [

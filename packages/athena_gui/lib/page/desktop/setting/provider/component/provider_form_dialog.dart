@@ -5,7 +5,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
 /// 新建 / 重命名 provider 的对话框：只问名字，密钥与地址在详情页填。

@@ -1,8 +1,8 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/press_scale.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 导航图标按钮使用中性色块 + 描边，避免把次要导航也渲染成青瓷主操作。
 ///
@@ -16,7 +16,7 @@ class AthenaIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final iconWidget = Icon(
       icon,
       color: colors.textPrimary,
@@ -34,7 +34,7 @@ class AthenaIconButton extends StatelessWidget {
       alignment: Alignment.center,
       child: iconWidget,
     );
-    final targetSize = switch (Theme.of(context).platform) {
+    final targetSize = switch (context.athenaPlatform) {
       TargetPlatform.android ||
       TargetPlatform.iOS ||
       TargetPlatform.fuchsia => AthenaIconButtonSize.touchTarget,
@@ -72,7 +72,7 @@ class AthenaPrimaryButton extends StatefulWidget {
 class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final disabled = widget.onTap == null;
     final foreground = disabled ? colors.textSecondary : colors.textOnAccent;
     return AthenaHover(
@@ -139,7 +139,7 @@ class AthenaSecondaryButton extends StatefulWidget {
 class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final disabled = widget.onTap == null;
     final foreground = disabled ? colors.textSecondary : colors.textPrimary;
     return AthenaHover(
@@ -189,7 +189,7 @@ class AthenaTextButton extends StatefulWidget {
 class _AthenaTextButtonState extends State<AthenaTextButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return AthenaHover(
       onTap: widget.onTap,
       cursor: SystemMouseCursors.click,
@@ -250,7 +250,7 @@ class AthenaGhostButton extends StatefulWidget {
 class _AthenaGhostButtonState extends State<AthenaGhostButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 禁用态不给可操作反馈：填充、缩放、手型光标一起关掉
     final enabled = widget.onTap != null;
     return AthenaHover(
@@ -298,7 +298,7 @@ class AthenaGhostIconButton extends StatefulWidget {
 class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final icon = Icon(
       widget.icon,
       color: colors.textRowLabel,

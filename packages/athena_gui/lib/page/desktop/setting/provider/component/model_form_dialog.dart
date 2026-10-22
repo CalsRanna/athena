@@ -2,7 +2,6 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/util/model_form_util.dart';
@@ -10,8 +9,9 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/checkbox.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 新建 / 编辑模型的对话框。
 ///
@@ -165,7 +165,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   }
 
   Widget _buildCapabilities(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final labelStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
     final reasoning = AthenaCheckboxGroup(
       checkbox: AthenaCheckbox(

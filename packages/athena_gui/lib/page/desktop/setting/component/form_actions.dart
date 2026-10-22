@@ -1,5 +1,5 @@
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 /// 表单对话框底部的 Cancel / Confirm。
 class DesktopSettingFormActions extends StatelessWidget {

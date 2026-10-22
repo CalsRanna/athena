@@ -1,20 +1,23 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 
 void main() {
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode 文字按钮前景和底色在 150ms 内渐变，移开还原', (tester) async {
       final theme = buildAthenaThemeData(mode);
-      final colors = theme.extension<AthenaColors>()!;
+      final colors = colorsOf(mode);
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: AthenaTextButton(text: 'Action', onTap: () {}),
@@ -71,11 +74,12 @@ void main() {
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode ghost 按钮 hover 填充前景色 5%，移开还原', (tester) async {
       final theme = buildAthenaThemeData(mode);
-      final colors = theme.extension<AthenaColors>()!;
+      final colors = colorsOf(mode);
       var taps = 0;
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: AthenaGhostButton(
@@ -131,6 +135,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: const Scaffold(
           body: Center(child: AthenaGhostButton(child: Text('Disabled'))),
         ),
@@ -168,6 +173,7 @@ void main() {
           theme: buildAthenaThemeData(
             AthenaColorMode.light,
           ).copyWith(platform: platform),
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: Row(

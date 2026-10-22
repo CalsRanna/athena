@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话空态：当前角色的名称、说明与标签，桌面与移动共用同一版式。
 class SentinelPlaceholder extends StatelessWidget {
@@ -15,7 +15,7 @@ class SentinelPlaceholder extends StatelessWidget {
     final sentinel = this.sentinel;
     if (sentinel == null) return const SizedBox.shrink();
 
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final nameTextStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
     );
@@ -63,7 +63,7 @@ class _TagWrap extends StatelessWidget {
   }
 
   Widget _buildTile(BuildContext context, String tag) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.label.copyWith(
       color: colors.textSecondary,
     );

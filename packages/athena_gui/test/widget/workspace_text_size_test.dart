@@ -15,7 +15,6 @@ import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -31,6 +30,8 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -354,6 +355,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAthenaThemeData(AthenaColorMode.light),
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: MediaQuery(
             data: const MediaQueryData(textScaler: systemScaler),
             child: Scaffold(

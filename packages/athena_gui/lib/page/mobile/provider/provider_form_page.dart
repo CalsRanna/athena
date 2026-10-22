@@ -4,7 +4,6 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/component/api_format_label.dart';
 import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
@@ -19,10 +18,11 @@ import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileProviderFormPage extends StatefulWidget {
@@ -43,7 +43,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
@@ -291,7 +291,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Widget _buildTip(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );

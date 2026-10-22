@@ -1,9 +1,9 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置面板左栏：搜索框 + 分组标题 + 图标行。
 ///
@@ -17,7 +17,7 @@ class AthenaSettingsNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final decoration = BoxDecoration(
       color: colors.surfacePanel,
       border: Border(right: BorderSide(color: colors.neutralBorder)),
@@ -76,7 +76,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final focused = focusNode.hasFocus;
     final decoration = BoxDecoration(
       color: colors.surfaceMobile,
@@ -152,7 +152,7 @@ class AthenaSettingsNavGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
     final label = Padding(
       padding: const EdgeInsets.only(left: 10),
@@ -205,7 +205,7 @@ class AthenaSettingsNavItem extends StatefulWidget {
 class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final contentColor = widget.active ? colors.accent : colors.textRowLabel;
     final textStyle = AthenaTextStyle.row.copyWith(
       color: contentColor,

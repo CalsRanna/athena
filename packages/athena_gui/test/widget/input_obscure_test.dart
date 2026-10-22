@@ -1,15 +1,17 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 密钥类字段的遮蔽行为。这条路径曾经出过问题：移动端的 Brave API Key
 /// 没传 `obscureText`，密钥明文显示在页面上（桌面端同一字段是遮住的）。
 void main() {
   Widget host(Widget child) => MaterialApp(
     theme: buildAthenaThemeData(AthenaColorMode.light),
+    builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );
 

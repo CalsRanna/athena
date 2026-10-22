@@ -1,6 +1,6 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 开关：胶囊轨道（34×18）+ 实心圆滑块，尺寸紧凑。
 ///
@@ -19,7 +19,7 @@ class AthenaSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final outerDecoration = BoxDecoration(
       color: value ? colors.accent : colors.switchTrackOff,
       borderRadius: BorderRadius.circular(AthenaRadius.pill),
@@ -45,7 +45,7 @@ class AthenaSwitch extends StatelessWidget {
       width: _trackWidth,
       child: knob,
     );
-    final mobile = switch (Theme.of(context).platform) {
+    final mobile = switch (context.athenaPlatform) {
       TargetPlatform.android || TargetPlatform.iOS => true,
       _ => false,
     };

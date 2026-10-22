@@ -1,11 +1,12 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
@@ -18,6 +19,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAthenaThemeData(mode).copyWith(platform: platform),
+            builder: (context, child) => AthenaTestScope(child: child!),
             home: Builder(
               builder: (context) => Scaffold(
                 body: TextButton(

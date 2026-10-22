@@ -1,8 +1,8 @@
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileEditMessageDialog extends StatefulWidget {
   final MessageEntity message;
@@ -25,7 +25,7 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final barrier = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => AthenaDialog.dismiss(),

@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import '../../../../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   late Directory tempRoot;
@@ -79,6 +81,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAthenaThemeData(mode),
+            builder: (context, child) => AthenaTestScope(child: child!),
             home: const AthenaSettingsPanel(
               nav: SizedBox(width: AthenaSettings.navWidth),
               content: DesktopSettingProviderPage(),

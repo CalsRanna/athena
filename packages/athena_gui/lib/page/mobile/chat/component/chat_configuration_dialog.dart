@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileChatConfigurationDialog extends StatefulWidget {
   final ChatEntity? chat;
@@ -71,7 +71,7 @@ class _MobileConfigurationDialogState
 
   Widget _buildTemperatureSlider() {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       return Slider(
         activeColor: colors.textPrimary,
         inactiveColor: colors.borderStrong,

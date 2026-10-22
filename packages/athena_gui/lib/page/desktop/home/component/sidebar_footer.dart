@@ -1,12 +1,12 @@
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 侧栏底部常驻页脚：一整行可点的应用标识，点击在行的上方弹出菜单。
 ///
@@ -34,7 +34,7 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       decoration: BoxDecoration(
         // 外壳分隔线（页脚上边）：用比 border 轻一档的 borderChrome
@@ -100,7 +100,7 @@ class _FooterTile extends StatefulWidget {
 class _FooterTileState extends State<_FooterTile> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final mark = ClipRRect(
       borderRadius: BorderRadius.circular(AthenaRadius.pill),
       child: Image.asset(
@@ -164,7 +164,7 @@ class _FooterMenuHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
     // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
     final nameStyle = AthenaTextStyle.row.copyWith(

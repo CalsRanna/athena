@@ -1,6 +1,5 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -10,9 +9,10 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Data：数据目录、存储清理与重置。
 @RoutePage()
@@ -37,7 +37,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final dataDirectory = GetIt.instance<FileStorage>().root.path;
     return AthenaSettingsPane(
       children: [

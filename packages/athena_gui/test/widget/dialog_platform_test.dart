@@ -4,13 +4,14 @@ import 'dart:io';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// `AthenaDialog` 的平台分派走 `ThemeData.platform`，两端分支都要能在测试里
 /// 走通。这条路径原先读 `PlatformUtil`（`dart:io` 的 `Platform`），测试里
@@ -58,6 +59,7 @@ void main() {
         theme: buildAthenaThemeData(
           AthenaColorMode.light,
         ).copyWith(platform: platform),
+        builder: (context, child) => AthenaTestScope(child: child!),
         routerConfig: router.config(),
         scaffoldMessengerKey: scaffoldMessengerKey,
       ),

@@ -10,7 +10,6 @@ import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
 import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/gestures.dart';
@@ -18,6 +17,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 工作区里轮次条的两条硬要求（都在 `DesktopMessageList` 这一层成立，
 /// 单测 `TurnIndicator` 覆盖不到）：
@@ -90,6 +91,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageList(controller: null, onRewind: (_) {}),
         ),

@@ -1,7 +1,7 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面左侧栏/列表行：整行 hover 底色 + 选中行提亮，圆角 [AthenaRadius.row]，
 /// 没有渐变边框。
@@ -38,7 +38,7 @@ class DesktopMenuTile extends StatefulWidget {
 class _DesktopMenuTileState extends State<DesktopMenuTile> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // hover 只改底色，文字不动；选中行才使用青瓷强调。
     final contentColor = widget.active ? colors.accent : colors.textRowLabel;
     // 列表行与输入框、菜单统一采用 14 / 22 的常规 UI 档。

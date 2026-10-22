@@ -2,8 +2,9 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 步骤类卡片（工具 / 推理 / 压缩 / 步骤组）共用的视觉原语。
 ///
@@ -51,7 +52,7 @@ class StepHeader extends StatefulWidget {
 class _StepHeaderState extends State<StepHeader> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final interactive = widget.onTap != null;
     // 不可点的头不接 hover：光标已是普通箭头，再提亮就成了假的可点信号。
     return AthenaHover(
@@ -127,7 +128,7 @@ class StepResultBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final isError = text.startsWith('Error:');
     return GestureDetector(
       onTap: onTap,
@@ -223,7 +224,7 @@ class _StepHeaderShimmerState extends State<StepHeaderShimmer>
   @override
   Widget build(BuildContext context) {
     if (!widget.active || _animationsDisabled) return widget.child;
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final (:base, :highlight) = StepHeaderShimmer.colorsFor(colors);
 
     return AnimatedBuilder(

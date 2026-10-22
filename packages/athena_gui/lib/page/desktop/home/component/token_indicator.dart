@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
@@ -9,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 输入框工具栏最右的上下文占用指示器。
 ///
@@ -59,7 +59,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
   }
 
   Widget _buildRing(BuildContext context, _ContextStats stats) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final ring = SizedBox.square(
       dimension: 12,
       child: CircularProgressIndicator(
@@ -165,7 +165,7 @@ class _ContextDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
     // 缓存命中用全站唯一的强调色；未命中沿用圆环色，接近上限时同样转警示
     final cachedColor = colors.accent;
@@ -257,7 +257,7 @@ class _LegendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final labelStyle = AthenaTextStyle.body.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,

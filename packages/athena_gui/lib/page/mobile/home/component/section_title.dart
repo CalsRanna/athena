@@ -1,8 +1,8 @@
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class SectionTitle extends StatelessWidget {
   final void Function()? onTap;
@@ -11,7 +11,7 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 分区标题用 title，不用 hero：hero 是空态欢迎语那一档，首页三个分区
     // 若都按 hero 排，层级会比桌面设置分区更响。
     final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);

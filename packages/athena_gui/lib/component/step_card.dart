@@ -4,11 +4,11 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/util/compaction_step_formatter.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/component/step_primitives.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 一段步骤序列的卡片：单步平铺，≥ 2 步收纳为默认折叠的组。
 ///
@@ -343,7 +343,7 @@ class _ReasoningBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,

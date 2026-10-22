@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_gui/page/mobile/home/component/chat_tile.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class RecentChatListView extends StatelessWidget {
   final List<ChatHistoryEntity> chatHistories;
@@ -17,7 +17,7 @@ class RecentChatListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (chatHistories.isEmpty) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Text(

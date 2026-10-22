@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -89,11 +90,13 @@ void main() {
     final content = find.byType(DesktopSettingAppearancePage);
 
     for (final (mode, colors) in [
-      (ThemeMode.light, AthenaColors.light),
-      (ThemeMode.dark, AthenaColors.dark),
-      (ThemeMode.light, AthenaColors.light),
+      (AthenaThemeMode.light, AthenaColors.light),
+      (AthenaThemeMode.dark, AthenaColors.dark),
+      (AthenaThemeMode.light, AthenaColors.light),
     ]) {
-      await tester.tap(find.text(mode == ThemeMode.dark ? 'Dark' : 'Light'));
+      await tester.tap(
+        find.text(mode == AthenaThemeMode.dark ? 'Dark' : 'Light'),
+      );
       await settle(tester);
       expect(GetIt.instance<SettingViewModel>().themeMode.value, mode);
       expect(
@@ -115,12 +118,12 @@ void main() {
       );
       expectTextColor(
         tester,
-        mode == ThemeMode.dark ? 'Dark' : 'Light',
+        mode == AthenaThemeMode.dark ? 'Dark' : 'Light',
         colors.textPrimary,
       );
       expectTextColor(
         tester,
-        mode == ThemeMode.dark ? 'Light' : 'Dark',
+        mode == AthenaThemeMode.dark ? 'Light' : 'Dark',
         colors.textWeak,
       );
       expect(

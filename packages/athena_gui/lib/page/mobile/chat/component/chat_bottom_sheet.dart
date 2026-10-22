@@ -17,7 +17,7 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/mobile/chat/component/reasoning_effort_dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';

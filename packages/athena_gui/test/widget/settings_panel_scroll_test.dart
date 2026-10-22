@@ -1,10 +1,11 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   for (final withHeader in [true, false]) {
@@ -20,6 +21,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: buildAthenaThemeData(AthenaColorMode.light),
+            builder: (context, child) => AthenaTestScope(child: child!),
             home: AthenaSettingsPanel(
               onClose: () => closed = true,
               nav: const SizedBox(width: AthenaSettings.navWidth),

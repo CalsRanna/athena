@@ -14,7 +14,6 @@ import 'package:athena_gui/page/desktop/home/component/message_list.dart';
 import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_selector.dart';
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -27,9 +26,10 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class DesktopHomePage extends StatefulWidget {
@@ -330,7 +330,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     // 顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
     // 右侧是一组视图操作。这里保留标题那一部分（Athena 没有导航与右面板）。
     //
@@ -356,7 +356,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildLeftBar(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final chatListView = DesktopChatListView(
       onCreateChat: startNewChat,
       onAutoRenamed: chatViewModel.renameChat,

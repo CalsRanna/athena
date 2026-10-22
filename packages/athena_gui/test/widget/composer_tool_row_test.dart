@@ -7,13 +7,14 @@ import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// composer 下方那一行控件（审批模式、图片加号、模型名、推理强度、token 圆环）
 /// 的 hover 底必须长得一样：都是 28 高的圆角小方块，且都在文字行盒外面还留一圈
@@ -74,6 +75,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageInput(controller: controller, focusNode: focus),
         ),
@@ -170,6 +172,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageInput(controller: controller, focusNode: focus),
         ),

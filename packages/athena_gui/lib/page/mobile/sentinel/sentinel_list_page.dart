@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -10,12 +9,13 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileSentinelListPage extends StatelessWidget {
@@ -24,7 +24,7 @@ class MobileSentinelListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       final sentinelViewModel = GetIt.instance<SentinelViewModel>();
       final sentinels = sentinelViewModel.sentinels.value;
       return AthenaScaffold(
@@ -99,7 +99,7 @@ class MobileSentinelListPage extends StatelessWidget {
             'Add one with the button below.',
       );
     }
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(

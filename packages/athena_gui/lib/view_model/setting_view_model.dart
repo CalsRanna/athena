@@ -11,8 +11,8 @@ import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/retry.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
 import 'package:signals/signals.dart';
 
 /// 应用设置的 ViewModel。
@@ -66,7 +66,7 @@ class SettingViewModel {
 
   final braveApiKey = signal('');
   // 主题模式：默认浅色，可在设置中切换深色/浅色/跟随系统
-  final themeMode = signal<ThemeMode>(ThemeMode.light);
+  final themeMode = signal<AthenaThemeMode>(AthenaThemeMode.light);
 
   /// 会话消息字号档位（设置 → General → Appearance → Text size）。
   final textSize = signal<AthenaTextSize>(AthenaTextSize.medium);
@@ -152,11 +152,12 @@ class SettingViewModel {
   /// 从设置文件加载主题模式（启动时调用）。
   Future<void> initThemeMode() async {
     final saved = await _settings.getString(_keyThemeMode);
-    themeMode.value = ThemeMode.values.asNameMap()[saved] ?? ThemeMode.light;
+    themeMode.value =
+        AthenaThemeMode.values.asNameMap()[saved] ?? AthenaThemeMode.light;
   }
 
   /// 切换主题模式并持久化。
-  Future<void> setThemeMode(ThemeMode mode) async {
+  Future<void> setThemeMode(AthenaThemeMode mode) async {
     await _settings.setString(_keyThemeMode, mode.name);
     themeMode.value = mode;
   }

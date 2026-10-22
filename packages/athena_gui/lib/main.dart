@@ -9,6 +9,7 @@ import 'package:athena_gui/router/router.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_scroll_behavior.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
@@ -16,6 +17,7 @@ import 'package:athena_gui/util/single_instance_util.dart';
 import 'package:athena_gui/util/system_tray_util.dart';
 import 'package:athena_gui/util/window_util.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -109,15 +111,27 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
             ? SystemUiOverlayStyle.dark
             : SystemUiOverlayStyle.light,
       );
-      return MaterialApp.router(
-        debugShowCheckedModeBanner: false,
-        routerConfig: router.config(),
-        scaffoldMessengerKey: scaffoldMessengerKey,
-        theme: buildAthenaThemeData(AthenaColorMode.light),
-        darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
-        themeMode: themeMode,
-        // 桌面端关闭滚动回弹（macOS 默认是 BouncingScrollPhysics）
-        scrollBehavior: const AthenaScrollBehavior(),
+      // AthenaTheme 挂在 MaterialApp 之上：导航器与所有页面都在它的子树里，
+      // 页面通过 `context.athenaColors` 取色。MaterialApp 只负责路由、本地化
+      // 与仍未替换的 Material 组件的默认外观。
+      return AthenaTheme(
+        colors: colors,
+        colorMode: resolved,
+        platform: defaultTargetPlatform,
+        child: MaterialApp.router(
+          debugShowCheckedModeBanner: false,
+          routerConfig: router.config(),
+          scaffoldMessengerKey: scaffoldMessengerKey,
+          theme: buildAthenaThemeData(AthenaColorMode.light),
+          darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
+          themeMode: switch (themeMode) {
+            AthenaThemeMode.light => ThemeMode.light,
+            AthenaThemeMode.dark => ThemeMode.dark,
+            AthenaThemeMode.system => ThemeMode.system,
+          },
+          // 桌面端关闭滚动回弹（macOS 默认是 BouncingScrollPhysics）
+          scrollBehavior: const AthenaScrollBehavior(),
+        ),
       );
     });
   }

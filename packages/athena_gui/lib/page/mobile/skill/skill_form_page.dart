@@ -7,7 +7,8 @@ import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
 /// Skill 新建/编辑表单。编辑时名称不可修改（Skill 名即目录名）。

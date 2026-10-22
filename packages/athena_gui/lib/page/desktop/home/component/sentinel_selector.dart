@@ -1,12 +1,12 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// composer 上下文条里的 Sentinel 选择菜单：与模型选择菜单同一套 UI。
 ///
@@ -21,7 +21,7 @@ class DesktopSentinelMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final sentinels = GetIt.instance<SentinelViewModel>().sentinels.value;
     final current = GetIt.instance<ChatViewModel>().currentSentinel.value;
     // Direct chat 与未保存的默认角色都没有 ID，按占位实体区分。

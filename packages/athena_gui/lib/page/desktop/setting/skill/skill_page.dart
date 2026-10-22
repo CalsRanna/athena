@@ -1,6 +1,5 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
@@ -11,11 +10,12 @@ import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Skills：单列列表 → 点进一个技能的编辑页。
 ///
@@ -205,7 +205,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   // ---------------------------------------------------------------------------
 
   Widget _buildEditor(Skill skill) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final readOnly = skill.isBuiltin;
     final header = Row(
       children: [

@@ -6,6 +6,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话内提问卡片（非模态）：渲染在所属对话的消息列表中。
 ///
@@ -140,8 +141,8 @@ class _ElicitCardState extends State<ElicitCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final platform = Theme.of(context).platform;
+    final colors = context.athenaColors;
+    final platform = context.athenaPlatform;
     final mobile =
         platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 

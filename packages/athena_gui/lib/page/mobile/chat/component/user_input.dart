@@ -1,10 +1,10 @@
 import 'package:athena_gui/page/mobile/chat/component/send_button.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class UserInput extends StatefulWidget {
   final TextEditingController controller;
@@ -55,7 +55,7 @@ class _UserInputState extends State<UserInput> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final hintTextStyle = AthenaTextStyle.body.copyWith(color: colors.textWeak);
     final inputDecoration = InputDecoration.collapsed(
       hintText: 'Send a message',

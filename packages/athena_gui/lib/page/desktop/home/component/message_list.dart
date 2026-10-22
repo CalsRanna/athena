@@ -19,7 +19,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:athena_gui/component/elicit_card.dart';
 import 'package:athena_gui/component/permission_card.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';

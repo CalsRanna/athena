@@ -1,5 +1,4 @@
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -8,9 +7,10 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 经验详情页：完整 lesson / context / tags / 归属与状态，
 /// 提供编辑、归档/恢复与删除。
@@ -37,7 +37,7 @@ class _MobileExperienceDetailPageState
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final colors = context.athenaColors;
       var experience = viewModel.experiences.value
           .where((e) => e.id == widget.experience.id)
           .firstOrNull;
@@ -92,7 +92,7 @@ class _MobileExperienceDetailPageState
   }
 
   Widget _label(BuildContext context, String text) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Text(
       text,
       style: AthenaTextStyle.label.copyWith(color: colors.textWeak),
@@ -100,7 +100,7 @@ class _MobileExperienceDetailPageState
   }
 
   Widget _metaRow(BuildContext context, String label, String value) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Row(

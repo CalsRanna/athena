@@ -1,11 +1,12 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 文字在行盒里的垂直位置。
 ///
@@ -39,6 +40,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAthenaThemeData(AthenaColorMode.light),
+          builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
               child: label == 'AthenaPrimaryButton'
@@ -65,6 +67,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: const Scaffold(
           body: Center(child: AthenaTag(text: 'TAG')),
         ),
@@ -80,6 +83,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Column(
             children: [
@@ -115,6 +119,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Column(
             children: [

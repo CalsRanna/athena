@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
@@ -17,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileProviderListPage extends StatefulWidget {
@@ -151,7 +151,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     List<ProviderEntity> providers,
     List<ModelEntity> models,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -181,7 +181,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   }
 
   Widget _buildSeparator(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -200,7 +200,7 @@ class _ProviderListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleTextStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
     );

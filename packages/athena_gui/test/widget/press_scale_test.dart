@@ -1,12 +1,14 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   Widget host(Widget child) => MaterialApp(
     theme: buildAthenaThemeData(AthenaColorMode.light),
+    builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );
 

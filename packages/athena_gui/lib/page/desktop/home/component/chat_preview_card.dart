@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 悬浮预览卡：鼠标停在轮次条上时，在条右侧弹出的一张浮层（唯一使用处见
 /// `turn_indicator.dart`）。
@@ -33,7 +33,7 @@ class ChatPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return Container(
       width: width,
       decoration: BoxDecoration(
@@ -42,7 +42,7 @@ class ChatPreviewCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         boxShadow: AthenaShadow.overlay(colors.shadow),
       ),
-      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+      foregroundDecoration: context.athenaBrightness == Brightness.dark
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(AthenaRadius.container),
               border: Border.all(color: colors.border),

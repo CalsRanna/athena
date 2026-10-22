@@ -1,9 +1,10 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../support/athena_test_scope.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 桌面对话框的按钮行。抽这个组件是为了收掉三处各自拼的 `Row`
 /// （确认、输入、设置表单），并让移动端 sheet 不再手搓按钮 ——
@@ -11,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget host(Widget child) => MaterialApp(
     theme: buildAthenaThemeData(AthenaColorMode.light),
+    builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );
 

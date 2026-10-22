@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
@@ -35,14 +36,20 @@ class _DesktopSettingAppearancePageState
               description:
                   'System follows the appearance selected on this device.',
               control: Watch((context) {
-                return AthenaSettingsSegmented<ThemeMode>(
+                return AthenaSettingsSegmented<AthenaThemeMode>(
                   selected: viewModel.themeMode.value,
                   onChanged: viewModel.setThemeMode,
                   options: const [
-                    AthenaSegmentOption(value: ThemeMode.light, label: 'Light'),
-                    AthenaSegmentOption(value: ThemeMode.dark, label: 'Dark'),
                     AthenaSegmentOption(
-                      value: ThemeMode.system,
+                      value: AthenaThemeMode.light,
+                      label: 'Light',
+                    ),
+                    AthenaSegmentOption(
+                      value: AthenaThemeMode.dark,
+                      label: 'Dark',
+                    ),
+                    AthenaSegmentOption(
+                      value: AthenaThemeMode.system,
                       label: 'System',
                     ),
                   ],

@@ -1,12 +1,12 @@
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置里「选一个模型」的下拉菜单：锚在 select 控件下方、与它同宽，
 /// 按 provider 分组、当前值行尾打钩；条目多时在面板内滚。
@@ -99,7 +99,7 @@ Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
     if (model.vision) LucideIcons.eye,
   ];
   if (icons.isEmpty) return null;
-  final colors = Theme.of(context).extension<AthenaColors>()!;
+  final colors = context.athenaColors;
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [

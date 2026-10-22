@@ -1,14 +1,14 @@
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/setting/component/nav.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置分区。
 ///
@@ -206,7 +206,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildNoResult(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     return Padding(
       padding: const EdgeInsets.only(

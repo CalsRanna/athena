@@ -8,6 +8,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 enum AthenaMessageType { info, success, warning, error }
 
@@ -17,7 +18,7 @@ abstract final class AthenaDialog {
 
   /// 静态方法取色：通过全局导航 context 获取当前主题扩展。
   static AthenaColors get _colors =>
-      Theme.of(router.navigatorKey.currentContext!).extension<AthenaColors>()!;
+      router.navigatorKey.currentContext!.athenaColors;
 
   /// 移动端判定走 `ThemeData.platform` 而不是 `PlatformUtil`。
   ///
@@ -28,7 +29,7 @@ abstract final class AthenaDialog {
   /// 两端才都能断言。生产环境不显式设置 `ThemeData.platform`，
   /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
   static bool _isMobile(BuildContext context) {
-    final platform = Theme.of(context).platform;
+    final platform = context.athenaPlatform;
     return platform == TargetPlatform.android || platform == TargetPlatform.iOS;
   }
 
@@ -199,7 +200,7 @@ class AthenaDesktopDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final header = title == null
         ? null
         : Row(
@@ -231,7 +232,7 @@ class AthenaDesktopDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(AthenaRadius.panel),
           boxShadow: AthenaShadow.modal(colors.shadow),
         ),
-        foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+        foregroundDecoration: context.athenaBrightness == Brightness.dark
             ? BoxDecoration(
                 borderRadius: BorderRadius.circular(AthenaRadius.panel),
                 border: Border.all(color: colors.border),
@@ -317,7 +318,7 @@ class _ConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     final children = [
       Text(text, style: textStyle),
@@ -354,7 +355,7 @@ class _DesktopConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final messageStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
     );
@@ -450,7 +451,7 @@ class _InputDialogState extends State<_InputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final titleStyle = AthenaTextStyle.title.copyWith(
       color: colors.textPrimary,
     );
@@ -487,7 +488,7 @@ class _DesktopLoadingDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final indicator = SizedBox(
       height: 16,
       width: 16,
@@ -516,7 +517,7 @@ class _DesktopLoadingDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         boxShadow: AthenaShadow.overlay(colors.shadow),
       ),
-      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+      foregroundDecoration: context.athenaBrightness == Brightness.dark
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(AthenaRadius.container),
               border: Border.all(color: colors.border),
@@ -542,7 +543,7 @@ class _DesktopMessageOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final style = _AthenaMessageVisualStyle.fromType(type, colors);
     final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textPrimary,

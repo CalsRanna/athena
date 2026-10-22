@@ -8,13 +8,13 @@
 /// 外壳与分区见 `panel.dart`，行内控件见 `control.dart`。
 library;
 
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/material.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置行：左侧标签（+ 徽标 + 说明 + 错误），右侧控件。
 ///
@@ -117,7 +117,7 @@ class AthenaSettingsListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return _InteractiveRowShell(
       selected: selected,
       onTap: onTap,
@@ -171,7 +171,7 @@ class AthenaSettingsLinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return _InteractiveRowShell(
       selected: false,
       onTap: onTap,
@@ -226,7 +226,7 @@ class _SettingsRowLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final hasDescription = description != null;
     final labelStyle = AthenaTextStyle.row.copyWith(
       color: dimmed ? colors.textSecondary : colors.textPrimary,
@@ -290,7 +290,7 @@ class _InteractiveRowShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final interactive = onTap != null || onSecondaryTap != null;
     if (!interactive && !selected) return child;
     return AthenaHover(
@@ -322,7 +322,7 @@ class AthenaSettingsParagraph extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
     return Padding(
       padding: const EdgeInsets.symmetric(

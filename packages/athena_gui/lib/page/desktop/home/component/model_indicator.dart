@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// composer 右下的当前模型名。只负责显示：点击由外层的 `AthenaGhostButton` 接管，
 /// 它拿得到整块（含 hover 填充）的矩形，模型菜单要锚在那上面。
@@ -34,7 +34,7 @@ class _ModelIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 底部那一行只用**纯文字**（如 `Fable 5.1`），没有图标、不带 provider。
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 240),
       child: Text(

@@ -1,6 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话行的状态点。静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
 /// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
@@ -146,7 +147,7 @@ class _StatusDotState extends State<StatusDot>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final colors = context.athenaColors;
     if (widget.streaming) {
       if (_animationsDisabled) return _dot(colors.accent);
       return AnimatedBuilder(
