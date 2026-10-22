@@ -86,161 +86,163 @@ class _MessageListViewState extends State<MessageListView> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final textSize = GetIt.instance<SettingViewModel>().textSize.value;
-      final sentinel = widget.chat.hasSentinel
-          ? sentinelViewModel.sentinels.value
-                .where((s) => s.id == widget.chat.sentinelId)
-                .firstOrNull
-          : SentinelViewModel.directChatSentinel;
-      if (sentinel == null) return const SizedBox();
+    return SignalBuilder(
+      builder: (context) {
+        final textSize = GetIt.instance<SettingViewModel>().textSize.value;
+        final sentinel = widget.chat.hasSentinel
+            ? sentinelViewModel.sentinels.value
+                  .where((s) => s.id == widget.chat.sentinelId)
+                  .firstOrNull
+            : SentinelViewModel.directChatSentinel;
+        if (sentinel == null) return const SizedBox();
 
-      final messages = viewModel.messages.value
-          .where((m) => m.chatId == widget.chat.id)
-          .toList();
-      final loading = viewModel.isCurrentChatStreaming.value;
-      controller.isWorking = loading;
-      if (_displayedChatId != widget.chat.id) {
-        _displayedChatId = widget.chat.id;
-        _showJumpToBottom.value = false;
-        controller.followBottom();
-      } else {
-        controller.maintainBottom();
-      }
-      // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
-      final approvals = viewModel.pendingApprovals.value
-          .where((r) => r.chatId == widget.chat.id)
-          .toList();
+        final messages = viewModel.messages.value
+            .where((m) => m.chatId == widget.chat.id)
+            .toList();
+        final loading = viewModel.isCurrentChatStreaming.value;
+        controller.isWorking = loading;
+        if (_displayedChatId != widget.chat.id) {
+          _displayedChatId = widget.chat.id;
+          _showJumpToBottom.value = false;
+          controller.followBottom();
+        } else {
+          controller.maintainBottom();
+        }
+        // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
+        final approvals = viewModel.pendingApprovals.value
+            .where((r) => r.chatId == widget.chat.id)
+            .toList();
 
-      // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
-      final elicits = viewModel.pendingElicits.value
-          .where((r) => r.chatId == widget.chat.id)
-          .toList();
+        // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
+        final elicits = viewModel.pendingElicits.value
+            .where((r) => r.chatId == widget.chat.id)
+            .toList();
 
-      final loadingHistory =
-          viewModel.isLoadingMessages.value &&
-          viewModel.currentChat.value?.id == widget.chat.id;
+        final loadingHistory =
+            viewModel.isLoadingMessages.value &&
+            viewModel.currentChat.value?.id == widget.chat.id;
 
-      // 历史加载期间也保留同一个滚动视图，只切换 sliver 内容：换成另一个
-      // 根控件会让 ScrollPosition 从 0 重建，加载完成后先闪一下顶部再被
-      // 贴底校正拉回底部（见 WIDGETS.md「消息列表结构」）。
-      final list = NotificationListener<ScrollNotification>(
-        onNotification: _handleScrollNotification,
-        child: NotificationListener<ScrollMetricsNotification>(
-          onNotification: (notification) {
-            if (notification.depth == 0) {
-              _updateJumpToBottom(notification.metrics);
-            }
-            return controller.handleMetricsNotification(notification);
-          },
-          child: CustomScrollView(
-            controller: controller,
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            slivers: [
-              if (loadingHistory)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (messages.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: SentinelPlaceholder(sentinel: sentinel),
-                )
-              else
-                AthenaWorkspaceTextSize(
-                  size: textSize,
-                  child: MessageCardListSliver(
-                    messages: messages,
-                    loading: loading,
-                    sentinel: sentinel,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    onLongPress: openBottomSheet,
-                    onRewind: widget.onRewind,
+        // 历史加载期间也保留同一个滚动视图，只切换 sliver 内容：换成另一个
+        // 根控件会让 ScrollPosition 从 0 重建，加载完成后先闪一下顶部再被
+        // 贴底校正拉回底部（见 WIDGETS.md「消息列表结构」）。
+        final list = NotificationListener<ScrollNotification>(
+          onNotification: _handleScrollNotification,
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (notification) {
+              if (notification.depth == 0) {
+                _updateJumpToBottom(notification.metrics);
+              }
+              return controller.handleMetricsNotification(notification);
+            },
+            child: CustomScrollView(
+              controller: controller,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              slivers: [
+                if (loadingHistory)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (messages.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: SentinelPlaceholder(sentinel: sentinel),
+                  )
+                else
+                  AthenaWorkspaceTextSize(
+                    size: textSize,
+                    child: MessageCardListSliver(
+                      messages: messages,
+                      loading: loading,
+                      sentinel: sentinel,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      onLongPress: openBottomSheet,
+                      onRewind: widget.onRewind,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+        // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
+        // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
+        // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
+        return LayoutBuilder(
+          builder: (context, constraints) => Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(child: list),
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _showJumpToBottom,
+                        builder: (context, show, _) {
+                          if (!show) return const SizedBox.shrink();
+                          return Tooltip(
+                            message: 'Scroll to bottom',
+                            child: AthenaIconButton(
+                              icon: LucideIcons.arrowDown,
+                              onTap: () {
+                                controller.followBottom();
+                                _showJumpToBottom.value = false;
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
+              // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
+              const SizedBox(height: 12),
+              for (final (index, request) in approvals.indexed)
+                Padding(
+                  // 最后一张卡片无需底部间距：输入框区域自带 16 外边距
+                  // （chat.dart _buildInput），与无卡片时消息→输入框的间距一致
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    index == approvals.length - 1 && elicits.isEmpty ? 0 : 12,
+                  ),
+                  child: PermissionApprovalCard(
+                    key: ObjectKey(request),
+                    request: request,
+                    maxHeight:
+                        constraints.maxHeight * permissionCardMaxHeightFraction,
+                    onDecision: (approved) => viewModel.respondApproval(
+                      request,
+                      permissionDecisionOf(approved),
+                    ),
+                  ),
+                ),
+              for (final (index, request) in elicits.indexed)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    index == elicits.length - 1 ? 0 : 12,
+                  ),
+                  child: ElicitCard(
+                    key: ObjectKey(request),
+                    request: request,
+                    maxHeight:
+                        constraints.maxHeight * permissionCardMaxHeightFraction,
+                    onSubmit: (answers) =>
+                        viewModel.respondElicit(request, answers),
                   ),
                 ),
             ],
           ),
-        ),
-      );
-      // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
-      // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
-      // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
-      return LayoutBuilder(
-        builder: (context, constraints) => Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(child: list),
-                  Positioned(
-                    right: 16,
-                    bottom: 16,
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: _showJumpToBottom,
-                      builder: (context, show, _) {
-                        if (!show) return const SizedBox.shrink();
-                        return Tooltip(
-                          message: 'Scroll to bottom',
-                          child: AthenaIconButton(
-                            icon: LucideIcons.arrowDown,
-                            onTap: () {
-                              controller.followBottom();
-                              _showJumpToBottom.value = false;
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
-            // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
-            const SizedBox(height: 12),
-            for (final (index, request) in approvals.indexed)
-              Padding(
-                // 最后一张卡片无需底部间距：输入框区域自带 16 外边距
-                // （chat.dart _buildInput），与无卡片时消息→输入框的间距一致
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  index == approvals.length - 1 && elicits.isEmpty ? 0 : 12,
-                ),
-                child: PermissionApprovalCard(
-                  key: ObjectKey(request),
-                  request: request,
-                  maxHeight:
-                      constraints.maxHeight * permissionCardMaxHeightFraction,
-                  onDecision: (approved) => viewModel.respondApproval(
-                    request,
-                    permissionDecisionOf(approved),
-                  ),
-                ),
-              ),
-            for (final (index, request) in elicits.indexed)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  0,
-                  16,
-                  index == elicits.length - 1 ? 0 : 12,
-                ),
-                child: ElicitCard(
-                  key: ObjectKey(request),
-                  request: request,
-                  maxHeight:
-                      constraints.maxHeight * permissionCardMaxHeightFraction,
-                  onSubmit: (answers) =>
-                      viewModel.respondElicit(request, answers),
-                ),
-              ),
-          ],
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Future<void> destroyMessage(MessageEntity message) async {

@@ -33,7 +33,7 @@ class AthenaCheckboxGroup extends StatelessWidget {
     final children = [
       checkbox,
       if (trailing != null) const SizedBox(width: 12),
-      if (trailing != null) trailing!,
+      ?trailing,
     ];
     final mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,

@@ -75,12 +75,14 @@ class _DesktopSettingSentinelPageState
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final sentinels = viewModel.sentinels.value;
-      final open = sentinels.where((s) => s.id == openId).firstOrNull;
-      if (open == null) return _buildList(sentinels);
-      return _buildEditor(open);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final sentinels = viewModel.sentinels.value;
+        final open = sentinels.where((s) => s.id == openId).firstOrNull;
+        if (open == null) return _buildList(sentinels);
+        return _buildEditor(open);
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

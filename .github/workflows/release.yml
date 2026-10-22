@@ -43,7 +43,7 @@ jobs:
 
       - name: Generate code
         working-directory: packages/athena_gui
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Build macOS app
         working-directory: packages/athena_gui
@@ -87,7 +87,7 @@ jobs:
 
       - name: Generate code
         working-directory: packages/athena_gui
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Build Windows app
         working-directory: packages/athena_gui
@@ -120,7 +120,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgtk-3-dev \
-            libayatana-appindicator3-dev \
+            libx11-dev \
+            libxi-dev \
             libnotify-dev \
             ninja-build \
             pkg-config \
@@ -139,7 +140,7 @@ jobs:
 
       - name: Generate code
         working-directory: packages/athena_gui
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Build Linux app
         working-directory: packages/athena_gui

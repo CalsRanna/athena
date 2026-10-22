@@ -87,16 +87,21 @@ class MobileSettingPage extends StatelessWidget {
         title: 'App',
         description: 'Appearance, local data and app info.',
         children: [
-          Watch((context) {
-            final mode = GetIt.instance<SettingViewModel>().themeMode.value;
-            return MobileSettingTile(
-              leading: const Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
-              onTap: () => _showAppearanceSheet(context),
-              title: 'Appearance',
-              subtitle: 'Theme and message text size',
-              trailing: _themeModeLabel(mode),
-            );
-          }),
+          SignalBuilder(
+            builder: (context) {
+              final mode = GetIt.instance<SettingViewModel>().themeMode.value;
+              return MobileSettingTile(
+                leading: const Icon(
+                  LucideIcons.moon,
+                  size: AthenaIcon.largeSize,
+                ),
+                onTap: () => _showAppearanceSheet(context),
+                title: 'Appearance',
+                subtitle: 'Theme and message text size',
+                trailing: _themeModeLabel(mode),
+              );
+            },
+          ),
           MobileSettingTile(
             leading: const Icon(
               LucideIcons.database,

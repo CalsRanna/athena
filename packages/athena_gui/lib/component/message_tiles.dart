@@ -618,7 +618,7 @@ class MessageActionBar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (leading != null) leading!,
+              ?leading,
               if (onCopy != null) _CopyActionButton(onTap: onCopy!),
               if (onRewind != null)
                 _MessageActionButton(

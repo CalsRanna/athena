@@ -35,40 +35,44 @@ class _DesktopSettingAppearancePageState
               label: 'Theme',
               description:
                   'System follows the appearance selected on this device.',
-              control: Watch((context) {
-                return AthenaSettingsSegmented<AthenaThemeMode>(
-                  selected: viewModel.themeMode.value,
-                  onChanged: viewModel.setThemeMode,
-                  options: const [
-                    AthenaSegmentOption(
-                      value: AthenaThemeMode.light,
-                      label: 'Light',
-                    ),
-                    AthenaSegmentOption(
-                      value: AthenaThemeMode.dark,
-                      label: 'Dark',
-                    ),
-                    AthenaSegmentOption(
-                      value: AthenaThemeMode.system,
-                      label: 'System',
-                    ),
-                  ],
-                );
-              }),
+              control: SignalBuilder(
+                builder: (context) {
+                  return AthenaSettingsSegmented<AthenaThemeMode>(
+                    selected: viewModel.themeMode.value,
+                    onChanged: viewModel.setThemeMode,
+                    options: const [
+                      AthenaSegmentOption(
+                        value: AthenaThemeMode.light,
+                        label: 'Light',
+                      ),
+                      AthenaSegmentOption(
+                        value: AthenaThemeMode.dark,
+                        label: 'Dark',
+                      ),
+                      AthenaSegmentOption(
+                        value: AthenaThemeMode.system,
+                        label: 'System',
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
             AthenaSettingsRow(
               label: 'Text size',
               description: 'Applies to message text and code in conversations.',
-              control: Watch((context) {
-                return AthenaSettingsSegmented<AthenaTextSize>(
-                  selected: viewModel.textSize.value,
-                  onChanged: viewModel.setTextSize,
-                  options: [
-                    for (final option in AthenaTextSize.values)
-                      AthenaSegmentOption(value: option, label: option.label),
-                  ],
-                );
-              }),
+              control: SignalBuilder(
+                builder: (context) {
+                  return AthenaSettingsSegmented<AthenaTextSize>(
+                    selected: viewModel.textSize.value,
+                    onChanged: viewModel.setTextSize,
+                    options: [
+                      for (final option in AthenaTextSize.values)
+                        AthenaSegmentOption(value: option, label: option.label),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),

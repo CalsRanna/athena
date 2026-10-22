@@ -87,144 +87,146 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      // 信号一律在这里读取。LayoutBuilder 的 builder 在布局阶段执行，
-      // 不在 Watch 的依赖追踪范围内：在那里读信号不会订阅，审批/提问
-      // 列表的变化就不会触发重建，卡片只能搭消息流下一次更新的车才
-      // 出现或消失。
-      final messages = chatViewModel.messages.value;
-      final textSize = GetIt.instance<SettingViewModel>().textSize.value;
-      final loading = chatViewModel.isCurrentChatStreaming.value;
-      final loadingHistory = chatViewModel.isLoadingMessages.value;
-      final chatId = chatViewModel.currentChat.value?.id;
-      // 整段会话的轮次起点（整文件扫描，可能比首屏晚到）：读在 Watch 里才
-      // 订阅得到，扫完指示器随之重画。
-      final allTurnIds = chatViewModel.turnStartIds.value;
-      final sentinel = _displaySentinel();
-      // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
-      final approvals = chatViewModel.pendingApprovals.value
-          .where((r) => r.chatId == chatId)
-          .toList();
-      // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
-      final elicits = chatViewModel.pendingElicits.value
-          .where((r) => r.chatId == chatId)
-          .toList();
+    return SignalBuilder(
+      builder: (context) {
+        // 信号一律在这里读取。LayoutBuilder 的 builder 在布局阶段执行，
+        // 不在 SignalBuilder 的依赖追踪范围内：在那里读信号不会订阅，审批/提问
+        // 列表的变化就不会触发重建，卡片只能搭消息流下一次更新的车才
+        // 出现或消失。
+        final messages = chatViewModel.messages.value;
+        final textSize = GetIt.instance<SettingViewModel>().textSize.value;
+        final loading = chatViewModel.isCurrentChatStreaming.value;
+        final loadingHistory = chatViewModel.isLoadingMessages.value;
+        final chatId = chatViewModel.currentChat.value?.id;
+        // 整段会话的轮次起点（整文件扫描，可能比首屏晚到）：读在 SignalBuilder 里才
+        // 订阅得到，扫完指示器随之重画。
+        final allTurnIds = chatViewModel.turnStartIds.value;
+        final sentinel = _displaySentinel();
+        // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
+        final approvals = chatViewModel.pendingApprovals.value
+            .where((r) => r.chatId == chatId)
+            .toList();
+        // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
+        final elicits = chatViewModel.pendingElicits.value
+            .where((r) => r.chatId == chatId)
+            .toList();
 
-      final turns = buildChatTurns(messages);
-      // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
-      // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
-      // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
-      final totalTurns = allTurnIds.length;
-      final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
-      // 只给 hover 预览的回调现取用（见 [_turnAt]），**不进控件配置**——它每帧
-      // 都在变，进配置就会让轮次条跟着每帧重建、重绘
-      _windowTurns = turns;
-      _windowFirstTurnIndex = firstTurnIndex;
+        final turns = buildChatTurns(messages);
+        // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
+        // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
+        // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
+        final totalTurns = allTurnIds.length;
+        final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
+        // 只给 hover 预览的回调现取用（见 [_turnAt]），**不进控件配置**——它每帧
+        // 都在变，进配置就会让轮次条跟着每帧重建、重绘
+        _windowTurns = turns;
+        _windowFirstTurnIndex = firstTurnIndex;
 
-      widget.controller?.isWorking = loading;
-      if (_displayedChatId != chatId) {
-        _displayedChatId = chatId;
-        widget.controller?.followBottom();
-      } else {
-        widget.controller?.maintainBottom();
-      }
+        widget.controller?.isWorking = loading;
+        if (_displayedChatId != chatId) {
+          _displayedChatId = chatId;
+          widget.controller?.followBottom();
+        } else {
+          widget.controller?.maintainBottom();
+        }
 
-      // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
-      // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
-      // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
-      //
-      // LayoutBuilder 只做一件事：把约束换算成列宽留白与卡片最大高度。
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final columnPadding = chatColumnPadding(constraints.maxWidth);
-          final cardMaxHeight =
-              constraints.maxHeight * permissionCardMaxHeightFraction;
-          final cardPadding = EdgeInsets.fromLTRB(
-            columnPadding + kChatColumnInnerPadding,
-            0,
-            columnPadding + kChatColumnInnerPadding,
-            12,
-          );
-          // 轮次指示器只占消息区左留白：条长上限随留白收缩，留白不够就不显示
-          final barWidth = (columnPadding - _turnIndicatorLeft - 12).clamp(
-            0.0,
-            _maxBarWidth,
-          );
-          // 一条 = 一轮（按整段会话算，含未加载的历史）；只有一轮时不显示，
-          // 单根条说明不了什么
-          final showRail =
-              !loadingHistory && totalTurns >= 2 && barWidth >= _minBarWidth;
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: _buildList(
-                        messages,
-                        loading: loading,
-                        loadingHistory: loadingHistory,
-                        sentinel: sentinel,
-                        textSize: textSize,
-                        columnPadding: columnPadding,
-                      ),
-                    ),
-                    for (final request in approvals)
-                      Padding(
-                        padding: cardPadding,
-                        child: PermissionApprovalCard(
-                          key: ObjectKey(request),
-                          request: request,
-                          maxHeight: cardMaxHeight,
-                          onDecision: (approved) =>
-                              chatViewModel.respondApproval(
-                                request,
-                                permissionDecisionOf(approved),
-                              ),
+        // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
+        // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
+        // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
+        //
+        // LayoutBuilder 只做一件事：把约束换算成列宽留白与卡片最大高度。
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final columnPadding = chatColumnPadding(constraints.maxWidth);
+            final cardMaxHeight =
+                constraints.maxHeight * permissionCardMaxHeightFraction;
+            final cardPadding = EdgeInsets.fromLTRB(
+              columnPadding + kChatColumnInnerPadding,
+              0,
+              columnPadding + kChatColumnInnerPadding,
+              12,
+            );
+            // 轮次指示器只占消息区左留白：条长上限随留白收缩，留白不够就不显示
+            final barWidth = (columnPadding - _turnIndicatorLeft - 12).clamp(
+              0.0,
+              _maxBarWidth,
+            );
+            // 一条 = 一轮（按整段会话算，含未加载的历史）；只有一轮时不显示，
+            // 单根条说明不了什么
+            final showRail =
+                !loadingHistory && totalTurns >= 2 && barWidth >= _minBarWidth;
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _buildList(
+                          messages,
+                          loading: loading,
+                          loadingHistory: loadingHistory,
+                          sentinel: sentinel,
+                          textSize: textSize,
+                          columnPadding: columnPadding,
                         ),
                       ),
-                    for (final request in elicits)
-                      Padding(
-                        padding: cardPadding,
-                        child: ElicitCard(
-                          key: ObjectKey(request),
-                          request: request,
-                          maxHeight: cardMaxHeight,
-                          onSubmit: (answers) =>
-                              chatViewModel.respondElicit(request, answers),
+                      for (final request in approvals)
+                        Padding(
+                          padding: cardPadding,
+                          child: PermissionApprovalCard(
+                            key: ObjectKey(request),
+                            request: request,
+                            maxHeight: cardMaxHeight,
+                            onDecision: (approved) =>
+                                chatViewModel.respondApproval(
+                                  request,
+                                  permissionDecisionOf(approved),
+                                ),
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              // 轮次条是上面那列的**兄弟**，不是它 Stack 里的孩子：`top: 0,
-              // bottom: 0` 撑满的是整列高度，而这一高度与下面有几张审批 /
-              // 提问卡片无关。放进消息区那个 Stack 里时它按消息区（Expanded）
-              // 的高度居中，卡片一挤占，同一轮的条就整体上移——两帧之间换了位置。
-              //
-              // 它只占左留白那一小条，其余指针直接穿过去（见 TurnIndicator），
-              // 所以叠在卡片上方不影响卡片操作。故意不包 IgnorePointer：条自己
-              // 要能 hover 与点击。
-              if (showRail)
-                Positioned(
-                  left: _turnIndicatorLeft,
-                  top: 0,
-                  bottom: 0,
-                  width: barWidth,
-                  child: Center(
-                    child: _railFor(
-                      windowTurnCount: turns.length,
-                      totalTurns: totalTurns,
-                      firstTurnIndex: firstTurnIndex,
-                      barWidth: barWidth,
-                    ),
+                      for (final request in elicits)
+                        Padding(
+                          padding: cardPadding,
+                          child: ElicitCard(
+                            key: ObjectKey(request),
+                            request: request,
+                            maxHeight: cardMaxHeight,
+                            onSubmit: (answers) =>
+                                chatViewModel.respondElicit(request, answers),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-            ],
-          );
-        },
-      );
-    });
+                // 轮次条是上面那列的**兄弟**，不是它 Stack 里的孩子：`top: 0,
+                // bottom: 0` 撑满的是整列高度，而这一高度与下面有几张审批 /
+                // 提问卡片无关。放进消息区那个 Stack 里时它按消息区（Expanded）
+                // 的高度居中，卡片一挤占，同一轮的条就整体上移——两帧之间换了位置。
+                //
+                // 它只占左留白那一小条，其余指针直接穿过去（见 TurnIndicator），
+                // 所以叠在卡片上方不影响卡片操作。故意不包 IgnorePointer：条自己
+                // 要能 hover 与点击。
+                if (showRail)
+                  Positioned(
+                    left: _turnIndicatorLeft,
+                    top: 0,
+                    bottom: 0,
+                    width: barWidth,
+                    child: Center(
+                      child: _railFor(
+                        windowTurnCount: turns.length,
+                        totalTurns: totalTurns,
+                        firstTurnIndex: firstTurnIndex,
+                        barWidth: barWidth,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void copyMessage(MessageEntity message) {
@@ -311,7 +313,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   /// 取轮次条子树：结构没变就复用上一次的实例。
   ///
-  /// 复用是**必需的**，不是优化：宿主每次构建都由 `Watch` 触发（agent 工作
+  /// 复用是**必需的**，不是优化：宿主每次构建都由 `SignalBuilder` 触发（agent 工作
   /// 期间每帧一次），照常传一棵新子树会让它逐帧重建，而重建传导下去的脏标记
   /// 会绕过 `RepaintBoundary`——实测逐帧重绘（见 [_railKey] 的注释）。
   /// 结构真变了才新建，此时重建一次是该的。

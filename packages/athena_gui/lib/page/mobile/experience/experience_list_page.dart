@@ -41,21 +41,23 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final all = viewModel.experiences.value;
-      final experiences = scopeFilter == null
-          ? all
-          : all.where((e) => e.scope == scopeFilter).toList();
-      return AthenaScaffold(
-        appBar: const AthenaAppBar(title: Text('Experiences')),
-        body: Column(
-          children: [
-            _buildFilterBar(context),
-            Expanded(child: _buildData(context, experiences)),
-          ],
-        ),
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final all = viewModel.experiences.value;
+        final experiences = scopeFilter == null
+            ? all
+            : all.where((e) => e.scope == scopeFilter).toList();
+        return AthenaScaffold(
+          appBar: const AthenaAppBar(title: Text('Experiences')),
+          body: Column(
+            children: [
+              _buildFilterBar(context),
+              Expanded(child: _buildData(context, experiences)),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildFilterBar(BuildContext context) {

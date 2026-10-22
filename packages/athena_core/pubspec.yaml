@@ -15,12 +15,12 @@ dependencies:
   html: ^0.15.5
   logger: ^2.0.2+1
   meta: ^1.16.0
-  openai_dart: ^8.1.0
+  openai_dart: ^11.0.1
   path: ^1.8.0
-  signals: ^6.2.0
+  signals_core: ^7.0.0
   uuid: ^4.6.0
   yaml: ^3.1.2
 
 dev_dependencies:
-  lints: ^5.0.0
+  lints: ^6.1.0
   test: ^1.25.0

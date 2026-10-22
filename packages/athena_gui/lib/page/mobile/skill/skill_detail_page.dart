@@ -35,54 +35,56 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      var skill = viewModel.skills.value
-          .where((s) => s.name == widget.skill.name)
-          .firstOrNull;
-      skill ??= widget.skill;
-      final nameRowChildren = [
-        Expanded(
-          child: Text(
-            skill.name,
-            style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        var skill = viewModel.skills.value
+            .where((s) => s.name == widget.skill.name)
+            .firstOrNull;
+        skill ??= widget.skill;
+        final nameRowChildren = [
+          Expanded(
+            child: Text(
+              skill.name,
+              style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+            ),
           ),
-        ),
-        if (skill.isBuiltin)
-          Icon(
-            LucideIcons.lockKeyhole,
-            size: AthenaIcon.regularSize,
-            color: colors.iconSecondary,
+          if (skill.isBuiltin)
+            Icon(
+              LucideIcons.lockKeyhole,
+              size: AthenaIcon.regularSize,
+              color: colors.iconSecondary,
+            ),
+        ];
+        final children = [
+          Row(children: nameRowChildren),
+          const SizedBox(height: 8),
+          Text(
+            skill.description,
+            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
-      ];
-      final children = [
-        Row(children: nameRowChildren),
-        const SizedBox(height: 8),
-        Text(
-          skill.description,
-          style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: 16),
-        _label(context, 'Instructions'),
-        const SizedBox(height: 8),
-        _buildBody(context, skill.body),
-        const SizedBox(height: 16),
-        Text(
-          skill.sourcePath,
-          style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
-        ),
-        const SizedBox(height: 24),
-        if (!skill.isBuiltin) _buildButtons(context, skill),
-        const SafeArea(top: false, child: SizedBox()),
-      ];
-      return AthenaScaffold(
-        appBar: const AthenaAppBar(title: Text('Skill')),
-        body: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          children: children,
-        ),
-      );
-    });
+          const SizedBox(height: 16),
+          _label(context, 'Instructions'),
+          const SizedBox(height: 8),
+          _buildBody(context, skill.body),
+          const SizedBox(height: 16),
+          Text(
+            skill.sourcePath,
+            style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
+          ),
+          const SizedBox(height: 24),
+          if (!skill.isBuiltin) _buildButtons(context, skill),
+          const SafeArea(top: false, child: SizedBox()),
+        ];
+        return AthenaScaffold(
+          appBar: const AthenaAppBar(title: Text('Skill')),
+          body: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: children,
+          ),
+        );
+      },
+    );
   }
 
   Widget _label(BuildContext context, String text) {

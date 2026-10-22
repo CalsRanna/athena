@@ -119,7 +119,7 @@ class AthenaSettingsPanel extends StatelessWidget {
                     Expanded(child: content),
                   ],
                 ),
-                if (closeButton != null) closeButton,
+                ?closeButton,
               ],
             ),
           ),
@@ -280,7 +280,7 @@ class AthenaSettingsSection extends StatelessWidget {
     final titleRow = Row(
       children: [
         Expanded(child: Text(title, style: titleStyle)),
-        if (trailing != null) trailing!,
+        ?trailing,
       ],
     );
     final header = Padding(
@@ -433,7 +433,7 @@ class AthenaSettingsEmptyState extends StatelessWidget {
           child: Text(hint!, style: hintStyle, textAlign: TextAlign.center),
         ),
       if (action != null) const SizedBox(height: AthenaSpace.lg),
-      if (action != null) action!,
+      ?action,
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40),

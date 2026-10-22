@@ -24,7 +24,7 @@ class AthenaSettingsNav extends StatelessWidget {
     );
     final listView = ListView(
       padding: const EdgeInsets.all(AthenaSettings.navPadding),
-      children: [if (search != null) search!, ...children],
+      children: [?search, ...children],
     );
     return Container(
       width: AthenaSettings.navWidth,
@@ -120,7 +120,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       const SizedBox(width: 8),
       Expanded(child: field),
       if (clear != null) const SizedBox(width: 6),
-      if (clear != null) clear,
+      ?clear,
     ];
     return AnimatedContainer(
       duration: AthenaMotion.hover,

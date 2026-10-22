@@ -350,10 +350,7 @@ Future<void> _terminateUnixTree(int rootPid) async {
       pending.add(child.pid);
     }
   }
-  final targets = [
-    ...descendants.reversed,
-    if (before[rootPid] case final root?) root,
-  ];
+  final targets = [...descendants.reversed, ?before[rootPid]];
   for (final target in targets) {
     _killPid(target.pid, ProcessSignal.sigterm);
   }

@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
-import 'package:signals/signals.dart';
+import 'package:signals_core/signals_core.dart';
 
 /// Agent 运行相关的设置项，由核心协调层消费。
 ///

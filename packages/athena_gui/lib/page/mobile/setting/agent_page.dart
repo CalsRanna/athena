@@ -82,55 +82,58 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   }
 
   Widget _buildModelsSection(BuildContext context) {
-    return Watch((context) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AthenaFormTileLabel.large(title: 'Default models'),
-          const SizedBox(height: 16),
-          AthenaFormField(
-            label: 'Session model',
-            control: _ModelDropdown(
-              groupedModels: modelViewModel.groupedEnabledModels.value,
-              model: viewModel.chatModel.value,
-              onChanged: viewModel.updateChatModelId,
-              provider: viewModel.chatModelProvider.value,
+    return SignalBuilder(
+      builder: (context) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const AthenaFormTileLabel.large(title: 'Default models'),
+            const SizedBox(height: 16),
+            AthenaFormField(
+              label: 'Session model',
+              control: _ModelDropdown(
+                groupedModels: modelViewModel.groupedEnabledModels.value,
+                model: viewModel.chatModel.value,
+                onChanged: viewModel.updateChatModelId,
+                provider: viewModel.chatModelProvider.value,
+              ),
+              description:
+                  'The model new sessions and the agent loop start with.',
+              descriptionGap: 8,
             ),
-            description:
-                'The model new sessions and the agent loop start with.',
-            descriptionGap: 8,
-          ),
-          const SizedBox(height: 16),
-          AthenaFormField(
-            label: 'Session naming model',
-            control: _ModelDropdown(
-              groupedModels: modelViewModel.groupedEnabledModels.value,
-              model: viewModel.chatNamingModel.value,
-              onChanged: viewModel.updateChatNamingModelId,
-              provider: viewModel.chatNamingModelProvider.value,
+            const SizedBox(height: 16),
+            AthenaFormField(
+              label: 'Session naming model',
+              control: _ModelDropdown(
+                groupedModels: modelViewModel.groupedEnabledModels.value,
+                model: viewModel.chatNamingModel.value,
+                onChanged: viewModel.updateChatNamingModelId,
+                provider: viewModel.chatNamingModelProvider.value,
+              ),
+              description:
+                  'Names a session after its first exchange. Falls back to the '
+                  'session model.',
+              descriptionGap: 8,
             ),
-            description:
-                'Names a session after its first exchange. Falls back to the '
-                'session model.',
-            descriptionGap: 8,
-          ),
-          const SizedBox(height: 16),
-          AthenaFormField(
-            label: 'Sentinel metadata model',
-            control: _ModelDropdown(
-              groupedModels: modelViewModel.groupedEnabledModels.value,
-              model: viewModel.sentinelMetadataGenerationModel.value,
-              onChanged: viewModel.updateSentinelMetadataGenerationModelId,
-              provider: viewModel.sentinelMetadataGenerationModelProvider.value,
+            const SizedBox(height: 16),
+            AthenaFormField(
+              label: 'Sentinel metadata model',
+              control: _ModelDropdown(
+                groupedModels: modelViewModel.groupedEnabledModels.value,
+                model: viewModel.sentinelMetadataGenerationModel.value,
+                onChanged: viewModel.updateSentinelMetadataGenerationModelId,
+                provider:
+                    viewModel.sentinelMetadataGenerationModelProvider.value,
+              ),
+              description:
+                  'Generates a Sentinel\'s name, description and tags from its '
+                  'system prompt.',
+              descriptionGap: 8,
             ),
-            description:
-                'Generates a Sentinel\'s name, description and tags from its '
-                'system prompt.',
-            descriptionGap: 8,
-          ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildRequestSection(BuildContext context) {
@@ -177,8 +180,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         const SizedBox(height: 16),
         AthenaFormField(
           label: 'Default reasoning effort',
-          control: Watch(
-            (_) => Wrap(
+          control: SignalBuilder(
+            builder: (_) => Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -210,8 +213,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         const SizedBox(height: 16),
         AthenaFormField(
           label: 'Background task reports',
-          control: Watch(
-            (_) => Align(
+          control: SignalBuilder(
+            builder: (_) => Align(
               alignment: Alignment.centerLeft,
               child: AthenaSwitch(
                 value: viewModel.backgroundTaskReports.value,
@@ -335,23 +338,25 @@ class _ModelDropdown extends StatelessWidget {
   }
 
   Widget _buildText() {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      final textStyle = AthenaTextStyle.row.copyWith(color: colors.textInput);
-      if (model == null) {
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final textStyle = AthenaTextStyle.row.copyWith(color: colors.textInput);
+        if (model == null) {
+          return Text(
+            'No Model',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textStyle,
+          );
+        }
         return Text(
-          'No Model',
+          '${model?.name} | ${provider?.name}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: textStyle,
         );
-      }
-      return Text(
-        '${model?.name} | ${provider?.name}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: textStyle,
-      );
-    });
+      },
+    );
   }
 }

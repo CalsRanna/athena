@@ -14,7 +14,7 @@ void main() {
             },
             'kind': kind.name,
             'pattern': '',
-            if (effect != null) 'effect': effect,
+            'effect': ?effect,
           }),
           isNull,
         );

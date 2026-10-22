@@ -62,7 +62,7 @@ class AthenaSettingsRow extends StatelessWidget {
       children: [
         Expanded(child: labelColumn),
         if (control != null) const SizedBox(width: 24),
-        if (control != null) control!,
+        ?control,
       ],
     );
     return Padding(

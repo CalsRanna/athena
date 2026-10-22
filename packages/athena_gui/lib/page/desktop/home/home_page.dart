@@ -57,25 +57,27 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final children = [
-        _buildLeftBar(context),
-        Expanded(child: _buildWorkspace()),
-      ];
-      // 页级快捷键（⌘N / Ctrl+N 新建对话）包在最外层：设置页、对话框是压在
-      // 首页之上的路由，它们打开时焦点不在这棵子树里，快捷键自然不生效。
-      return DesktopHomeShortcuts(
-        onNewChat: startNewChat,
-        // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
-        child: ChatErrorDialogListener(
-          errors: chatViewModel.errors,
-          child: AthenaScaffold(
-            appBar: _buildAppBar(context),
-            body: Row(children: children),
+    return SignalBuilder(
+      builder: (context) {
+        final children = [
+          _buildLeftBar(context),
+          Expanded(child: _buildWorkspace()),
+        ];
+        // 页级快捷键（⌘N / Ctrl+N 新建对话）包在最外层：设置页、对话框是压在
+        // 首页之上的路由，它们打开时焦点不在这棵子树里，快捷键自然不生效。
+        return DesktopHomeShortcuts(
+          onNewChat: startNewChat,
+          // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
+          child: ChatErrorDialogListener(
+            errors: chatViewModel.errors,
+            child: AthenaScaffold(
+              appBar: _buildAppBar(context),
+              body: Row(children: children),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   /// 侧栏 "New session" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
@@ -337,19 +339,21 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     // 会话标题走 `section`（14 / w600）而不是 `title`（16 / w600）：这里是窗口
     // chrome 上的一条标签，不是页面标题。桌面顶栏高 46，用页面标题那一档会盖过
     // 它下面的正文层级；层级靠字重保留。
-    final title = Watch((context) {
-      final chat = chatViewModel.currentChat.value;
-      final text = chat?.title.trim() ?? '';
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text.isEmpty ? 'New session' : text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
-        ),
-      );
-    });
+    final title = SignalBuilder(
+      builder: (context) {
+        final chat = chatViewModel.currentChat.value;
+        final text = chat?.title.trim() ?? '';
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text.isEmpty ? 'New session' : text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
+          ),
+        );
+      },
+    );
     return AthenaAppBar(
       title: Padding(padding: const EdgeInsets.only(left: 12), child: title),
     );

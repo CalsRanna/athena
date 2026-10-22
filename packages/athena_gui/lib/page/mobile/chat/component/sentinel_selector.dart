@@ -15,10 +15,12 @@ class MobileSentinelDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final sentinels = sentinelViewModel.sentinels.value;
-      return _buildData(sentinels);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final sentinels = sentinelViewModel.sentinels.value;
+        return _buildData(sentinels);
+      },
+    );
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {

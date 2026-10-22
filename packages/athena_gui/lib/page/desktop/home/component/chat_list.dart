@@ -38,39 +38,37 @@ class DesktopChatListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    return Watch((context) {
-      final chats = chatViewModel.chats.value;
-      chatViewModel.initLastSelectedIndex();
-      // 侧栏结构：上方是会话列表（置顶 / 其余分两组），
-      // 底部常驻一个账号式页脚（点击弹出设置 / 关于菜单）。
-      final items = _buildSidebarItems(chats);
-      return Column(
-        children: [
-          _SidebarNav(onCreateChat: onCreateChat),
-          Expanded(
-            child: chats.isEmpty
-                ? _buildEmpty(context)
-                : ListView.builder(
-                    itemBuilder: (context, index) => switch (items[index]) {
-                      _SidebarGroup(:final label) => _buildGroupLabel(
-                        context,
-                        label,
-                      ),
-                      _SidebarEntry(:final index, :final chat) => _itemBuilder(
-                        context,
-                        chats,
-                        index,
-                        chat,
-                      ),
-                    },
-                    itemCount: items.length,
-                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                  ),
-          ),
-          const DesktopSidebarFooter(),
-        ],
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final chats = chatViewModel.chats.value;
+        chatViewModel.initLastSelectedIndex();
+        // 侧栏结构：上方是会话列表（置顶 / 其余分两组），
+        // 底部常驻一个账号式页脚（点击弹出设置 / 关于菜单）。
+        final items = _buildSidebarItems(chats);
+        return Column(
+          children: [
+            _SidebarNav(onCreateChat: onCreateChat),
+            Expanded(
+              child: chats.isEmpty
+                  ? _buildEmpty(context)
+                  : ListView.builder(
+                      itemBuilder: (context, index) => switch (items[index]) {
+                        _SidebarGroup(:final label) => _buildGroupLabel(
+                          context,
+                          label,
+                        ),
+                        _SidebarEntry(:final index, :final chat) =>
+                          _itemBuilder(context, chats, index, chat),
+                      },
+                      itemCount: items.length,
+                      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                    ),
+            ),
+            const DesktopSidebarFooter(),
+          ],
+        );
+      },
+    );
   }
 
   /// 置顶会话与其余会话分两组；[index] 始终是它在原始列表里的绝对下标，
@@ -193,25 +191,28 @@ class DesktopChatListView extends StatelessWidget {
     ChatEntity chat,
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    return Watch((context) {
-      final selectedChat = chatViewModel.currentChat.value;
-      final selectedIds = chatViewModel.selection.selectedChatIds.value;
-      final renamingIds = chatViewModel.selection.renamingChatIds.value;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 2),
-        child: _ChatTile(
-          active: selectedChat?.id == chat.id,
-          chat: chat,
-          isRenaming: renamingIds.contains(chat.id),
-          streaming: chatViewModel.isStreamingChat(chat.id!),
-          onTap: () => _handleTap(chatViewModel, chat, index),
-          onSecondaryTap: (details) =>
-              _openContextMenu(context, details, chat, chats),
-          selected: selectedIds.contains(chat.id),
-          onMore: (offset) => _openContextMenuAt(context, offset, chat, chats),
-        ),
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final selectedChat = chatViewModel.currentChat.value;
+        final selectedIds = chatViewModel.selection.selectedChatIds.value;
+        final renamingIds = chatViewModel.selection.renamingChatIds.value;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: _ChatTile(
+            active: selectedChat?.id == chat.id,
+            chat: chat,
+            isRenaming: renamingIds.contains(chat.id),
+            streaming: chatViewModel.isStreamingChat(chat.id!),
+            onTap: () => _handleTap(chatViewModel, chat, index),
+            onSecondaryTap: (details) =>
+                _openContextMenu(context, details, chat, chats),
+            selected: selectedIds.contains(chat.id),
+            onMore: (offset) =>
+                _openContextMenuAt(context, offset, chat, chats),
+          ),
+        );
+      },
+    );
   }
 }
 

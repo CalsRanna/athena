@@ -36,59 +36,61 @@ class _MobileExperienceDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      var experience = viewModel.experiences.value
-          .where((e) => e.id == widget.experience.id)
-          .firstOrNull;
-      experience ??= widget.experience;
-      final isArchived = experience.status == ExperienceEntity.statusArchived;
-      final children = [
-        Text(
-          experience.lesson,
-          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: 12),
-        _metaRow(context, 'Owner', viewModel.ownerLabel(experience)),
-        _metaRow(context, 'Scope', experience.scope),
-        _metaRow(context, 'Source', experience.source),
-        _metaRow(context, 'Status', isArchived ? 'Archived' : 'Active'),
-        _metaRow(context, 'Created', _formatDate(experience.createdAt)),
-        if (experience.updatedAt != null)
-          _metaRow(context, 'Updated', _formatDate(experience.updatedAt!)),
-        if (experience.context.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _label(context, 'Context'),
-          const SizedBox(height: 8),
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        var experience = viewModel.experiences.value
+            .where((e) => e.id == widget.experience.id)
+            .firstOrNull;
+        experience ??= widget.experience;
+        final isArchived = experience.status == ExperienceEntity.statusArchived;
+        final children = [
           Text(
-            experience.context,
-            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
+            experience.lesson,
+            style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
           ),
-        ],
-        if (experience.tags.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _label(context, 'Tags'),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tag in experience.tags) AthenaTag.small(text: tag),
-            ],
+          const SizedBox(height: 12),
+          _metaRow(context, 'Owner', viewModel.ownerLabel(experience)),
+          _metaRow(context, 'Scope', experience.scope),
+          _metaRow(context, 'Source', experience.source),
+          _metaRow(context, 'Status', isArchived ? 'Archived' : 'Active'),
+          _metaRow(context, 'Created', _formatDate(experience.createdAt)),
+          if (experience.updatedAt != null)
+            _metaRow(context, 'Updated', _formatDate(experience.updatedAt!)),
+          if (experience.context.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _label(context, 'Context'),
+            const SizedBox(height: 8),
+            Text(
+              experience.context,
+              style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
+            ),
+          ],
+          if (experience.tags.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _label(context, 'Tags'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final tag in experience.tags) AthenaTag.small(text: tag),
+              ],
+            ),
+          ],
+          const SizedBox(height: 24),
+          _buildButtons(context, experience, isArchived),
+          const SafeArea(top: false, child: SizedBox()),
+        ];
+        return AthenaScaffold(
+          appBar: const AthenaAppBar(title: Text('Experience')),
+          body: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: children,
           ),
-        ],
-        const SizedBox(height: 24),
-        _buildButtons(context, experience, isArchived),
-        const SafeArea(top: false, child: SizedBox()),
-      ];
-      return AthenaScaffold(
-        appBar: const AthenaAppBar(title: Text('Experience')),
-        body: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          children: children,
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Widget _label(BuildContext context, String text) {

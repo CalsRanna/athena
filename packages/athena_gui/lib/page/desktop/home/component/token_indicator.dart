@@ -41,21 +41,23 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final chat = viewModel.currentChat.value;
-      // 负数只出现在回退后的"未知"，与"还没跑过推理"一样按 0 展示
-      final used = math.max(chat?.contextTokens ?? 0, 0);
-      final window = math.max(
-        viewModel.currentModel.value?.contextWindow ?? 0,
-        0,
-      );
-      final stats = _ContextStats(
-        used: used,
-        window: window,
-        cached: (chat?.cachedTokens ?? 0).clamp(0, used),
-      );
-      return _buildRing(context, stats);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final chat = viewModel.currentChat.value;
+        // 负数只出现在回退后的"未知"，与"还没跑过推理"一样按 0 展示
+        final used = math.max(chat?.contextTokens ?? 0, 0);
+        final window = math.max(
+          viewModel.currentModel.value?.contextWindow ?? 0,
+          0,
+        );
+        final stats = _ContextStats(
+          used: used,
+          window: window,
+          cached: (chat?.cachedTokens ?? 0).clamp(0, used),
+        );
+        return _buildRing(context, stats);
+      },
+    );
   }
 
   Widget _buildRing(BuildContext context, _ContextStats stats) {

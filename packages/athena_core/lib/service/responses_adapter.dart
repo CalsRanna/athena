@@ -395,7 +395,7 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
         );
 
       case ErrorEvent(:final code, :final message):
-        throw _responseError(code, message);
+        throw _responseError(code ?? 'server_error', message);
 
       default:
         break;

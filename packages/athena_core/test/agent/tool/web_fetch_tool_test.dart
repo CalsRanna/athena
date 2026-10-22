@@ -194,10 +194,7 @@ class _Response extends Stream<List<int>> implements HttpClientResponse {
     String type = 'text/plain',
     this.statusCode = 200,
     String? location,
-  }) : headers = _Headers({
-         'content-type': type,
-         if (location != null) 'location': location,
-       });
+  }) : headers = _Headers({'content-type': type, 'location': ?location});
   final Stream<List<int>> stream;
   @override
   final _Headers headers;

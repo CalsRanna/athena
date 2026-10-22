@@ -58,13 +58,9 @@ class DesktopImageSelector extends StatelessWidget {
   }
 
   Future<void> selectImages() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: true,
-    );
-    if (result == null) return;
+    final files = await FilePicker.pickFiles(type: FileType.image);
     final List<String> images = [];
-    for (var file in result.files) {
+    for (var file in files) {
       if (file.path == null) continue;
       images.add(file.path!);
     }

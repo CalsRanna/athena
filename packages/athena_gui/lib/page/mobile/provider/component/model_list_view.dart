@@ -24,36 +24,38 @@ class MobileModelListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      final models = modelViewModel.models.value
-          .where((m) => m.providerId == provider.id)
-          .toList();
-      if (models.isEmpty) {
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final models = modelViewModel.models.value
+            .where((m) => m.providerId == provider.id)
+            .toList();
+        if (models.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'No models yet',
+              style: AthenaTextStyle.caption.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          );
+        }
+        final List<Widget> children = [];
+        for (var model in models) {
+          final mobileModelTile = _ModelTile(
+            model: model,
+            onLongPress: () => onLongPress?.call(model),
+            onTap: () => onTap?.call(model),
+          );
+          children.add(mobileModelTile);
+        }
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'No models yet',
-            style: AthenaTextStyle.caption.copyWith(
-              color: colors.textSecondary,
-            ),
-          ),
+          child: Column(children: children),
         );
-      }
-      final List<Widget> children = [];
-      for (var model in models) {
-        final mobileModelTile = _ModelTile(
-          model: model,
-          onLongPress: () => onLongPress?.call(model),
-          onTap: () => onTap?.call(model),
-        );
-        children.add(mobileModelTile);
-      }
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(children: children),
-      );
-    });
+      },
+    );
   }
 }
 

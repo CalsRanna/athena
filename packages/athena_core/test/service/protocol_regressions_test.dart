@@ -20,7 +20,7 @@ import '../support/responses_fixture.dart';
 ChatStreamEvent chunk(Map<String, dynamic> delta, [String? stop]) =>
     ChatStreamEvent.fromJson({
       'choices': [
-        {'index': 0, 'delta': delta, if (stop != null) 'finish_reason': stop},
+        {'index': 0, 'delta': delta, 'finish_reason': ?stop},
       ],
     });
 

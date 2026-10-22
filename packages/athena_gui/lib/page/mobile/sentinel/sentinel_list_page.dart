@@ -23,66 +23,68 @@ class MobileSentinelListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      final sentinelViewModel = GetIt.instance<SentinelViewModel>();
-      final sentinels = sentinelViewModel.sentinels.value;
-      return AthenaScaffold(
-        appBar: const AthenaAppBar(title: Text('Sentinel')),
-        body: Stack(
-          children: [
-            _buildData(context, sentinels),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => navigateSentinelFormPage(context),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: colors.surfaceButtonSecondary,
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(AthenaRadius.control),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
-                  margin: EdgeInsets.only(
-                    bottom: 16 + MediaQuery.paddingOf(context).bottom,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceMobile,
-                          border: Border.all(color: colors.border),
-                          borderRadius: BorderRadius.circular(
-                            AthenaRadius.inline,
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+        final sentinels = sentinelViewModel.sentinels.value;
+        return AthenaScaffold(
+          appBar: const AthenaAppBar(title: Text('Sentinel')),
+          body: Stack(
+            children: [
+              _buildData(context, sentinels),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => navigateSentinelFormPage(context),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceButtonSecondary,
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(AthenaRadius.control),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
+                    margin: EdgeInsets.only(
+                      bottom: 16 + MediaQuery.paddingOf(context).bottom,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.surfaceMobile,
+                            border: Border.all(color: colors.border),
+                            borderRadius: BorderRadius.circular(
+                              AthenaRadius.inline,
+                            ),
+                          ),
+                          height: 24,
+                          width: 24,
+                          child: Icon(
+                            LucideIcons.plus,
+                            // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
+                            size: 12,
+                            color: colors.textPrimary,
                           ),
                         ),
-                        height: 24,
-                        width: 24,
-                        child: Icon(
-                          LucideIcons.plus,
-                          // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
-                          size: 12,
-                          color: colors.textPrimary,
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add a sentinel',
+                          style: AthenaTextStyle.section.copyWith(
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Add a sentinel',
-                        style: AthenaTextStyle.section.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void navigateSentinelFormPage(BuildContext context) {

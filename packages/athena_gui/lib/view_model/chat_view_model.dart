@@ -739,7 +739,7 @@ class ChatViewModel {
     final chat = currentChat.value;
     error.value = null;
     try {
-      final path = await FilePicker.platform.getDirectoryPath(
+      final path = await FilePicker.getDirectoryPath(
         dialogTitle: 'Choose working folder',
       );
       if (path == null) return;

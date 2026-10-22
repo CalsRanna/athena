@@ -65,12 +65,14 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
         addButton,
       ],
     );
-    return Watch((context) {
-      return AthenaScaffold(
-        appBar: AthenaAppBar(action: actions, title: const Text('Provider')),
-        body: Watch((context) => _buildBody(context)),
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        return AthenaScaffold(
+          appBar: AthenaAppBar(action: actions, title: const Text('Provider')),
+          body: SignalBuilder(builder: (context) => _buildBody(context)),
+        );
+      },
+    );
   }
 
   void navigateProviderNamePage(BuildContext context) {

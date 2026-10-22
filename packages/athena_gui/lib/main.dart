@@ -96,44 +96,46 @@ class AthenaApp extends StatefulWidget {
 class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final settingViewModel = GetIt.instance<SettingViewModel>();
-      final themeMode = settingViewModel.themeMode.value;
-      final resolved = resolveColorMode(themeMode);
-      final colors = colorsOf(resolved);
-      if (PlatformUtil.isDesktop) {
-        // 窗口原生背景色跟随主题（浅色下避免露出默认黑底）
-        unawaited(windowManager.setBackgroundColor(colors.surface));
-      }
-      // 状态栏图标颜色跟随主题（浅色背景需深色图标）
-      SystemChrome.setSystemUIOverlayStyle(
-        resolved == AthenaColorMode.light
-            ? SystemUiOverlayStyle.dark
-            : SystemUiOverlayStyle.light,
-      );
-      // AthenaTheme 挂在 MaterialApp 之上：导航器与所有页面都在它的子树里，
-      // 页面通过 `context.athenaColors` 取色。MaterialApp 只负责路由、本地化
-      // 与仍未替换的 Material 组件的默认外观。
-      return AthenaTheme(
-        colors: colors,
-        colorMode: resolved,
-        platform: defaultTargetPlatform,
-        child: MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          routerConfig: router.config(),
-          scaffoldMessengerKey: scaffoldMessengerKey,
-          theme: buildAthenaThemeData(AthenaColorMode.light),
-          darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
-          themeMode: switch (themeMode) {
-            AthenaThemeMode.light => ThemeMode.light,
-            AthenaThemeMode.dark => ThemeMode.dark,
-            AthenaThemeMode.system => ThemeMode.system,
-          },
-          // 桌面端关闭滚动回弹（macOS 默认是 BouncingScrollPhysics）
-          scrollBehavior: const AthenaScrollBehavior(),
-        ),
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final settingViewModel = GetIt.instance<SettingViewModel>();
+        final themeMode = settingViewModel.themeMode.value;
+        final resolved = resolveColorMode(themeMode);
+        final colors = colorsOf(resolved);
+        if (PlatformUtil.isDesktop) {
+          // 窗口原生背景色跟随主题（浅色下避免露出默认黑底）
+          unawaited(windowManager.setBackgroundColor(colors.surface));
+        }
+        // 状态栏图标颜色跟随主题（浅色背景需深色图标）
+        SystemChrome.setSystemUIOverlayStyle(
+          resolved == AthenaColorMode.light
+              ? SystemUiOverlayStyle.dark
+              : SystemUiOverlayStyle.light,
+        );
+        // AthenaTheme 挂在 MaterialApp 之上：导航器与所有页面都在它的子树里，
+        // 页面通过 `context.athenaColors` 取色。MaterialApp 只负责路由、本地化
+        // 与仍未替换的 Material 组件的默认外观。
+        return AthenaTheme(
+          colors: colors,
+          colorMode: resolved,
+          platform: defaultTargetPlatform,
+          child: MaterialApp.router(
+            debugShowCheckedModeBanner: false,
+            routerConfig: router.config(),
+            scaffoldMessengerKey: scaffoldMessengerKey,
+            theme: buildAthenaThemeData(AthenaColorMode.light),
+            darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
+            themeMode: switch (themeMode) {
+              AthenaThemeMode.light => ThemeMode.light,
+              AthenaThemeMode.dark => ThemeMode.dark,
+              AthenaThemeMode.system => ThemeMode.system,
+            },
+            // 桌面端关闭滚动回弹（macOS 默认是 BouncingScrollPhysics）
+            scrollBehavior: const AthenaScrollBehavior(),
+          ),
+        );
+      },
+    );
   }
 
   @override

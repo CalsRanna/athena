@@ -72,173 +72,179 @@ class DesktopMessageInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = context.athenaColors;
-    return Watch((context) {
-      final queued = chatViewModel.queuedMessages.value;
-      // 在 Watch 内订阅；放进下方 builder 会延迟到另一个 build，图片变化就不重绘。
-      final images = chatViewModel.pendingImages.value;
-      final chatId = chatViewModel.currentChat.value?.id;
-      // 推理强度只对推理模型有意义（发送端也只给推理模型带参数），
-      // 非推理模型不摆这个控件——摆了也没有任何效果。
-      final reasoningModel =
-          chatViewModel.currentModel.value?.reasoning ?? false;
-      final reasoningEffort = chatViewModel.currentReasoningEffort.value;
-      final approvalMode = chatViewModel.currentApprovalMode.value;
-      // 版式：
-      // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
-      // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: kChatColumnWidth),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (queued.isNotEmpty) ...[
-                  QueuedMessages(
-                    messages: queued,
-                    onSteer: chatViewModel.steerQueuedMessage,
-                    onDelete: chatViewModel.removeQueuedMessage,
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                // 上下文条：灰底、无描边
-                Container(
-                  height: 40,
-                  // 带内首个元素距容器左缘 17（含 chip 自身 10）
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  alignment: Alignment.centerLeft,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceButtonSecondary,
-                    borderRadius: BorderRadius.circular(AthenaRadius.container),
-                  ),
-                  child: Row(
-                    children: [
-                      DesktopSentinelIndicator(
-                        onTap: onSentinelTap,
-                        onClear: onSentinelClear,
-                      ),
-                      const SizedBox(width: 4),
-                      // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
-                      // current* 信号而不是 chat 字段，两种状态一个来源
-                      DesktopWorkspaceIndicator(
-                        path: chatViewModel.currentWorkspacePath.value,
-                        onTap: onWorkspaceTap,
-                        onClear: onWorkspaceClear,
-                      ),
-                      const Spacer(),
-                      // 当前保留策略同时服务草稿和已有会话，选项从 chip 向上展开。
-                      DesktopContextSelector(
-                        currentRetention: chatViewModel.currentRetention.value,
-                        onSelected: onRetentionChange,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
-                _ComposerInputBox(
-                  focusNode: focusNode,
-                  builder: (focusNode) => Row(
-                    children: [
-                      Expanded(
-                        child: _Input(
-                          controller: controller,
-                          chatId: chatId,
-                          focusNode: focusNode,
-                          images: images,
-                          readOnly: chatViewModel.isCurrentChatRewinding.value,
-                          onPasteImages: onPasteImages,
-                          onImageRemoved: onImageRemoved,
-                          onSubmitted:
-                              !chatViewModel.isCurrentChatRewinding.value &&
-                                  images.every((image) => image.isReady)
-                              ? onSubmitted
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      _SendButton(
-                        onSubmitted: onSubmitted,
-                        onTerminated: onTerminated,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // 容器之外的一行
-                Row(
-                  children: [
-                    // 左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
-                    // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
-                    // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
-                    // 文字控件的 hover 底按内容整形：左右各 6、上下 3（行盒 22
-                    // 撑到 28），与裸字形补出来的方盒同高。
-                    Builder(
-                      builder: (context) => AthenaGhostButton(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        onTap: () => DesktopPermissionModeMenu.show(
-                          context,
-                          contextMenuAnchorOf(context),
-                          current: approvalMode,
-                          onSelected: onApprovalModeChange,
-                        ),
-                        child: DesktopPermissionModeLabel(
-                          current: approvalMode,
-                        ),
+    return SignalBuilder(
+      builder: (context) {
+        final queued = chatViewModel.queuedMessages.value;
+        // 在 SignalBuilder 内订阅；放进下方 builder 会延迟到另一个 build，图片变化就不重绘。
+        final images = chatViewModel.pendingImages.value;
+        final chatId = chatViewModel.currentChat.value?.id;
+        // 推理强度只对推理模型有意义（发送端也只给推理模型带参数），
+        // 非推理模型不摆这个控件——摆了也没有任何效果。
+        final reasoningModel =
+            chatViewModel.currentModel.value?.reasoning ?? false;
+        final reasoningEffort = chatViewModel.currentReasoningEffort.value;
+        final approvalMode = chatViewModel.currentApprovalMode.value;
+        // 版式：
+        // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
+        // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: kChatColumnWidth),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (queued.isNotEmpty) ...[
+                    QueuedMessages(
+                      messages: queued,
+                      onSteer: chatViewModel.steerQueuedMessage,
+                      onDelete: chatViewModel.removeQueuedMessage,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  // 上下文条：灰底、无描边
+                  Container(
+                    height: 40,
+                    // 带内首个元素距容器左缘 17（含 chip 自身 10）
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      color: colors.surfaceButtonSecondary,
+                      borderRadius: BorderRadius.circular(
+                        AthenaRadius.container,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
-                    DesktopImageSelector(onSelected: onImageSelected),
-                    const Spacer(),
-                    // 用 Builder 拿到这一整块的矩形回传，菜单右边要与它对齐
-                    Builder(
-                      builder: (context) => AthenaGhostButton(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
+                    child: Row(
+                      children: [
+                        DesktopSentinelIndicator(
+                          onTap: onSentinelTap,
+                          onClear: onSentinelClear,
                         ),
-                        onTap: () =>
-                            onModelTap?.call(contextMenuAnchorOf(context)),
-                        child: const DesktopModelIndicator(),
-                      ),
+                        const SizedBox(width: 4),
+                        // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
+                        // current* 信号而不是 chat 字段，两种状态一个来源
+                        DesktopWorkspaceIndicator(
+                          path: chatViewModel.currentWorkspacePath.value,
+                          onTap: onWorkspaceTap,
+                          onClear: onWorkspaceClear,
+                        ),
+                        const Spacer(),
+                        // 当前保留策略同时服务草稿和已有会话，选项从 chip 向上展开。
+                        DesktopContextSelector(
+                          currentRetention:
+                              chatViewModel.currentRetention.value,
+                          onSelected: onRetentionChange,
+                        ),
+                      ],
                     ),
-                    if (reasoningModel) ...[
-                      const SizedBox(width: 4),
-                      // Effort 面板锚在这一整块上方、右对齐
+                  ),
+                  const SizedBox(height: 4),
+                  // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
+                  _ComposerInputBox(
+                    focusNode: focusNode,
+                    builder: (focusNode) => Row(
+                      children: [
+                        Expanded(
+                          child: _Input(
+                            controller: controller,
+                            chatId: chatId,
+                            focusNode: focusNode,
+                            images: images,
+                            readOnly:
+                                chatViewModel.isCurrentChatRewinding.value,
+                            onPasteImages: onPasteImages,
+                            onImageRemoved: onImageRemoved,
+                            onSubmitted:
+                                !chatViewModel.isCurrentChatRewinding.value &&
+                                    images.every((image) => image.isReady)
+                                ? onSubmitted
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        _SendButton(
+                          onSubmitted: onSubmitted,
+                          onTerminated: onTerminated,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // 容器之外的一行
+                  Row(
+                    children: [
+                      // 左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
+                      // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
+                      // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
+                      // 文字控件的 hover 底按内容整形：左右各 6、上下 3（行盒 22
+                      // 撑到 28），与裸字形补出来的方盒同高。
                       Builder(
                         builder: (context) => AthenaGhostButton(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 3,
                           ),
-                          onTap: () => DesktopReasoningEffortMenu.show(
+                          onTap: () => DesktopPermissionModeMenu.show(
                             context,
                             contextMenuAnchorOf(context),
-                            current: reasoningEffort,
-                            onSelected: onReasoningEffortChange,
+                            current: approvalMode,
+                            onSelected: onApprovalModeChange,
                           ),
-                          child: DesktopReasoningEffortLabel(
-                            current: reasoningEffort,
+                          child: DesktopPermissionModeLabel(
+                            current: approvalMode,
                           ),
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
+                      DesktopImageSelector(onSelected: onImageSelected),
+                      const Spacer(),
+                      // 用 Builder 拿到这一整块的矩形回传，菜单右边要与它对齐
+                      Builder(
+                        builder: (context) => AthenaGhostButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          onTap: () =>
+                              onModelTap?.call(contextMenuAnchorOf(context)),
+                          child: const DesktopModelIndicator(),
+                        ),
+                      ),
+                      if (reasoningModel) ...[
+                        const SizedBox(width: 4),
+                        // Effort 面板锚在这一整块上方、右对齐
+                        Builder(
+                          builder: (context) => AthenaGhostButton(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            onTap: () => DesktopReasoningEffortMenu.show(
+                              context,
+                              contextMenuAnchorOf(context),
+                              current: reasoningEffort,
+                              onSelected: onReasoningEffortChange,
+                            ),
+                            child: DesktopReasoningEffortLabel(
+                              current: reasoningEffort,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 4),
+                      const DesktopTokenIndicator(),
                     ],
-                    const SizedBox(width: 4),
-                    const DesktopTokenIndicator(),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -641,33 +647,35 @@ class _SendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = context.athenaColors;
-    return Watch((context) {
-      final streaming = chatViewModel.isCurrentChatStreaming.value;
-      final imagesReady = chatViewModel.pendingImages.value.every(
-        (image) => image.isReady,
-      );
-      // 字形盒取"嵌套档" 22×22；hover 底按通用的 22 + 3×2 = 28 方盒补一圈，
-      // 与容器外那一行的 ghost 控件同高（否则这一格 hover 时明显小一圈）。
-      // 加高的 6 落在输入框内容区的 38 之内，不会把容器撑高。
-      return AthenaGhostButton(
-        onTap: streaming
-            ? onTerminated
-            : imagesReady
-            ? onSubmitted
-            : null,
-        padding: const EdgeInsets.all(3),
-        child: Container(
-          alignment: Alignment.center,
-          height: 22,
-          width: 22,
-          child: Icon(
-            streaming ? LucideIcons.square : LucideIcons.arrowUp,
-            color: streaming || imagesReady ? colors.accent : colors.textWeak,
-            size: AthenaIcon.regularSize,
+    return SignalBuilder(
+      builder: (context) {
+        final streaming = chatViewModel.isCurrentChatStreaming.value;
+        final imagesReady = chatViewModel.pendingImages.value.every(
+          (image) => image.isReady,
+        );
+        // 字形盒取"嵌套档" 22×22；hover 底按通用的 22 + 3×2 = 28 方盒补一圈，
+        // 与容器外那一行的 ghost 控件同高（否则这一格 hover 时明显小一圈）。
+        // 加高的 6 落在输入框内容区的 38 之内，不会把容器撑高。
+        return AthenaGhostButton(
+          onTap: streaming
+              ? onTerminated
+              : imagesReady
+              ? onSubmitted
+              : null,
+          padding: const EdgeInsets.all(3),
+          child: Container(
+            alignment: Alignment.center,
+            height: 22,
+            width: 22,
+            child: Icon(
+              streaming ? LucideIcons.square : LucideIcons.arrowUp,
+              color: streaming || imagesReady ? colors.accent : colors.textWeak,
+              size: AthenaIcon.regularSize,
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 

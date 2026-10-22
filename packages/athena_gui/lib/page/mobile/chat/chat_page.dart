@@ -78,63 +78,67 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Widget _buildTitle() {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      final chat = _resolveChat();
-      final isRenaming =
-          chat != null &&
-          viewModel.selection.renamingChatIds.value.contains(chat.id);
-      String title;
-      if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
-        title = viewModel.selection.renamingTitle.value;
-      } else {
-        title = chat?.title ?? 'New Session';
-        if (title.isEmpty) title = 'New Session';
-      }
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final chat = _resolveChat();
+        final isRenaming =
+            chat != null &&
+            viewModel.selection.renamingChatIds.value.contains(chat.id);
+        String title;
+        if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
+          title = viewModel.selection.renamingTitle.value;
+        } else {
+          title = chat?.title ?? 'New Session';
+          if (title.isEmpty) title = 'New Session';
+        }
 
-      if (isRenaming) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: Text(title, textAlign: TextAlign.center)),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: colors.textPrimary,
+        if (isRenaming) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Text(title, textAlign: TextAlign.center)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.textPrimary,
+                ),
               ),
-            ),
-          ],
-        );
-      }
-      return Text(title, textAlign: TextAlign.center);
-    });
+            ],
+          );
+        }
+        return Text(title, textAlign: TextAlign.center);
+      },
+    );
   }
 
   Widget _buildContent() {
-    return Watch((context) {
-      final chat = _resolveChat();
-      final sentinel = _resolveSentinel(chat);
+    return SignalBuilder(
+      builder: (context) {
+        final chat = _resolveChat();
+        final sentinel = _resolveSentinel(chat);
 
-      if (chat != null) {
-        final model = modelViewModel.models.value
-            .where((m) => m.id == chat.modelId)
-            .firstOrNull;
-        return MessageListView(
-          key: ValueKey(chat.id),
-          chat: chat,
-          viewModel: viewModel,
-          sentinelViewModel: sentinelViewModel,
-          controller: scrollController,
-          model: model,
-          onChatTitleChanged: (_) {},
-          onRewind: rewindMessage,
-        );
-      }
-      return SentinelPlaceholder(sentinel: sentinel);
-    });
+        if (chat != null) {
+          final model = modelViewModel.models.value
+              .where((m) => m.id == chat.modelId)
+              .firstOrNull;
+          return MessageListView(
+            key: ValueKey(chat.id),
+            chat: chat,
+            viewModel: viewModel,
+            sentinelViewModel: sentinelViewModel,
+            controller: scrollController,
+            model: model,
+            onChatTitleChanged: (_) {},
+            onRewind: rewindMessage,
+          );
+        }
+        return SentinelPlaceholder(sentinel: sentinel);
+      },
+    );
   }
 
   ChatEntity? _resolveChat() {
@@ -306,13 +310,9 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Future<void> pickImages() async {
     if (viewModel.isCurrentChatRewinding.value) return;
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: true,
-      );
-      if (result == null) return;
+      final files = await FilePicker.pickFiles(type: FileType.image);
       final paths = [
-        for (final file in result.files)
+        for (final file in files)
           if (file.path != null) file.path!,
       ];
       if (paths.isEmpty) return;
@@ -418,70 +418,73 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Widget _buildInput() {
-    return Watch((context) {
-      final chat = _resolveChat();
-      final userInput = UserInput(
-        controller: controller,
-        focusNode: composerFocusNode,
-        readOnly: viewModel.isCurrentChatRewinding.value,
-        isStreaming: viewModel.isCurrentChatStreaming.value,
-        onSubmitted: () => sendMessage(chat),
-        onTerminated: terminateStreaming,
-        onPickImages: pickImages,
-        onMore: () => openBottomSheet(_resolveChat()),
-      );
-      final queued = viewModel.queuedMessages.value;
-      final padding = Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (queued.isNotEmpty) ...[
-              QueuedMessages(
-                messages: queued,
-                onSteer: viewModel.steerQueuedMessage,
-                onDelete: viewModel.removeQueuedMessage,
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (viewModel.pendingImages.value.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final (index, image)
-                      in viewModel.pendingImages.value.indexed)
-                    SizedBox(
-                      width: 64,
-                      height: 64,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(child: _buildPendingImage(image)),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Tooltip(
-                              message: 'Remove image',
-                              child: AthenaGhostIconButton(
-                                icon: LucideIcons.x,
-                                onTap: viewModel.isCurrentChatRewinding.value
-                                    ? null
-                                    : () => viewModel.removePendingImage(index),
+    return SignalBuilder(
+      builder: (context) {
+        final chat = _resolveChat();
+        final userInput = UserInput(
+          controller: controller,
+          focusNode: composerFocusNode,
+          readOnly: viewModel.isCurrentChatRewinding.value,
+          isStreaming: viewModel.isCurrentChatStreaming.value,
+          onSubmitted: () => sendMessage(chat),
+          onTerminated: terminateStreaming,
+          onPickImages: pickImages,
+          onMore: () => openBottomSheet(_resolveChat()),
+        );
+        final queued = viewModel.queuedMessages.value;
+        final padding = Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (queued.isNotEmpty) ...[
+                QueuedMessages(
+                  messages: queued,
+                  onSteer: viewModel.steerQueuedMessage,
+                  onDelete: viewModel.removeQueuedMessage,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (viewModel.pendingImages.value.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final (index, image)
+                        in viewModel.pendingImages.value.indexed)
+                      SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: _buildPendingImage(image)),
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Tooltip(
+                                message: 'Remove image',
+                                child: AthenaGhostIconButton(
+                                  icon: LucideIcons.x,
+                                  onTap: viewModel.isCurrentChatRewinding.value
+                                      ? null
+                                      : () =>
+                                            viewModel.removePendingImage(index),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
+              AbsorbPointer(
+                absorbing: viewModel.isCurrentChatRewinding.value,
+                child: userInput,
               ),
-            AbsorbPointer(
-              absorbing: viewModel.isCurrentChatRewinding.value,
-              child: userInput,
-            ),
-          ],
-        ),
-      );
-      return SafeArea(top: false, child: padding);
-    });
+            ],
+          ),
+        );
+        return SafeArea(top: false, child: padding);
+      },
+    );
   }
 }

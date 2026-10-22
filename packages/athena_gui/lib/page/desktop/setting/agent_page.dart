@@ -61,60 +61,62 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   Widget build(BuildContext context) {
     return AthenaSettingsPane(
       children: [
-        Watch((context) {
-          final hasModels =
-              modelViewModel.groupedEnabledModels.value.isNotEmpty;
-          return AthenaSettingsSection(
-            first: true,
-            title: 'Default models',
-            description:
-                'The model each job starts with. You can still switch models '
-                'inside a session.',
-            children: [
-              if (!hasModels)
-                const AthenaSettingsEmptyState(
-                  icon: LucideIcons.cpu,
-                  title: 'No enabled models',
-                  hint:
-                      'Enable a provider and add an API key to pick default '
-                      'models.',
-                ),
-              if (hasModels) ...[
-                AthenaSettingsRow(
-                  label: 'Session model',
-                  description:
-                      'The model new sessions and the agent loop start with.',
-                  control: _buildModelSelect(
-                    viewModel.chatModelId.value,
-                    viewModel.updateChatModelId,
+        SignalBuilder(
+          builder: (context) {
+            final hasModels =
+                modelViewModel.groupedEnabledModels.value.isNotEmpty;
+            return AthenaSettingsSection(
+              first: true,
+              title: 'Default models',
+              description:
+                  'The model each job starts with. You can still switch models '
+                  'inside a session.',
+              children: [
+                if (!hasModels)
+                  const AthenaSettingsEmptyState(
+                    icon: LucideIcons.cpu,
+                    title: 'No enabled models',
+                    hint:
+                        'Enable a provider and add an API key to pick default '
+                        'models.',
                   ),
-                ),
-                AthenaSettingsRow(
-                  label: 'Session naming model',
-                  description:
-                      'Names a session after its first exchange. Falls back to '
-                      'the session model.',
-                  control: _buildModelSelect(
-                    viewModel.chatNamingModelId.value,
-                    viewModel.updateChatNamingModelId,
-                    clearable: true,
+                if (hasModels) ...[
+                  AthenaSettingsRow(
+                    label: 'Session model',
+                    description:
+                        'The model new sessions and the agent loop start with.',
+                    control: _buildModelSelect(
+                      viewModel.chatModelId.value,
+                      viewModel.updateChatModelId,
+                    ),
                   ),
-                ),
-                AthenaSettingsRow(
-                  label: 'Sentinel metadata model',
-                  description:
-                      'Generates a Sentinel\'s name, description '
-                      'and tags from its system prompt.',
-                  control: _buildModelSelect(
-                    viewModel.sentinelMetadataGenerationModelId.value,
-                    viewModel.updateSentinelMetadataGenerationModelId,
-                    clearable: true,
+                  AthenaSettingsRow(
+                    label: 'Session naming model',
+                    description:
+                        'Names a session after its first exchange. Falls back to '
+                        'the session model.',
+                    control: _buildModelSelect(
+                      viewModel.chatNamingModelId.value,
+                      viewModel.updateChatNamingModelId,
+                      clearable: true,
+                    ),
                   ),
-                ),
+                  AthenaSettingsRow(
+                    label: 'Sentinel metadata model',
+                    description:
+                        'Generates a Sentinel\'s name, description '
+                        'and tags from its system prompt.',
+                    control: _buildModelSelect(
+                      viewModel.sentinelMetadataGenerationModelId.value,
+                      viewModel.updateSentinelMetadataGenerationModelId,
+                      clearable: true,
+                    ),
+                  ),
+                ],
               ],
-            ],
-          );
-        }),
+            );
+          },
+        ),
         AthenaSettingsSection(
           title: 'Model requests',
           children: [
@@ -153,37 +155,41 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
               description:
                   'Reasoning effort new sessions start with. You can still '
                   'change it in the composer.',
-              control: Watch((context) {
-                return AthenaSettingsSegmented<String>(
-                  selected: viewModel.defaultReasoningEffort.value,
-                  onChanged: viewModel.updateDefaultReasoningEffort,
-                  options: [
-                    for (final option in reasoningEffortOptions)
-                      AthenaSegmentOption(value: option.$1, label: option.$2),
-                  ],
-                );
-              }),
+              control: SignalBuilder(
+                builder: (context) {
+                  return AthenaSettingsSegmented<String>(
+                    selected: viewModel.defaultReasoningEffort.value,
+                    onChanged: viewModel.updateDefaultReasoningEffort,
+                    options: [
+                      for (final option in reasoningEffortOptions)
+                        AthenaSegmentOption(value: option.$1, label: option.$2),
+                    ],
+                  );
+                },
+              ),
             ),
           ],
         ),
         AthenaSettingsSection(
           title: 'Tools',
           children: [
-            Watch((context) {
-              return AthenaSettingsRow(
-                label: 'Background task reports',
-                description:
-                    'When a background command finishes, start a run that '
-                    'reads its output and reports back. That run uses this '
-                    'session\'s model, so it costs a request; it only has '
-                    'read-only tools and never asks for approval.',
-                control: AthenaSwitch(
-                  value: viewModel.backgroundTaskReports.value,
-                  onChanged: (value) =>
-                      viewModel.updateBackgroundTaskReports(value),
-                ),
-              );
-            }),
+            SignalBuilder(
+              builder: (context) {
+                return AthenaSettingsRow(
+                  label: 'Background task reports',
+                  description:
+                      'When a background command finishes, start a run that '
+                      'reads its output and reports back. That run uses this '
+                      'session\'s model, so it costs a request; it only has '
+                      'read-only tools and never asks for approval.',
+                  control: AthenaSwitch(
+                    value: viewModel.backgroundTaskReports.value,
+                    onChanged: (value) =>
+                        viewModel.updateBackgroundTaskReports(value),
+                  ),
+                );
+              },
+            ),
             AthenaSettingsRow(
               label: 'Brave Search API key',
               description:

@@ -45,41 +45,45 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   }
 
   Widget _buildData() {
-    return Watch((context) {
-      final histories = viewModel.chatHistories.value;
-      if (histories.isEmpty) {
-        return MobileEmptyState(
-          icon: LucideIcons.messageSquare,
-          title: 'No sessions yet',
-          hint: 'Start a new session and it will show up here.',
-          action: AthenaPrimaryButton(
-            onTap: () => MobileChatRoute().push<void>(context),
-            child: const Center(child: Text('New Session')),
+    return SignalBuilder(
+      builder: (context) {
+        final histories = viewModel.chatHistories.value;
+        if (histories.isEmpty) {
+          return MobileEmptyState(
+            icon: LucideIcons.messageSquare,
+            title: 'No sessions yet',
+            hint: 'Start a new session and it will show up here.',
+            action: AthenaPrimaryButton(
+              onTap: () => MobileChatRoute().push<void>(context),
+              child: const Center(child: Text('New Session')),
+            ),
+          );
+        }
+        final pinned = histories
+            .where((history) => history.chat.pinned)
+            .toList();
+        final recent = histories
+            .where((history) => !history.chat.pinned)
+            .toList();
+        final children = <Widget>[
+          if (pinned.isNotEmpty) _buildGroupLabel(context, 'Pinned'),
+          if (pinned.isNotEmpty) ..._buildGroup(context, pinned),
+          if (recent.isNotEmpty) _buildGroupLabel(context, 'Recent'),
+          if (recent.isNotEmpty) ..._buildGroup(context, recent),
+        ];
+        return RefreshIndicator(
+          onRefresh: () => viewModel.getChats(),
+          child: ListView(
+            padding: EdgeInsets.only(
+              top: 4,
+              bottom: 24 + MediaQuery.paddingOf(context).bottom,
+            ),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: children,
           ),
         );
-      }
-      final pinned = histories.where((history) => history.chat.pinned).toList();
-      final recent = histories
-          .where((history) => !history.chat.pinned)
-          .toList();
-      final children = <Widget>[
-        if (pinned.isNotEmpty) _buildGroupLabel(context, 'Pinned'),
-        if (pinned.isNotEmpty) ..._buildGroup(context, pinned),
-        if (recent.isNotEmpty) _buildGroupLabel(context, 'Recent'),
-        if (recent.isNotEmpty) ..._buildGroup(context, recent),
-      ];
-      return RefreshIndicator(
-        onRefresh: () => viewModel.getChats(),
-        child: ListView(
-          padding: EdgeInsets.only(
-            top: 4,
-            bottom: 24 + MediaQuery.paddingOf(context).bottom,
-          ),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: children,
-        ),
-      );
-    });
+      },
+    );
   }
 
   List<Widget> _buildGroup(

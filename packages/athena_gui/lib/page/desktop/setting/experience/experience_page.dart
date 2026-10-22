@@ -46,12 +46,14 @@ class _DesktopSettingExperiencePageState
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final experiences = viewModel.experiences.value;
-      final open = experiences.where((e) => _keyOf(e) == openKey).firstOrNull;
-      if (open == null) return _buildList(experiences);
-      return _buildDetail(open);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final experiences = viewModel.experiences.value;
+        final open = experiences.where((e) => _keyOf(e) == openKey).firstOrNull;
+        if (open == null) return _buildList(experiences);
+        return _buildDetail(open);
+      },
+    );
   }
 
   static (String, String) _keyOf(ExperienceEntity experience) =>

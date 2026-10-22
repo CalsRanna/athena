@@ -75,10 +75,10 @@ class AiPermissionReviewer {
           Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
       'prior_user_decisions': userDecisions,
       'user_answers': userAnswers,
-      if (workspace != null) 'workspace': workspace,
+      'workspace': ?workspace,
       'tool': {'name': toolName, 'description': toolDescription},
       'arguments': arguments,
-      if (sentinelId != null) 'current_sentinel_id': sentinelId,
+      'current_sentinel_id': ?sentinelId,
     });
     // Do not silently truncate user intent, restrictions or execution arguments.
     // UTF-8 bytes provide a conservative input estimate; reserve output space.

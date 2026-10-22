@@ -34,7 +34,7 @@ void main() {
       'usage': {
         'input_tokens': inputTokens,
         'output_tokens': 1,
-        if (cacheRead != null) 'cache_read_input_tokens': cacheRead,
+        'cache_read_input_tokens': ?cacheRead,
       },
     },
   };

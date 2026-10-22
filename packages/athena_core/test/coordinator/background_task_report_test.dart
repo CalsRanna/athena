@@ -273,7 +273,7 @@ void main() {
           name: 'background_task',
           arguments: {
             'action': action,
-            if (taskId != null) 'task_id': taskId,
+            'task_id': ?taskId,
             'call_description': '查看后台任务',
           },
         ),

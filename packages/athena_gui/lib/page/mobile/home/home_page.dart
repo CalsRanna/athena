@@ -67,47 +67,49 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   Widget _buildExperiencesListView() {
-    return Watch((context) {
-      final experiences = experienceViewModel.experiences.value
-          .take(10)
-          .toList();
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          SectionTitle(
-            'Experiences',
-            onTap: () => navigateExperienceList(context),
-          ),
-          if (experiences.isNotEmpty)
-            CardListView(
-              itemCount: experiences.length,
-              itemBuilder: (_, index) {
-                final experience = experiences[index];
-                return CardTile(
-                  icon: LucideIcons.brain,
-                  name: experience.lesson,
-                  description:
-                      '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
-                  onTap: () => MobileExperienceDetailRoute(
-                    experience: experience,
-                  ).push<void>(context),
-                );
-              },
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'No experiences yet',
-                style: AthenaTextStyle.caption.copyWith(
-                  color: context.athenaColors.textWeak,
+    return SignalBuilder(
+      builder: (context) {
+        final experiences = experienceViewModel.experiences.value
+            .take(10)
+            .toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            SectionTitle(
+              'Experiences',
+              onTap: () => navigateExperienceList(context),
+            ),
+            if (experiences.isNotEmpty)
+              CardListView(
+                itemCount: experiences.length,
+                itemBuilder: (_, index) {
+                  final experience = experiences[index];
+                  return CardTile(
+                    icon: LucideIcons.brain,
+                    name: experience.lesson,
+                    description:
+                        '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
+                    onTap: () => MobileExperienceDetailRoute(
+                      experience: experience,
+                    ).push<void>(context),
+                  );
+                },
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'No experiences yet',
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: context.athenaColors.textWeak,
+                  ),
                 ),
               ),
-            ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 
   void navigateExperienceList(BuildContext context) {
@@ -135,8 +137,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
       spacing: 8,
       children: [
         SectionTitle('Session history', onTap: () => navigateChatList(context)),
-        Watch(
-          (_) => RecentChatListView(
+        SignalBuilder(
+          builder: (_) => RecentChatListView(
             chatHistories: chatViewModel.recentChatHistories.value,
             viewModel: chatViewModel,
           ),

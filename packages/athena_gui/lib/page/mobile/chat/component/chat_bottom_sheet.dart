@@ -97,77 +97,79 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      var sentinel = _sentinelId.value == ChatEntity.noSentinelId
-          ? SentinelViewModel.directChatSentinel
-          : sentinelViewModel.sentinels.value
-                .where((s) => s.id == _sentinelId.value)
-                .firstOrNull;
-      // 非空的悬空引用仍沿用原有兜底；null 是用户显式选择，不能回退。
-      sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
+    return SignalBuilder(
+      builder: (context) {
+        var sentinel = _sentinelId.value == ChatEntity.noSentinelId
+            ? SentinelViewModel.directChatSentinel
+            : sentinelViewModel.sentinels.value
+                  .where((s) => s.id == _sentinelId.value)
+                  .firstOrNull;
+        // 非空的悬空引用仍沿用原有兜底；null 是用户显式选择，不能回退。
+        sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
-      var model = modelViewModel.models.value
-          .where((m) => m.id == _modelId.value)
-          .firstOrNull;
-      // Fallback to first enabled model if not found
-      model ??= modelViewModel.enabledModels.value.firstOrNull;
+        var model = modelViewModel.models.value
+            .where((m) => m.id == _modelId.value)
+            .firstOrNull;
+        // Fallback to first enabled model if not found
+        model ??= modelViewModel.enabledModels.value.firstOrNull;
 
-      final provider = providerViewModel.providers.value
-          .where((p) => p.id == (model?.providerId))
-          .firstOrNull;
+        final provider = providerViewModel.providers.value
+            .where((p) => p.id == (model?.providerId))
+            .firstOrNull;
 
-      final modelName = model?.name ?? '';
-      final providerName = provider?.name ?? '';
-      final modelFullName =
-          '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
-      final sentinelSheetTile = AthenaBottomSheetTile(
-        leading: const Icon(LucideIcons.userRound),
-        onTap: openSentinelSelectorDialog,
-        title: 'Sentinel',
-        trailing: Text(sentinel?.name ?? ''),
-      );
-      final modelSheetTile = AthenaBottomSheetTile(
-        leading: const Icon(LucideIcons.cpu),
-        onTap: openModelSelectorDialog,
-        title: 'Model',
-        trailing: Text(modelFullName),
-      );
-      final reasoningEffortSheetTile = AthenaBottomSheetTile(
-        leading: const Icon(LucideIcons.brainCircuit),
-        onTap: openReasoningEffortDialog,
-        title: 'Reasoning Effort',
-        trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
-      );
-      final approvalModeSheetTile = AthenaBottomSheetTile(
-        leading: const Icon(LucideIcons.shieldCheck),
-        onTap: openApprovalModeDialog,
-        title: 'Approval Mode',
-        trailing: Text(_approvalMode.value.label),
-      );
-      final chatConfigurationSheetTile = AthenaBottomSheetTile(
-        leading: const Icon(LucideIcons.slidersHorizontal),
-        onTap: openConfigurationDialog,
-        title: 'Session Configuration',
-        trailing: const Icon(AthenaIcons.forward),
-      );
+        final modelName = model?.name ?? '';
+        final providerName = provider?.name ?? '';
+        final modelFullName =
+            '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
+        final sentinelSheetTile = AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.userRound),
+          onTap: openSentinelSelectorDialog,
+          title: 'Sentinel',
+          trailing: Text(sentinel?.name ?? ''),
+        );
+        final modelSheetTile = AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.cpu),
+          onTap: openModelSelectorDialog,
+          title: 'Model',
+          trailing: Text(modelFullName),
+        );
+        final reasoningEffortSheetTile = AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.brainCircuit),
+          onTap: openReasoningEffortDialog,
+          title: 'Reasoning Effort',
+          trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
+        );
+        final approvalModeSheetTile = AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.shieldCheck),
+          onTap: openApprovalModeDialog,
+          title: 'Approval Mode',
+          trailing: Text(_approvalMode.value.label),
+        );
+        final chatConfigurationSheetTile = AthenaBottomSheetTile(
+          leading: const Icon(LucideIcons.slidersHorizontal),
+          onTap: openConfigurationDialog,
+          title: 'Session Configuration',
+          trailing: const Icon(AthenaIcons.forward),
+        );
 
-      final children = <Widget>[
-        sentinelSheetTile,
-        modelSheetTile,
-        reasoningEffortSheetTile,
-        approvalModeSheetTile,
-        chatConfigurationSheetTile,
-      ];
+        final children = <Widget>[
+          sentinelSheetTile,
+          modelSheetTile,
+          reasoningEffortSheetTile,
+          approvalModeSheetTile,
+          chatConfigurationSheetTile,
+        ];
 
-      final padding = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        // 系统大字号下五条设置行会超过底部面板的默认最大高度，列表必须可滚。
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: children),
-        ),
-      );
-      return SafeArea(child: padding);
-    });
+        final padding = Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          // 系统大字号下五条设置行会超过底部面板的默认最大高度，列表必须可滚。
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: children),
+          ),
+        );
+        return SafeArea(child: padding);
+      },
+    );
   }
 
   void navigateChatConfiguration() {

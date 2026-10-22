@@ -39,8 +39,8 @@ void main() {
       if (status == 'incomplete')
         'incomplete_details': {'reason': 'max_output_tokens'},
       'output': output,
-      if (usage != null) 'usage': usage,
-      if (error != null) 'error': error,
+      'usage': ?usage,
+      'error': ?error,
     });
   }
 

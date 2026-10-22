@@ -12,10 +12,12 @@ class SentinelListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final sentinels = sentinelViewModel.sentinels.value;
-      return _buildData(context, sentinels);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final sentinels = sentinelViewModel.sentinels.value;
+        return _buildData(context, sentinels);
+      },
+    );
   }
 
   Widget _buildData(BuildContext context, List<SentinelEntity> sentinels) {

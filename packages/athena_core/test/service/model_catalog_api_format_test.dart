@@ -194,7 +194,7 @@ ProviderEntity _openai() => ProviderEntity(
 
 Map<String, dynamic> _catalog(String id, Object? npm) => {
   id: {
-    if (npm != null) 'npm': npm,
+    'npm': ?npm,
     'models': {
       'test-model': {
         'name': 'Test model',

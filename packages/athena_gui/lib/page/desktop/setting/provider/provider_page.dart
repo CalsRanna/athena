@@ -74,12 +74,14 @@ class _DesktopSettingProviderPageState
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final providers = providerViewModel.providers.value;
-      final open = providers.where((p) => p.id == openId).firstOrNull;
-      if (open == null) return _buildList(providers);
-      return _buildDetail(open);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final providers = providerViewModel.providers.value;
+        final open = providers.where((p) => p.id == openId).firstOrNull;
+        if (open == null) return _buildList(providers);
+        return _buildDetail(open);
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

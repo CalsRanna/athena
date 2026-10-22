@@ -38,65 +38,67 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      final skills = viewModel.skills.value;
-      return AthenaScaffold(
-        appBar: const AthenaAppBar(title: Text('Skills')),
-        body: Stack(
-          children: [
-            _buildData(context, skills),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => navigateFormPage(context, null),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: colors.surfaceButtonSecondary,
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(AthenaRadius.control),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
-                  margin: EdgeInsets.only(
-                    bottom: 16 + MediaQuery.paddingOf(context).bottom,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceMobile,
-                          border: Border.all(color: colors.border),
-                          borderRadius: BorderRadius.circular(
-                            AthenaRadius.inline,
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final skills = viewModel.skills.value;
+        return AthenaScaffold(
+          appBar: const AthenaAppBar(title: Text('Skills')),
+          body: Stack(
+            children: [
+              _buildData(context, skills),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => navigateFormPage(context, null),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.surfaceButtonSecondary,
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(AthenaRadius.control),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
+                    margin: EdgeInsets.only(
+                      bottom: 16 + MediaQuery.paddingOf(context).bottom,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.surfaceMobile,
+                            border: Border.all(color: colors.border),
+                            borderRadius: BorderRadius.circular(
+                              AthenaRadius.inline,
+                            ),
+                          ),
+                          height: 24,
+                          width: 24,
+                          child: Icon(
+                            LucideIcons.plus,
+                            // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
+                            size: 12,
+                            color: colors.textPrimary,
                           ),
                         ),
-                        height: 24,
-                        width: 24,
-                        child: Icon(
-                          LucideIcons.plus,
-                          // 24 圆角容器内的小符号，按容器比例取 12，不套用三档映射
-                          size: 12,
-                          color: colors.textPrimary,
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add a skill',
+                          style: AthenaTextStyle.section.copyWith(
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Add a skill',
-                        style: AthenaTextStyle.section.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
-    });
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildData(BuildContext context, List<Skill> skills) {

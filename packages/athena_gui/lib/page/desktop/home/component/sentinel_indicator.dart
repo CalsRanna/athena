@@ -26,33 +26,35 @@ class DesktopSentinelIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    return Watch((context) {
-      final sentinel = chatViewModel.currentSentinel.value;
-      // ViewModel 会把「不使用 Sentinel」的会话解析成 directChatSentinel
-      // 默认角色尚未落盘时 ID 也为空，只把明确的直接对话占位视为无角色。
-      final hasSentinel =
-          sentinel != null &&
-          !identical(sentinel, SentinelViewModel.directChatSentinel);
-      final label = hasSentinel ? sentinel.name : 'No Sentinel';
-      // Builder 拿到 chip 自己的矩形回传，菜单左边要与它对齐
-      return Builder(
-        builder: (context) => AthenaContextChip(
-          label: label,
-          leading: const Icon(LucideIcons.userRound),
-          onTap: onTap == null
-              ? null
-              : () => onTap!(contextMenuAnchorOf(context)),
-          filled: false,
-          // 内层 onTap 在命中测试里先于 chip 的 onTap 生效
-          trailing: hasSentinel && onClear != null
-              ? GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onClear,
-                  child: const Icon(LucideIcons.x, size: 12),
-                )
-              : null,
-        ),
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final sentinel = chatViewModel.currentSentinel.value;
+        // ViewModel 会把「不使用 Sentinel」的会话解析成 directChatSentinel
+        // 默认角色尚未落盘时 ID 也为空，只把明确的直接对话占位视为无角色。
+        final hasSentinel =
+            sentinel != null &&
+            !identical(sentinel, SentinelViewModel.directChatSentinel);
+        final label = hasSentinel ? sentinel.name : 'No Sentinel';
+        // Builder 拿到 chip 自己的矩形回传，菜单左边要与它对齐
+        return Builder(
+          builder: (context) => AthenaContextChip(
+            label: label,
+            leading: const Icon(LucideIcons.userRound),
+            onTap: onTap == null
+                ? null
+                : () => onTap!(contextMenuAnchorOf(context)),
+            filled: false,
+            // 内层 onTap 在命中测试里先于 chip 的 onTap 生效
+            trailing: hasSentinel && onClear != null
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onClear,
+                    child: const Icon(LucideIcons.x, size: 12),
+                  )
+                : null,
+          ),
+        );
+      },
+    );
   }
 }

@@ -15,14 +15,16 @@ class DesktopModelIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
 
-    return Watch((context) {
-      final model = chatViewModel.currentModel.value;
-      final provider = chatViewModel.currentProvider.value;
+    return SignalBuilder(
+      builder: (context) {
+        final model = chatViewModel.currentModel.value;
+        final provider = chatViewModel.currentProvider.value;
 
-      if (model == null) return const SizedBox();
-      if (provider == null) return const SizedBox();
-      return _ModelIndicator(model: model);
-    });
+        if (model == null) return const SizedBox();
+        if (provider == null) return const SizedBox();
+        return _ModelIndicator(model: model);
+      },
+    );
   }
 }
 

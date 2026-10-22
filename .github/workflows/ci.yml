@@ -70,6 +70,11 @@ jobs:
   gui:
     runs-on: ubuntu-latest
     steps:
+      # nativeapi（tray_manager 的底层）用 build hook 编译 C++，
+      # Linux 上需要 GTK3 / X11 / Xi 的 pkg-config 包。
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libx11-dev libxi-dev
+
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
@@ -85,7 +90,7 @@ jobs:
 
       - name: Generate code (build_runner)
         working-directory: packages/athena_gui
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Analyze (athena_gui)
         working-directory: packages/athena_gui

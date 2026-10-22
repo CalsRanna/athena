@@ -277,7 +277,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
                 const SizedBox(width: 10),
               ],
               Expanded(child: textBlock),
-              if (trailing != null) trailing,
+              ?trailing,
             ],
           );
     final tile = AthenaHover(

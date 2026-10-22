@@ -60,31 +60,35 @@ class _MobileChatConfigurationPageState
   }
 
   Widget _buildRetentionSwitch() {
-    return Watch((_) {
-      return AthenaSwitch(
-        value: _zeroContext.value,
-        onChanged: (v) {
-          _zeroContext.value = v;
-          _storeRetention(v);
-        },
-      );
-    });
+    return SignalBuilder(
+      builder: (_) {
+        return AthenaSwitch(
+          value: _zeroContext.value,
+          onChanged: (v) {
+            _zeroContext.value = v;
+            _storeRetention(v);
+          },
+        );
+      },
+    );
   }
 
   Widget _buildTemperatureSlider() {
-    return Watch((context) {
-      final colors = context.athenaColors;
-      return Slider(
-        activeColor: colors.textPrimary,
-        inactiveColor: colors.borderStrong,
-        label: _temperature.value.toStringAsFixed(1),
-        max: 2,
-        onChanged: (v) => _temperature.value = v,
-        onChangeEnd: _storeTemperature,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        thumbColor: colors.textPrimary,
-        value: _temperature.value,
-      );
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        return Slider(
+          activeColor: colors.textPrimary,
+          inactiveColor: colors.borderStrong,
+          label: _temperature.value.toStringAsFixed(1),
+          max: 2,
+          onChanged: (v) => _temperature.value = v,
+          onChangeEnd: _storeTemperature,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          thumbColor: colors.textPrimary,
+          value: _temperature.value,
+        );
+      },
+    );
   }
 }

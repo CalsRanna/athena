@@ -23,7 +23,7 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 /// 工作区里轮次条的两条硬要求（都在 `DesktopMessageList` 这一层成立，
 /// 单测 `TurnIndicator` 覆盖不到）：
 ///
-/// 1. **agent 工作期间不跟着重绘**。工作区由 `Watch` 驱动，流式时每帧重建；
+/// 1. **agent 工作期间不跟着重绘**。工作区由 `SignalBuilder` 驱动，流式时每帧重建；
 ///    轮次条的**内容**（每轮正文）每帧都在变，但**结构**（几条、窗口摆在哪、
 ///    多宽）不变。宿主只把结构交给控件、按结构缓存控件实例，内容留到 hover
 ///    现取——于是这棵子树不重建、也就不重绘。判据取「控件实例是否复用」：

@@ -23,7 +23,7 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
 import 'package:athena_tui/ui/text_util.dart';
-import 'package:signals/signals.dart';
+import 'package:signals_core/signals_core.dart';
 
 /// TUI 聊天控制器:持有全部 UI 状态(signals),消费 [RunEvent] 事件流。
 ///

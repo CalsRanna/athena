@@ -106,7 +106,7 @@ anthropic.MessageCreateRequest toMessageRequest(
         message.content
       else if (message is DeveloperMessage && message.content.isNotEmpty)
         message.content,
-    if (jsonInstruction != null) jsonInstruction,
+    ?jsonInstruction,
   ];
   final systemPrompt = system.isEmpty
       ? null
@@ -548,7 +548,7 @@ ChatCompletion messageToChatCompletion(
       'protocol': 'messages',
       'stop_reason': message.stopReason?.value,
       'stop_sequence': message.stopSequence,
-      if (thinkingReplayable != null) 'thinking_replayable': thinkingReplayable,
+      'thinking_replayable': ?thinkingReplayable,
       if (message.stopDetails != null)
         'stop_details': message.stopDetails!.toJson(),
       'usage': message.usage.toJson(),

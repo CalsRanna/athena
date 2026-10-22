@@ -58,12 +58,14 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final skills = viewModel.skills.value;
-      final open = skills.where((s) => s.name == openName).firstOrNull;
-      if (open == null) return _buildList(skills);
-      return _buildEditor(open);
-    });
+    return SignalBuilder(
+      builder: (context) {
+        final skills = viewModel.skills.value;
+        final open = skills.where((s) => s.name == openName).firstOrNull;
+        if (open == null) return _buildList(skills);
+        return _buildEditor(open);
+      },
+    );
   }
 
   // ---------------------------------------------------------------------------

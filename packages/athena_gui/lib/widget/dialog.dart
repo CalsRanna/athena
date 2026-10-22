@@ -218,7 +218,7 @@ class AthenaDesktopDialog extends StatelessWidget {
             ],
           );
     final children = [
-      if (header != null) header,
+      ?header,
       if (header != null) const SizedBox(height: AthenaSpace.lg),
       child,
     ];
