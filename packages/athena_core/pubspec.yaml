@@ -2,6 +2,7 @@ name: athena_core
 description: Athena agent core - UI-agnostic agent engine, domain models, and services.
 version: 0.1.0
 publish_to: none
+resolution: workspace
 
 environment:
   # 下限由 anthropic_sdk_dart 9.x 决定（要求 Dart >=3.12.0）；

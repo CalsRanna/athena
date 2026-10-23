@@ -81,13 +81,14 @@ TUI 用 `/rewind` 选择轮次，也可用 `/rewind 3` 回到第 3 轮发送前�
 
 - Flutter 3.47.1（含 Dart 3.13.1）——CI、发布流程与本地开发统一使用这一版本
 - Dart SDK 下限 3.12.0，由 `anthropic_sdk_dart` 9.x 决定
+- 依赖按 pub workspace 在仓库根解析一次（`flutter pub get`），三个包共享根目录的 `pubspec.lock`
 
 ## 快速开始
 
 ### GUI
 
 ```bash
-cd packages/athena_gui && flutter pub get && dart run build_runner build --delete-conflicting-outputs && flutter run -d macos
+flutter pub get && cd packages/athena_gui && dart run build_runner build --delete-conflicting-outputs && flutter run -d macos
 ```
 
 `athena_gui` 的路由是 `auto_route` 生成的，`lib/router/router.gr.dart` 需要在首次拉取依赖后生成一次（改了带 `@RoutePage` 的页面之后也要重新生成）。在 VS Code 里也可以直接用 `.vscode/launch.json` 里的 `athena_gui` 配置启动。
@@ -95,7 +96,7 @@ cd packages/athena_gui && flutter pub get && dart run build_runner build --delet
 ### TUI
 
 ```bash
-cd packages/athena_tui && dart pub get && dart run bin/athena.dart
+flutter pub get && cd packages/athena_tui && dart run bin/athena.dart
 ```
 
 可传入工作区目录：`dart run bin/athena.dart ~/some/project`。缺省用当前目录。工作区是 Agent 的文件、shell 与技能工具的根目录。

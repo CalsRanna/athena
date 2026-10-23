@@ -1,6 +1,7 @@
 name: athena_gui
 description: Athena desktop/mobile GUI (Flutter), consuming athena_core.
 publish_to: "none"
+resolution: workspace
 
 version: 4.0.12+1192
 

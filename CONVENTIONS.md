@@ -232,6 +232,7 @@ GUI 的布局、控件与交互分支用 `ThemeData.platform` / `getPlatform(con
 ## 8. 依赖与版本
 
 - **SDK 与 Flutter 版本全仓库统一**：Dart 下限 3.12.0，CI / 发布 / 本地开发统一 Flutter 3.47.1。三处（`ci.yml`、`release.yml`、本地环境）必须一致，改动时同时更新
+- **仓库是一个 pub workspace**：根 `pubspec.yaml` 的 `workspace:` 列出三个成员包，各包声明 `resolution: workspace`。依赖只在仓库根解析一次，唯一的 `pubspec.lock` 也在根目录，用 `flutter pub get` 生成；不要在成员包里单独 `pub get`，也不要提交成员级 lockfile。新增包时同时改这两处
 - **新增依赖前先确认它落在哪一层**：直接或间接引入 Flutter 的库不能进 `athena_core`
 - `dependency_overrides` 只用于无法立刻解决的版本冲突，并在旁边写明原因与解除条件（参见 `athena_gui/pubspec.yaml` 里 `windows_single_instance` 的注释）
 - 版本号只在发布时递增（`athena_gui/pubspec.yaml`），打 tag 前同步
@@ -239,6 +240,12 @@ GUI 的布局、控件与交互分支用 `ThemeData.platform` / `getPlatform(con
 ---
 
 ## 9. 常用命令
+
+依赖在仓库根解析一次，三个包共用根目录的 `pubspec.lock`：
+
+```bash
+flutter pub get
+```
 
 提交前跑对应包的 `analyze`、`test` 与 `format --set-exit-if-changed`——CI（[.github/workflows/ci.yml](.github/workflows/ci.yml)）跑的就是这三条，本地过了 CI 就不会红。
 

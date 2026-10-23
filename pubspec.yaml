@@ -1,0 +1,19 @@
+# 仓库根：Dart pub workspace 的解析入口。
+#
+# 依赖只解析一次：pubspec.lock 与 .dart_tool/ 都生成在根目录，三个成员包
+# 通过 resolution: workspace 加入，不再各自维护 lockfile。
+#
+# 根包不是可发布产物，name 用占位符 _。新增成员包时，把路径加进 workspace
+# 列表，并在该包的 pubspec 里写 resolution: workspace。
+name: _
+publish_to: none
+
+environment:
+  # 与 athena_core / athena_tui 的下限一致；athena_gui 要求 >=3.13.0，
+  # 由它自己的 environment 声明，整体解析取各包约束的交集。
+  sdk: ">=3.12.0 <4.0.0"
+
+workspace:
+  - packages/athena_core
+  - packages/athena_gui
+  - packages/athena_tui

@@ -108,7 +108,9 @@ Future<void> main(List<String> args) async {
     final results = await Future.wait([
       for (final name in ['gui', 'tui'])
         Process.run(Platform.resolvedExecutable, [
-          '--packages=${p.absolute('.dart_tool/package_config.json')}',
+          // workspace 模式下 package_config.json 只在仓库根；用 PackageConfig
+          // 拿到当前测试实际使用的那一份，成员目录里没有它。
+          '--packages=${Platform.packageConfig}',
           worker.path,
           storage.root.path,
           chatId,

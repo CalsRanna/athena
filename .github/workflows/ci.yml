@@ -21,9 +21,10 @@ jobs:
           flutter-version: 3.47.1
           cache: true
 
-      - name: Pub get (athena_core)
-        working-directory: packages/athena_core
-        run: dart pub get
+      # 三个包共用一个 workspace lockfile，须在仓库根解析；
+      # 成员含 Flutter 包，故用 flutter pub get 而非 dart pub get。
+      - name: Pub get (workspace)
+        run: flutter pub get
 
       - name: Analyze (athena_core)
         working-directory: packages/athena_core
@@ -51,9 +52,10 @@ jobs:
           flutter-version: 3.47.1
           cache: true
 
-      - name: Pub get (athena_tui)
-        working-directory: packages/athena_tui
-        run: dart pub get
+      # 三个包共用一个 workspace lockfile，须在仓库根解析；
+      # 成员含 Flutter 包，故用 flutter pub get 而非 dart pub get。
+      - name: Pub get (workspace)
+        run: flutter pub get
 
       - name: Analyze (athena_tui)
         working-directory: packages/athena_tui
@@ -84,8 +86,9 @@ jobs:
           flutter-version: 3.47.1
           cache: true
 
-      - name: Pub get (athena_gui)
-        working-directory: packages/athena_gui
+      # 三个包共用一个 workspace lockfile，须在仓库根解析；
+      # 成员含 Flutter 包，故用 flutter pub get 而非 dart pub get。
+      - name: Pub get (workspace)
         run: flutter pub get
 
       - name: Generate code (build_runner)
