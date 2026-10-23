@@ -489,9 +489,8 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
     // 字号 / 行高与助手正文同一档，否则一轮对话里
     // 问与答的字号会不一致。
-    final textStyle = AthenaWorkspaceTextSize.of(
-      context,
-    ).prose.copyWith(color: colors.textPrimary);
+    final textStyle = AthenaWorkspaceTextSize.of(context).prose
+        .copyWith(color: colors.textPrimary);
     final text = Text(widget.message.content, style: textStyle);
     final images = widget.message.imageUrls.isNotEmpty
         ? widget.message.imageUrls.split(',')

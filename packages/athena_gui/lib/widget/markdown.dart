@@ -90,9 +90,8 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
         element.textContent,
-        style: AthenaWorkspaceTextSize.of(
-          context,
-        ).code.copyWith(color: colors.textOnCode),
+        style: AthenaWorkspaceTextSize.of(context).code
+            .copyWith(color: colors.textOnCode),
       ),
     );
     final widgetSpan = WidgetSpan(
@@ -137,9 +136,8 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.codeBackground,
     );
-    final textStyle = AthenaWorkspaceTextSize.of(
-      context,
-    ).code.copyWith(color: colors.textOnCode);
+    final textStyle = AthenaWorkspaceTextSize.of(context).code
+        .copyWith(color: colors.textOnCode);
     final contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
@@ -178,9 +176,8 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     const padding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    final textStyle = AthenaWorkspaceTextSize.of(
-      context,
-    ).prose.copyWith(color: colors.textOnCode);
+    final textStyle = AthenaWorkspaceTextSize.of(context).prose
+        .copyWith(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -312,9 +309,8 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: AthenaWorkspaceTextSize.of(
-                context,
-              ).prose.copyWith(color: colors.textOnCode),
+              style: AthenaWorkspaceTextSize.of(context).prose
+                  .copyWith(color: colors.textOnCode),
             ),
           ),
           Padding(
@@ -384,9 +380,8 @@ class _FlutterMarkdown extends StatelessWidget {
         decorationColor: colors.markdownStrikethrough,
       ),
       p: body,
-      code: AthenaWorkspaceTextSize.of(
-        context,
-      ).code.copyWith(color: colors.textOnCode),
+      code: AthenaWorkspaceTextSize.of(context).code
+          .copyWith(color: colors.textOnCode),
       h1: largeHeading,
       h2: largeHeading,
       h3: largeHeading,

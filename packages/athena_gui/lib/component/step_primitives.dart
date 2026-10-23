@@ -68,9 +68,8 @@ class _StepHeaderState extends State<StepHeader> {
           duration: AthenaMotion.hover,
           builder: (context, foreground, _) {
             // 与消息正文同一档：折叠头随 Text size 变，卡片里没有更小或更重的层级
-            final style = AthenaWorkspaceTextSize.of(
-              context,
-            ).prose.copyWith(color: foreground);
+            final style = AthenaWorkspaceTextSize.of(context).prose
+                .copyWith(color: foreground);
             return StepHeaderShimmer(
               active: widget.running,
               child: Row(

@@ -29,20 +29,16 @@ class _RunStatisticsLabelState
 
   @override
   void forEachTween(TweenVisitor<dynamic> visitor) {
-    _tokens =
-        visitor(
-              _tokens,
-              widget.statistics?.outputTokens?.toDouble(),
-              (dynamic value) => Tween<double>(begin: value as double),
-            )
-            as Tween<double>?;
-    _rate =
-        visitor(
-              _rate,
-              widget.statistics?.outputTokensPerSecond,
-              (dynamic value) => Tween<double>(begin: value as double),
-            )
-            as Tween<double>?;
+    _tokens = visitor(
+      _tokens,
+      widget.statistics?.outputTokens?.toDouble(),
+      (dynamic value) => Tween<double>(begin: value as double),
+    ) as Tween<double>?;
+    _rate = visitor(
+      _rate,
+      widget.statistics?.outputTokensPerSecond,
+      (dynamic value) => Tween<double>(begin: value as double),
+    ) as Tween<double>?;
   }
 
   @override

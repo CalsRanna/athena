@@ -6,7 +6,9 @@ import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 点轮次条跳转的两条硬要求：

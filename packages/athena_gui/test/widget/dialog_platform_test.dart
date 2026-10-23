@@ -10,7 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// `AthenaDialog` 的平台分派走 `ThemeData.platform`，两端分支都要能在测试里
@@ -56,9 +58,8 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp.router(
-        theme: buildAthenaThemeData(
-          AthenaColorMode.light,
-        ).copyWith(platform: platform),
+        theme: buildAthenaThemeData(AthenaColorMode.light)
+            .copyWith(platform: platform),
         builder: (context, child) => AthenaTestScope(child: child!),
         routerConfig: router.config(),
         scaffoldMessengerKey: scaffoldMessengerKey,

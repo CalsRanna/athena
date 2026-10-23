@@ -4,16 +4,17 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 「已复制」3 秒后自动复原；按钮在这之前被卸载（切换对话、流式重建）
 /// 时不能再对已销毁的 State 调 setState。
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(
-      AthenaColorMode.light,
-    ).copyWith(platform: TargetPlatform.macOS),
+    theme: buildAthenaThemeData(AthenaColorMode.light)
+        .copyWith(platform: TargetPlatform.macOS),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );
@@ -95,9 +96,8 @@ void main() {
     testWidgets('复制反馈按主题平台 $platform 显示文案', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(
-            AthenaColorMode.light,
-          ).copyWith(platform: platform),
+          theme: buildAthenaThemeData(AthenaColorMode.light)
+              .copyWith(platform: platform),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: const Scaffold(body: CopiedLabel(color: Colors.black)),
         ),

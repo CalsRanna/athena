@@ -17,7 +17,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 工作区里轮次条的两条硬要求（都在 `DesktopMessageList` 这一层成立，

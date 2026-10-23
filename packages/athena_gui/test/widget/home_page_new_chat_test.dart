@@ -20,7 +20,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 首页"新建对话"整条链路的验收（页级）：点侧栏 New session、按 ⌘N / Ctrl+N
@@ -104,9 +106,8 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(
-          AthenaColorMode.light,
-        ).copyWith(platform: TargetPlatform.macOS),
+        theme: buildAthenaThemeData(AthenaColorMode.light)
+            .copyWith(platform: TargetPlatform.macOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const DesktopHomePage(),
       ),
@@ -154,9 +155,8 @@ void main() {
   }
 
   Future<void> pressNewChat(WidgetTester tester) async {
-    final platform = Theme.of(
-      tester.element(find.byType(DesktopHomePage)),
-    ).platform;
+    final platform = Theme.of(tester.element(find.byType(DesktopHomePage)))
+        .platform;
     final modifier = platform == TargetPlatform.macOS
         ? LogicalKeyboardKey.metaLeft
         : LogicalKeyboardKey.controlLeft;

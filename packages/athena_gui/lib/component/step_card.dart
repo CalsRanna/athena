@@ -351,9 +351,8 @@ class _ReasoningBody extends StatelessWidget {
         width: double.infinity,
         child: Text(
           message.reasoningContent,
-          style: AthenaWorkspaceTextSize.of(
-            context,
-          ).prose.copyWith(color: colors.textSecondary),
+          style: AthenaWorkspaceTextSize.of(context).prose
+              .copyWith(color: colors.textSecondary),
         ),
       ),
     );

@@ -75,9 +75,8 @@ class DesktopContextMenu extends StatelessWidget {
     return DesktopContextMenuConfiguration(
       width: width,
       child: DefaultTextStyle(
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium!.copyWith(color: colors.textPrimary),
+        style: Theme.of(context).textTheme.bodyMedium!
+            .copyWith(color: colors.textPrimary),
         child: container,
       ),
     );

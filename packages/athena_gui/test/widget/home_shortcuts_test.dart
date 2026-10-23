@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../support/athena_test_scope.dart';
 
 /// 新建对话快捷键的生效范围：首页持焦（含输入框失焦回到页面）时触发；
@@ -12,9 +13,8 @@ void main() {
     WidgetTester tester, {
     LogicalKeyboardKey? modifier,
   }) async {
-    final platform = Theme.of(
-      tester.element(find.byType(DesktopHomeShortcuts)),
-    ).platform;
+    final platform = Theme.of(tester.element(find.byType(DesktopHomeShortcuts)))
+        .platform;
     modifier ??= platform == TargetPlatform.macOS
         ? LogicalKeyboardKey.metaLeft
         : LogicalKeyboardKey.controlLeft;

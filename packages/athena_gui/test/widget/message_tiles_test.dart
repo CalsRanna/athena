@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
@@ -39,9 +41,8 @@ void main() {
     bool streaming = true,
   }) => tester.pumpWidget(
     MaterialApp(
-      theme: buildAthenaThemeData(
-        AthenaColorMode.light,
-      ).copyWith(platform: TargetPlatform.macOS),
+      theme: buildAthenaThemeData(AthenaColorMode.light)
+          .copyWith(platform: TargetPlatform.macOS),
       builder: (context, child) => AthenaTestScope(child: child!),
       home: Scaffold(
         body: CustomScrollView(

@@ -15,7 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+
 import '../../../../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
@@ -116,9 +118,9 @@ void main() {
         await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
         await tester.pumpAndSettle();
         expect(
-          providerRows(
-            tester,
-          ).where((row) => row.selected).map((row) => row.label),
+          providerRows(tester)
+              .where((row) => row.selected)
+              .map((row) => row.label),
           ['Provider B', 'Provider D', 'Provider A'],
         );
 

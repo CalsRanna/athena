@@ -12,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// composer 的输入内容（文字与待发图片）按对话分开存：A 里打的字不该跟着进 B，
@@ -37,9 +39,8 @@ void main() {
       'athena_composer_draft_test',
     );
     for (final name in ['a', 'b', 'draft']) {
-      File(
-        'asset/image/launcher_icon_macos_512x512.png',
-      ).copySync('${tempRoot.path}/$name.png');
+      File('asset/image/launcher_icon_macos_512x512.png')
+          .copySync('${tempRoot.path}/$name.png');
     }
     DI.ensureInitialized(homeDirOverride: tempRoot.path);
   });

@@ -14,7 +14,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 移动消息列表的滚动视图必须从第一帧就存在：历史加载期间也保留同一个
@@ -69,9 +71,8 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(
-          AthenaColorMode.light,
-        ).copyWith(platform: TargetPlatform.iOS),
+        theme: buildAthenaThemeData(AthenaColorMode.light)
+            .copyWith(platform: TargetPlatform.iOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: MessageListView(

@@ -7,7 +7,9 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 
@@ -15,9 +17,8 @@ void main() {
   for (final platform in [TargetPlatform.macOS, TargetPlatform.android]) {
     testWidgets('${platform.name} 审批卡共用工具图标且审批按钮可用', (tester) async {
       const toolName = 'experience_recall';
-      final theme = buildAthenaThemeData(
-        AthenaColorMode.light,
-      ).copyWith(platform: platform);
+      final theme = buildAthenaThemeData(AthenaColorMode.light)
+          .copyWith(platform: platform);
       bool? decision;
       await tester.pumpWidget(
         MaterialApp(

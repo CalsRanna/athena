@@ -90,9 +90,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
                     name: experience.lesson,
                     description:
                         '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
-                    onTap: () => MobileExperienceDetailRoute(
-                      experience: experience,
-                    ).push<void>(context),
+                    onTap: () =>
+                        MobileExperienceDetailRoute(experience: experience)
+                            .push<void>(context),
                   );
                 },
               )

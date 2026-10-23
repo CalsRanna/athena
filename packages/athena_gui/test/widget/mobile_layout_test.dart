@@ -20,7 +20,9 @@ import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 Widget _app(
@@ -30,9 +32,8 @@ Widget _app(
   TargetPlatform platform = TargetPlatform.iOS,
 }) {
   return MaterialApp(
-    theme: buildAthenaThemeData(
-      AthenaColorMode.light,
-    ).copyWith(platform: platform),
+    theme: buildAthenaThemeData(AthenaColorMode.light)
+        .copyWith(platform: platform),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: MediaQuery(
       data: MediaQueryData(
@@ -106,9 +107,8 @@ void main() {
     final colors = colorsOf(AthenaColorMode.dark);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(
-          AthenaColorMode.dark,
-        ).copyWith(platform: TargetPlatform.iOS),
+        theme: buildAthenaThemeData(AthenaColorMode.dark)
+            .copyWith(platform: TargetPlatform.iOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const AthenaScaffold(body: SizedBox()),
       ),

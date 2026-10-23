@@ -6,7 +6,9 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_test/flutter_test.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 状态点的三条口径：
@@ -35,9 +37,8 @@ void main() {
       theme: buildAthenaThemeData(AthenaColorMode.light),
       builder: (context, child) => AthenaTestScope(
         child: MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(disableAnimations: disableAnimations),
+          data: MediaQuery.of(context)
+              .copyWith(disableAnimations: disableAnimations),
           child: child!,
         ),
       ),
@@ -144,9 +145,8 @@ void main() {
           theme: buildAthenaThemeData(AthenaColorMode.light),
           builder: (context, child) => AthenaTestScope(
             child: MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(disableAnimations: disableAnimations),
+              data: MediaQuery.of(context)
+                  .copyWith(disableAnimations: disableAnimations),
               child: child!,
             ),
           ),

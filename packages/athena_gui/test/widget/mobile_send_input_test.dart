@@ -10,7 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 移动端发送入口的接线：页面必须走 [ChatViewModel.prepareUserInput]。
@@ -44,9 +46,8 @@ void main() {
   testWidgets('纯空白输入不发送，也不新建对话', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(
-          AthenaColorMode.light,
-        ).copyWith(platform: TargetPlatform.iOS),
+        theme: buildAthenaThemeData(AthenaColorMode.light)
+            .copyWith(platform: TargetPlatform.iOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const MobileChatPage(),
       ),

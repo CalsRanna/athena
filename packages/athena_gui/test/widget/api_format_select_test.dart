@@ -5,7 +5,9 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
 import '../support/athena_test_scope.dart';
+
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// API 格式选择：自动同步时显示 `Auto · <推断出的格式>`，手动指定时只显示格式名；
