@@ -3,7 +3,7 @@ description: Athena desktop/mobile GUI (Flutter), consuming athena_core.
 publish_to: "none"
 resolution: workspace
 
-version: 4.0.12+1192
+version: 4.0.13+1201
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
