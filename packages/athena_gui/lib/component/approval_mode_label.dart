@@ -5,14 +5,14 @@ extension ApprovalModeLabel on ApprovalMode {
   /// 短名：`Manual` / `AI review` / `Bypass permissions`。
   String get label => switch (this) {
     ApprovalMode.manual => 'Manual',
-    ApprovalMode.aiReview => 'AI review',
+    ApprovalMode.auto => 'Auto',
     ApprovalMode.bypass => 'Bypass permissions',
   };
 
   /// 一句话说明，菜单里放在名字下面。
   String get description => switch (this) {
     ApprovalMode.manual => 'Always ask before running tools',
-    ApprovalMode.aiReview =>
+    ApprovalMode.auto =>
       'AI decides for you, asks when your judgment is needed',
     ApprovalMode.bypass =>
       'Runs tools without approval; deny rules still apply',

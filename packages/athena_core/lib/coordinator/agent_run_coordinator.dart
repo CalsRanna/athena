@@ -396,7 +396,7 @@ class AgentRunCoordinator {
       // 档位取自本会话（chat 由调用方按 id 取最新行），因此运行中改档位
       // 不影响这一轮，下一轮生效。
       final approvalMode = chat.approvalMode;
-      final reviewContext = approvalMode == ApprovalMode.aiReview
+      final reviewContext = approvalMode == ApprovalMode.auto
           ? PermissionReviewContext.fromMessages(
               await _messageRepo.getMessagesByChatId(chatId),
             )
@@ -770,7 +770,7 @@ class AgentRunCoordinator {
       ];
       // 档位取自本会话；chat 来自仓库读取，是用户刚改过档位后的最新一行。
       final approvalMode = chat.approvalMode;
-      final reviewContext = approvalMode == ApprovalMode.aiReview
+      final reviewContext = approvalMode == ApprovalMode.auto
           ? PermissionReviewContext.fromMessages(
               await _messageRepo.getMessagesByChatId(chatId),
             )

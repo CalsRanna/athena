@@ -85,7 +85,7 @@ void main() {
           permissionService: withPermissionService
               ? PermissionService(store: store)
               : null,
-          permissionReviewContext: mode == ApprovalMode.aiReview
+          permissionReviewContext: mode == ApprovalMode.auto
               ? PermissionReviewContext.fromMessages([
                   MessageEntity(chatId: '1', role: 'user', content: '查看仓库状态'),
                 ])
@@ -127,7 +127,7 @@ void main() {
   });
 
   test('AI 仅返回审批决定时 git status 经过独立审核后执行', () async {
-    final result = await run(ApprovalMode.aiReview);
+    final result = await run(ApprovalMode.auto);
     expect(result.status, ToolResultStatus.success);
     expect(result.result, 'shell executed');
     expect(result.approvalReview, {'decision': 'allow', 'source': 'model'});
@@ -138,7 +138,7 @@ void main() {
 
   test('AI 无法确认时转人工,拒绝后不执行', () async {
     completion.reviewDecision = 'ask';
-    final result = await run(ApprovalMode.aiReview);
+    final result = await run(ApprovalMode.auto);
     expect(result.status, ToolResultStatus.blocked);
     expect(result.approvalReview?['decision'], 'ask');
     expect(prompts, hasLength(1));
@@ -169,7 +169,7 @@ void main() {
         expect(prompts, isEmpty);
         expect(
           completion.reviews,
-          hasLength(mode == ApprovalMode.aiReview ? 1 : 0),
+          hasLength(mode == ApprovalMode.auto ? 1 : 0),
         );
       }
     });
@@ -246,7 +246,7 @@ void main() {
     };
     var questionsShown = 0;
     final result = await run(
-      ApprovalMode.aiReview,
+      ApprovalMode.auto,
       onElicit: (_, questions, _) async {
         questionsShown++;
         return {questions.single.question: 'A'};
@@ -267,7 +267,7 @@ void main() {
         pattern: 'git status',
       ),
     );
-    final result = await run(ApprovalMode.aiReview);
+    final result = await run(ApprovalMode.auto);
     expect(result.status, ToolResultStatus.blocked);
     expect(result.result, contains('denied by a permission rule'));
     expect(prompts, isEmpty);
@@ -292,7 +292,7 @@ void main() {
   for (final response in ['not JSON', '{"decision":"invalid"}']) {
     test('AI 返回无效响应时转人工：$response', () async {
       completion.reviewResponse = response;
-      final result = await run(ApprovalMode.aiReview, approved: true);
+      final result = await run(ApprovalMode.auto, approved: true);
       expect(result.status, ToolResultStatus.success);
       expect(result.approvalReview?['source'], 'fallback');
       expect(prompts, hasLength(1));
@@ -317,7 +317,7 @@ void main() {
       'approval_recommendation': 'ask',
       'approval_reason': 'legacy suggestion',
     };
-    final result = await run(ApprovalMode.aiReview);
+    final result = await run(ApprovalMode.auto);
     expect(result.status, ToolResultStatus.success);
     expect(completion.reviews, hasLength(2));
     expect(prompts, isEmpty);
@@ -338,7 +338,7 @@ void main() {
   test('AI 转人工后单次人工批准不会跳过后续 AI 审核', () async {
     completion.reviewDecision = 'ask';
     completion.callCount = 2;
-    await run(ApprovalMode.aiReview, approved: true);
+    await run(ApprovalMode.auto, approved: true);
     expect(completion.reviews, hasLength(2));
     expect(prompts, hasLength(2));
   });
@@ -346,7 +346,7 @@ void main() {
   test('用户拒绝后的相同调用不重试、不再发起 AI 或人工审批', () async {
     completion.reviewDecision = 'ask';
     completion.callCount = 2;
-    final result = await run(ApprovalMode.aiReview);
+    final result = await run(ApprovalMode.auto);
     expect(result.status, ToolResultStatus.blocked);
     expect(completion.reviews, hasLength(1));
     expect(prompts, hasLength(1));
@@ -372,7 +372,7 @@ void main() {
       'content': '{}',
     };
     final result = await run(
-      ApprovalMode.aiReview,
+      ApprovalMode.auto,
       onElicit: (_, questions, _) async => {questions.single.question: 'JSON'},
     );
     expect(result.status, ToolResultStatus.success);

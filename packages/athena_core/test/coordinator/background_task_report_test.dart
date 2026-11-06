@@ -375,7 +375,7 @@ void main() {
     expect(streamRequests(), hasLength(1));
   });
 
-  for (final mode in [ApprovalMode.manual, ApprovalMode.aiReview]) {
+  for (final mode in [ApprovalMode.manual, ApprovalMode.auto]) {
     test('运行中完成的任务在下一次请求合并通知，沿用 ${mode.key} 审批且不重复汇报', () async {
       await setUpHarness(
         approvalMode: mode,
@@ -664,7 +664,7 @@ void main() {
     expect(content, contains('End of task output.'));
   }, skip: isWindows);
 
-  for (final mode in [ApprovalMode.aiReview, ApprovalMode.bypass]) {
+  for (final mode in [ApprovalMode.auto, ApprovalMode.bypass]) {
     test('后台汇报沿用 ${mode.key} 审批模式', () async {
       await setUpHarness(approvalMode: mode);
       await coordinator
@@ -680,7 +680,7 @@ void main() {
 
       expect(approvalTools, isEmpty);
       final reviews = llm.requests.where((r) => r['stream'] != true).toList();
-      expect(reviews, hasLength(mode == ApprovalMode.aiReview ? 2 : 0));
+      expect(reviews, hasLength(mode == ApprovalMode.auto ? 2 : 0));
       if (reviews.isNotEmpty) {
         final input =
             jsonDecode(

@@ -304,12 +304,12 @@ void main() {
 
       final updated = await storage.sessionRepository.getChatById(a);
       await storage.sessionRepository.updateChat(
-        updated!.copyWith(approvalMode: ApprovalMode.aiReview),
+        updated!.copyWith(approvalMode: ApprovalMode.auto),
       );
 
       expect(
         (await storage.sessionRepository.getChatById(a))!.approvalMode,
-        ApprovalMode.aiReview,
+        ApprovalMode.auto,
       );
       expect(
         (await storage.sessionRepository.getChatById(b))!.approvalMode,

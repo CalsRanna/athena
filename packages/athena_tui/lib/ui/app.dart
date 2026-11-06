@@ -347,7 +347,7 @@ class _TuiAppState extends State<TuiApp> {
         if (args.isNotEmpty) {
           final mode = switch (args) {
             'manual' => ApprovalMode.manual,
-            'ai' => ApprovalMode.aiReview,
+            'auto' => ApprovalMode.auto,
             'bypass' => ApprovalMode.bypass,
             _ => null,
           };
@@ -358,9 +358,9 @@ class _TuiAppState extends State<TuiApp> {
           await _controller.switchApprovalMode(mode);
         }
         final label = switch (_controller.currentChat.value!.approvalMode) {
-          ApprovalMode.manual => '手动',
-          ApprovalMode.aiReview => 'AI 自动审核',
-          ApprovalMode.bypass => '所有权限',
+          ApprovalMode.manual => 'Manual',
+          ApprovalMode.auto => 'Auto',
+          ApprovalMode.bypass => 'Bypass permissions',
         };
         _pushSystemMessage('审批模式：$label（本会话），下一轮生效。');
       case '/rewind':
