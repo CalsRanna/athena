@@ -94,17 +94,14 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
       ];
     }
     return AthenaSettingsPane(
+      title: 'Skills',
+      action: AthenaSecondaryButton.small(
+        onTap: createSkill,
+        child: const Text('New skill'),
+      ),
       children: [
-        AthenaSettingsSection(
-          first: true,
-          title: 'Skills',
-          description:
-              'Reusable instructions the agent loads when a task matches. '
-              'Stored as SKILL.md files under ~/.athena/skills.',
-          trailing: AthenaSecondaryButton.small(
-            onTap: createSkill,
-            child: const Text('New skill'),
-          ),
+        AthenaSettingsListGroup(
+          label: 'Skills · ${user.length}',
           children: rows,
         ),
         if (builtin.isNotEmpty)
@@ -121,6 +118,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     final description = skill.description.trim();
     return AthenaSettingsListRow(
       label: skill.name,
+      labelMaxLines: 1,
       badge: skill.isBuiltin ? 'Built-in' : null,
       description: description.isEmpty ? 'No description' : description,
       descriptionMaxLines: 1,
@@ -210,6 +208,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     final colors = context.athenaColors;
     final readOnly = skill.isBuiltin;
     final header = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         AthenaSettingsBackLink(label: 'Skills', onTap: _closeEditor),
         if (readOnly) ...[
@@ -219,6 +218,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
       ],
     );
     return AthenaSettingsPane(
+      title: skill.name,
       header: header,
       footer: dirty && !readOnly
           ? AthenaSettingsSaveBar(
@@ -229,7 +229,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
       children: [
         AthenaSettingsSection(
           first: true,
-          title: skill.name,
+          title: 'Skill details',
           description: readOnly
               ? 'Ships with Athena and cannot be edited.'
               : 'The name is the folder name and cannot be changed.',

@@ -1,6 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
+import 'package:athena_gui/page/desktop/setting/component/nav.dart';
+import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/main.dart';
 import 'package:athena_gui/page/desktop/setting/appearance_page.dart';
@@ -133,7 +138,55 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
+    await router.maybePop();
+    await settle(tester);
     await tester.pumpWidget(const SizedBox());
     await settle(tester);
   });
+
+  testWidgets(
+    'New session in settings opens a draft after switching sections',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(const AthenaApp());
+      await settle(tester);
+      final chats = GetIt.instance<ChatViewModel>();
+      await tester.runAsync(() async {
+        final repo = GetIt.instance<ChatRepository>();
+        final now = DateTime.now();
+        final id = await repo.createChat(
+          ChatEntity(
+            title: 'Existing session',
+            modelId: '1',
+            sentinelId: ChatEntity.noSentinelId,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        await chats.selectChat((await repo.getChatById(id))!);
+      });
+      await settle(tester);
+      expect(chats.currentChat.value?.title, 'Existing session');
+      await tester.tap(find.byType(DesktopSidebarFooter));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await settle(tester);
+      final nav = find.byType(AthenaSettingsNav);
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('Appearance')),
+      );
+      await settle(tester);
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('New session')),
+      );
+      await settle(tester);
+      expect(nav, findsNothing);
+      expect(chats.currentChat.value, isNull);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await settle(tester);
+    },
+  );
 }

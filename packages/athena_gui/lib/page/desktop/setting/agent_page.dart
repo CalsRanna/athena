@@ -60,6 +60,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   @override
   Widget build(BuildContext context) {
     return AthenaSettingsPane(
+      title: 'Agent',
       children: [
         SignalBuilder(
           builder: (context) {

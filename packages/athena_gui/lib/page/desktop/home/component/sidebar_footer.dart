@@ -15,7 +15,8 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 /// Athena 没有账号体系，菜单里只放设置与关于两个真实入口——不摆没有行为的
 /// 条目——顶栏因此不再重复放设置按钮。
 class DesktopSidebarFooter extends StatefulWidget {
-  const DesktopSidebarFooter({super.key});
+  final VoidCallback? onNewSession;
+  const DesktopSidebarFooter({super.key, this.onNewSession});
 
   @override
   State<DesktopSidebarFooter> createState() => _DesktopSidebarFooterState();
@@ -53,6 +54,19 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
     });
   }
 
+  Future<void> _openSettings({bool about = false}) async {
+    final route = DesktopSettingRoute(
+      children: [
+        if (about)
+          const DesktopSettingAboutRoute()
+        else
+          const DesktopSettingProviderRoute(),
+      ],
+    );
+    final newSession = await route.push<bool>(context);
+    if (mounted && newSession == true) widget.onNewSession?.call();
+  }
+
   /// 在 [anchor]（页脚行的全局矩形）上方弹出菜单：面板外沿与行左右对齐、
   /// 底边离行顶 4。
   void _openMenu(Rect anchor) {
@@ -68,12 +82,12 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
         DesktopContextMenuTile(
           icon: LucideIcons.settings,
           text: 'Settings',
-          onTap: () => const DesktopSettingProviderRoute().push<void>(context),
+          onTap: () => _openSettings(),
         ),
         DesktopContextMenuTile(
           icon: LucideIcons.info,
           text: 'About Athena',
-          onTap: () => const DesktopSettingAboutRoute().push<void>(context),
+          onTap: () => _openSettings(about: true),
         ),
       ],
     );

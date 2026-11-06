@@ -52,6 +52,50 @@ void main() {
       .widgetList<AthenaSettingsListRow>(find.byType(AthenaSettingsListRow))
       .where((row) => row.label.startsWith('Provider '));
 
+  testWidgets('adding a provider inline can be cancelled or submitted once', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() => GetIt.instance<FileStorage>().load());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        builder: (context, child) => AthenaTestScope(child: child!),
+        home: const AthenaSettingsPanel(
+          nav: SizedBox(width: AthenaSettings.navWidth),
+          content: DesktopSettingProviderPage(),
+        ),
+      ),
+    );
+    await settle(tester);
+    await tester.tap(find.text('Add provider'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Discarded draft');
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.tap(find.text('Add provider'));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+    await tester.enterText(find.byType(TextField), '  Local preview  ');
+    await tester.pump();
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Add'));
+      await tester.tap(find.text('Add'));
+    });
+    await settle(tester);
+    expect(find.text('API key'), findsOneWidget);
+    await tester.tap(find.byType(AthenaSettingsBackLink));
+    await tester.pumpAndSettle();
+    expect(find.text('Local preview'), findsOneWidget);
+    expect(find.text('Discarded draft'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final mode in AthenaColorMode.values) {
     testWidgets(
       '${mode.name}: grouped selection and toggling follow visible order',
@@ -93,6 +137,9 @@ void main() {
         await settle(tester);
         expect(find.text('Enabled · 2'), findsOneWidget);
         expect(find.text('Disabled · 2'), findsOneWidget);
+        expect(find.text('Provider A'), findsNothing);
+        await tester.tap(find.text('Disabled · 2'));
+        await tester.pumpAndSettle();
         expect(providerRows(tester).map((row) => row.label), [
           'Provider B',
           'Provider D',

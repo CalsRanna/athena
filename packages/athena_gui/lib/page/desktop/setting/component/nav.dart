@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 设置面板左栏：搜索框 + 分组标题 + 图标行。
-///
-/// 宽 192（含右侧 1px neutralBorder）、底色 surfacePanel、内边距 12。
-/// 行高 36、行距 4、行圆角 8；静止文字 textRowLabel，选中底 neutralSelected
-/// 配青瓷 accent 文字。
+/// 固定品牌与搜索框，分组列表可独立滚动。
 class AthenaSettingsNav extends StatelessWidget {
-  final Widget? search;
+  final Widget search;
   final List<Widget> children;
-  const AthenaSettingsNav({super.key, this.search, required this.children});
+  const AthenaSettingsNav({
+    super.key,
+    required this.search,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,14 +22,42 @@ class AthenaSettingsNav extends StatelessWidget {
       color: colors.surfacePanel,
       border: Border(right: BorderSide(color: colors.neutralBorder)),
     );
-    final listView = ListView(
-      padding: const EdgeInsets.all(AthenaSettings.navPadding),
-      children: [?search, ...children],
-    );
     return Container(
       width: AthenaSettings.navWidth,
       decoration: decoration,
-      child: listView,
+      padding: const EdgeInsets.all(AthenaSettings.navPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 8, 0, 12),
+            child: Row(
+              children: [
+                Image.asset(
+                  'asset/image/launcher_icon_macos_512x512.png',
+                  width: 24,
+                  height: 24,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Settings',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AthenaTextStyle.title.copyWith(
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          search,
+          Expanded(
+            child: ListView(padding: EdgeInsets.zero, children: children),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -139,8 +167,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
 
 /// 导航里的一个分组：小号灰标题 + 若干行。
 ///
-/// 标题字号 12、色 textWeak；标题上方留白 28、下方 13；
-/// 标题左缩进 10（与行的图标列对齐）。
+/// 分组用辅助字号，与下方导航行的图标列对齐。
 class AthenaSettingsNavGroup extends StatelessWidget {
   final String title;
   final List<Widget> children;
@@ -165,24 +192,14 @@ class AthenaSettingsNavGroup extends StatelessWidget {
       ),
       child: label,
     );
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) {
-        rows.add(const SizedBox(height: AthenaSettings.navRowGap));
-      }
-      rows.add(children[i]);
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [header, ...rows],
+      children: [header, ...children],
     );
   }
 }
 
-/// 导航行：图标 + 标签。行高 36、圆角 8、左内缩 12、
-/// 图标 16、图标与标签间距 12。
-///
-/// 选中行只换底色与文字色，**不加粗**：加粗会让整列在切换时跳动。
+/// 图标与单行标签共用固定的点击区域。当前分区使用青瓷色和中等字重。
 class AthenaSettingsNavItem extends StatefulWidget {
   final String label;
   final IconData icon;

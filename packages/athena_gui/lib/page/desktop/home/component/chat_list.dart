@@ -64,7 +64,7 @@ class DesktopChatListView extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
                     ),
             ),
-            const DesktopSidebarFooter(),
+            DesktopSidebarFooter(onNewSession: onCreateChat),
           ],
         );
       },

@@ -18,8 +18,7 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置行：左侧标签（+ 徽标 + 说明 + 错误），右侧控件。
 ///
-/// 标签与说明同号 14，两者都是常规字重：标签 `textPrimary`、说明 `textSecondary`；
-/// 行上下内边距 16，行高约 69。
+/// 标签与辅助说明使用不同字号；多行说明与右侧控件顶端对齐。
 class AthenaSettingsRow extends StatelessWidget {
   final String label;
   final String? description;
@@ -85,6 +84,7 @@ class AthenaSettingsRow extends StatelessWidget {
 class AthenaSettingsListRow extends StatelessWidget {
   final String label;
   final String? description;
+  final String? metadata;
 
   /// 标签后面的小徽标（`Built-in` / `Custom`）。
   final String? badge;
@@ -106,6 +106,7 @@ class AthenaSettingsListRow extends StatelessWidget {
     super.key,
     required this.label,
     this.description,
+    this.metadata,
     this.badge,
     this.selected = false,
     this.dimmed = false,
@@ -139,7 +140,21 @@ class AthenaSettingsListRow extends StatelessWidget {
                 descriptionMaxLines: descriptionMaxLines,
               ),
             ),
-            const SizedBox(width: 24),
+            if (metadata != null) ...[
+              const SizedBox(width: 12),
+              LimitedBox(
+                maxWidth: 128,
+                child: Text(
+                  metadata!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: 12),
             Icon(
               AthenaIcons.forward,
               color: colors.iconSecondary,
@@ -204,7 +219,7 @@ class AthenaSettingsLinkRow extends StatelessWidget {
 
 /// 设置行与列表行共用的标签区：标签（+ 可选徽标）+ 说明 + 错误。
 ///
-/// 三者同号 14：标签 `textPrimary`、说明 `textSecondary`、错误 `dangerText`。
+/// 标签用正文档，说明与错误用辅助字号。
 class _SettingsRowLabel extends StatelessWidget {
   final String label;
   final String? description;
@@ -231,10 +246,12 @@ class _SettingsRowLabel extends StatelessWidget {
     final labelStyle = AthenaTextStyle.row.copyWith(
       color: dimmed ? colors.textSecondary : colors.textPrimary,
     );
-    final descriptionStyle = AthenaTextStyle.row.copyWith(
+    final descriptionStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    final errorStyle = AthenaTextStyle.row.copyWith(color: colors.dangerText);
+    final errorStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.dangerText,
+    );
     final labelText = Text(
       label,
       maxLines: labelMaxLines,

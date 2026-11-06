@@ -19,11 +19,7 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 设置面板外壳：居中浮层 + 遮罩。
 ///
-/// 实测（1296×783 逻辑窗口）：面板 1026×695，左右各留 135、上下各留 44，
-/// 圆角统一为 16；遮罩与表面颜色跟随 Athena 青瓷色板。
-/// 面板内左侧是导航、右侧是内容区，关闭按钮浮在内容区右上角的**标题带**里
-/// （内容区顶部留出 [AthenaSettings.paneTopPadding]，分区标题从标题带下方
-/// 开始，不会与关闭键同一水平线）。
+/// 左侧是分区导航，右侧固定标题栏与可滚动内容。面板尺寸不会随页面内容跳变。
 class AthenaSettingsPanel extends StatelessWidget {
   final Widget nav;
   final Widget content;
@@ -76,10 +72,7 @@ class AthenaSettingsPanel extends StatelessWidget {
           320.0,
           AthenaSettings.panelMaxWidth,
         );
-        final height = (constraints.maxHeight - margin * 2).clamp(
-          240.0,
-          4000.0,
-        );
+        final height = (constraints.maxHeight - margin * 2) * 0.8;
         final closeButton = onClose == null
             ? null
             : Positioned(
@@ -140,11 +133,17 @@ class AthenaSettingsPanel extends StatelessWidget {
 /// 返回链接；[footer] 固定在底部不随内容滚动，用于「未保存改动」的保存栏。
 class AthenaSettingsPane extends StatelessWidget {
   final List<Widget> children;
+  final ScrollController? controller;
+  final String? title;
+  final Widget? action;
   final Widget? header;
   final Widget? footer;
   const AthenaSettingsPane({
     super.key,
     required this.children,
+    this.controller,
+    this.title,
+    this.action,
     this.header,
     this.footer,
   });
@@ -154,6 +153,7 @@ class AthenaSettingsPane extends StatelessWidget {
     final colors = context.athenaColors;
     const horizontal = AthenaSettings.panePadding - AthenaSettings.rowInset;
     final list = ListView(
+      controller: controller,
       padding: const EdgeInsets.fromLTRB(
         horizontal,
         AthenaSettings.panePadding,
@@ -185,14 +185,31 @@ class AthenaSettingsPane extends StatelessWidget {
           ),
         ),
       ),
-      if (header != null)
-        Positioned(
-          top: AthenaSettings.closeInset,
-          left: AthenaSettings.panePadding - AthenaSettings.rowInset,
-          // 给右上角的关闭键留位置
-          right: AthenaSettings.closeInset + 28 + 12,
-          child: Align(alignment: Alignment.centerLeft, child: header!),
+      Positioned(
+        top: 0,
+        height: AthenaSettings.paneTopPadding,
+        left: header == null ? AthenaSettings.panePadding : horizontal,
+        right: AthenaSettings.closeInset + 28 + AthenaSpace.sm,
+        child: Row(
+          children: [
+            ?header,
+            if (header != null && title != null) const SizedBox(width: 12),
+            Expanded(
+              child: title == null
+                  ? const SizedBox.shrink()
+                  : Text(
+                      title!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AthenaTextStyle.title.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+            ),
+            ?action,
+          ],
         ),
+      ),
     ];
     return ColoredBox(
       color: colors.surfaceMobile,
@@ -306,6 +323,38 @@ class AthenaSettingsSection extends StatelessWidget {
           AthenaSettingsGroup(children: children),
         ],
       ),
+    );
+  }
+}
+
+/// 集合页的分组标题与数量，以次级文字和行名称分层。
+class AthenaSettingsListGroup extends StatelessWidget {
+  final String label;
+  final List<Widget> children;
+  const AthenaSettingsListGroup({
+    super.key,
+    required this.label,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AthenaSettingsInset(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AthenaSpace.sm),
+            child: Text(
+              label,
+              style: AthenaTextStyle.caption.copyWith(
+                color: context.athenaColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        AthenaSettingsGroup(children: children),
+      ],
     );
   }
 }

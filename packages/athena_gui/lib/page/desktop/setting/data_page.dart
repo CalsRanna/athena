@@ -40,10 +40,11 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
     final colors = context.athenaColors;
     final dataDirectory = GetIt.instance<FileStorage>().root.path;
     return AthenaSettingsPane(
+      title: 'Data',
       children: [
         AthenaSettingsSection(
           first: true,
-          title: 'Data',
+          title: 'Storage',
           children: [
             AthenaSettingsRow(
               label: 'Data folder',

@@ -48,16 +48,7 @@ class _SettingGroup {
 
 /// 桌面端设置面板。
 ///
-/// 版式（数值与来源见 `theme/athena_settings.dart`）：
-/// - **居中浮层**（最大宽 1024、上下留白 44、圆角 16）+ 40% 黑遮罩，右上角关闭；
-///   路由是**非透明**的，所以面板浮在应用之上而不是整窗替换。
-/// - **左栏 192**：搜索框 + 分组标题 + 图标行（行高 36、选中底 neutralSelected）。
-/// - **右栏纯白内容区**：顶部 60 的标题带（关闭键 / 返回链接）、分区标题、
-///   行（标签 + 说明 + 右侧控件）、行间 1px `#F3F3F3` 发丝线。
-///
-/// **没有第二列导航**：一个导航项对应同一内容区里的多个分区。
-/// Providers / Sentinels / Skills / Experiences 这类条目集合用**单列列表 →
-/// 钻取详情**（标题带里出现 `← 返回`）承载，而不是再开一列。
+/// 八个分区共用同一浮层，集合页在右侧内容区钻取详情。
 @RoutePage()
 class DesktopSettingPage extends StatefulWidget {
   const DesktopSettingPage({super.key});
@@ -181,8 +172,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       controller: searchController,
       onChanged: _handleSearch,
     );
-    final children = [search, ..._buildGroups(context)];
-    return AthenaSettingsNav(children: children);
+    return AthenaSettingsNav(search: search, children: _buildGroups(context));
   }
 
   List<Widget> _buildGroups(BuildContext context) {

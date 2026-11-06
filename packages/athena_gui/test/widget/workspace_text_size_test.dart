@@ -231,7 +231,7 @@ void main() {
         ),
       );
       await settle(tester);
-      final settingsLabelSize = paragraph(tester, find.text('Text size')).size;
+      final settingsLabelSize = paragraph(tester, find.text('Conversation text size')).size;
       for (final size in AthenaTextSize.values) {
         await tester.tap(find.text(size.label));
         await settle(tester);
@@ -244,11 +244,11 @@ void main() {
         expect(tester.getSize(find.byType(DesktopMessageInput)), composerSize);
         expectTextScale(tester, sidebar, 1.2);
         expectTextScale(tester, title, 1.2);
-        expectTextScale(tester, find.text('Text size'), 1.2);
+        expectTextScale(tester, find.text('Conversation text size'), 1.2);
         expect(paragraph(tester, sidebar).size, sidebarSize);
         expect(paragraph(tester, title).size, titleSize);
         expect(
-          paragraph(tester, find.text('Text size')).size,
+          paragraph(tester, find.text('Conversation text size')).size,
           settingsLabelSize,
         );
       }

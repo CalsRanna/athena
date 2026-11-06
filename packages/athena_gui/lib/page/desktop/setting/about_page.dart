@@ -72,6 +72,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
         ? version
         : '$version ($buildNumber)';
     return AthenaSettingsPane(
+      title: 'About Athena',
       children: [
         AthenaSettingsInset(
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 32),

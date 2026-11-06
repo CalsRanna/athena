@@ -15,11 +15,9 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 /// 保留参照值的项目标注实测来源，调整后的项目注明当前规则。
 abstract final class AthenaSettings {
   // ---- 面板 ----
-  /// 面板最大宽度。实测 1026（1296 宽窗口，左右各留 135）。
+  /// 桌面设置共享同一尺寸；内容在面板内独立滚动。
   static const panelMaxWidth = 1024.0;
-
-  /// 面板与窗口上下的留白。实测上下各 44。
-  static const panelMarginVertical = 44.0;
+  static const panelMarginVertical = 32.0;
 
   /// 大面板统一使用 16 圆角。
   static const panelRadius = AthenaRadius.panel;
@@ -28,35 +26,32 @@ abstract final class AthenaSettings {
   static const scrimOpacity = 0.40;
 
   // ---- 左侧导航 ----
-  /// 导航宽（含右侧 1px 分界线）。实测 192。
-  static const navWidth = 192.0;
+  /// 侧栏固定宽度，含右侧分隔线。
+  static const navWidth = 172.0;
 
-  /// 导航内边距。实测 12（行左缘 148，导航左缘 136）。
-  static const navPadding = 12.0;
+  /// 侧栏内缩。
+  static const navPadding = 10.0;
 
-  /// 导航行高：22 行盒上下各留 7。
-  static const navRowHeight = 36.0;
-
-  /// 导航行距。
-  static const navRowGap = 4.0;
+  /// 单行导航的点击高度。
+  static const navRowHeight = 32.0;
 
   /// 导航行与全局列表行共用 8 圆角。
   static const navRowRadius = AthenaRadius.row;
 
-  /// 导航行左内缩（图标起于行内 12）。实测行左缘 148、图标起于 160。
-  static const navRowPadding = 12.0;
+  /// 导航图标相对行左缘的内缩。
+  static const navRowPadding = 9.0;
 
   /// 导航图标。实测图标盒 16。
   static const navIconSize = AthenaIcon.regularSize;
 
-  /// 图标与标签间距。实测图标 160..176、文字起于 189。
-  static const navIconGap = 12.0;
+  /// 导航图标与标签的距离。
+  static const navIconGap = 8.0;
 
-  /// 分组标题上方留白（搜索框底 89 → 标题顶 117）。实测 28。
-  static const navGroupTopMargin = 28.0;
+  /// 分组之间的留白。
+  static const navGroupTopMargin = 14.0;
 
-  /// 分组标题下方留白（标题底 128.5 → 首行顶 142）。实测 13.5。
-  static const navGroupBottomMargin = 13.0;
+  /// 分组标签与首行的距离。
+  static const navGroupBottomMargin = 4.0;
 
   /// 搜索框与设置控件同高，给 22 行盒留出上下呼吸空间。
   static const searchHeight = 36.0;
@@ -75,25 +70,21 @@ abstract final class AthenaSettings {
   /// 文字列仍落在 24 的位置上。
   static const rowInset = 8.0;
 
-  /// 内容区顶部的**标题带**高度：关闭键（与返回链接）独占的一条。
-  ///
-  /// 实测首个分区标题顶 109、面板顶 44，即标题起于面板内 65；扣掉标题行盒
-  /// 的上半留白取 60。旧值 24 会让首个标题与右上角的关闭键同一水平线，
-  /// 分区标题右侧的控件（Provider 的启用开关）直接压在关闭键上。
+  /// 固定标题栏容纳页名、主要操作与关闭键。
   static const paneTopPadding = 60.0;
 
   /// 内容区底部内边距。
   static const paneBottomPadding = 40.0;
 
   /// 分区标题与首个控件的间距。实测标题底 123.5 → 首个控件顶 153（约 28，
-  /// 扣掉行盒自身的上下余量）。
-  static const headingBottomMargin = 28.0;
+  /// 分区标题与内容之间的留白。
+  static const headingBottomMargin = 12.0;
 
-  /// 分区之间的间距（上一分区末行 → 下一分区标题）。实测约 40。
-  static const sectionGap = 40.0;
+  /// 相邻内容分区的间距。
+  static const sectionGap = 24.0;
 
-  /// 行上下内边距。实测规则线 536 → 标签顶 553.5 = 17.5，取 16。
-  static const rowPaddingVertical = 16.0;
+  /// 设置行上下内边距。
+  static const rowPaddingVertical = 12.0;
 
   /// 标签与说明之间的间距。实测标签底 567 → 说明顶 577.5 = 10.5（行盒差）。
   static const rowLabelGap = 4.0;

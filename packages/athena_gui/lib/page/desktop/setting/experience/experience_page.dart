@@ -82,14 +82,10 @@ class _DesktopSettingExperiencePageState
       ];
     }
     return AthenaSettingsPane(
+      title: 'Experiences',
       children: [
-        AthenaSettingsSection(
-          first: true,
-          title: 'Experiences',
-          description:
-              'Lessons the agent learned from earlier sessions. Active ones are '
-              'recalled automatically; archived ones are kept as a record '
-              'but never used.',
+        AthenaSettingsListGroup(
+          label: 'Active · ${active.length}',
           children: rows,
         ),
         if (archived.isNotEmpty)
@@ -106,11 +102,11 @@ class _DesktopSettingExperiencePageState
     final meta = <String>[
       viewModel.ownerLabel(experience),
       _formatDate(experience.createdAt),
-      if (experience.tags.isNotEmpty) experience.tags.take(3).join(', '),
     ];
     return AthenaSettingsListRow(
       label: experience.lesson,
-      labelMaxLines: 2,
+      labelMaxLines: 1,
+      metadata: experience.tags.firstOrNull,
       description: meta.join(' · '),
       descriptionMaxLines: 1,
       dimmed: archived,
@@ -196,6 +192,7 @@ class _DesktopSettingExperiencePageState
     final colors = context.athenaColors;
     final archived = _isArchived(experience);
     final header = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         AthenaSettingsBackLink(label: 'Experiences', onTap: _closeDetail),
         if (archived) ...[
@@ -218,6 +215,7 @@ class _DesktopSettingExperiencePageState
       ],
     );
     return AthenaSettingsPane(
+      title: 'Experience',
       header: header,
       children: [
         AthenaSettingsSection(

@@ -109,17 +109,14 @@ class _DesktopSettingSentinelPageState
       ];
     }
     return AthenaSettingsPane(
+      title: 'Sentinels',
+      action: AthenaSecondaryButton.small(
+        onTap: createSentinel,
+        child: const Text('New Sentinel'),
+      ),
       children: [
-        AthenaSettingsSection(
-          first: true,
-          title: 'Sentinels',
-          description:
-              'Personas you can attach to a session. Each one is a system prompt '
-              'with a name, description and tags.',
-          trailing: AthenaSecondaryButton.small(
-            onTap: createSentinel,
-            child: const Text('New Sentinel'),
-          ),
+        AthenaSettingsListGroup(
+          label: 'Sentinels · ${sentinels.length}',
           children: rows,
         ),
       ],
@@ -223,6 +220,7 @@ class _DesktopSettingSentinelPageState
     final readOnly = sentinel.isPreset;
     final generating = viewModel.isGenerating.value;
     final header = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         AthenaSettingsBackLink(label: 'Sentinels', onTap: _closeEditor),
         if (readOnly) ...[
@@ -232,6 +230,7 @@ class _DesktopSettingSentinelPageState
       ],
     );
     return AthenaSettingsPane(
+      title: sentinel.name,
       header: header,
       footer: dirty && !readOnly
           ? AthenaSettingsSaveBar(
@@ -242,7 +241,7 @@ class _DesktopSettingSentinelPageState
       children: [
         AthenaSettingsSection(
           first: true,
-          title: readOnly ? sentinel.name : 'Identity',
+          title: 'Identity',
           description: readOnly
               ? 'The built-in Sentinel can be read but not edited. Duplicate '
                     'it to make your own version.'

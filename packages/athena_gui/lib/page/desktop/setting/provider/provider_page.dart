@@ -3,7 +3,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/api_format_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/provider_name_form.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -14,6 +14,7 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
@@ -48,6 +49,9 @@ class _DesktopSettingProviderPageState
 
   /// 正在查看的 provider；null 表示停在列表。
   String? openId;
+  bool adding = false;
+  bool showDisabled = false;
+  final listController = ScrollController();
   final _selection = DesktopListSelection<String>();
   final nameController = TextEditingController();
   final keyController = TextEditingController();
@@ -61,6 +65,7 @@ class _DesktopSettingProviderPageState
 
   @override
   void dispose() {
+    listController.dispose();
     nameController.dispose();
     keyController.dispose();
     urlController.dispose();
@@ -89,21 +94,55 @@ class _DesktopSettingProviderPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildList(List<ProviderEntity> providers) {
-    final colors = context.athenaColors;
     final models = modelViewModel.models.value;
+    final enabled = providerViewModel.enabledProviders.value;
+    final disabled = providerViewModel.disabledProviders.value;
     var rows = <Widget>[
-      _buildProviderGroup(
-        'Enabled',
-        providerViewModel.enabledProviders.value,
-        models,
-        colors,
+      AthenaSettingsListGroup(
+        label: 'Enabled · ${enabled.length}',
+        children: [
+          for (final provider in enabled) _buildProviderRow(provider, models),
+        ],
       ),
-      _buildProviderGroup(
-        'Disabled',
-        providerViewModel.disabledProviders.value,
-        models,
-        colors,
+      const SizedBox(height: AthenaSpace.lg),
+      AthenaSettingsInset(
+        child: AthenaHover(
+          onTap: () => setState(() {
+            showDisabled = !showDisabled;
+            _selection.clear();
+          }),
+          builder: (context, hover) => Row(
+            children: [
+              Icon(
+                showDisabled
+                    ? LucideIcons.chevronDown
+                    : LucideIcons.chevronRight,
+                size: AthenaIcon.inlineSize,
+                color: context.athenaColors.iconSecondary,
+              ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Disabled · ${disabled.length}',
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: hover
+                        ? context.athenaColors.textPrimary
+                        : context.athenaColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+      if (showDisabled)
+        AthenaSettingsGroup(
+          children: [
+            for (final provider in disabled)
+              _buildProviderRow(provider, models),
+          ],
+        ),
     ];
     if (providers.isEmpty) {
       rows = [
@@ -121,19 +160,24 @@ class _DesktopSettingProviderPageState
       ];
     }
     return AthenaSettingsPane(
+      title: 'Providers',
+      controller: listController,
+      action: adding
+          ? null
+          : AthenaSecondaryButton.small(
+              onTap: createProvider,
+              child: const Text('Add provider'),
+            ),
       children: [
-        AthenaSettingsSection(
-          first: true,
-          title: 'Providers',
-          description:
-              'Where models come from. Enable a provider and add its API key '
-              'to use its models.',
-          trailing: AthenaSecondaryButton.small(
-            onTap: createProvider,
-            child: const Text('Add provider'),
+        if (adding)
+          AthenaSettingsInset(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
+            child: DesktopProviderNameForm(
+              onCancel: () => setState(() => adding = false),
+              onStored: _openProvider,
+            ),
           ),
-          children: rows,
-        ),
+        ...rows,
         AthenaSettingsSection(
           title: 'Model catalog',
           children: [
@@ -151,44 +195,16 @@ class _DesktopSettingProviderPageState
     );
   }
 
-  Widget _buildProviderGroup(
-    String title,
-    List<ProviderEntity> providers,
-    List<ModelEntity> models,
-    AthenaColors colors,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AthenaSettingsInset(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AthenaSpace.md),
-            child: Text(
-              '$title · ${providers.length}',
-              style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
-            ),
-          ),
-        ),
-        AthenaSettingsGroup(
-          children: [
-            for (final provider in providers)
-              _buildProviderRow(provider, models),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildProviderRow(ProviderEntity provider, List<ModelEntity> models) {
     final count = models.where((m) => m.providerId == provider.id).length;
-    final parts = <String>[
-      count == 1 ? '1 model' : '$count models',
-      provider.apiKey.trim().isEmpty ? 'No API key' : 'API key set',
-    ];
     return AthenaSettingsListRow(
       label: provider.name,
+      labelMaxLines: 1,
       badge: provider.isPreset ? null : 'Custom',
-      description: parts.join(' · '),
+      description: provider.apiKey.trim().isEmpty
+          ? 'No API key'
+          : 'API key set',
+      metadata: count == 1 ? '1 model' : '$count models',
       dimmed: !provider.enabled,
       selected: _selection.selectedIds.contains(provider.id),
       onTap: () => _handleProviderTap(provider),
@@ -222,7 +238,7 @@ class _DesktopSettingProviderPageState
     // Shift 范围选择必须与分组后的显示顺序一致，不能沿用仓储顺序。
     final providers = [
       ...providerViewModel.enabledProviders.value,
-      ...providerViewModel.disabledProviders.value,
+      if (showDisabled) ...providerViewModel.disabledProviders.value,
     ];
     final activate = _selection.handleTap(
       provider.id,
@@ -243,7 +259,10 @@ class _DesktopSettingProviderPageState
     nameController.text = provider.name;
     keyController.text = provider.apiKey;
     urlController.text = provider.baseUrl;
-    setState(() => openId = provider.id);
+    setState(() {
+      adding = false;
+      openId = provider.id;
+    });
   }
 
   void _closeProvider() {
@@ -303,11 +322,12 @@ class _DesktopSettingProviderPageState
         ? '1 model'
         : '${models.length} models';
     return AthenaSettingsPane(
+      title: provider.name,
       header: AthenaSettingsBackLink(label: 'Providers', onTap: _closeProvider),
       children: [
         AthenaSettingsSection(
           first: true,
-          title: provider.name,
+          title: 'Connection',
           description: provider.isPreset
               ? 'Preset provider. Its models are kept in sync with models.dev.'
               : 'Custom provider. Any OpenAI-compatible endpoint works.',
@@ -592,17 +612,22 @@ class _DesktopSettingProviderPageState
   }
 
   void createProvider() {
-    AthenaDialog.show(
-      DesktopProviderFormDialog(
-        onStored: (provider) {
-          if (mounted) _openProvider(provider);
-        },
-      ),
-    );
+    if (listController.hasClients) listController.jumpTo(0);
+    setState(() => adding = true);
   }
 
   void openProviderFormDialog(ProviderEntity provider) {
-    AthenaDialog.show(DesktopProviderFormDialog(provider: provider));
+    AthenaDialog.show(
+      AthenaDesktopDialog(
+        title: 'Rename provider',
+        onClose: AthenaDialog.dismiss,
+        child: DesktopProviderNameForm(
+          provider: provider,
+          onCancel: AthenaDialog.dismiss,
+          onStored: (_) => AthenaDialog.dismiss(),
+        ),
+      ),
+    );
   }
 
   Future<void> destroyProviders(List<ProviderEntity> targets) async {
