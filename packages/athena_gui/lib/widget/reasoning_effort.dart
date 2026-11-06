@@ -4,7 +4,7 @@ import 'package:athena_core/entity/chat_entity.dart';
 ///
 /// **取值来自 core 的 `ChatEntity.reasoningEfforts`**——档位是引擎的事实，
 /// 显示名是界面文案，两件事在这里对接。此前前端自己抄了一份带显示名的档位表，
-/// 只靠一句注释断言同序；core 加一档不会有人记得回来改，滑杆就少一个点。
+/// 只靠一句注释断言同序，core 新增档位时选择列表容易漏掉它。
 ///
 /// 之所以逐档写死显示名而不是把值首字母大写：`xhigh` 需要「Extra High」这种
 /// 不成规则的写法。core 新增档位而这里没有条目时，[reasoningEffortLabel] 会

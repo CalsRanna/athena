@@ -60,7 +60,7 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
         if (about)
           const DesktopSettingAboutRoute()
         else
-          const DesktopSettingProviderRoute(),
+          const DesktopSettingAgentRoute(),
       ],
     );
     final newSession = await route.push<bool>(context);

@@ -10,7 +10,7 @@ class ChatEntity {
   /// Context usage is unknown after rewind until the next model response.
   static const unknownContextTokens = -1;
 
-  /// 支持的推理强度档位，从弱到强。UI 的滑杆按这个顺序排点。
+  /// 支持的推理强度档位，从弱到强排列。
   static const reasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
 
   /// 新会话的推理强度。

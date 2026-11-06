@@ -6,14 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 /// **显示名**是界面文案，两者在这里对接。
 ///
 /// GUI 此前自己抄了一份带显示名的档位表，只靠一句注释断言与 core 同序。
-/// core 新增一档时不会有人记得回来改，滑杆会少一个点、下拉里看不到新档位。
+/// core 新增一档时，选择菜单也应列出新档位。
 /// 下面两条就是拦这件事的：它们此刻是绿的（两侧同步），价值在于以后漂移时会红。
 void main() {
   test('档位清单与 core 同序同长', () {
     expect(
       reasoningEffortOptions.map((option) => option.$1).toList(),
       ChatEntity.reasoningEfforts,
-      reason: '档位取值只能来自 core，且顺序即滑杆从弱到强的顺序',
+      reason: '选择列表按 core 定义的顺序从弱到强排列',
     );
   });
 

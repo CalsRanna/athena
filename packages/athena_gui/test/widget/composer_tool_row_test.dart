@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/di.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -45,7 +48,10 @@ void main() {
     if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
   });
 
-  Future<void> pumpComposer(WidgetTester tester) async {
+  Future<void> pumpComposer(
+    WidgetTester tester, {
+    bool reasoning = false,
+  }) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -56,6 +62,7 @@ void main() {
       name: 'Model M',
       modelId: 'm1',
       providerId: 'p1',
+      reasoning: reasoning,
       contextWindow: 200000,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
@@ -79,7 +86,11 @@ void main() {
         theme: buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
-          body: DesktopMessageInput(controller: controller, focusNode: focus),
+          body: DesktopMessageInput(
+            controller: controller,
+            focusNode: focus,
+            onReasoningEffortChange: viewModel.updateCurrentReasoningEffort,
+          ),
         ),
       ),
     );
@@ -90,6 +101,42 @@ void main() {
   /// 文字类控件则是被它包住）。
   Finder ghostOf(Finder owner) =>
       find.descendant(of: owner, matching: find.byType(AthenaGhostButton));
+
+  testWidgets('推理强度菜单区分默认档和当前档，选中后关闭并更新指示器', (tester) async {
+    await pumpComposer(tester, reasoning: true);
+    GetIt.instance<SettingViewModel>().defaultReasoningEffort.value = 'low';
+    final tiles = find.byType(DesktopContextMenuTile);
+    Iterable<DesktopContextMenuTile> rows() => tester.widgetList(tiles);
+    String selected() =>
+        rows().singleWhere((tile) => tile.selected == true).text;
+
+    await tester.tap(find.text('High'));
+    await tester.pump();
+    final heading = find.widgetWithText(DesktopContextMenuGroupLabel, 'Effort');
+    expect(heading, findsOneWidget);
+    expect(
+      tester.getBottomLeft(heading).dy,
+      lessThanOrEqualTo(tester.getTopLeft(tiles.first).dy),
+    );
+    expect(
+      rows().map((tile) => tile.text),
+      reasoningEffortOptions.map((o) => o.$2),
+    );
+    expect(selected(), 'High');
+    expect(rows().singleWhere((tile) => tile.badge != null).text, 'Low');
+
+    await tester.tap(find.text('Extra High'));
+    await tester.pump();
+    expect(tiles, findsNothing);
+    expect(find.text('Extra High'), findsOneWidget);
+    await tester.tap(find.text('Extra High'));
+    await tester.pump();
+    expect(selected(), 'Extra High');
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pump();
+    expect(tiles, findsNothing);
+    expect(find.text('Extra High'), findsOneWidget);
+  });
 
   testWidgets('图片加号与 token 圆环的 hover 底和其他控件同高', (tester) async {
     await pumpComposer(tester);
