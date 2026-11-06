@@ -7,6 +7,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/widget/tag.dart';
@@ -16,6 +17,26 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+
+enum _Status implements SettingsListOption {
+  all('All statuses'),
+  active('Active'),
+  archived('Archived');
+
+  const _Status(this.label);
+  @override
+  final String label;
+}
+
+enum _Sort implements SettingsListOption {
+  created('Newest first'),
+  edited('Last edited'),
+  lesson('Lesson');
+
+  const _Sort(this.label);
+  @override
+  final String label;
+}
 
 /// 桌面端 Experiences：单列列表（活跃 / 已归档两个分区）→ 点进只读详情。
 ///
@@ -36,12 +57,21 @@ class _DesktopSettingExperiencePageState
 
   /// 正在查看的经验 `(sentinelId, id)`；null 表示停在列表。
   (String, String)? openKey;
+  final searchController = TextEditingController();
+  _Status status = _Status.all;
+  _Sort sort = _Sort.created;
   final _selection = DesktopListSelection<(String, String)>();
 
   @override
   void initState() {
     super.initState();
     viewModel.load();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -67,37 +97,91 @@ class _DesktopSettingExperiencePageState
   // ---------------------------------------------------------------------------
 
   Widget _buildList(List<ExperienceEntity> experiences) {
-    final active = experiences.where((e) => !_isArchived(e)).toList();
-    final archived = experiences.where(_isArchived).toList();
-    var rows = <Widget>[for (final e in active) _buildExperienceRow(e)];
-    if (rows.isEmpty) {
-      rows = [
-        const AthenaSettingsEmptyState(
-          icon: LucideIcons.brain,
-          title: 'Nothing learned yet',
-          hint:
-              'As the agent works it records lessons here and recalls them '
-              'in later sessions. Archive the ones you disagree with.',
-        ),
-      ];
-    }
-    return AthenaSettingsPane(
+    final query = searchController.text.trim().toLowerCase();
+    final matches = experiences.where((e) {
+      if (status == _Status.active && _isArchived(e) ||
+          status == _Status.archived && !_isArchived(e)) {
+        return false;
+      }
+      return e.lesson.toLowerCase().contains(query) ||
+          e.context.toLowerCase().contains(query) ||
+          e.tags.any((tag) => tag.toLowerCase().contains(query)) ||
+          viewModel.ownerLabel(e).toLowerCase().contains(query);
+    }).toList();
+    matches.sort(_compare);
+    final active = matches.where((e) => !_isArchived(e)).toList();
+    final archived = matches.where(_isArchived).toList();
+    final visibleKeys = [...active, ...archived].map(_keyOf).toList();
+    return AthenaSettingsListPane(
       title: 'Experiences',
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'status',
+      filter: status,
+      filters: _Status.values,
+      onFilterChanged: (option) => setState(() {
+        status = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
       children: [
-        AthenaSettingsListGroup(
-          label: 'Active · ${active.length}',
-          children: rows,
-        ),
+        if (experiences.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.brain,
+            title: 'Nothing learned yet',
+            hint:
+                'As the agent works it records lessons here and recalls them '
+                'in later sessions. Archive the ones you disagree with.',
+          )
+        else if (matches.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.search,
+            title: 'No matching experiences',
+            hint: 'Try another search or change the status filter.',
+          ),
+        if (active.isNotEmpty)
+          AthenaSettingsListGroup(
+            label: 'Active · ${active.length}',
+            children: [
+              for (final e in active) _buildExperienceRow(e, visibleKeys),
+            ],
+          ),
         if (archived.isNotEmpty)
           AthenaSettingsSection(
-            title: 'Archived',
-            children: [for (final e in archived) _buildExperienceRow(e)],
+            first: active.isEmpty,
+            title: 'Archived · ${archived.length}',
+            children: [
+              for (final e in archived) _buildExperienceRow(e, visibleKeys),
+            ],
           ),
       ],
     );
   }
 
-  Widget _buildExperienceRow(ExperienceEntity experience) {
+  int _compare(ExperienceEntity a, ExperienceEntity b) {
+    final byDate = switch (sort) {
+      _Sort.created => b.createdAt.compareTo(a.createdAt),
+      _Sort.edited => (b.updatedAt ?? b.createdAt).compareTo(
+        a.updatedAt ?? a.createdAt,
+      ),
+      _Sort.lesson => 0,
+    };
+    if (byDate != 0) return byDate;
+    final byLesson = a.lesson.toLowerCase().compareTo(b.lesson.toLowerCase());
+    if (byLesson != 0) return byLesson;
+    final byOwner = a.sentinelId.compareTo(b.sentinelId);
+    return byOwner != 0 ? byOwner : a.id.compareTo(b.id);
+  }
+
+  Widget _buildExperienceRow(
+    ExperienceEntity experience,
+    List<(String, String)> visibleKeys,
+  ) {
     final archived = _isArchived(experience);
     final meta = <String>[
       viewModel.ownerLabel(experience),
@@ -111,17 +195,16 @@ class _DesktopSettingExperiencePageState
       descriptionMaxLines: 1,
       dimmed: archived,
       selected: _selection.selectedIds.contains(_keyOf(experience)),
-      onTap: () => _handleTap(experience),
+      onTap: () => _handleTap(experience, visibleKeys),
       onSecondaryTap: (details) => _openContextMenu(details, experience),
     );
   }
 
-  void _handleTap(ExperienceEntity experience) {
-    final experiences = viewModel.experiences.value;
-    final activate = _selection.handleTap(
-      _keyOf(experience),
-      ids: experiences.map(_keyOf).toList(),
-    );
+  void _handleTap(
+    ExperienceEntity experience,
+    List<(String, String)> visibleKeys,
+  ) {
+    final activate = _selection.handleTap(_keyOf(experience), ids: visibleKeys);
     if (activate) {
       _openExperience(experience);
     } else {

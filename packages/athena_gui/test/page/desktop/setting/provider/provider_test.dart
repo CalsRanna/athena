@@ -4,6 +4,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/provider_name_form.dart';
 import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
@@ -70,18 +71,19 @@ void main() {
       ),
     );
     await settle(tester);
-    await tester.tap(find.text('Add provider'));
+    await tester.tap(find.text('Add'));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), 'Discarded draft');
+    final nameField = find.descendant(
+      of: find.byType(DesktopProviderNameForm),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(nameField, 'Discarded draft');
     await tester.tap(find.text('Cancel'));
     await tester.pump();
-    await tester.tap(find.text('Add provider'));
+    await tester.tap(find.text('Add'));
     await tester.pump();
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
-      isEmpty,
-    );
-    await tester.enterText(find.byType(TextField), '  Local preview  ');
+    expect(tester.widget<TextField>(nameField).controller!.text, isEmpty);
+    await tester.enterText(nameField, '  Local preview  ');
     await tester.pump();
     await tester.runAsync(() async {
       await tester.tap(find.text('Add'));

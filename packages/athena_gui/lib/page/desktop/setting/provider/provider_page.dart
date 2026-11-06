@@ -16,6 +16,7 @@ import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/widget/switch.dart';
@@ -25,6 +26,25 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+
+enum _Status implements SettingsListOption {
+  all('All statuses'),
+  enabled('Enabled'),
+  disabled('Disabled');
+
+  const _Status(this.label);
+  @override
+  final String label;
+}
+
+enum _Sort implements SettingsListOption {
+  name('Name'),
+  models('Model count');
+
+  const _Sort(this.label);
+  @override
+  final String label;
+}
 
 /// 桌面端 Providers：单列列表 → 点进一家的详情（标题带里出现 `← Providers`）。
 ///
@@ -51,6 +71,9 @@ class _DesktopSettingProviderPageState
   String? openId;
   bool adding = false;
   bool showDisabled = false;
+  final searchController = TextEditingController();
+  _Status status = _Status.all;
+  _Sort sort = _Sort.name;
   final listController = ScrollController();
   final _selection = DesktopListSelection<String>();
   final nameController = TextEditingController();
@@ -66,6 +89,7 @@ class _DesktopSettingProviderPageState
   @override
   void dispose() {
     listController.dispose();
+    searchController.dispose();
     nameController.dispose();
     keyController.dispose();
     urlController.dispose();
@@ -94,80 +118,68 @@ class _DesktopSettingProviderPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildList(List<ProviderEntity> providers) {
-    final models = modelViewModel.models.value;
-    final enabled = providerViewModel.enabledProviders.value;
-    final disabled = providerViewModel.disabledProviders.value;
-    var rows = <Widget>[
-      AthenaSettingsListGroup(
-        label: 'Enabled · ${enabled.length}',
-        children: [
-          for (final provider in enabled) _buildProviderRow(provider, models),
-        ],
-      ),
-      const SizedBox(height: AthenaSpace.lg),
-      AthenaSettingsInset(
-        child: AthenaHover(
-          onTap: () => setState(() {
-            showDisabled = !showDisabled;
-            _selection.clear();
-          }),
-          builder: (context, hover) => Row(
-            children: [
-              Icon(
-                showDisabled
-                    ? LucideIcons.chevronDown
-                    : LucideIcons.chevronRight,
-                size: AthenaIcon.inlineSize,
-                color: context.athenaColors.iconSecondary,
-              ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  'Disabled · ${disabled.length}',
-                  style: AthenaTextStyle.caption.copyWith(
-                    color: hover
-                        ? context.athenaColors.textPrimary
-                        : context.athenaColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      if (showDisabled)
-        AthenaSettingsGroup(
-          children: [
-            for (final provider in disabled)
-              _buildProviderRow(provider, models),
-          ],
-        ),
-    ];
-    if (providers.isEmpty) {
-      rows = [
-        AthenaSettingsEmptyState(
-          icon: AthenaIcons.connection,
-          title: 'No providers',
-          hint:
-              'Sync the catalog from models.dev to get the preset providers, '
-              'or add one by hand.',
-          action: AthenaSecondaryButton.small(
-            onTap: syncFromModelsDev,
-            child: const Text('Sync from models.dev'),
-          ),
-        ),
-      ];
+    final query = searchController.text.trim().toLowerCase();
+    final modelsByProvider = <String, List<ModelEntity>>{};
+    for (final model in modelViewModel.models.value) {
+      (modelsByProvider[model.providerId] ??= []).add(model);
     }
-    return AthenaSettingsPane(
+    final matches = providers.where((p) {
+      if (status == _Status.enabled && !p.enabled ||
+          status == _Status.disabled && p.enabled) {
+        return false;
+      }
+      return p.name.toLowerCase().contains(query) ||
+          p.baseUrl.toLowerCase().contains(query) ||
+          (modelsByProvider[p.id]?.any(
+                (m) =>
+                    m.name.toLowerCase().contains(query) ||
+                    m.modelId.toLowerCase().contains(query),
+              ) ??
+              false);
+    }).toList();
+    matches.sort((a, b) {
+      if (sort == _Sort.models) {
+        final byCount = (modelsByProvider[b.id]?.length ?? 0).compareTo(
+          modelsByProvider[a.id]?.length ?? 0,
+        );
+        if (byCount != 0) return byCount;
+      }
+      final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      if (byName != 0) return byName;
+      return (a.id ?? '').compareTo(b.id ?? '');
+    });
+    final enabled = matches.where((p) => p.enabled).toList();
+    final disabled = matches.where((p) => !p.enabled).toList();
+    final filtering = query.isNotEmpty || status != _Status.all;
+    final expandDisabled = filtering || showDisabled;
+    final selectableIds = [
+      for (final p in [...enabled, if (expandDisabled) ...disabled])
+        if (!p.isPreset && p.id != null) p.id!,
+    ];
+    Widget row(ProviderEntity provider) => _buildProviderRow(
+      provider,
+      modelsByProvider[provider.id]?.length ?? 0,
+      selectableIds,
+    );
+    return AthenaSettingsListPane(
       title: 'Providers',
       controller: listController,
-      action: adding
-          ? null
-          : AthenaSecondaryButton.small(
-              onTap: createProvider,
-              child: const Text('Add provider'),
-            ),
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'status',
+      filter: status,
+      filters: _Status.values,
+      onFilterChanged: (option) => setState(() {
+        status = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      onAdd: adding ? null : createProvider,
       children: [
         if (adding)
           AthenaSettingsInset(
@@ -177,7 +189,47 @@ class _DesktopSettingProviderPageState
               onStored: _openProvider,
             ),
           ),
-        ...rows,
+        if (providers.isEmpty)
+          AthenaSettingsEmptyState(
+            icon: AthenaIcons.connection,
+            title: 'No providers',
+            hint:
+                'Sync the catalog from models.dev to get the preset providers, '
+                'or add one by hand.',
+            action: AthenaSecondaryButton.small(
+              onTap: syncFromModelsDev,
+              child: const Text('Sync from models.dev'),
+            ),
+          )
+        else if (matches.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.search,
+            title: 'No matching providers',
+            hint: 'Try another search or change the status filter.',
+          )
+        else ...[
+          if (enabled.isNotEmpty || !filtering)
+            AthenaSettingsListGroup(
+              label: 'Enabled · ${enabled.length}',
+              children: [for (final p in enabled) row(p)],
+            ),
+          if (disabled.isNotEmpty || !filtering) ...[
+            if (enabled.isNotEmpty || !filtering)
+              const SizedBox(height: AthenaSpace.lg),
+            if (filtering)
+              AthenaSettingsListGroup(
+                label: 'Disabled · ${disabled.length}',
+                children: [for (final p in disabled) row(p)],
+              )
+            else ...[
+              _disabledHeader(disabled.length),
+              if (showDisabled)
+                AthenaSettingsGroup(
+                  children: [for (final p in disabled) row(p)],
+                ),
+            ],
+          ],
+        ],
         AthenaSettingsSection(
           title: 'Model catalog',
           children: [
@@ -195,8 +247,41 @@ class _DesktopSettingProviderPageState
     );
   }
 
-  Widget _buildProviderRow(ProviderEntity provider, List<ModelEntity> models) {
-    final count = models.where((m) => m.providerId == provider.id).length;
+  Widget _disabledHeader(int count) => AthenaSettingsInset(
+    child: AthenaHover(
+      onTap: () => setState(() {
+        showDisabled = !showDisabled;
+        _selection.clear();
+      }),
+      builder: (context, hover) => Row(
+        children: [
+          Icon(
+            showDisabled ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+            size: AthenaIcon.inlineSize,
+            color: context.athenaColors.iconSecondary,
+          ),
+          const SizedBox(width: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Disabled · $count',
+              style: AthenaTextStyle.caption.copyWith(
+                color: hover
+                    ? context.athenaColors.textPrimary
+                    : context.athenaColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildProviderRow(
+    ProviderEntity provider,
+    int count,
+    List<String> selectableIds,
+  ) {
     return AthenaSettingsListRow(
       label: provider.name,
       labelMaxLines: 1,
@@ -207,7 +292,7 @@ class _DesktopSettingProviderPageState
       metadata: count == 1 ? '1 model' : '$count models',
       dimmed: !provider.enabled,
       selected: _selection.selectedIds.contains(provider.id),
-      onTap: () => _handleProviderTap(provider),
+      onTap: () => _handleProviderTap(provider, selectableIds),
       onSecondaryTap: (details) => _openProviderContextMenu(details, provider),
     );
   }
@@ -234,19 +319,8 @@ class _DesktopSettingProviderPageState
     return 'on ${time.year}-${pad(time.month)}-${pad(time.day)}';
   }
 
-  void _handleProviderTap(ProviderEntity provider) {
-    // Shift 范围选择必须与分组后的显示顺序一致，不能沿用仓储顺序。
-    final providers = [
-      ...providerViewModel.enabledProviders.value,
-      if (showDisabled) ...providerViewModel.disabledProviders.value,
-    ];
-    final activate = _selection.handleTap(
-      provider.id,
-      ids: providers
-          .where((item) => !item.isPreset && item.id != null)
-          .map((item) => item.id!)
-          .toList(),
-    );
+  void _handleProviderTap(ProviderEntity provider, List<String> selectableIds) {
+    final activate = _selection.handleTap(provider.id, ids: selectableIds);
     if (activate) {
       _openProvider(provider);
     } else {

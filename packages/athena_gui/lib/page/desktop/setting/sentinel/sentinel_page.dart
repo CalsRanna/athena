@@ -9,6 +9,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
@@ -17,6 +18,25 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+
+enum _Source implements SettingsListOption {
+  all('All sources'),
+  custom('Your Sentinels'),
+  builtin('Built-in');
+
+  const _Source(this.label);
+  @override
+  final String label;
+}
+
+enum _Sort implements SettingsListOption {
+  ascending('Name (A–Z)'),
+  descending('Name (Z–A)');
+
+  const _Sort(this.label);
+  @override
+  final String label;
+}
 
 /// 桌面端 Sentinels：单列列表 → 点进一个角色的编辑页。
 ///
@@ -41,6 +61,9 @@ class _DesktopSettingSentinelPageState
 
   /// 正在编辑的角色；null 表示停在列表。
   String? openId;
+  final searchController = TextEditingController();
+  _Source source = _Source.all;
+  _Sort sort = _Sort.ascending;
   final _selection = DesktopListSelection<String>();
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -60,6 +83,7 @@ class _DesktopSettingSentinelPageState
 
   @override
   void dispose() {
+    searchController.dispose();
     for (final controller in _controllers) {
       controller.dispose();
     }
@@ -90,40 +114,78 @@ class _DesktopSettingSentinelPageState
   // ---------------------------------------------------------------------------
 
   Widget _buildList(List<SentinelEntity> sentinels) {
-    var rows = <Widget>[
-      for (final sentinel in sentinels) _buildSentinelRow(sentinel),
+    final query = searchController.text.trim().toLowerCase();
+    final matches = sentinels.where((s) {
+      if (source == _Source.custom && s.isPreset ||
+          source == _Source.builtin && !s.isPreset) {
+        return false;
+      }
+      return s.name.toLowerCase().contains(query) ||
+          s.description.toLowerCase().contains(query) ||
+          s.tags.toLowerCase().contains(query);
+    }).toList();
+    matches.sort((a, b) {
+      final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      if (byName != 0) return sort == _Sort.ascending ? byName : -byName;
+      return (a.id ?? '').compareTo(b.id ?? '');
+    });
+    final selectableIds = [
+      for (final s in matches)
+        if (!s.isPreset && s.id != null) s.id!,
     ];
-    if (rows.isEmpty) {
-      rows = [
-        AthenaSettingsEmptyState(
-          icon: LucideIcons.userRound,
-          title: 'No Sentinels',
-          hint:
-              'A Sentinel is a reusable persona: a system prompt plus a name, '
-              'description and tags.',
-          action: AthenaSecondaryButton.small(
-            onTap: createSentinel,
-            child: const Text('New Sentinel'),
-          ),
-        ),
-      ];
-    }
-    return AthenaSettingsPane(
+    return AthenaSettingsListPane(
       title: 'Sentinels',
-      action: AthenaSecondaryButton.small(
-        onTap: createSentinel,
-        child: const Text('New Sentinel'),
-      ),
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'source',
+      filter: source,
+      filters: _Source.values,
+      onFilterChanged: (option) => setState(() {
+        source = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      onAdd: createSentinel,
       children: [
-        AthenaSettingsListGroup(
-          label: 'Sentinels · ${sentinels.length}',
-          children: rows,
-        ),
+        if (sentinels.isEmpty)
+          AthenaSettingsEmptyState(
+            icon: LucideIcons.userRound,
+            title: 'No Sentinels',
+            hint:
+                'A Sentinel is a reusable persona: a system prompt plus a name, '
+                'description and tags.',
+            action: AthenaSecondaryButton.small(
+              onTap: createSentinel,
+              child: const Text('New Sentinel'),
+            ),
+          )
+        else if (matches.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.search,
+            title: 'No matching Sentinels',
+            hint: 'Try another search or change the source filter.',
+          )
+        else
+          AthenaSettingsListGroup(
+            label: 'Sentinels · ${matches.length}',
+            children: [
+              for (final sentinel in matches)
+                _buildSentinelRow(sentinel, selectableIds),
+            ],
+          ),
       ],
     );
   }
 
-  Widget _buildSentinelRow(SentinelEntity sentinel) {
+  Widget _buildSentinelRow(
+    SentinelEntity sentinel,
+    List<String> selectableIds,
+  ) {
     final description = sentinel.description.trim();
     return AthenaSettingsListRow(
       label: sentinel.name,
@@ -131,20 +193,13 @@ class _DesktopSettingSentinelPageState
       description: description.isEmpty ? 'No description' : description,
       descriptionMaxLines: 1,
       selected: _selection.selectedIds.contains(sentinel.id),
-      onTap: () => _handleSentinelTap(sentinel),
+      onTap: () => _handleSentinelTap(sentinel, selectableIds),
       onSecondaryTap: (details) => _openContextMenu(details, sentinel),
     );
   }
 
-  void _handleSentinelTap(SentinelEntity sentinel) {
-    final sentinels = viewModel.sentinels.value;
-    final activate = _selection.handleTap(
-      sentinel.id,
-      ids: sentinels
-          .where((item) => !item.isPreset && item.id != null)
-          .map((item) => item.id!)
-          .toList(),
-    );
+  void _handleSentinelTap(SentinelEntity sentinel, List<String> selectableIds) {
+    final activate = _selection.handleTap(sentinel.id, ids: selectableIds);
     if (activate) {
       _openSentinel(sentinel);
     } else {

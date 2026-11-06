@@ -1,12 +1,11 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
-import 'package:athena_gui/page/desktop/setting/component/nav.dart';
+import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
@@ -21,20 +20,22 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
-enum _Source {
+enum _Source implements SettingsListOption {
   all('All sources'),
   user('Your skills'),
   builtin('Built-in');
 
   const _Source(this.label);
+  @override
   final String label;
 }
 
-enum _Sort {
+enum _Sort implements SettingsListOption {
   edited('Last edited'),
   name('Name');
 
   const _Sort(this.label);
+  @override
   final String label;
 }
 
@@ -109,102 +110,45 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     final user = matches.where((s) => !s.isBuiltin).toList()..sort(_compare);
     final builtin = matches.where((s) => s.isBuiltin).toList()..sort(_compare);
     final userIds = user.map((s) => s.name).toList();
-    final search = AthenaSettingsSearchField(
-      controller: searchController,
-      placeholder: 'Search skills',
-      onChanged: (_) => setState(_selection.clear),
-    );
     final groups = <Widget>[
       if (source != _Source.builtin && user.isNotEmpty)
         _buildGroup(_Source.user, user, userIds),
       if (source != _Source.user && builtin.isNotEmpty)
         _buildGroup(_Source.builtin, builtin, userIds),
     ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 560;
-        return AthenaSettingsPane(
-          title: 'Skills',
-          action: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!compact) ...[
-                SizedBox(width: 240, child: search),
-                const SizedBox(width: AthenaSpace.sm),
-              ],
-              Tooltip(
-                message: 'Filter by source: ${source.label}',
-                child: AthenaSettingsMenuButton(
-                  icon: source == _Source.all
-                      ? LucideIcons.listFilter
-                      : LucideIcons.listFilterPlus,
-                  items: [
-                    for (final option in _Source.values)
-                      DesktopContextMenuTile(
-                        text: option.label,
-                        selected: option == source,
-                        onTap: () => setState(() {
-                          source = option;
-                          _selection.clear();
-                        }),
-                      ),
-                  ],
-                ),
-              ),
-              Tooltip(
-                message: 'Sort by ${sort.label}',
-                child: AthenaSettingsMenuButton(
-                  icon: LucideIcons.arrowUpDown,
-                  items: [
-                    for (final option in _Sort.values)
-                      DesktopContextMenuTile(
-                        text: option.label,
-                        selected: option == sort,
-                        onTap: () => setState(() {
-                          sort = option;
-                          _selection.clear();
-                        }),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AthenaSpace.sm),
-              AthenaPrimaryButton.small(
-                onTap: createSkill,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.plus),
-                    SizedBox(width: 4),
-                    Text('Add'),
-                  ],
-                ),
-              ),
-            ],
+    return AthenaSettingsListPane(
+      title: 'Skills',
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'source',
+      filter: source,
+      filters: _Source.values,
+      onFilterChanged: (option) => setState(() {
+        source = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      onAdd: createSkill,
+      children: [
+        if (groups.isEmpty)
+          AthenaSettingsEmptyState(
+            icon: skills.isEmpty ? LucideIcons.scrollText : LucideIcons.search,
+            title: skills.isEmpty ? 'No skills yet' : 'No matching skills',
+            hint: skills.isEmpty
+                ? 'Add a skill to give the agent reusable instructions.'
+                : 'Try another search or change the source filter.',
           ),
-          children: [
-            if (compact) ...[
-              AthenaSettingsInset(child: search),
-              const SizedBox(height: AthenaSpace.lg),
-            ],
-            if (groups.isEmpty)
-              AthenaSettingsEmptyState(
-                icon: skills.isEmpty
-                    ? LucideIcons.scrollText
-                    : LucideIcons.search,
-                title: skills.isEmpty ? 'No skills yet' : 'No matching skills',
-                hint: skills.isEmpty
-                    ? 'Add a skill to give the agent reusable instructions.'
-                    : 'Try another search or change the source filter.',
-              ),
-            for (final group in groups) ...[
-              if (group != groups.first)
-                const SizedBox(height: AthenaSettings.sectionGap),
-              group,
-            ],
-          ],
-        );
-      },
+        for (final group in groups) ...[
+          if (group != groups.first)
+            const SizedBox(height: AthenaSettings.sectionGap),
+          group,
+        ],
+      ],
     );
   }
 
