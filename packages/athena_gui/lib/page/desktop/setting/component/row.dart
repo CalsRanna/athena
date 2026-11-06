@@ -85,6 +85,8 @@ class AthenaSettingsListRow extends StatelessWidget {
   final String label;
   final String? description;
   final String? metadata;
+  final Widget? leading;
+  final Widget? trailing;
 
   /// 标签后面的小徽标（`Built-in` / `Custom`）。
   final String? badge;
@@ -107,6 +109,8 @@ class AthenaSettingsListRow extends StatelessWidget {
     required this.label,
     this.description,
     this.metadata,
+    this.leading,
+    this.trailing,
     this.badge,
     this.selected = false,
     this.dimmed = false,
@@ -130,6 +134,7 @@ class AthenaSettingsListRow extends StatelessWidget {
         ),
         child: Row(
           children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 16)],
             Expanded(
               child: _SettingsRowLabel(
                 label: label,
@@ -155,11 +160,12 @@ class AthenaSettingsListRow extends StatelessWidget {
               ),
             ],
             const SizedBox(width: 12),
-            Icon(
-              AthenaIcons.forward,
-              color: colors.iconSecondary,
-              size: AthenaIcon.inlineSize,
-            ),
+            trailing ??
+                Icon(
+                  AthenaIcons.forward,
+                  color: colors.iconSecondary,
+                  size: AthenaIcon.inlineSize,
+                ),
           ],
         ),
       ),

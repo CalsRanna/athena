@@ -410,19 +410,19 @@ class AthenaSettingsBadge extends StatelessWidget {
 class AthenaSettingsMenuButton extends StatelessWidget {
   final List<Widget> items;
   final double menuWidth;
+  final IconData icon;
   const AthenaSettingsMenuButton({
     super.key,
     required this.items,
     this.menuWidth = 160,
+    this.icon = AthenaIcons.more,
   });
 
   @override
   Widget build(BuildContext context) {
     return Builder(
-      builder: (context) => AthenaGhostIconButton(
-        icon: AthenaIcons.more,
-        onTap: () => _open(context),
-      ),
+      builder: (context) =>
+          AthenaGhostIconButton(icon: icon, onTap: () => _open(context)),
     );
   }
 

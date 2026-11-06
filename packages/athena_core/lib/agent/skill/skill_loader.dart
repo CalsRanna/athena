@@ -9,11 +9,15 @@ class Skill {
   final String body;
   final String sourcePath;
 
+  /// Modification time of SKILL.md, when the skill comes from a file.
+  final DateTime? modifiedAt;
+
   const Skill({
     required this.name,
     required this.description,
     required this.body,
     required this.sourcePath,
+    this.modifiedAt,
   });
 
   /// 代码注册的内置 Skill（非文件系统来源），不可编辑/删除。
@@ -177,6 +181,7 @@ class SkillLoader {
       description: description,
       body: body,
       sourcePath: file.parent.path,
+      modifiedAt: file.lastModifiedSync(),
     );
   }
 }
