@@ -62,7 +62,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
               descriptionMaxLines: 3,
               control: AthenaSecondaryButton.small(
                 onTap: _hasRewindSnapshots ? _clearRewindSnapshots : null,
-                child: const Text('Clear…'),
+                child: const Text('Clear'),
               ),
             ),
             AthenaSettingsRow(
@@ -75,7 +75,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
               descriptionMaxLines: 3,
               control: AthenaSecondaryButton.small(
                 onTap: _hasToolOutputs ? _clearToolOutputs : null,
-                child: const Text('Clear…'),
+                child: const Text('Clear'),
               ),
             ),
           ],
@@ -91,7 +91,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
               control: AthenaSecondaryButton.small(
                 onTap: _handleReset,
                 child: Text(
-                  'Reset…',
+                  'Reset',
                   style: AthenaTextStyle.label.copyWith(
                     color: colors.dangerText,
                   ),
