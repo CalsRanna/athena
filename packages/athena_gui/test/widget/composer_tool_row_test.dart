@@ -112,7 +112,10 @@ void main() {
 
     await tester.tap(find.text('High'));
     await tester.pump();
-    final heading = find.widgetWithText(DesktopContextMenuGroupLabel, 'Effort');
+    final heading = find.widgetWithText(
+      DesktopContextMenuGroupLabel,
+      'Reasoning effort',
+    );
     expect(heading, findsOneWidget);
     expect(
       tester.getBottomLeft(heading).dy,

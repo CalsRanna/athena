@@ -180,6 +180,15 @@ class _DesktopSettingProviderPageState
         _selection.clear();
       }),
       onAdd: adding ? null : createProvider,
+      menus: [
+        Tooltip(
+          message: _syncDescription(),
+          child: AthenaGhostIconButton(
+            icon: LucideIcons.cloudCheck,
+            onTap: syncFromModelsDev,
+          ),
+        ),
+      ],
       children: [
         if (adding)
           AthenaSettingsInset(
@@ -230,19 +239,6 @@ class _DesktopSettingProviderPageState
             ],
           ],
         ],
-        AthenaSettingsSection(
-          title: 'Model catalog',
-          children: [
-            AthenaSettingsRow(
-              label: 'Sync from models.dev',
-              description: _syncDescription(),
-              control: AthenaSecondaryButton.small(
-                onTap: syncFromModelsDev,
-                child: const Text('Sync now'),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }

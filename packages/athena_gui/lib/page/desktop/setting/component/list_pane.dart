@@ -31,6 +31,7 @@ class AthenaSettingsListPane<
     required this.children,
     this.onAdd,
     this.controller,
+    this.menus,
   });
 
   final String title;
@@ -46,6 +47,7 @@ class AthenaSettingsListPane<
   final List<Widget> children;
   final VoidCallback? onAdd;
   final ScrollController? controller;
+  final List<Widget>? menus;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +85,7 @@ class AthenaSettingsListPane<
                 selected: sort,
                 onChanged: onSortChanged,
               ),
+              ...?menus,
               if (onAdd != null) ...[
                 const SizedBox(width: AthenaSpace.sm),
                 AthenaPrimaryButton.small(
