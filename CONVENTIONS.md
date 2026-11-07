@@ -271,8 +271,6 @@ cd packages/athena_gui && dart run build_runner build --delete-conflicting-outpu
 
 `format` 那条只扫 `lib test` 两个目录，且用 `find` 排除了 `.g.dart` / `.gr.dart`：生成文件不符合格式器口径，且 build_runner 会覆盖，格式化它们没有意义。
 
-经验质量另有显式运行的[真实模型评测](packages/athena_core/integration_test/README.md)：固定人工场景分别测试主动记录和反思，报告模型提案与实际写入、误记与漏记。它读取指定 provider 配置并产生 API 用量，默认测试不联网；所有经验写入临时目录。
-
 ---
 
 ## 10. 提交与发布
