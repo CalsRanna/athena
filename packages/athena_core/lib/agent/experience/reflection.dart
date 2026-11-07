@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:athena_core/agent/memory/experience_write_policy.dart';
+import 'package:athena_core/agent/experience/experience_write_policy.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
@@ -129,7 +129,7 @@ class ReflectionProposal {
 abstract final class ReflectionPrompt {
   static const system =
       '''
-分析运行结果，默认返回 should_learn=false；多数任务不需要新增或修改长期记忆。
+分析运行结果，默认返回 should_learn=false；多数任务不需要新增或修改长期经验。
 先判断持久化价值，再提炼经验。只有用户明确表达的长期偏好，或已验证、适用条件稳定且
 在未来独立任务中有具体复用场景的非显而易见的方法/约束，才可能值得记录。
 一次任务里重复报错不是多次独立任务的证据。“以后可能有用”“避免再次犯错”不足以说明长期价值。

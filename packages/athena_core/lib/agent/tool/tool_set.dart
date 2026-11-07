@@ -61,7 +61,7 @@ ToolRegistry buildToolRegistry({
   final tasks = registry.backgroundTasks;
   registry.register(ToolOutputReadTool(registry.outputStore));
 
-  // 移动端不注册任意文件/进程工具；经验记忆只写自己的 `.athena` 沙盒目录，
+  // 移动端不注册任意文件/进程工具；经验只写自己的 `.athena` 沙盒目录，
   // 属于移动端可用能力。提问不是文件/进程能力，移动端已有提问卡，因此和
   // 联网工具一样保留。
   registry.registerAll([

@@ -6,8 +6,8 @@ import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/task/background_task.dart';
-import 'package:athena_core/agent/memory/memory_prompt.dart';
-import 'package:athena_core/agent/memory/memory_digest.dart';
+import 'package:athena_core/agent/experience/experience_prompt.dart';
+import 'package:athena_core/agent/experience/experience_digest.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -362,16 +362,16 @@ class AgentRunCoordinator {
         return;
       }
 
-      // 无 Sentinel 的直接对话使用独立记忆作用域，既不污染 Athena 的
+      // 无 Sentinel 的直接对话使用独立经验作用域，既不污染 Athena 的
       // 私有经验，也不落入 experience 工具的隐式 "default" 作用域。
       final sentinelKey = chat.hasSentinel
           ? chat.sentinelId.toString()
           : _directChatSentinelKey;
 
-      // 2.5 注入当前 Sentinel 的稳定全量 active Memory 目录。内容不依赖
+      // 2.5 注入当前 Sentinel 的稳定全量 active Experience 目录。内容不依赖
       // 当前用户消息；只有经验新增、更新或归档时才变化，保护 prompt cache。
       // 目录只进入本次请求上下文，不落库为聊天历史。
-      final digestMessages = await MemoryDigest.messagesForSentinel(
+      final digestMessages = await ExperienceDigest.messagesForSentinel(
         repository: _experienceRepository,
         sentinelId: sentinelKey,
         workspacePath: chat.workspacePath,
@@ -393,7 +393,7 @@ class AgentRunCoordinator {
       final baseMessages = [...persistedMessages, ...?digestMessages];
 
       // Read original messages, including compacted user instructions. Generated
-      // summaries, skills, memories and tool outputs cannot grant authorization.
+      // summaries, skills, experiences and tool outputs cannot grant authorization.
       // 档位取自本会话（chat 由调用方按 id 取最新行），因此运行中改档位
       // 不影响这一轮，下一轮生效。
       final approvalMode = chat.approvalMode;
@@ -431,7 +431,7 @@ class AgentRunCoordinator {
           query,
           workspacePath: chat.workspacePath,
         ),
-        memoryPrompt: MemoryPrompt.hint,
+        experiencePrompt: ExperiencePrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment, workspace: workspace),
@@ -750,7 +750,7 @@ class AgentRunCoordinator {
       final sentinelKey = chat.hasSentinel
           ? chat.sentinelId.toString()
           : _directChatSentinelKey;
-      final digestMessages = await MemoryDigest.messagesForSentinel(
+      final digestMessages = await ExperienceDigest.messagesForSentinel(
         repository: _experienceRepository,
         sentinelId: sentinelKey,
         workspacePath: chat.workspacePath,
@@ -799,7 +799,7 @@ class AgentRunCoordinator {
         model: model,
         baseMessages: baseMessages,
         currentMessageId: () => _liveMessages[chatId]?.id,
-        memoryPrompt: MemoryPrompt.hint,
+        experiencePrompt: ExperiencePrompt.hint,
         // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
         // 汇报说明在上面的末条 user 消息里，不能顶替掉它
         runtimePrompt: _runtimeEnvironment == null

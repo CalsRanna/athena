@@ -105,7 +105,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         SettingSection.experience,
         'Experiences',
         LucideIcons.brain,
-        keywords: ['lesson', 'memory', 'archive'],
+        keywords: ['lesson', 'experience', 'archive'],
       ),
     ]),
     const _SettingGroup('App', [

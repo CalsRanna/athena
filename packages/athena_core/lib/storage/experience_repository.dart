@@ -264,7 +264,7 @@ class ExperienceRepository {
 
   /// 英文按词、中文按二元字组切分，并丢弃常见虚词。此前用完整用户消息做
   /// substring，真实长句几乎无法命中短经验；不过直接做所有 token overlap
-  /// 又会因 `please/use/这个` 等词召回无关记忆，因此这里保持轻量但偏保守。
+  /// 又会因 `please/use/这个` 等词召回无关经验，因此这里保持轻量但偏保守。
   static Set<String> _searchTerms(String value) {
     final terms = <String>{};
     final matches = RegExp(

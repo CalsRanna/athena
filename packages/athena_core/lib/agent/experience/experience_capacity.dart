@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
 
-/// 记忆目录的容量预算。
+/// 经验目录的容量预算。
 ///
 /// 目录每次 run 全量注入，是唯一会随使用时长单调增长、又没有天然上限的
 /// 上下文块。没有上限时，长期使用后它会先挤占压缩的尾部队列
@@ -16,7 +16,7 @@ import 'package:athena_core/entity/experience_entity.dart';
 /// - 写入端（`experience_learn` 的 create / update）拒绝超限增长，要求先
 ///   归档或合并——遗忘是显式决策，不是静默丢弃；
 /// - 注入端只做安全网，用于升级前就已超限的历史数据与手工塞进目录的文件。
-abstract final class MemoryCapacity {
+abstract final class ExperienceCapacity {
   /// 注入目录的字符上限。
   ///
   /// lesson 上限 500 字符，一行渲染后约 550 字符，因此 16000 约合 29 条
@@ -111,7 +111,7 @@ abstract final class MemoryCapacity {
   }) {
     final origin = shared ? '共享' : '私有';
     // 换行压成空格：一条经验必须只占一行，否则「一条一行」的目录排版失效，
-    // 用户与模型都无法按行数判断记忆规模。
+    // 用户与模型都无法按行数判断经验规模。
     final text = lesson.replaceAll(RegExp(r'\s+'), ' ').trim();
     return '- [$id] ($origin, $date) $text';
   }

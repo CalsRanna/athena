@@ -13,8 +13,8 @@ import 'package:openai_dart/openai_dart.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-/// 经验写入是模型的长期记忆入口：可见范围、重复写入与来源标注错了，
-/// 后续所有对话都会带着错误的记忆。
+/// 经验写入是模型的长期经验入口：可见范围、重复写入与来源标注错了，
+/// 后续所有对话都会带着错误的经验。
 void main() {
   late Directory temp;
   late ExperienceRepository repo;

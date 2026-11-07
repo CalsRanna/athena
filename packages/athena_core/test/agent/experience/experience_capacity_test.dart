@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/memory/memory_capacity.dart';
-import 'package:athena_core/agent/memory/memory_digest.dart';
+import 'package:athena_core/agent/experience/experience_capacity.dart';
+import 'package:athena_core/agent/experience/experience_digest.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
@@ -28,7 +28,7 @@ void main() {
 
   group('预算口径', () {
     test('渲染一条 = 一行，且换行被压平', () {
-      final line = MemoryCapacity.renderEntry(
+      final line = ExperienceCapacity.renderEntry(
         entity(id: 'abc', lesson: '第一行\n第二行'),
       );
 
@@ -36,11 +36,11 @@ void main() {
     });
 
     test('未写入条目的预估与实际渲染等长（id 与日期定宽）', () {
-      final estimated = MemoryCapacity.pendingEntryChars(
+      final estimated = ExperienceCapacity.pendingEntryChars(
         lesson: 'same lesson text',
         shared: false,
       );
-      final actual = MemoryCapacity.renderEntry(
+      final actual = ExperienceCapacity.renderEntry(
         entity(id: 'f' * 36, lesson: 'same lesson text'),
       );
 
@@ -49,13 +49,13 @@ void main() {
 
     test('shared 与私有只差一个字的来源标记', () {
       expect(
-        MemoryCapacity.renderEntry(
+        ExperienceCapacity.renderEntry(
           entity(id: 'a', lesson: 'x', scope: 'shared'),
         ),
         contains('(共享, '),
       );
       expect(
-        MemoryCapacity.renderEntry(entity(id: 'a', lesson: 'x')),
+        ExperienceCapacity.renderEntry(entity(id: 'a', lesson: 'x')),
         contains('(私有, '),
       );
     });
@@ -63,18 +63,24 @@ void main() {
     test('刚好装满不算超限，再多一个字符就超', () {
       final existing = [entity(id: 'a', lesson: 'x' * 100)];
       final remaining =
-          MemoryCapacity.maxCatalogChars -
-          MemoryCapacity.catalogChars(existing);
+          ExperienceCapacity.maxCatalogChars -
+          ExperienceCapacity.catalogChars(existing);
       // 条目开销（id、来源、日期、分隔符）是定宽的，剩下的全给 lesson。
-      final fixed = MemoryCapacity.pendingEntryChars(lesson: '', shared: false);
+      final fixed = ExperienceCapacity.pendingEntryChars(
+        lesson: '',
+        shared: false,
+      );
       final exactLesson = 'y' * (remaining - fixed);
 
       expect(
-        MemoryCapacity.pendingEntryChars(lesson: exactLesson, shared: false),
+        ExperienceCapacity.pendingEntryChars(
+          lesson: exactLesson,
+          shared: false,
+        ),
         remaining,
       );
       expect(
-        MemoryCapacity.exceedsCapacity(
+        ExperienceCapacity.exceedsCapacity(
           existing: existing,
           lesson: exactLesson,
           shared: false,
@@ -83,7 +89,7 @@ void main() {
         reason: '填满到上限且不超出，应当允许写入',
       );
       expect(
-        MemoryCapacity.exceedsCapacity(
+        ExperienceCapacity.exceedsCapacity(
           existing: existing,
           lesson: '${exactLesson}y',
           shared: false,
@@ -102,19 +108,19 @@ void main() {
           ),
       ]..sort((a, b) => b.updatedAt!.compareTo(a.updatedAt!));
 
-      final result = MemoryCapacity.withinBudget(many);
+      final result = ExperienceCapacity.withinBudget(many);
 
       expect(result.dropped, greaterThan(0));
       expect(result.kept, isNotEmpty);
       expect(result.kept.first.id, many.first.id);
       expect(
-        MemoryCapacity.catalogChars(result.kept),
-        lessThanOrEqualTo(MemoryCapacity.maxCatalogChars),
+        ExperienceCapacity.catalogChars(result.kept),
+        lessThanOrEqualTo(ExperienceCapacity.maxCatalogChars),
       );
     });
 
     test('空集合不丢任何条目', () {
-      final result = MemoryCapacity.withinBudget(const []);
+      final result = ExperienceCapacity.withinBudget(const []);
       expect(result.kept, isEmpty);
       expect(result.dropped, 0);
     });
@@ -148,7 +154,7 @@ void main() {
     Future<void> fillToCapacity({String? workspacePath}) async {
       final fillers = <String>[];
       while (true) {
-        final used = MemoryCapacity.catalogChars(
+        final used = ExperienceCapacity.catalogChars(
           fillers.map(
             (lesson) => ExperienceEntity(
               id: 'x' * 36,
@@ -159,8 +165,11 @@ void main() {
           ),
         );
         if (used +
-                MemoryCapacity.pendingEntryChars(lesson: 'new', shared: false) >
-            MemoryCapacity.maxCatalogChars) {
+                ExperienceCapacity.pendingEntryChars(
+                  lesson: 'new',
+                  shared: false,
+                ) >
+            ExperienceCapacity.maxCatalogChars) {
           break;
         }
         fillers.add('y' * 400);
@@ -181,7 +190,7 @@ void main() {
       final result = await tool.execute(args({'lesson': 'brand new lesson'}));
 
       expect(result, startsWith('Error:'));
-      expect(result, contains('memory catalog is full'));
+      expect(result, contains('experience catalog is full'));
       expect(result, contains('Nothing was written'));
       expect((await repo.listForSentinel('1')), hasLength(before));
     });
@@ -258,7 +267,7 @@ void main() {
     test('更新增长导致目录超限时拒绝，原经验与注入目录保持不变', () async {
       await fillToCapacity();
       final target = (await repo.listForSentinel('1')).first;
-      final before = MemoryCapacity.catalogChars(
+      final before = ExperienceCapacity.catalogChars(
         await repo.listForSentinel('1'),
       );
       final result = await tool.execute(
@@ -275,7 +284,7 @@ void main() {
         target.lesson,
       );
       expect(
-        MemoryCapacity.catalogChars(await repo.listForSentinel('1')),
+        ExperienceCapacity.catalogChars(await repo.listForSentinel('1')),
         before,
       );
     });
@@ -336,13 +345,13 @@ void main() {
         await repo.save(lesson: 'lesson $i ' * 60, sentinelId: '1');
       }
 
-      final messages = await MemoryDigest.messagesForSentinel(
+      final messages = await ExperienceDigest.messagesForSentinel(
         repository: repo,
         sentinelId: '1',
       );
       final text = (messages!.single as SystemMessage).content;
 
-      expect(text.length, lessThan(MemoryCapacity.maxCatalogChars + 500));
+      expect(text.length, lessThan(ExperienceCapacity.maxCatalogChars + 500));
       expect(text, contains('因容量上限未列出'));
       expect(text, contains('experience_recall'));
     });
@@ -351,7 +360,7 @@ void main() {
       await repo.save(lesson: 'short one', sentinelId: '1');
 
       final text =
-          ((await MemoryDigest.messagesForSentinel(
+          ((await ExperienceDigest.messagesForSentinel(
                     repository: repo,
                     sentinelId: '1',
                   ))!.single

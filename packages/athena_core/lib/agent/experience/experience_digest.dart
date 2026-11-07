@@ -1,10 +1,10 @@
-import 'package:athena_core/agent/memory/memory_capacity.dart';
+import 'package:athena_core/agent/experience/experience_capacity.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-/// 记忆摘要注入器。
+/// 经验摘要注入器。
 ///
 /// 背景：经验内容原本不出现在任何上下文中，`experience_recall` 全靠
 /// Agent 自觉触发——Agent 看不到经验内容，无从判断"当前任务与经验相关"，
@@ -16,11 +16,11 @@ import 'package:openai_dart/openai_dart.dart';
 /// 只要经验库没有新增、更新或归档，生成内容与顺序就保持完全一致，便于
 /// Provider 复用 prompt prefix cache。
 ///
-/// 容量由 [MemoryCapacity] 约束：写入端在目录装满时拒绝新增并要求先归档
-/// 或合并，所以正常情况下这里不会丢弃任何条目；[MemoryCapacity.withinBudget]
+/// 容量由 [ExperienceCapacity] 约束：写入端在目录装满时拒绝新增并要求先归档
+/// 或合并，所以正常情况下这里不会丢弃任何条目；[ExperienceCapacity.withinBudget]
 /// 只是升级前超限数据与手工塞入文件的兜底。
-abstract final class MemoryDigest {
-  /// 即使经验经过写入审批，它仍是历史上下文而非高优先级指令，避免记忆内容
+abstract final class ExperienceDigest {
+  /// 即使经验经过写入审批，它仍是历史上下文而非高优先级指令，避免经验内容
   /// 覆盖当前用户请求或 Sentinel 行为约束。
   static const String _header =
       '以下是已保存、尚未归档的经验参考目录。'
@@ -39,7 +39,7 @@ abstract final class MemoryDigest {
     final buffer = StringBuffer(_header);
     buffer.writeln();
     for (final e in experiences) {
-      buffer.writeln(MemoryCapacity.renderEntry(e));
+      buffer.writeln(ExperienceCapacity.renderEntry(e));
     }
     if (dropped > 0) {
       buffer.writeln(
@@ -70,19 +70,19 @@ abstract final class MemoryDigest {
       final byDate = _recency(b).compareTo(_recency(a));
       return byDate != 0 ? byDate : a.id.compareTo(b.id);
     });
-    final budget = MemoryCapacity.withinBudget(experiences);
+    final budget = ExperienceCapacity.withinBudget(experiences);
     if (budget.dropped > 0) {
       // 写入端已经拦住新增，走到这里说明是升级前的历史数据或手工塞入的
       // 文件：不声不响地少几条经验，用户与模型都无从察觉，所以要留痕。
       LoggerUtil.w(
-        'MemoryDigest: catalog over capacity, dropped ${budget.dropped} '
+        'ExperienceDigest: catalog over capacity, dropped ${budget.dropped} '
         'experience(s) for sentinel $sentinelId. Archive or consolidate '
         'them with experience_learn.',
       );
     }
     final digest = buildDigest(budget.kept, dropped: budget.dropped);
     LoggerUtil.d(
-      'MemoryDigest: injected stable catalog with ${budget.kept.length} '
+      'ExperienceDigest: injected stable catalog with ${budget.kept.length} '
       'active experience(s), ${digest.length} chars (sentinel $sentinelId)',
     );
     return [ChatMessage.system(digest)];

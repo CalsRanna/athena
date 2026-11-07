@@ -12,10 +12,10 @@ void main() {
   const runtimeText = 'Current date: 2026-09-23.';
 
   /// 模拟 ChatMessageConverter.buildMessages 的产物：首个 system 是 sentinel，
-  /// 其后的 system 是稳定的 Memory 目录，其余是对话历史。
+  /// 其后的 system 是稳定的 Experience 目录，其余是对话历史。
   List<ChatMessage> baseMessages() => <ChatMessage>[
     ChatMessage.system('sentinel prompt'),
-    ChatMessage.system('memory digest'),
+    ChatMessage.system('experience digest'),
     ChatMessage.user('把 hover 高亮修一下'),
     ChatMessage.assistant(content: '先看实现。'),
   ];
@@ -24,22 +24,22 @@ void main() {
       (messages[index] as SystemMessage).content;
 
   test(
-    '顺序为 [sentinel, evolution, skill, memory, project, runtime, history]',
+    '顺序为 [sentinel, experience hint, skill, experience catalog, project, runtime, history]',
     () {
       final layout = layoutPromptMessages(
         base: baseMessages(),
         runtimeText: runtimeText,
         hasSentinelPrompt: true,
-        memoryPrompt: 'evolution hint',
+        experiencePrompt: 'experience hint',
         skillPrompt: 'skill catalog',
         projectPrompt: 'project conventions',
       );
 
       expect(layout.messages, hasLength(8));
       expect(contentAt(layout.messages, 0), 'sentinel prompt');
-      expect(contentAt(layout.messages, 1), 'evolution hint');
+      expect(contentAt(layout.messages, 1), 'experience hint');
       expect(contentAt(layout.messages, 2), 'skill catalog');
-      expect(contentAt(layout.messages, 3), 'memory digest');
+      expect(contentAt(layout.messages, 3), 'experience digest');
       expect(contentAt(layout.messages, 4), 'project conventions');
       expect(contentAt(layout.messages, 5), runtimeText);
       expect(layout.messages[6], isA<UserMessage>());
@@ -51,7 +51,7 @@ void main() {
       base: baseMessages(),
       runtimeText: runtimeText,
       hasSentinelPrompt: true,
-      memoryPrompt: 'evolution hint',
+      experiencePrompt: 'experience hint',
       skillPrompt: 'skill catalog',
       projectPrompt: 'project conventions',
     );
@@ -88,11 +88,11 @@ void main() {
       ],
       runtimeText: runtimeText,
       hasSentinelPrompt: false,
-      memoryPrompt: 'evolution hint',
+      experiencePrompt: 'experience hint',
       projectPrompt: 'project conventions',
     );
 
-    expect(contentAt(layout.messages, 0), 'evolution hint');
+    expect(contentAt(layout.messages, 0), 'experience hint');
     expect(contentAt(layout.messages, 1), 'extra context');
     expect(contentAt(layout.messages, 2), 'project conventions');
     expect(layout.runtimeMessageIndex, 3);

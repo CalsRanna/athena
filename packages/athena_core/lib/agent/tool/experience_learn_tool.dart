@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:athena_core/agent/memory/experience_write_policy.dart';
-import 'package:athena_core/agent/memory/memory_capacity.dart';
+import 'package:athena_core/agent/experience/experience_write_policy.dart';
+import 'package:athena_core/agent/experience/experience_capacity.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -30,13 +30,13 @@ class ExperienceLearnTool extends Tool {
   @override
   String get description =>
       'Record a lesson, insight, or pattern learned from the current '
-      'interaction. This builds your long-term memory of effective strategies, '
+      'interaction. This builds your experience catalog of effective strategies, '
       'user preferences, and common pitfalls.\n'
       'Default to not recording. Persist only evidence-backed knowledge with '
       'a concrete use in future independent tasks, or an explicit lasting '
       'user preference. Temporary paths, ports, task progress, one-off fixes, '
       'ordinary tool usage and facts already available in project instructions '
-      'belong in the conversation, not long-term memory. Repeated failures '
+      'belong in the conversation, not the experience catalog. Repeated failures '
       'within one run do not establish lasting value. Create and update require '
       'durability="long_term", reuse_reason, evidence, and confidence >= '
       '${ExperienceWritePolicy.minConfidence}. A user\'s explicit lasting '
@@ -232,7 +232,7 @@ class ExperienceLearnTool extends Tool {
             );
           }
         }
-        if (MemoryCapacity.exceedsCapacity(
+        if (ExperienceCapacity.exceedsCapacity(
           existing: existing,
           lesson: lesson.trim(),
           shared: targetShared,
@@ -290,14 +290,14 @@ class ExperienceLearnTool extends Tool {
             sentinelId,
             workspacePath: workspace,
           );
-          if (MemoryCapacity.exceedsCapacity(
+          if (ExperienceCapacity.exceedsCapacity(
             existing: existing,
             replacing: original,
             lesson: lesson.trim().isEmpty ? original.lesson : lesson.trim(),
             shared: (scope ?? original.scope) == 'shared',
           )) {
             return const ToolExecutionResult.error(
-              'Error: Experience not updated — the revised memory catalog '
+              'Error: Experience not updated — the revised experience catalog '
               'would exceed its capacity. Shorten the lesson or archive '
               'superseded experiences first. Nothing was written.',
             );
@@ -353,13 +353,13 @@ class ExperienceLearnTool extends Tool {
   ///
   /// 只说"写不进去"会让模型反复重试同一句话；这里必须给出可立即执行的
   /// 后续动作，并列出最旧的几条作为候选。模型据此调用 `archive`，用户则
-  /// 在对话里直接看到"记忆满了"——而不是几个月后才发现新经验没生效。
+  /// 在对话里直接看到"经验目录已满"——而不是几个月后才发现新经验没生效。
   String _capacityExceededMessage(
     List<ExperienceEntity> existing,
     bool targetShared,
   ) {
-    final used = MemoryCapacity.catalogChars(existing);
-    // 最旧的排在前面：记忆的价值不随年龄消失，但归档时先动最可能与当前
+    final used = ExperienceCapacity.catalogChars(existing);
+    // 最旧的排在前面：经验的价值不随年龄消失，但归档时先动最可能与当前
     // 工作无关的旧条目，比让模型随机挑一条安全。
     final oldest = [...existing]
       ..sort((a, b) {
@@ -379,8 +379,8 @@ class ExperienceLearnTool extends Tool {
         })
         .join('\n');
 
-    return 'Error: Experience not recorded — the memory catalog is full '
-        '($used / ${MemoryCapacity.maxCatalogChars} chars, '
+    return 'Error: Experience not recorded — the experience catalog is full '
+        '($used / ${ExperienceCapacity.maxCatalogChars} chars, '
         '${existing.length} entries).\n'
         'Nothing was written. Superseded lessons must be archived before '
         'adding a new one.\n'

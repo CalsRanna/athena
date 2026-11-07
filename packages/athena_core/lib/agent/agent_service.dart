@@ -11,7 +11,7 @@ import 'package:athena_core/agent/elicit/elicit_prompt.dart'
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
-import 'package:athena_core/agent/memory/reflection.dart';
+import 'package:athena_core/agent/experience/reflection.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/project_instructions.dart';
@@ -128,7 +128,7 @@ class AgentService {
 
     /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
     String? skillPrompt,
-    String? memoryPrompt,
+    String? experiencePrompt,
     String? runtimePrompt,
     ContextCompactionCallback? onCompact,
     String? sentinelId,
@@ -187,7 +187,7 @@ class AgentService {
       runtimeText: _runtimePromptWithDate(runtimePrompt),
       hasSentinelPrompt: hasSentinelPrompt,
       skillPrompt: effectiveSkillPrompt,
-      memoryPrompt: memoryPrompt,
+      experiencePrompt: experiencePrompt,
       projectPrompt: projectInstructions?.prompt,
     );
     _skillRegistry?.clearContext();
@@ -274,7 +274,7 @@ class AgentService {
     ElicitChannel? elicitChannel,
     String? workspace,
 
-    /// 记忆使用所选项目标识，即使文件执行目录暂时不可用也不降为全局。
+    /// 经验使用所选项目标识，即使文件执行目录暂时不可用也不降为全局。
     String? experienceWorkspace,
 
     /// 本次调用所属会话。后台任务按会话归属，工具据此把任务登记到正确的
@@ -642,13 +642,13 @@ class AgentService {
 /// 首轮请求的消息布局（纯函数：同样输入得到同样布局，便于单测固定块顺序）。
 ///
 /// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
-///   [sentinel, memory-hint, skill, experience catalog, project?, runtime-with-date, history...]
+///   [sentinel, experience-hint, skill, experience catalog, project?, runtime-with-date, history...]
 ///
 /// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
-/// true 时首个 system 是 sentinel，其后的 system 是稳定的 Memory 目录；
+/// true 时首个 system 是 sentinel，其后的 system 是稳定的 Experience 目录；
 /// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
 /// 包括按覆盖范围定位的 compact 摘要。
-/// - memory hint / skill 插在 sentinel 之后、经验目录之前。
+/// - experience hint / skill 插在 sentinel 之后、经验目录之前。
 /// - project（工作文件夹根目录的 AGENTS.md）与 runtime 都是随外部状态变化的
 ///   块，放在最靠后：前缀缓存只在前缀相同的部分命中，块越靠后，它变化时被
 ///   重算的 token 越少。
@@ -664,7 +664,7 @@ layoutPromptMessages({
   required String runtimeText,
   required bool hasSentinelPrompt,
   String? skillPrompt,
-  String? memoryPrompt,
+  String? experiencePrompt,
   String? projectPrompt,
 }) {
   var sentinelEnd = -1;
@@ -678,8 +678,8 @@ layoutPromptMessages({
   }
 
   final injectedBlocks = <ChatMessage>[
-    if (memoryPrompt != null && memoryPrompt.isNotEmpty)
-      ChatMessage.system(memoryPrompt),
+    if (experiencePrompt != null && experiencePrompt.isNotEmpty)
+      ChatMessage.system(experiencePrompt),
     if (skillPrompt != null && skillPrompt.isNotEmpty)
       ChatMessage.system(skillPrompt),
   ];
@@ -692,7 +692,7 @@ layoutPromptMessages({
     if (i == sentinelEnd) {
       head.add(m); // sentinel
     } else if (m is SystemMessage) {
-      summaries.add(m); // 稳定的附加上下文（memory digest）
+      summaries.add(m); // 稳定的附加上下文（experience digest）
     } else {
       history.add(m);
     }

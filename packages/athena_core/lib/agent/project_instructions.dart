@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 ///
 /// 内容由仓库维护、由用户负责，本类只做「读进来」这一件事：不做长度裁剪，
 /// 也不做内容加工。运行时把它原样放进一条独立的 system 消息（见
-/// `layoutPromptMessages`），并且与技能目录 / 记忆目录同一约定——只拼入本次
+/// `layoutPromptMessages`），并且与技能目录 / 经验目录同一约定——只拼入本次
 /// 请求、不落库，因此不会进入权限复核的授权依据（`PermissionReviewContext`
 /// 只收集 user / assistant 角色的持久化消息）。
 ///

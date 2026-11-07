@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_core/agent/memory/memory_digest.dart';
-import 'package:athena_core/agent/memory/reflection.dart';
+import 'package:athena_core/agent/experience/experience_digest.dart';
+import 'package:athena_core/agent/experience/reflection.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/experience_entity.dart';
@@ -14,7 +14,7 @@ import 'package:test/test.dart';
 /// 目录每次 run 都会进上下文：内容与顺序必须稳定（否则破坏 prompt 缓存），
 /// 且不能把归档项重新带回来。反思只在可归因的失败上触发。
 void main() {
-  group('MemoryDigest', () {
+  group('ExperienceDigest', () {
     late Directory temp;
     late ExperienceRepository repo;
 
@@ -27,7 +27,7 @@ void main() {
 
     test('无经验时不注入空段', () async {
       expect(
-        await MemoryDigest.messagesForSentinel(
+        await ExperienceDigest.messagesForSentinel(
           repository: repo,
           sentinelId: '1',
         ),
@@ -39,7 +39,7 @@ void main() {
       await repo.save(lesson: '私有教训', sentinelId: '1');
       await repo.save(lesson: '共享偏好', scope: 'shared', sentinelId: '1');
 
-      final messages = await MemoryDigest.messagesForSentinel(
+      final messages = await ExperienceDigest.messagesForSentinel(
         repository: repo,
         sentinelId: '1',
       );
@@ -61,7 +61,7 @@ void main() {
       );
 
       expect(
-        await MemoryDigest.messagesForSentinel(
+        await ExperienceDigest.messagesForSentinel(
           repository: repo,
           sentinelId: '1',
         ),
@@ -89,7 +89,7 @@ void main() {
       );
       await repo.save(lesson: 'legacy general', sentinelId: '1');
       final text =
-          ((await MemoryDigest.messagesForSentinel(
+          ((await ExperienceDigest.messagesForSentinel(
                     repository: repo,
                     sentinelId: '1',
                     workspacePath: a,
@@ -107,11 +107,11 @@ void main() {
         await repo.save(lesson: 'lesson $i', sentinelId: '1');
       }
 
-      final first = await MemoryDigest.messagesForSentinel(
+      final first = await ExperienceDigest.messagesForSentinel(
         repository: repo,
         sentinelId: '1',
       );
-      final second = await MemoryDigest.messagesForSentinel(
+      final second = await ExperienceDigest.messagesForSentinel(
         repository: repo,
         sentinelId: '1',
       );
@@ -126,7 +126,7 @@ void main() {
       await repo.save(lesson: '第一行\n第二行', sentinelId: '1');
 
       final text =
-          ((await MemoryDigest.messagesForSentinel(
+          ((await ExperienceDigest.messagesForSentinel(
                     repository: repo,
                     sentinelId: '1',
                   ))!.single
@@ -146,7 +146,7 @@ void main() {
       );
 
       final text =
-          ((await MemoryDigest.messagesForSentinel(
+          ((await ExperienceDigest.messagesForSentinel(
                     repository: repo,
                     sentinelId: '1',
                   ))!.single

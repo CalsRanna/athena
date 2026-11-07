@@ -2,7 +2,7 @@
 
 跨平台 AI Agent 应用：一个 UI 无关的 Agent 引擎，两个前端。
 
-完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置工具集、跨会话的经验记忆、由用户维护的 Skill 与角色（Sentinel），以及一套按调用逐次判定的权限模型。桌面 GUI（Flutter）与终端 TUI（nocterm）共享同一个引擎、同一份数据，可同时运行。
+完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置工具集、跨会话的经验、由用户维护的 Skill 与角色（Sentinel），以及一套按调用逐次判定的权限模型。桌面 GUI（Flutter）与终端 TUI（nocterm）共享同一个引擎、同一份数据，可同时运行。
 
 ## 组成
 
@@ -30,13 +30,13 @@ athena
 - 上下文预算与自动压缩，原消息保留可回溯
 - 工具失败反思与经验沉淀
 
-循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill-与经验记忆)。
+循环、协议与上下文契约见 [CONVENTIONS.md §12.2](CONVENTIONS.md#122-agent-循环协议与上下文)，失败反思见 [§12.5](CONVENTIONS.md#125-skill-与经验)。
 
 **内置工具**（桌面端 14 个，移动端 9 个）
 
 `file_read` / `file_write` / `file_update` 精确读改文件（带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` 按需加载技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` 查看角色；`tool_output_read` 分页读回超长输出。
 
-`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与经验记忆工具。
+`bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与经验工具。
 
 **权限模型**
 
@@ -44,13 +44,13 @@ athena
 
 **Skill 与经验**
 
-技能按需加载；经验可按角色隔离或全局共享。Athena 可以按用户要求创建、保存或编辑用户技能，用户也可在设置中管理技能；角色由用户维护。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
+技能按需加载；经验可按角色隔离或全局共享。Athena 可以按用户要求创建、保存或编辑用户技能，用户也可在设置中管理技能；角色由用户维护。加载与隔离契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验)。
 
 GUI 与 TUI 内置 `skill-creator`。在桌面端或 TUI 对话中说「帮我创建一个把会议记录整理成决策和待办的 Skill」，Athena 会梳理需求、编写内容并使用现有文件工具保存。成功后新技能在当前对话中即可加载使用，无需复制保存或重启；也可在设置 → Skills 中查看。创建沿用会话的工具审批设置，不擅自覆盖同名技能。仅需草稿时可明确说「先写草稿，不要保存」。移动端没有文件与 Shell 工具，只生成草稿。
 
 **Sentinel（角色）**
 
-角色以 system prompt 定义，由用户在设置中创建与编辑；Agent 只能查看。契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验记忆)。
+角色以 system prompt 定义，由用户在设置中创建与编辑；Agent 只能查看。契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验)。
 
 **前端**
 
@@ -175,7 +175,7 @@ models:
 | 文档 | 内容 |
 |---|---|
 | [AGENTS.md](AGENTS.md) | 通用的 Agent 编码行为准则（简洁、外科式改动、目标驱动验证） |
-| [CONVENTIONS.md](CONVENTIONS.md) | 工程约定、架构边界与共享行为契约（审批、Agent 循环与上下文、回退、运行统计、技能与经验记忆） |
+| [CONVENTIONS.md](CONVENTIONS.md) | 工程约定、架构边界与共享行为契约（审批、Agent 循环与上下文、回退、运行统计、技能与经验） |
 | [DESIGN.md](DESIGN.md) | 共享视觉原则、GUI 色板与排版 / 几何 / 阴影 / 动效规范、TUI 色彩映射 |
 | [WIDGETS.md](WIDGETS.md) | GUI 控件清单与平台范围、具体交互与状态、桌面设置面板几何 |
 

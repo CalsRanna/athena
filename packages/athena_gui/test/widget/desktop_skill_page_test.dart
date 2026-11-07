@@ -36,7 +36,7 @@ void main() {
     }
     registry.registerBuiltin(
       const Skill(
-        name: 'memory',
+        name: 'experience',
         description: 'Recall prior work',
         body: '# Recall',
         sourcePath: '(builtin)',
@@ -83,7 +83,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'REVIEW');
     await tester.pumpAndSettle();
-    expect(find.text('memory'), findsNothing);
+    expect(find.text('experience'), findsNothing);
     expect(find.text('2'), findsOneWidget);
     await tester.tap(find.byTooltip('Filter by source: All sources'));
     await tester.pumpAndSettle();
@@ -93,7 +93,7 @@ void main() {
     await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
     expect(find.text('alpha'), findsNothing);
-    await tester.tap(find.text('memory'));
+    await tester.tap(find.text('experience'));
     await tester.pumpAndSettle();
     expect(
       tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
@@ -104,7 +104,7 @@ void main() {
     expect(find.byType(TextField), findsNothing);
     await tester.tap(find.text('Skills'));
     await tester.pumpAndSettle();
-    expect(find.text('memory'), findsOneWidget);
+    expect(find.text('experience'), findsOneWidget);
     expect(find.text('Your skills'), findsNothing);
     expect(tester.takeException(), isNull);
   });

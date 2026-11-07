@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// 经验库是唯一会随使用时长无限增长的持久化状态：可见范围、写法与清理
-/// 一旦悄悄退化，用户看到的是「记忆莫名其妙消失/串台」。
+/// 一旦悄悄退化，用户看到的是「经验莫名其妙消失/串台」。
 void main() {
   late Directory temp;
   late ExperienceRepository repo;

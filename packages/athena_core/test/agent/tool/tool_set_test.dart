@@ -48,7 +48,7 @@ void main() {
     expect(registryFor(mobile: true).get('ask_user_question'), isNotNull);
   });
 
-  test('mobile keeps network, question, skill and memory tools', () {
+  test('mobile keeps network, question, skill and experience tools', () {
     final names = registryFor(mobile: true).all.map((t) => t.name).toSet();
     expect(names, {
       'tool_output_read',

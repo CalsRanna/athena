@@ -7,14 +7,14 @@ import 'package:signals/signals.dart';
 /// 数据源是 core 的 [SkillRegistry]（用户级目录 `~/.athena/skills`，
 /// 移动端为沙盒内目录），与 Agent 的 skill 工具同源；
 /// 写入复用 [SkillLoader.saveSkill]，保证 front matter 格式一致。
-/// 内置 Skill（memory）只读，不可编辑或删除。
+/// 内置 Skill 只读，不可编辑或删除。
 class SkillViewModel {
   final SkillRegistry _skillRegistry;
 
   SkillViewModel({required SkillRegistry skillRegistry})
     : _skillRegistry = skillRegistry;
 
-  /// 全部 Skill（含内置 memory）。
+  /// 全部 Skill（含内置技能）。
   final skills = listSignal<Skill>([]);
   final isLoading = signal(false);
   final error = signal<String?>(null);

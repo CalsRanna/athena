@@ -1,4 +1,4 @@
-/// 主动记录与自动反思共用的长期记忆写入门槛。
+/// 主动记录与自动反思共用的长期经验写入门槛。
 abstract final class ExperienceWritePolicy {
   static const minConfidence = 0.9;
 

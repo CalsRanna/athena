@@ -186,7 +186,7 @@ void main() {
       .toList();
 
   test('反思包含本轮后续验证结果，经验来源指向真实落库的工具消息', () async {
-    // 所选目录暂时不存在，记忆仍应绑定该项目，不能降为无项目限制。
+    // 所选目录暂时不存在，经验仍应绑定该项目，不能降为无项目限制。
     final workspace = p.join(tmp.path, 'temporarily-unavailable-project');
     chat = chat.copyWith(workspacePath: workspace);
     await storage.sessionRepository.updateChat(chat);

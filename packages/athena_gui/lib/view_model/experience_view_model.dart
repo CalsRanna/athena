@@ -3,7 +3,7 @@ import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:signals/signals.dart';
 
-/// ExperienceViewModel：Experience（经验记忆）的可视化管理。
+/// ExperienceViewModel：Experience（经验）的可视化管理。
 ///
 /// 数据源是 core 的 [ExperienceRepository]（`~/.athena/experiences/`，
 /// 移动端为沙盒内目录），与 Agent 的 experience_learn / experience_recall

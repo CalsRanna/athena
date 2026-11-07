@@ -565,12 +565,12 @@ void main() {
     await storage.sessionRepository.updateChat(chat);
     final experiences = ExperienceRepository(homeDir: tmp.path);
     await experiences.save(
-      lesson: 'CURRENT-PROJECT-MEMORY',
+      lesson: 'CURRENT-PROJECT-EXPERIENCE',
       sentinelId: 'direct',
       workspacePath: tmp.path,
     );
     await experiences.save(
-      lesson: 'OTHER-PROJECT-MEMORY',
+      lesson: 'OTHER-PROJECT-EXPERIENCE',
       sentinelId: 'direct',
       workspacePath: p.join(tmp.path, 'other-project'),
     );
@@ -627,12 +627,12 @@ void main() {
     expect(llm.requests, hasLength(4));
     final reportRequest = llm.requests[2];
     final reportMessages = (reportRequest['messages'] as List).cast<Map>();
-    final memoryContext = jsonEncode(
+    final experienceContext = jsonEncode(
       reportMessages.where((m) => m['role'] == 'system').toList(),
     );
-    expect(memoryContext, contains('CURRENT-PROJECT-MEMORY'));
-    expect(memoryContext, contains('GLOBAL-PREFERENCE'));
-    expect(memoryContext, isNot(contains('OTHER-PROJECT-MEMORY')));
+    expect(experienceContext, contains('CURRENT-PROJECT-EXPERIENCE'));
+    expect(experienceContext, contains('GLOBAL-PREFERENCE'));
+    expect(experienceContext, isNot(contains('OTHER-PROJECT-EXPERIENCE')));
     // 汇报说明是请求的最后一条 user 消息：历史以上一轮 assistant 回答结尾，
     // 不补这一条，Messages 协议会当作 prefill 拒绝
     expect(reportMessages.last['role'], 'user');
