@@ -231,7 +231,10 @@ void main() {
         ),
       );
       await settle(tester);
-      final settingsLabelSize = paragraph(tester, find.text('Conversation text size')).size;
+      final settingsLabelSize = paragraph(
+        tester,
+        find.text('Conversation text size'),
+      ).size;
       for (final size in AthenaTextSize.values) {
         await tester.tap(find.text(size.label));
         await settle(tester);
