@@ -11,6 +11,9 @@ const toolCallDescriptionKey = 'call_description';
 /// 展示用的原始参数 JSON 里，模型既看不到也改不了。
 const toolChatIdKey = '_chat_id';
 
+/// 引擎注入：承载当前工具调用的持久化消息标识，用于关联经验来源。
+const toolMessageIdKey = '_message_id';
+
 /// 引擎注入：本轮 run 不允许启动后台任务。
 ///
 /// 自动汇报回合用它守住边界——汇报回合由任务完成触发，用户并不在场，

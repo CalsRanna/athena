@@ -25,6 +25,7 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         CancellableTool,
         toolBackgroundDisabledKey,
         toolChatIdKey,
+        toolMessageIdKey,
         toolExecutionArguments,
         toolExperienceSourceKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
@@ -118,6 +119,9 @@ class AgentService {
     required ProviderEntity provider,
     required ModelEntity model,
     required List<ChatMessage> baseMessages,
+
+    /// 协调层在迭代切换时创建新消息，因此执行工具时再读取当前标识。
+    String? Function()? currentMessageId,
 
     /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
     String? skillPrompt,
@@ -224,6 +228,7 @@ class AgentService {
         provider: provider,
         model: model,
         messages: prompts.messages,
+        currentMessageId: currentMessageId,
         runtimeMessageIndex: prompts.runtimeMessageIndex,
         runtimePrompt: runtimePrompt,
         projectMessageIndex: prompts.projectMessageIndex,
@@ -267,6 +272,7 @@ class AgentService {
     /// 本次调用所属会话。后台任务按会话归属，工具据此把任务登记到正确的
     /// 会话，并在用户取消该会话时被连带终止。
     String? chatId,
+    String? messageId,
 
     /// 本轮 run 是否允许启动后台任务（自动汇报回合为 false）。
     bool allowBackgroundTasks = true,
@@ -368,6 +374,11 @@ class AgentService {
     }
     if (experienceSource != null) {
       args[toolExperienceSourceKey] = experienceSource;
+    }
+    if (toolCall.function.name == 'experience_learn') {
+      // 即使宿主没有来源，也要覆盖模型传入的同名参数。
+      args[toolChatIdKey] = chatId;
+      args[toolMessageIdKey] = messageId;
     }
 
     late String rawResult;
@@ -702,6 +713,7 @@ class _AgentLoop {
     required ProviderEntity provider,
     required ModelEntity model,
     required List<ChatMessage> messages,
+    required String? Function()? currentMessageId,
     required int runtimeMessageIndex,
     required String? runtimePrompt,
     required int projectMessageIndex,
@@ -736,6 +748,7 @@ class _AgentLoop {
        _projectInstructions = projectInstructions,
        _onCompact = onCompact,
        _messages = messages,
+       _currentMessageId = currentMessageId,
        _runId = runId,
        _sentinelId = sentinelId,
        _jsonMode = jsonMode,
@@ -767,6 +780,7 @@ class _AgentLoop {
 
   /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
   final List<ChatMessage> _messages;
+  final String? Function()? _currentMessageId;
   final int _runId;
   final String? _sentinelId;
   final bool _jsonMode;
@@ -791,6 +805,7 @@ class _AgentLoop {
 
   int _iterationsExecuted = 0;
   final List<ToolFailure> _toolFailures = [];
+  final List<Map<String, dynamic>> _reflectionToolResults = [];
   var _reflectionAttempted = false;
 
   /// 本 run 内是否已有一次压缩没能完成。
@@ -810,13 +825,17 @@ class _AgentLoop {
   /// 的用户消息落库排队，本 run 结束后作为新 run 自动接续。
   Stream<AgentEvent> run() async* {
     try {
+      var finalResponse = '';
       for (var iteration = 0; ; iteration++) {
         final st = _TurnState();
         yield* _runIteration(iteration, st);
-        if (st.done) break;
+        if (st.done) {
+          finalResponse = st.accumulator.content;
+          break;
+        }
       }
 
-      yield* _maybeReflect();
+      yield* _maybeReflect(finalResponse);
     } on CancelledException catch (e) {
       yield AgentEvent.outcome(
         AgentRunOutcome(
@@ -1332,7 +1351,7 @@ class _AgentLoop {
   ///
   /// 只在迭代循环自然结束（模型主动结束）后调用，所以终止原因恒为
   /// [AgentRunTermination.completed]；取消与错误在循环里直接冒出，到不了这里。
-  Stream<AgentEvent> _maybeReflect() async* {
+  Stream<AgentEvent> _maybeReflect(String finalResponse) async* {
     var outcome = AgentRunOutcome(
       termination: AgentRunTermination.completed,
       iterations: _iterationsExecuted,
@@ -1347,6 +1366,7 @@ class _AgentLoop {
         yield* _runReflection(
           outcome: outcome,
           task: _latestUserTask(),
+          finalResponse: finalResponse,
           iteration: _iterationsExecuted,
         );
       } on CancelledException {
@@ -1369,13 +1389,21 @@ class _AgentLoop {
   Stream<AgentEvent> _runReflection({
     required AgentRunOutcome outcome,
     required String task,
+    required String finalResponse,
     required int iteration,
   }) async* {
     _token.throwIfCancelled();
     final response = await _service._chatService.complete(
       messages: [
         ChatMessage.system(ReflectionPrompt.system),
-        ChatMessage.user(ReflectionPrompt.input(outcome: outcome, task: task)),
+        ChatMessage.user(
+          ReflectionPrompt.input(
+            outcome: outcome,
+            task: task,
+            toolResults: _reflectionToolResults,
+            finalResponse: finalResponse,
+          ),
+        ),
       ],
       provider: _provider,
       model: _model,
@@ -1428,9 +1456,21 @@ class _AgentLoop {
       elicitChannel: _elicitChannel,
       workspace: _workspace,
       chatId: _chat.id,
+      messageId: _currentMessageId?.call(),
       allowBackgroundTasks: _allowBackgroundTasks,
       experienceSource: experienceSource,
     );
+    _reflectionToolResults.add(
+      ReflectionPrompt.toolResult(
+        tool: tc.function.name,
+        arguments: tc.function.arguments,
+        status: result.status,
+        result: result.rawResult,
+      ),
+    );
+    if (_reflectionToolResults.length > 8) {
+      _reflectionToolResults.removeAt(0);
+    }
     return _ToolExecutionData(
       event: result.event,
       toolMessage: ChatMessage.tool(

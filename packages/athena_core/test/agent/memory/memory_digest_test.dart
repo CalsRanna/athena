@@ -126,6 +126,20 @@ void main() {
     });
   });
 
+  test('反思工具摘录限制长度并保留验证输出末尾', () {
+    final result = ReflectionPrompt.toolResult(
+      tool: 'bash',
+      arguments: 'x' * 2000,
+      status: ToolResultStatus.success,
+      result: 'start\n${'log\n' * 1000}All tests passed.',
+    );
+    expect((result['arguments'] as String).length, lessThan(1100));
+    expect((result['result'] as String).length, lessThan(2100));
+    expect(result['result'], startsWith('start\n'));
+    expect(result['result'], contains('[truncated]'));
+    expect(result['result'], endsWith('All tests passed.'));
+  });
+
   group('ReflectionPolicy', () {
     AgentRunOutcome outcome(
       List<ToolFailure> failures, {

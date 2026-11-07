@@ -7,6 +7,7 @@ import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as agent;
+import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
@@ -42,6 +43,7 @@ void main() {
   late ChatEntity chat;
   late List<Map<String, dynamic>> bodies;
   late List<List<Map<String, dynamic>>> replies;
+  String? reflectionResponse;
   Stream<List<int>> Function(int, List<Map<String, dynamic>>)? responseStream;
 
   setUp(() async {
@@ -74,6 +76,7 @@ void main() {
     bodies = [];
     replies = [chatEvents(tools: true), chatEvents(), chatEvents()];
     responseStream = null;
+    reflectionResponse = null;
     var index = 0;
     final chatService = ChatCompletionsService(
       llmClient: LlmClient(
@@ -85,6 +88,32 @@ void main() {
               jsonDecode(await bodyStream.bytesToString())
                   as Map<String, dynamic>,
             );
+            if (reflectionResponse != null && bodies.last['stream'] != true) {
+              return http.StreamedResponse(
+                Stream.value(
+                  utf8.encode(
+                    jsonEncode({
+                      'id': 'reflection',
+                      'object': 'chat.completion',
+                      'created': 1,
+                      'model': 'test-reasoner',
+                      'choices': [
+                        {
+                          'index': 0,
+                          'message': {
+                            'role': 'assistant',
+                            'content': reflectionResponse,
+                          },
+                          'finish_reason': 'stop',
+                        },
+                      ],
+                    }),
+                  ),
+                ),
+                200,
+                headers: {'content-type': 'application/json'},
+              );
+            }
             final replyIndex = index++;
             final reply = replies[replyIndex];
             return http.StreamedResponse(
@@ -154,6 +183,51 @@ void main() {
         chat: chat,
       )
       .toList();
+
+  test('反思包含本轮后续验证结果，经验来源指向真实落库的工具消息', () async {
+    final experiences = ExperienceRepository(homeDir: tmp.path);
+    registry.register(ExperienceLearnTool(repository: experiences));
+    echo.failuresRemaining = 2;
+    replies = [
+      for (var i = 0; i < 5; i++) chatEvents(tools: true),
+      chatEvents(),
+    ];
+    reflectionResponse = jsonEncode({
+      'should_learn': true,
+      'lesson': 'Check the corrected configuration with the tool.',
+      'context': 'The first two checks failed; later checks returned ok.',
+      'confidence': 0.9,
+    });
+
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    final request = bodies.singleWhere((b) => b['stream'] != true);
+    final input =
+        jsonDecode((request['messages'] as List).last['content'] as String)
+            as Map<String, dynamic>;
+    expect(input['tool_failures'], hasLength(2));
+    expect(input['recent_tool_results'], hasLength(8));
+    for (final result in input['recent_tool_results'] as List) {
+      expect(result['tool'], 'echo');
+      expect(result['status'], 'success');
+      expect(result['result'], 'ok');
+      expect(jsonDecode(result['arguments'] as String), contains('value'));
+    }
+    expect(input['final_response'], '完成。');
+
+    final learned = (await experiences.listAll()).single;
+    expect(learned.source, 'reflection');
+    expect(learned.sourceChatId, chat.id);
+    expect(learned.sourceMessageId, isNotNull);
+    final source = await storage.sessionRepository.getMessageById(
+      learned.sourceChatId!,
+      learned.sourceMessageId!,
+    );
+    expect(source, isNotNull);
+    expect(source!.role, 'assistant');
+    expect(source.toolCalls, contains('experience_learn'));
+    expect(source.toolResults, contains('Experience recorded successfully'));
+  });
 
   test('累计多次调用的输出 token，排除输入与重复推理用量，重载保留且下次归零', () async {
     for (final (index, reply) in replies.indexed) {
@@ -549,6 +623,7 @@ List<Map<String, dynamic>> chatEvents({bool tools = false}) => [
 
 class _Echo extends agent.Tool {
   final values = <String>[];
+  int failuresRemaining = 0;
   Duration delay = Duration.zero;
   @override
   String get name => 'echo';
@@ -569,6 +644,10 @@ class _Echo extends agent.Tool {
   }) async {
     values.add(args['value'] as String);
     if (delay > Duration.zero) await Future<void>.delayed(delay);
+    if (failuresRemaining > 0) {
+      failuresRemaining--;
+      return const agent.ToolExecutionResult.error('validation failed');
+    }
     return const agent.ToolExecutionResult.success('ok');
   }
 }

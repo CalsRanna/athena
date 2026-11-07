@@ -21,6 +21,46 @@ void main() {
   File fileOf(String sentinelId, String id) =>
       File('${temp.path}/.athena/experiences/$sentinelId/$id.json');
 
+  test('经验来源落盘后可读回，修订、迁移作用域和归档保留最初来源', () async {
+    final created = await repo.save(
+      lesson: 'original',
+      sentinelId: '1',
+      sourceChatId: 'chat-1',
+      sourceMessageId: 'message-1',
+    );
+    final saved = (await repo.listPrivate('1')).single;
+    expect(saved.sourceChatId, 'chat-1');
+    expect(saved.sourceMessageId, 'message-1');
+
+    await repo.update(
+      sentinelId: '1',
+      id: created.id,
+      lesson: 'revised',
+      scope: 'shared',
+    );
+    await repo.update(
+      sentinelId: '1',
+      id: created.id,
+      status: ExperienceEntity.statusArchived,
+    );
+    final archived = (await repo.listShared(includeArchived: true)).single;
+    expect(archived.sourceChatId, 'chat-1');
+    expect(archived.sourceMessageId, 'message-1');
+    expect(archived.lesson, 'revised');
+  });
+
+  test('旧经验没有来源字段时仍可读取，不补造来源', () async {
+    final created = await repo.save(lesson: 'legacy', sentinelId: '1');
+    final json = created.toJson()
+      ..remove('source_chat_id')
+      ..remove('source_message_id');
+    fileOf('1', created.id).writeAsStringSync(jsonEncode(json));
+    final saved = (await repo.listPrivate('1')).single;
+    expect(saved.sourceChatId, isNull);
+    expect(saved.sourceMessageId, isNull);
+    expect(saved.lesson, 'legacy');
+  });
+
   test('私有经验只对所属 Sentinel 可见，shared 对所有角色可见', () async {
     await repo.save(lesson: 'mine only', sentinelId: '1');
     await repo.save(lesson: 'everyone', scope: 'shared', sentinelId: '1');

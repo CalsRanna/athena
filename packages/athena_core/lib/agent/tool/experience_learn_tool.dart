@@ -176,6 +176,8 @@ class ExperienceLearnTool extends Tool {
           context: context.trim(),
           tags: tags,
           source: source,
+          sourceChatId: args[toolChatIdKey] as String?,
+          sourceMessageId: args[toolMessageIdKey] as String?,
           scope: scope ?? 'self',
           sentinelId: sentinelId,
         );
@@ -407,6 +409,12 @@ class ExperienceRecallTool extends Tool {
         buffer.writeln('--- Experience ${i + 1} ($origin)$annotation ---');
         buffer.writeln('ID: ${e.id}');
         buffer.writeln('Date: ${_formatDate(e.createdAt)}');
+        if (e.sourceChatId != null) {
+          buffer.writeln('Source chat: ${e.sourceChatId}');
+        }
+        if (e.sourceMessageId != null) {
+          buffer.writeln('Source message: ${e.sourceMessageId}');
+        }
         if (e.context.isNotEmpty) {
           buffer.writeln('Context: ${e.context}');
         }

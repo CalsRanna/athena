@@ -55,6 +55,8 @@ class ExperienceRepository {
     String context = '',
     List<String> tags = const [],
     String source = 'auto',
+    String? sourceChatId,
+    String? sourceMessageId,
     String scope = 'self',
     required String sentinelId,
   }) async {
@@ -70,6 +72,8 @@ class ExperienceRepository {
       context: context,
       tags: tags,
       source: source,
+      sourceChatId: sourceChatId,
+      sourceMessageId: sourceMessageId,
       scope: isShared ? 'shared' : 'self',
       sentinelId: isShared ? 'shared' : sentinelId,
     );
@@ -373,6 +377,8 @@ class ExperienceRepository {
       context: context ?? original.context,
       tags: tags ?? original.tags,
       source: original.source,
+      sourceChatId: original.sourceChatId,
+      sourceMessageId: original.sourceMessageId,
       scope: targetScope,
       sentinelId: targetScope == 'shared' ? 'shared' : sentinelId,
       status: status ?? original.status,

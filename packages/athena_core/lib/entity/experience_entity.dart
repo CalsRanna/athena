@@ -41,6 +41,10 @@ class ExperienceEntity {
   /// 旧数据可能带 "manual" / "evolution"，读回时原样保留。
   final String source;
 
+  /// 创建经验的会话与消息，由引擎注入；旧记录没有来源标识。
+  final String? sourceChatId;
+  final String? sourceMessageId;
+
   /// 作用域："self"（仅当前 Sentinel 可见）| "shared"（所有 Sentinel 可见）
   final String scope;
 
@@ -60,6 +64,8 @@ class ExperienceEntity {
     this.context = '',
     this.tags = const [],
     this.source = 'auto',
+    this.sourceChatId,
+    this.sourceMessageId,
     this.scope = 'self',
     required this.sentinelId,
     this.status = statusActive,
@@ -73,6 +79,8 @@ class ExperienceEntity {
     'context': context,
     'tags': tags,
     'source': source,
+    'source_chat_id': sourceChatId,
+    'source_message_id': sourceMessageId,
     'scope': scope,
     'sentinel_id': sentinelId,
     'status': status,
@@ -91,6 +99,8 @@ class ExperienceEntity {
                 .toList() ??
             [],
         source: (json['source'] as String?) ?? 'auto',
+        sourceChatId: json['source_chat_id'] as String?,
+        sourceMessageId: json['source_message_id'] as String?,
         scope: (json['scope'] as String?) ?? 'self',
         sentinelId: (json['sentinel_id'] as String?) ?? 'shared',
         status: (json['status'] as String?) ?? statusActive,

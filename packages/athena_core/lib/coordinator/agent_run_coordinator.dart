@@ -424,6 +424,7 @@ class AgentRunCoordinator {
         provider: provider,
         model: model,
         baseMessages: baseMessages,
+        currentMessageId: () => _liveMessages[chatId]?.id,
         memoryPrompt: MemoryPrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
@@ -790,6 +791,7 @@ class AgentRunCoordinator {
         provider: provider,
         model: model,
         baseMessages: baseMessages,
+        currentMessageId: () => _liveMessages[chatId]?.id,
         memoryPrompt: MemoryPrompt.hint,
         // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
         // 汇报说明在上面的末条 user 消息里，不能顶替掉它

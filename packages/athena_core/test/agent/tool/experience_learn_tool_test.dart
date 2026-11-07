@@ -130,14 +130,56 @@ void main() {
             'lesson': 'from reflection',
             'call_description': 'record a lesson',
             '_experience_source': 'forged',
+            '_chat_id': 'forged-chat',
+            '_message_id': 'forged-message',
           }),
         ),
       ),
       cancelToken: CancelToken(),
       sentinelId: '1',
       experienceSource: 'reflection',
+      chatId: 'source-chat',
+      messageId: 'source-message',
     );
 
-    expect((await repo.listPrivate('1')).single.source, 'reflection');
+    final saved = (await repo.listPrivate('1')).single;
+    expect(saved.source, 'reflection');
+    expect(saved.sourceChatId, 'source-chat');
+    expect(saved.sourceMessageId, 'source-message');
+    final recalled = await ExperienceRecallTool(
+      repository: repo,
+    ).execute({'_sentinel_id': '1', 'query': saved.id});
+    expect(recalled, contains('Source chat: source-chat'));
+    expect(recalled, contains('Source message: source-message'));
+  });
+
+  test('宿主未提供来源时，不接受模型伪造的会话和消息标识', () async {
+    final registry = ToolRegistry()..register(tool);
+    addTearDown(() => registry.backgroundTasks.dispose());
+    final service = AgentService(
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+    await service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'call_1',
+        type: 'function',
+        function: FunctionCall(
+          name: 'experience_learn',
+          arguments: jsonEncode({
+            'lesson': 'without a source',
+            'call_description': 'record a lesson',
+            '_chat_id': 'forged-chat',
+            '_message_id': 'forged-message',
+          }),
+        ),
+      ),
+      cancelToken: CancelToken(),
+      sentinelId: '1',
+    );
+    final saved = (await repo.listPrivate('1')).single;
+    expect(saved.source, 'auto');
+    expect(saved.sourceChatId, isNull);
+    expect(saved.sourceMessageId, isNull);
   });
 }
