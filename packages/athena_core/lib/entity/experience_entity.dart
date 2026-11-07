@@ -45,6 +45,10 @@ class ExperienceEntity {
   final String? sourceChatId;
   final String? sourceMessageId;
 
+  /// 适用项目的规范化绝对路径；null 表示没有项目限制。
+  /// shared 通用偏好不绑定项目，旧记录缺失此字段时保持 null。
+  final String? workspacePath;
+
   /// 作用域："self"（仅当前 Sentinel 可见）| "shared"（所有 Sentinel 可见）
   final String scope;
 
@@ -66,6 +70,7 @@ class ExperienceEntity {
     this.source = 'auto',
     this.sourceChatId,
     this.sourceMessageId,
+    this.workspacePath,
     this.scope = 'self',
     required this.sentinelId,
     this.status = statusActive,
@@ -81,6 +86,7 @@ class ExperienceEntity {
     'source': source,
     'source_chat_id': sourceChatId,
     'source_message_id': sourceMessageId,
+    'workspace_path': workspacePath,
     'scope': scope,
     'sentinel_id': sentinelId,
     'status': status,
@@ -101,6 +107,7 @@ class ExperienceEntity {
         source: (json['source'] as String?) ?? 'auto',
         sourceChatId: json['source_chat_id'] as String?,
         sourceMessageId: json['source_message_id'] as String?,
+        workspacePath: json['workspace_path'] as String?,
         scope: (json['scope'] as String?) ?? 'self',
         sentinelId: (json['sentinel_id'] as String?) ?? 'shared',
         status: (json['status'] as String?) ?? statusActive,

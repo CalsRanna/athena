@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
+import 'package:athena_core/util/path_normalizer.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:athena_core/entity/experience_entity.dart';
 
@@ -23,6 +25,16 @@ class ExperienceRepository {
   ExperienceRepository({String? homeDir}) : _homeDir = homeDir;
 
   final String? _homeDir;
+
+  static String? normalizeWorkspacePath(String? path) =>
+      path == null || path.isEmpty ? null : normalizePathForMatch(path);
+
+  /// 无项目限制的记录兼容所有项目；有项目限制的记录必须精确匹配。
+  static bool isInWorkspace(String? recordedPath, String? currentPath) {
+    final recorded = normalizeWorkspacePath(recordedPath);
+    final current = normalizeWorkspacePath(currentPath);
+    return recorded == null || (current != null && p.equals(recorded, current));
+  }
 
   String get _basePath {
     final home =
@@ -57,6 +69,7 @@ class ExperienceRepository {
     String source = 'auto',
     String? sourceChatId,
     String? sourceMessageId,
+    String? workspacePath,
     String scope = 'self',
     required String sentinelId,
   }) async {
@@ -74,6 +87,7 @@ class ExperienceRepository {
       source: source,
       sourceChatId: sourceChatId,
       sourceMessageId: sourceMessageId,
+      workspacePath: isShared ? null : normalizeWorkspacePath(workspacePath),
       scope: isShared ? 'shared' : 'self',
       sentinelId: isShared ? 'shared' : sentinelId,
     );
@@ -85,9 +99,18 @@ class ExperienceRepository {
 
   // === 检索 ===
 
-  Future<ExperienceEntity?> getForSentinel(String sentinelId, String id) async {
+  Future<ExperienceEntity?> getForSentinel(
+    String sentinelId,
+    String id, {
+    String? workspacePath,
+  }) async {
     final file = _locateFile(sentinelId, id);
-    return file == null ? null : _readFile(file);
+    final entity = file == null ? null : _readFile(file);
+    return entity != null &&
+            (entity.scope == 'shared' ||
+                isInWorkspace(entity.workspacePath, workspacePath))
+        ? entity
+        : null;
   }
 
   /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
@@ -137,14 +160,19 @@ class ExperienceRepository {
         .toList();
   }
 
-  /// 获取当前 Sentinel 的所有私有经验 + 所有 shared 经验。
+  /// 获取当前 Sentinel、当前项目可见的私有经验 + 所有 shared 经验。
   Future<List<ExperienceEntity>> listForSentinel(
     String sentinelId, {
     bool includeArchived = false,
+    String? workspacePath,
   }) async {
     final results = <ExperienceEntity>[];
     results.addAll(
-      await _listPrivate(sentinelId, includeArchived: includeArchived),
+      await listPrivate(
+        sentinelId,
+        includeArchived: includeArchived,
+        workspacePath: workspacePath,
+      ),
     );
     results.addAll(await listShared(includeArchived: includeArchived));
     results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -159,20 +187,26 @@ class ExperienceRepository {
     String sentinelId,
     String query, {
     bool includeArchived = false,
+    String? workspacePath,
   }) async {
     final all = await listForSentinel(
       sentinelId,
       includeArchived: includeArchived,
+      workspacePath: workspacePath,
     );
     return _rankByScore(all, query);
   }
 
-  /// 获取指定 Sentinel 的私有经验（不含 shared）。
+  /// 获取指定 Sentinel、当前项目可见的私有经验（不含 shared）。
   Future<List<ExperienceEntity>> listPrivate(
     String sentinelId, {
     bool includeArchived = false,
-  }) {
-    return _listPrivate(sentinelId, includeArchived: includeArchived);
+    String? workspacePath,
+  }) async {
+    return (await _listPrivate(
+      sentinelId,
+      includeArchived: includeArchived,
+    )).where((e) => isInWorkspace(e.workspacePath, workspacePath)).toList();
   }
 
   /// 在指定 Sentinel 的私有经验中搜索（不含 shared），排序规则同
@@ -181,8 +215,13 @@ class ExperienceRepository {
     String sentinelId,
     String query, {
     bool includeArchived = false,
+    String? workspacePath,
   }) async {
-    final all = await listPrivate(sentinelId, includeArchived: includeArchived);
+    final all = await listPrivate(
+      sentinelId,
+      includeArchived: includeArchived,
+      workspacePath: workspacePath,
+    );
     return _rankByScore(all, query);
   }
 
@@ -357,6 +396,7 @@ class ExperienceRepository {
   ///
   /// scope 变更时把文件迁移到目标目录（旧文件删除）——修复误写为
   /// shared 的经验无需"删除后重建"。
+  /// [workspacePath] 仅在 shared 转私有时绑定项目，普通修订保留原项目。
   /// 返回更新后的实体；未找到或文件损坏返回 null。
   Future<ExperienceEntity?> update({
     required String sentinelId,
@@ -366,6 +406,7 @@ class ExperienceRepository {
     List<String>? tags,
     String? scope,
     String? status,
+    String? workspacePath,
   }) async {
     final file = _locateFile(sentinelId, id);
     if (file == null) return null;
@@ -384,6 +425,11 @@ class ExperienceRepository {
       source: original.source,
       sourceChatId: original.sourceChatId,
       sourceMessageId: original.sourceMessageId,
+      workspacePath: targetScope == 'shared'
+          ? null
+          : original.scope == 'shared'
+          ? normalizeWorkspacePath(workspacePath)
+          : original.workspacePath,
       scope: targetScope,
       sentinelId: targetScope == 'shared' ? 'shared' : sentinelId,
       status: status ?? original.status,

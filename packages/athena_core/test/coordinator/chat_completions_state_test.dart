@@ -29,6 +29,7 @@ import 'package:athena_core/util/retry.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import '../support/responses_fixture.dart';
@@ -185,6 +186,10 @@ void main() {
       .toList();
 
   test('反思包含本轮后续验证结果，经验来源指向真实落库的工具消息', () async {
+    // 所选目录暂时不存在，记忆仍应绑定该项目，不能降为无项目限制。
+    final workspace = p.join(tmp.path, 'temporarily-unavailable-project');
+    chat = chat.copyWith(workspacePath: workspace);
+    await storage.sessionRepository.updateChat(chat);
     final experiences = ExperienceRepository(homeDir: tmp.path);
     registry.register(ExperienceLearnTool(repository: experiences));
     echo.failuresRemaining = 2;
@@ -221,6 +226,7 @@ void main() {
 
     final learned = (await experiences.listAll()).single;
     expect(learned.source, 'reflection');
+    expect(learned.workspacePath, workspace);
     expect(learned.sourceChatId, chat.id);
     expect(learned.sourceMessageId, isNotNull);
     final source = await storage.sessionRepository.getMessageById(
@@ -234,6 +240,8 @@ void main() {
   });
 
   test('反思修订相关旧经验，下一轮目录只使用修订结论且保留来源与作用域', () async {
+    chat = chat.copyWith(workspacePath: tmp.path);
+    await storage.sessionRepository.updateChat(chat);
     final experiences = ExperienceRepository(homeDir: tmp.path);
     registry.register(ExperienceLearnTool(repository: experiences));
     final original = await experiences.save(
@@ -244,6 +252,11 @@ void main() {
       sourceMessageId: 'original-message',
     );
     await experiences.save(lesson: '配置其他角色', sentinelId: 'other');
+    await experiences.save(
+      lesson: '配置另一个项目',
+      sentinelId: 'direct',
+      workspacePath: p.join(tmp.path, 'other-project'),
+    );
     final retired = await experiences.save(
       lesson: '配置归档',
       sentinelId: 'direct',
@@ -285,6 +298,7 @@ void main() {
     expect(saved.id, original.id);
     expect(saved.lesson, '配置修订规则');
     expect(saved.scope, 'shared');
+    expect(saved.workspacePath, isNull);
     expect(saved.sourceMessageId, 'original-message');
     expect(saved.context, contains('The corrected format'));
 
@@ -295,6 +309,7 @@ void main() {
       (m) => m['role'] == 'system',
     );
     expect(jsonEncode(systems.toList()), isNot(contains('配置旧规则')));
+    expect(jsonEncode(systems.toList()), isNot(contains('配置另一个项目')));
   });
 
   for (final extra in <Map<String, dynamic>>[

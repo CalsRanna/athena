@@ -6,6 +6,7 @@ import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// 目录每次 run 全量注入，是唯一没有天然上限的上下文块。这里锁住两件事：
@@ -144,7 +145,7 @@ void main() {
     };
 
     /// 把集合填到刚好装不下一条新的经验。
-    Future<void> fillToCapacity() async {
+    Future<void> fillToCapacity({String? workspacePath}) async {
       final fillers = <String>[];
       while (true) {
         final used = MemoryCapacity.catalogChars(
@@ -165,7 +166,11 @@ void main() {
         fillers.add('y' * 400);
       }
       for (var i = 0; i < fillers.length; i++) {
-        await repo.save(lesson: fillers[i], sentinelId: '1');
+        await repo.save(
+          lesson: fillers[i],
+          sentinelId: '1',
+          workspacePath: workspacePath,
+        );
       }
     }
 
@@ -179,6 +184,32 @@ void main() {
       expect(result, contains('memory catalog is full'));
       expect(result, contains('Nothing was written'));
       expect((await repo.listForSentinel('1')), hasLength(before));
+    });
+
+    test('其他项目的经验不占当前项目的新增和修订容量', () async {
+      final a = p.join(temp.path, 'A');
+      final b = p.join(temp.path, 'B');
+      await fillToCapacity(workspacePath: b);
+      expect(
+        await tool.execute(args({'_experience_workspace': a})),
+        contains('recorded successfully'),
+      );
+      expect(
+        await tool.execute(args({'_experience_workspace': b})),
+        startsWith('Error:'),
+      );
+      final inA = (await repo.listPrivate('1', workspacePath: a)).single;
+      expect(
+        await tool.execute(
+          args({
+            '_experience_workspace': a,
+            'action': 'update',
+            'experience_id': inA.id,
+            'lesson': 'z' * 500,
+          }),
+        ),
+        contains('updated successfully'),
+      );
     });
 
     test('拒绝信息给出最旧的候选与可执行的下一步', () async {

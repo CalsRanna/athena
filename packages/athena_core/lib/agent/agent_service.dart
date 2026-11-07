@@ -27,7 +27,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         toolChatIdKey,
         toolMessageIdKey,
         toolExecutionArguments,
-        toolExperienceSourceKey;
+        toolExperienceSourceKey,
+        toolExperienceWorkspaceKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/experience_entity.dart';
@@ -273,6 +274,9 @@ class AgentService {
     ElicitChannel? elicitChannel,
     String? workspace,
 
+    /// 记忆使用所选项目标识，即使文件执行目录暂时不可用也不降为全局。
+    String? experienceWorkspace,
+
     /// 本次调用所属会话。后台任务按会话归属，工具据此把任务登记到正确的
     /// 会话，并在用户取消该会话时被连带终止。
     String? chatId,
@@ -383,6 +387,10 @@ class AgentService {
       // 即使宿主没有来源，也要覆盖模型传入的同名参数。
       args[toolChatIdKey] = chatId;
       args[toolMessageIdKey] = messageId;
+    }
+    if (toolCall.function.name == 'experience_learn' ||
+        toolCall.function.name == 'experience_recall') {
+      args[toolExperienceWorkspaceKey] = experienceWorkspace ?? workspace;
     }
 
     late String rawResult;
@@ -1471,6 +1479,7 @@ class _AgentLoop {
       permissionGate: _permissionGate,
       elicitChannel: _elicitChannel,
       workspace: _workspace,
+      experienceWorkspace: _chat.workspacePath,
       chatId: _chat.id,
       messageId: _currentMessageId?.call(),
       allowBackgroundTasks: _allowBackgroundTasks,

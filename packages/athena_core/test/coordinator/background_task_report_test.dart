@@ -561,6 +561,24 @@ void main() {
 
   test('任务结束后自动起汇报回合，结论落库', () async {
     await setUpHarness();
+    chat = chat.copyWith(workspacePath: tmp.path);
+    await storage.sessionRepository.updateChat(chat);
+    final experiences = ExperienceRepository(homeDir: tmp.path);
+    await experiences.save(
+      lesson: 'CURRENT-PROJECT-MEMORY',
+      sentinelId: 'direct',
+      workspacePath: tmp.path,
+    );
+    await experiences.save(
+      lesson: 'OTHER-PROJECT-MEMORY',
+      sentinelId: 'direct',
+      workspacePath: p.join(tmp.path, 'other-project'),
+    );
+    await experiences.save(
+      lesson: 'GLOBAL-PREFERENCE',
+      sentinelId: 'direct',
+      scope: 'shared',
+    );
     final internal = <InternalRunEvent>[];
     final sub = coordinator.internalEvents.listen(internal.add);
 
@@ -609,6 +627,12 @@ void main() {
     expect(llm.requests, hasLength(4));
     final reportRequest = llm.requests[2];
     final reportMessages = (reportRequest['messages'] as List).cast<Map>();
+    final memoryContext = jsonEncode(
+      reportMessages.where((m) => m['role'] == 'system').toList(),
+    );
+    expect(memoryContext, contains('CURRENT-PROJECT-MEMORY'));
+    expect(memoryContext, contains('GLOBAL-PREFERENCE'));
+    expect(memoryContext, isNot(contains('OTHER-PROJECT-MEMORY')));
     // 汇报说明是请求的最后一条 user 消息：历史以上一轮 assistant 回答结尾，
     // 不补这一条，Messages 协议会当作 prefill 拒绝
     expect(reportMessages.last['role'], 'user');

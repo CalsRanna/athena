@@ -374,6 +374,7 @@ class AgentRunCoordinator {
       final digestMessages = await MemoryDigest.messagesForSentinel(
         repository: _experienceRepository,
         sentinelId: sentinelKey,
+        workspacePath: chat.workspacePath,
       );
       cancelToken.throwIfCancelled();
 
@@ -425,8 +426,11 @@ class AgentRunCoordinator {
         model: model,
         baseMessages: baseMessages,
         currentMessageId: () => _liveMessages[chatId]?.id,
-        recallExperiences: (query) =>
-            _experienceRepository.searchForSentinel(sentinelKey, query),
+        recallExperiences: (query) => _experienceRepository.searchForSentinel(
+          sentinelKey,
+          query,
+          workspacePath: chat.workspacePath,
+        ),
         memoryPrompt: MemoryPrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
@@ -749,6 +753,7 @@ class AgentRunCoordinator {
       final digestMessages = await MemoryDigest.messagesForSentinel(
         repository: _experienceRepository,
         sentinelId: sentinelKey,
+        workspacePath: chat.workspacePath,
       );
       cancelToken.throwIfCancelled();
       final sentinel = chat.sentinelId == null

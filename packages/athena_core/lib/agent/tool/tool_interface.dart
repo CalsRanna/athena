@@ -27,6 +27,9 @@ const toolBackgroundDisabledKey = '_background_disabled';
 /// 哪一种。与 [_sentinel_id] 同样在权限门之后注入，模型既看不到也改不了。
 const toolExperienceSourceKey = '_experience_source';
 
+/// 引擎注入的经验适用项目，来自会话选择的工作目录，模型不能改绑。
+const toolExperienceWorkspaceKey = '_experience_workspace';
+
 /// Remove model-authored metadata before rule matching or tool execution.
 Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
     Map<String, dynamic>.of(args)..remove(toolCallDescriptionKey);

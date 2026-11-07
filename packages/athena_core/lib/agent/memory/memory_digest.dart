@@ -10,7 +10,7 @@ import 'package:openai_dart/openai_dart.dart';
 /// Agent 自觉触发——Agent 看不到经验内容，无从判断"当前任务与经验相关"，
 /// 检索环节在真实行为中近乎缺位。
 ///
-/// 设计：每次 run 开始时注入当前 Sentinel 可见的全部 active 经验目录。
+/// 设计：每次 run 开始时注入当前 Sentinel、当前项目可见的 active 经验目录。
 /// 每条 lesson 本身就是精炼摘要，context / tags 等支持信息仍由
 /// `experience_recall` 按需加载。
 /// 只要经验库没有新增、更新或归档，生成内容与顺序就保持完全一致，便于
@@ -50,7 +50,7 @@ abstract final class MemoryDigest {
     return buffer.toString();
   }
 
-  /// 读取当前 Sentinel 的 active 私有 + shared 经验并生成稳定目录。
+  /// 读取当前 Sentinel、当前项目的 active 私有 + shared 经验并生成稳定目录。
   ///
   /// 无 active 经验时返回 null（调用方零成本跳过，不注入空段）。
   ///
@@ -59,8 +59,12 @@ abstract final class MemoryDigest {
   static Future<List<ChatMessage>?> messagesForSentinel({
     required ExperienceRepository repository,
     required String sentinelId,
+    String? workspacePath,
   }) async {
-    final experiences = await repository.listForSentinel(sentinelId);
+    final experiences = await repository.listForSentinel(
+      sentinelId,
+      workspacePath: workspacePath,
+    );
     if (experiences.isEmpty) return null;
     experiences.sort((a, b) {
       final byDate = _recency(b).compareTo(_recency(a));

@@ -10,6 +10,7 @@ import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// 经验写入是模型的长期记忆入口：可见范围、重复写入与来源标注错了，
@@ -101,6 +102,106 @@ void main() {
     expect(saved.source, 'auto');
     expect(saved.context, contains('长期复用理由：Future builds'));
     expect(saved.context, contains('验证依据：The controlled build check passed.'));
+  });
+
+  test('引擎把私有经验绑定当前项目，覆盖模型伪造的项目参数', () async {
+    final registry = ToolRegistry()..register(tool);
+    addTearDown(() => registry.backgroundTasks.dispose());
+    final service = AgentService(
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+    final workspace = p.join(temp.path, 'project-a');
+    await service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'project-experience',
+        type: 'function',
+        function: FunctionCall(
+          name: 'experience_learn',
+          arguments: jsonEncode(
+            args({
+              '_experience_workspace': p.join(temp.path, 'project-b'),
+              'workspace_path': p.join(temp.path, 'project-b'),
+            }),
+          ),
+        ),
+      ),
+      cancelToken: CancelToken(),
+      sentinelId: '1',
+      workspace: workspace,
+    );
+    final saved = (await repo.listAll()).single;
+    expect(saved.toJson()['workspace_path'], workspace);
+  });
+
+  test('项目切换后检索与按 ID 操作隔离，跨项目同文经验不互相去重', () async {
+    final registry = ToolRegistry()
+      ..register(tool)
+      ..register(ExperienceRecallTool(repository: repo));
+    addTearDown(() => registry.backgroundTasks.dispose());
+    final service = AgentService(
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+    final a = p.join(temp.path, 'A');
+    final b = p.join(temp.path, 'B');
+    Future<String> execute(
+      String name,
+      String? workspace,
+      Map<String, dynamic> params,
+    ) async => (await service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'project-test',
+        type: 'function',
+        function: FunctionCall(
+          name: name,
+          arguments: jsonEncode({...args(params), '_experience_workspace': a}),
+        ),
+      ),
+      cancelToken: CancelToken(),
+      sentinelId: '1',
+      workspace: workspace,
+    )).rawResult;
+    await execute('experience_learn', a, {});
+    await execute('experience_learn', b, {});
+    final inA = (await repo.listPrivate('1', workspacePath: a)).single;
+    final inB = (await repo.listPrivate('1', workspacePath: b)).single;
+    expect(inA.id, isNot(inB.id));
+    for (final includeShared in [true, false]) {
+      final recalled = await execute('experience_recall', b, {
+        'include_shared': includeShared,
+      });
+      expect(recalled, contains(inB.id));
+      expect(recalled, isNot(contains(inA.id)));
+      expect(
+        await execute('experience_recall', b, {
+          'query': inA.id,
+          'include_shared': includeShared,
+        }),
+        isNot(contains('Lesson:')),
+      );
+    }
+    for (final action in ['update', 'archive']) {
+      expect(
+        await execute('experience_learn', b, {
+          'action': action,
+          'experience_id': inA.id,
+        }),
+        contains('not found'),
+      );
+    }
+    expect(
+      (await repo.getForSentinel('1', inA.id, workspacePath: a))!.toJson(),
+      inA.toJson(),
+    );
+    // 同文项目经验不能拦住通用偏好的创建。
+    await execute('experience_learn', a, {'scope': 'shared'});
+    final shared = (await repo.listShared()).single;
+    expect(shared.workspacePath, isNull);
+    final withoutWorkspace = await execute('experience_recall', null, {});
+    expect(withoutWorkspace, contains(shared.id));
+    expect(withoutWorkspace, isNot(contains(inA.id)));
+    expect(withoutWorkspace, isNot(contains(inB.id)));
   });
 
   test('长期偏好可使用用户陈述作依据，置信度边界可写入', () async {

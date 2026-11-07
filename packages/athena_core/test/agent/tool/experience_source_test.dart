@@ -7,6 +7,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -55,10 +56,12 @@ void main() {
     String id, {
     String sentinelId = '1',
     bool includeArchived = false,
+    String? workspacePath,
   }) => tool.execute({
     '_sentinel_id': sentinelId,
     'source_experience_id': id,
     'include_archived': includeArchived,
+    '_experience_workspace': workspacePath,
   });
 
   test('只读来源及同轮此前的最近八条摘录，含压缩原文，不含隐藏推理和后续记录', () async {
@@ -108,6 +111,42 @@ void main() {
     final decoded = jsonDecode(await read(experience.id)) as Map;
     expect(decoded['messages'], hasLength(1));
     expect((decoded['messages'] as List).single['content'], 'legacy source');
+  });
+
+  test('项目经验及 shared 偏好的来源不会读出其他项目会话', () async {
+    final a = p.join(temp.path, 'A');
+    final b = p.join(temp.path, 'B');
+    final chat = (await storage.sessionRepository.getChatById(chatId))!;
+    await storage.sessionRepository.updateChat(chat.copyWith(workspacePath: a));
+    final source = await message('project A details');
+    final private = await experiences.save(
+      lesson: 'project rule',
+      sentinelId: '1',
+      workspacePath: a,
+      sourceChatId: chatId,
+      sourceMessageId: source.id,
+    );
+    final shared = await experiences.save(
+      lesson: 'shared preference',
+      sentinelId: '1',
+      scope: 'shared',
+      sourceChatId: chatId,
+      sourceMessageId: source.id,
+    );
+    expect(await read(private.id, workspacePath: b), contains('not found'));
+    expect(
+      await read(shared.id, workspacePath: b),
+      contains('different project'),
+    );
+    expect(await read(shared.id), contains('different project'));
+    expect(
+      await read(private.id, workspacePath: a),
+      contains('project A details'),
+    );
+    expect(
+      await read(shared.id, workspacePath: a),
+      contains('project A details'),
+    );
   });
 
   test('私有经验及 shared 经验的原会话都不会跨角色读出', () async {

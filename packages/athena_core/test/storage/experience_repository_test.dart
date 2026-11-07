@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// 经验库是唯一会随使用时长无限增长的持久化状态：可见范围、写法与清理
@@ -53,12 +54,129 @@ void main() {
     final created = await repo.save(lesson: 'legacy', sentinelId: '1');
     final json = created.toJson()
       ..remove('source_chat_id')
-      ..remove('source_message_id');
+      ..remove('source_message_id')
+      ..remove('workspace_path');
     fileOf('1', created.id).writeAsStringSync(jsonEncode(json));
     final saved = (await repo.listPrivate('1')).single;
     expect(saved.sourceChatId, isNull);
     expect(saved.sourceMessageId, isNull);
+    expect(saved.workspacePath, isNull);
     expect(saved.lesson, 'legacy');
+    expect(
+      (await repo.listForSentinel(
+        '1',
+        workspacePath: p.join(temp.path, 'A'),
+      )).single.id,
+      created.id,
+    );
+  });
+
+  test('同角色不同项目精确隔离，shared 与无项目经验保持跨项目可见', () async {
+    final a = p.join(temp.path, 'A');
+    final b = p.join(temp.path, 'B');
+    final inA = await repo.save(
+      lesson: 'project rule A',
+      sentinelId: '1',
+      workspacePath: a,
+    );
+    await repo.save(
+      lesson: 'project rule B',
+      sentinelId: '1',
+      workspacePath: b,
+    );
+    final general = await repo.save(lesson: 'general', sentinelId: '1');
+    final shared = await repo.save(
+      lesson: 'shared preference',
+      sentinelId: '1',
+      scope: 'shared',
+      workspacePath: a,
+    );
+    expect(shared.workspacePath, isNull);
+    expect(
+      (await repo.listForSentinel('1', workspacePath: a)).map((e) => e.id),
+      unorderedEquals([inA.id, general.id, shared.id]),
+    );
+    expect(
+      (await repo.listForSentinel('1')).map((e) => e.id),
+      unorderedEquals([general.id, shared.id]),
+    );
+    expect(
+      (await repo.listForSentinel('2', workspacePath: a)).map((e) => e.id),
+      [shared.id],
+    );
+    expect(await repo.getForSentinel('1', inA.id, workspacePath: b), isNull);
+    expect(
+      await repo.searchForSentinel('1', inA.id, workspacePath: b),
+      isEmpty,
+    );
+    expect(await repo.searchPrivate('1', inA.id, workspacePath: b), isEmpty);
+    expect(
+      (await repo.searchPrivate(
+        '1',
+        inA.id,
+        workspacePath: a,
+      )).single.workspacePath,
+      a,
+    );
+    expect(await repo.listAll(), hasLength(4));
+  });
+
+  test('规范化等价目录，父子目录与名字相近的项目不自动合并', () async {
+    final a = p.join(temp.path, 'A');
+    final created = await repo.save(
+      lesson: 'scoped',
+      sentinelId: '1',
+      workspacePath: p.join(a, 'sub', '..'),
+    );
+    expect(created.workspacePath, a);
+    expect(
+      (await repo.listPrivate('1', workspacePath: p.join(a, '.'))).single.id,
+      created.id,
+    );
+    for (final path in [temp.path, p.join(a, 'sub'), '${a}2']) {
+      expect(await repo.listForSentinel('1', workspacePath: path), isEmpty);
+    }
+  });
+
+  test('普通修订保留项目，转 shared 解除限制，转回私有绑定当前项目', () async {
+    final a = p.join(temp.path, 'A');
+    final b = p.join(temp.path, 'B');
+    final original = await repo.save(
+      lesson: 'original',
+      sentinelId: '1',
+      workspacePath: a,
+    );
+    final updated = await repo.update(
+      sentinelId: '1',
+      id: original.id,
+      lesson: 'revised',
+      workspacePath: b,
+    );
+    expect(updated!.workspacePath, a);
+    final shared = await repo.update(
+      sentinelId: '1',
+      id: original.id,
+      scope: 'shared',
+    );
+    expect(shared!.workspacePath, isNull);
+    expect(
+      (await repo.listForSentinel('2', workspacePath: b)).single.id,
+      original.id,
+    );
+    final private = await repo.update(
+      sentinelId: '1',
+      id: original.id,
+      scope: 'self',
+      workspacePath: b,
+    );
+    expect(private!.workspacePath, b);
+    await repo.update(sentinelId: '1', id: original.id, status: 'archived');
+    expect(await repo.listForSentinel('1', workspacePath: b), isEmpty);
+    expect(
+      await repo.listForSentinel('1', workspacePath: a, includeArchived: true),
+      isEmpty,
+    );
+    expect((await repo.listAll(includeArchived: true)).single.workspacePath, b);
   });
 
   test('私有经验只对所属 Sentinel 可见，shared 对所有角色可见', () async {

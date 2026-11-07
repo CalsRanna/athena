@@ -8,6 +8,7 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// 目录每次 run 都会进上下文：内容与顺序必须稳定（否则破坏 prompt 缓存），
@@ -66,6 +67,39 @@ void main() {
         ),
         isNull,
       );
+    });
+
+    test('注入目录只含当前项目、通用偏好及无项目限制的旧经验', () async {
+      final a = p.join(temp.path, 'A');
+      final b = p.join(temp.path, 'B');
+      await repo.save(
+        lesson: 'project A only',
+        sentinelId: '1',
+        workspacePath: a,
+      );
+      await repo.save(
+        lesson: 'project B only',
+        sentinelId: '1',
+        workspacePath: b,
+      );
+      await repo.save(
+        lesson: 'shared preference',
+        sentinelId: '1',
+        scope: 'shared',
+      );
+      await repo.save(lesson: 'legacy general', sentinelId: '1');
+      final text =
+          ((await MemoryDigest.messagesForSentinel(
+                    repository: repo,
+                    sentinelId: '1',
+                    workspacePath: a,
+                  ))!.single
+                  as SystemMessage)
+              .content;
+      expect(text, contains('project A only'));
+      expect(text, isNot(contains('project B only')));
+      expect(text, contains('shared preference'));
+      expect(text, contains('legacy general'));
     });
 
     test('内容不变时目录逐字节一致，保护 prompt prefix cache', () async {
