@@ -60,6 +60,7 @@ class AthenaSettingsListPane<
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 560;
         return AthenaSettingsPane(
+          key: PageStorageKey('settings-list-$title'),
           title: title,
           controller: controller,
           action: Row(

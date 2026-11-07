@@ -15,9 +15,11 @@ import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/page/desktop/setting/experience/experience_page.dart';
 import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/sentinel_page.dart';
+import 'package:athena_gui/page/desktop/setting/skill/skill_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +61,7 @@ void main() {
       ),
     );
     // Provider and experience lists load from the temporary file store.
-    for (var i = 0; i < 100 && find.text(loaded).evaluate().isEmpty; i++) {
+    for (var i = 0; i < 300 && find.text(loaded).evaluate().isEmpty; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );
@@ -89,6 +91,96 @@ void main() {
   Future<void> search(WidgetTester tester, String query) async {
     await tester.enterText(find.byType(TextField), query);
     await tester.pumpAndSettle();
+  }
+
+  for (final (title, page) in [
+    ('Providers', const DesktopSettingProviderPage()),
+    ('Sentinels', const DesktopSettingSentinelPage()),
+    ('Skills', const DesktopSettingSkillPage()),
+    ('Experiences', const DesktopSettingExperiencePage()),
+  ]) {
+    testWidgets('$title restore list scroll after returning from details', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        for (var i = 0; i < 30; i++) {
+          final name = 'Item ${i.toString().padLeft(2, '0')}';
+          switch (title) {
+            case 'Providers':
+              await GetIt.instance<ProviderRepository>().storeProvider(
+                ProviderEntity(
+                  name: name,
+                  enabled: true,
+                  baseUrl: '',
+                  apiKey: '',
+                  createdAt: DateTime(2026),
+                ),
+              );
+            case 'Sentinels':
+              GetIt.instance<SentinelViewModel>().sentinels.add(
+                SentinelEntity(id: '$i', name: name),
+              );
+            case 'Skills':
+              await GetIt.instance<SkillViewModel>().createSkill(
+                name: name,
+                description: 'Scroll test skill',
+                body: List.filled(40, 'Instructions.\n').join('\n'),
+              );
+            case 'Experiences':
+              await GetIt.instance<ExperienceRepository>().save(
+                lesson: name,
+                sentinelId: 'owner',
+                context: List.filled(40, 'Context.').join('\n'),
+              );
+          }
+        }
+      });
+      await showPage(tester, page, switch (title) {
+        'Providers' => 'Enabled · 30',
+        'Experiences' => 'Active · 30',
+        _ => 'Item 00',
+      });
+      final list = find.byType(ListView);
+      final scrollable = find
+          .descendant(of: list, matching: find.byType(Scrollable))
+          .first;
+
+      for (var visit = 0; visit < 2; visit++) {
+        await tester.drag(list, const Offset(0, -600));
+        await tester.pumpAndSettle();
+        final offset = tester
+            .state<ScrollableState>(scrollable)
+            .position
+            .pixels;
+        expect(offset, greaterThan(0));
+        final row = find.byType(AthenaSettingsListRow).hitTestable().at(2);
+        final label = tester.widget<AthenaSettingsListRow>(row).label;
+        final rowTop = tester.getTopLeft(find.text(label)).dy;
+
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(find.byType(AthenaSettingsBackLink), findsOneWidget);
+        expect(
+          tester.state<ScrollableState>(scrollable).position.pixels,
+          0,
+          reason: 'Details start at the top independently of the list',
+        );
+        await tester.drag(list, const Offset(0, -200));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(AthenaSettingsBackLink));
+        await tester.pumpAndSettle();
+
+        expect(
+          tester.state<ScrollableState>(scrollable).position.pixels,
+          moreOrLessEquals(offset),
+        );
+        expect(
+          tester.getTopLeft(find.text(label)).dy,
+          moreOrLessEquals(rowTop),
+        );
+        expect(tester.takeException(), isNull);
+      }
+    });
   }
 
   testWidgets(
