@@ -172,7 +172,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
             children: [
               Text(
                 group.label,
-                style: AthenaTextStyle.section.copyWith(
+                style: AthenaTextStyle.title.copyWith(
                   color: colors.textPrimary,
                 ),
               ),

@@ -171,8 +171,9 @@ class _DesktopSettingSentinelPageState
             hint: 'Try another search or change the source filter.',
           )
         else
-          AthenaSettingsListGroup(
-            label: 'Sentinels · ${matches.length}',
+          AthenaSettingsSection(
+            first: true,
+            title: 'Sentinels · ${matches.length}',
             children: [
               for (final sentinel in matches)
                 _buildSentinelRow(sentinel, selectableIds),

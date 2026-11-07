@@ -218,16 +218,18 @@ class _DesktopSettingProviderPageState
           )
         else ...[
           if (enabled.isNotEmpty || !filtering)
-            AthenaSettingsListGroup(
-              label: 'Enabled · ${enabled.length}',
+            AthenaSettingsSection(
+              first: true,
+              title: 'Enabled · ${enabled.length}',
               children: [for (final p in enabled) row(p)],
             ),
           if (disabled.isNotEmpty || !filtering) ...[
             if (enabled.isNotEmpty || !filtering)
               const SizedBox(height: AthenaSpace.lg),
             if (filtering)
-              AthenaSettingsListGroup(
-                label: 'Disabled · ${disabled.length}',
+              AthenaSettingsSection(
+                first: true,
+                title: 'Disabled · ${disabled.length}',
                 children: [for (final p in disabled) row(p)],
               )
             else ...[

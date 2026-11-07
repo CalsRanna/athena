@@ -145,8 +145,9 @@ class _DesktopSettingExperiencePageState
             hint: 'Try another search or change the status filter.',
           ),
         if (active.isNotEmpty)
-          AthenaSettingsListGroup(
-            label: 'Active · ${active.length}',
+          AthenaSettingsSection(
+            first: true,
+            title: 'Active · ${active.length}',
             children: [
               for (final e in active) _buildExperienceRow(e, visibleKeys),
             ],

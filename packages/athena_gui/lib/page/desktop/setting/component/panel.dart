@@ -327,38 +327,6 @@ class AthenaSettingsSection extends StatelessWidget {
   }
 }
 
-/// 集合页的分组标题与数量，以次级文字和行名称分层。
-class AthenaSettingsListGroup extends StatelessWidget {
-  final String label;
-  final List<Widget> children;
-  const AthenaSettingsListGroup({
-    super.key,
-    required this.label,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AthenaSettingsInset(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: AthenaSpace.sm),
-            child: Text(
-              label,
-              style: AthenaTextStyle.caption.copyWith(
-                color: context.athenaColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
-        AthenaSettingsGroup(children: children),
-      ],
-    );
-  }
-}
-
 /// 一组行，行与行之间是 1px 的发丝线。
 ///
 /// 实测分隔线 `#F3F3F3`，只跨文字列（与行的 hover 底不同宽）。
