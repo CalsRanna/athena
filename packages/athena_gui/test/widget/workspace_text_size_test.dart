@@ -368,7 +368,7 @@ void main() {
                 size: size,
                 child: Column(
                   children: [
-                    AthenaMarkdown(message: message),
+                    AthenaMarkdown(content: message.content),
                     const StepResultBody(text: 'Tool output probe'),
                   ],
                 ),

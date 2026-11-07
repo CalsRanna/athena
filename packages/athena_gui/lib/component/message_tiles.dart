@@ -268,7 +268,12 @@ class _AssistantMessageContent extends StatelessWidget {
           );
         case ContentPart():
           children.add(const SizedBox(height: 8));
-          children.add(AthenaMarkdown(message: message));
+          children.add(
+            AthenaMarkdown(
+              content: message.content,
+              reference: message.reference,
+            ),
+          );
         case ReferencePart():
           children.add(
             _AssistantMessageListTileReferencePart(message: message),

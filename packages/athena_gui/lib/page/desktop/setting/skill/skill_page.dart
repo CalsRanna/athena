@@ -8,12 +8,12 @@ import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/markdown.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -395,7 +395,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
         ),
       );
     }
-    return MarkdownBody(data: bodyController.text, selectable: true);
+    return SelectionArea(child: AthenaMarkdown(content: bodyController.text));
   }
 
   void _recomputeDirty() {

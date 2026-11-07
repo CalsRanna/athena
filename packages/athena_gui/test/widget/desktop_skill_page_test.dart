@@ -9,8 +9,9 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
+import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
@@ -95,7 +96,7 @@ void main() {
     await tester.tap(find.text('memory'));
     await tester.pumpAndSettle();
     expect(
-      tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data,
+      tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
       '# Recall',
     );
     await tester.tap(find.text('Code'));
@@ -107,6 +108,46 @@ void main() {
     expect(find.text('Your skills'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'preview uses shared code block copying and supports text selection',
+    (tester) async {
+      await GetIt.instance<SkillViewModel>().createSkill(
+        name: 'code-example',
+        description: 'Preview code',
+        body: 'Select this instruction.\n\n```dart\nprint(42);\n```',
+      );
+      String? copied;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await showPage(tester);
+      await tester.tap(find.text('code-example'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('markdown-code-block')), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.byType(AthenaMarkdown),
+          matching: find.byType(SelectionArea),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byTooltip('Copy'));
+      await tester.pumpAndSettle();
+      expect(copied, 'print(42);');
+      await tester.pump(AthenaMotion.linger);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'preview shows the draft, save persists it and discard restores it',
@@ -128,14 +169,14 @@ void main() {
       await tester.tap(find.text('Preview'));
       await tester.pumpAndSettle();
       expect(
-        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data,
+        tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
         '# Revised',
       );
       expect(registry.all.firstWhere((s) => s.name == 'alpha').body, '# Steps');
       await tester.tap(find.text('Discard'));
       await tester.pumpAndSettle();
       expect(
-        tester.widget<MarkdownBody>(find.byType(MarkdownBody)).data,
+        tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
         '# Steps',
       );
 

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:athena_gui/widget/copy_button.dart';
-import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -16,59 +15,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaMarkdown extends StatelessWidget {
-  final MessageEntity message;
+  final String content;
+  final String reference;
 
-  const AthenaMarkdown({super.key, required this.message});
-
-  @override
-  Widget build(BuildContext context) => _FlutterMarkdown(message: message);
-}
-
-class _CallToolRequestBuilder extends MarkdownElementBuilder {
-  _CallToolRequestBuilder();
+  const AthenaMarkdown({super.key, required this.content, this.reference = ''});
 
   @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    final colors = context.athenaColors;
-    final boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.container),
-      color: colors.cardHeader,
-    );
-    final text = Text(
-      'Call tool: ${element.textContent}',
-      style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
-    );
-    final container = Container(
-      decoration: boxDecoration,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      width: double.infinity,
-      child: text,
-    );
-    final widgetSpan = WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: container,
-    );
-    return RichText(text: TextSpan(children: [widgetSpan]));
-  }
-}
-
-class _CallToolRequestSyntax extends md.InlineSyntax {
-  _CallToolRequestSyntax()
-    : super(
-        r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
-      );
-
-  @override
-  bool onMatch(md.InlineParser parser, Match match) {
-    parser.addNode(md.Element.text('call_tool_request', match[1]!));
-    return true;
-  }
+  Widget build(BuildContext context) =>
+      _FlutterMarkdown(content: content, reference: reference);
 }
 
 class _InlineCodeBuilder extends MarkdownElementBuilder {
@@ -328,9 +282,10 @@ class _FootnotesMarkdownBody extends MarkdownBody {
 }
 
 class _FlutterMarkdown extends StatelessWidget {
-  final MessageEntity message;
+  final String content;
+  final String reference;
 
-  const _FlutterMarkdown({required this.message});
+  const _FlutterMarkdown({required this.content, required this.reference});
 
   @override
   Widget build(BuildContext context) {
@@ -348,18 +303,18 @@ class _FlutterMarkdown extends StatelessWidget {
       textStyle: body?.copyWith(color: colors.markdownMath),
     );
     builders['sup'] = _SupBuilder();
-    builders['reference'] = _ReferenceBuilder(onTap: openReference);
-    builders['call_tool_request'] = _CallToolRequestBuilder();
+    if (reference.isNotEmpty) {
+      builders['reference'] = _ReferenceBuilder(onTap: openReference);
+    }
     final List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
     final List<md.InlineSyntax> inlineSyntaxes = [];
     inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
     inlineSyntaxes.add(LatexInlineSyntax());
-    inlineSyntaxes.add(_ReferenceSyntax());
-    inlineSyntaxes.add(_CallToolRequestSyntax());
+    if (reference.isNotEmpty) inlineSyntaxes.add(_ReferenceSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    final hasFootnotes = _hasFootnoteSection(message.content, extensions);
+    final hasFootnotes = _hasFootnoteSection(content, extensions);
     final borderSide = BorderSide(color: colors.border, width: 1);
     // h4–h6 为次要标题，与正文同号同行高同字族，只以加粗区分（见 DESIGN.md §3）
     final heading = body?.copyWith(fontWeight: FontWeight.w500);
@@ -416,7 +371,7 @@ class _FlutterMarkdown extends StatelessWidget {
     return _FootnotesMarkdownBody(
       builders: builders,
       colors: colors,
-      data: message.content,
+      data: content,
       extensionSet: extensions,
       hasFootnotes: hasFootnotes,
       onTapLink: (text, href, title) => openLink(href),
@@ -451,9 +406,9 @@ class _FlutterMarkdown extends StatelessWidget {
 
   void openReference(int index) {
     try {
-      final references = jsonDecode(message.reference);
-      final reference = references[index - 1];
-      final url = reference['url'];
+      final references = jsonDecode(reference);
+      final entry = references[index - 1];
+      final url = entry['url'];
       openLink(url as String?);
     } catch (error) {
       AthenaDialog.error(error.toString());
