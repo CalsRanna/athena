@@ -38,6 +38,62 @@ void main() {
     ];
   }
 
+  test('空用户目录也提供内置创建技能，重载后保留且不可删除', () {
+    final emptyHome = Directory('${root.path}/empty');
+    final fresh = SkillRegistry()..loadAll(homeDir: emptyHome.path);
+
+    expect(listedOrder(fresh), ['skill-creator']);
+    expect(fresh.all.single.isBuiltin, isTrue);
+    expect(Directory(fresh.skillsDirectory).existsSync(), isFalse);
+
+    fresh.reload();
+
+    expect(listedOrder(fresh), ['skill-creator']);
+    expect(fresh.deleteSkill('skill-creator'), isFalse);
+    expect(fresh.all.single.isBuiltin, isTrue);
+  });
+
+  test('同名用户文件不覆盖内置技能，列表、正文和上下文保持一致', () {
+    final builtin = registry.get('skill-creator')!;
+    final directory = '${registry.skillsDirectory}/skill-creator';
+    SkillLoader().saveSkill(
+      name: 'skill-creator',
+      description: 'User override',
+      body: 'User instructions',
+      targetDir: directory,
+    );
+    registry.reloadSkill('skill-creator', directory);
+
+    void expectBuiltin() {
+      expect(registry.get('skill-creator'), same(builtin));
+      expect(registry.getLevel2Content('skill-creator'), builtin.body);
+      expect(
+        registry.all.where((skill) => skill.name == 'skill-creator').single,
+        same(builtin),
+      );
+      expect(registry.level1Prompt, isNot(contains('User override')));
+    }
+
+    expectBuiltin();
+    registry.reload();
+    expectBuiltin();
+    registry.pushContext('skill-creator');
+    expect(registry.currentContext, same(builtin));
+    registry.popContext();
+    expect(registry.currentContext, isNull);
+    expect(registry.deleteSkill('skill-creator'), isFalse);
+    expect(File('$directory/SKILL.md').existsSync(), isTrue);
+  });
+
+  test('内置技能的访问排序在重启后保持', () {
+    registry.get('skill-creator');
+    expect(listedOrder(registry).first, 'skill-creator');
+
+    final restarted = SkillRegistry()..loadAll(homeDir: root.path);
+
+    expect(restarted.level1Prompt, registry.level1Prompt);
+  });
+
   test('没有访问记录时按名称排序，而不是文件枚举顺序', () {
     final first = registry.level1Prompt;
     final second = (SkillRegistry()..loadAll(homeDir: root.path)).level1Prompt;
@@ -47,6 +103,7 @@ void main() {
       'alpha',
       'beta',
       'gamma',
+      'skill-creator',
     ], reason: '无访问信号时用名称定序，保证跨重启稳定');
   });
 
@@ -104,7 +161,7 @@ void main() {
 
     final loaded = SkillRegistry()..loadAll(homeDir: root.path);
 
-    expect(loaded.all, hasLength(3));
-    expect(listedOrder(loaded), ['alpha', 'beta', 'gamma']);
+    expect(loaded.all, hasLength(4));
+    expect(listedOrder(loaded), ['alpha', 'beta', 'gamma', 'skill-creator']);
   });
 }

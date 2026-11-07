@@ -74,19 +74,23 @@ void main() {
     expect(names, hasLength(14));
   });
 
-  test('no tool lets the agent rewrite skills or its own role', () {
-    final names = registryFor(mobile: false).all.map((t) => t.name).toSet();
+  test(
+    'skill creation reuses existing file tools without a dedicated tool',
+    () {
+      final names = registryFor(mobile: false).all.map((t) => t.name).toSet();
 
-    for (final removed in [
-      'skill_evolve',
-      'skill_revert',
-      'sentinel_evolve',
-      'sentinel_revert',
-    ]) {
-      expect(names, isNot(contains(removed)), reason: removed);
-    }
-    // 只读能力仍在：技能按需加载、角色可查看。
-    expect(names, contains('skill'));
-    expect(names, contains('sentinel_get'));
-  });
+      for (final removed in [
+        'skill_create',
+        'skill_evolve',
+        'skill_revert',
+        'sentinel_evolve',
+        'sentinel_revert',
+      ]) {
+        expect(names, isNot(contains(removed)), reason: removed);
+      }
+      expect(names, contains('file_write'));
+      expect(names, contains('skill'));
+      expect(names, contains('sentinel_get'));
+    },
+  );
 }

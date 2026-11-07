@@ -31,10 +31,8 @@ import 'package:meta/meta.dart';
 ///
 /// 前端只提供自己特有的差异项（工作目录），清单本身在这里。
 ///
-/// **这里没有自我改写类工具**：Agent 不能新建或改写技能，也不能改写自己的
-/// 系统提示词。技能与角色是用户的编辑权（GUI 设置页），Agent 只有读取权
-/// ——`skill` 按需加载、`sentinel_list` / `sentinel_get` 查看。经验记忆是
-/// 唯一的自我积累通道，且它记录的是参考，不是生效中的规则。
+/// 技能创建复用文件与 shell 工具，按需加载时重新扫描；角色不提供改写工具。
+/// 技能目录与审批边界见 CONVENTIONS.md §12.5。
 ToolRegistry buildToolRegistry({
   required SkillRegistry skillRegistry,
   required ExperienceRepository experienceRepository,

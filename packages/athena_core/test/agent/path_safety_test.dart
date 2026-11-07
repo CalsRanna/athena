@@ -197,6 +197,46 @@ void main() {
         expect(File('$outside/$dir/x').existsSync(), isFalse, reason: dir);
       }
     });
+
+    test('技能例外不开放应用配置、目录元数据或嵌套凭据', () async {
+      for (final relative in [
+        '.athena/permissions.json',
+        '.athena/skills/.usage.json',
+        '.athena/skills-other/demo/SKILL.md',
+        '.athena/skills/demo/.aws/config',
+        '.athena/skills/demo/.ssh/id_rsa',
+        '.athena/skills/demo/.athena/setting.yaml',
+      ]) {
+        final path = '$outside/$relative';
+        final result = await FileWriteTool().execute({
+          'path': path,
+          'content': 'changed',
+        });
+        expect(result, startsWith('Error: Blocked'), reason: relative);
+        expect(File(path).existsSync(), isFalse, reason: relative);
+        expect(isSensitivePath(path), isTrue, reason: relative);
+      }
+    });
+
+    test('技能目录中的链接不能绕过其他应用数据的保护', () async {
+      final data = File('$outside/.athena/permissions.json');
+      data.parent.createSync(recursive: true);
+      data.writeAsStringSync('original');
+      final skillDirectory = Directory('$outside/.athena/skills/demo');
+      skillDirectory.createSync(recursive: true);
+      final link = Link('${skillDirectory.path}/SKILL.md')
+        ..createSync(data.path);
+      final resolved = applyRunWorkspace('file_write', {
+        'path': link.path,
+        'content': 'changed',
+      }, null);
+
+      expect(
+        await FileWriteTool().execute(resolved),
+        startsWith('Error: Blocked'),
+      );
+      expect(data.readAsStringSync(), 'original');
+    }, skip: Platform.isWindows);
   });
 
   test('路径规则按真实路径匹配：写在链接目录下的 deny 照常生效', () {

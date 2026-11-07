@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
@@ -6,10 +7,12 @@ import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
+import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/approval_mode.dart';
@@ -50,11 +53,14 @@ void main() {
     bool withApprovalCallback = true,
     ElicitPrompt? onElicit,
     void Function()? duringApproval,
+    SkillRegistry? skills,
+    String request = '查看仓库状态',
   }) async {
     final now = DateTime(2026, 9, 24);
     final service = AgentService(
       chatService: completion,
       toolRegistry: registry,
+      skillRegistry: skills,
     );
     final events = await service
         .run(
@@ -80,14 +86,14 @@ void main() {
             createdAt: now,
             updatedAt: now,
           ),
-          baseMessages: [ChatMessage.user('查看仓库状态')],
+          baseMessages: [ChatMessage.user(request)],
           hasSentinelPrompt: false,
           permissionService: withPermissionService
               ? PermissionService(store: store)
               : null,
           permissionReviewContext: mode == ApprovalMode.auto
               ? PermissionReviewContext.fromMessages([
-                  MessageEntity(chatId: '1', role: 'user', content: '查看仓库状态'),
+                  MessageEntity(chatId: '1', role: 'user', content: request),
                 ])
               : null,
           bypassPermissions: mode == ApprovalMode.bypass,
@@ -117,6 +123,51 @@ void main() {
     expect(prompts, hasLength(1));
     expect(jsonDecode(prompts.single)['command'], 'git status');
     expect(completion.reviews, isEmpty);
+  });
+
+  test('同一轮对话通过现有工具保存后立即加载新技能', () async {
+    final home = Directory.systemTemp.createTempSync('athena_skill_run_');
+    addTearDown(() => home.deleteSync(recursive: true));
+    final skills = SkillRegistry()..loadAll(homeDir: home.path);
+    registry.register(FileWriteTool());
+    registry.register(SkillTool(skills));
+    completion.toolName = 'file_write';
+    completion.arguments = {
+      'path': '${skills.skillsDirectory}/meeting-summary/SKILL.md',
+      'content':
+          '---\nname: meeting-summary\ndescription: Summarize meetings\n'
+          '---\n# Summarize decisions and action items\n',
+    };
+    completion.nextToolName = 'skill';
+    completion.nextArguments = {'name': 'meeting-summary'};
+
+    final result = await run(
+      ApprovalMode.manual,
+      approved: true,
+      skills: skills,
+      request: '帮我创建并保存会议总结 Skill，然后加载它',
+    );
+
+    expect(prompts, hasLength(2));
+    expect(result.status, ToolResultStatus.success);
+    expect(result.result, contains('# Summarize decisions and action items'));
+    expect(skills.get('meeting-summary'), isNotNull);
+  });
+
+  test('新一轮对话自动发现磁盘上新增的技能', () async {
+    final home = Directory.systemTemp.createTempSync('athena_skill_run_');
+    addTearDown(() => home.deleteSync(recursive: true));
+    final skills = SkillRegistry()..loadAll(homeDir: home.path);
+    final file = File('${skills.skillsDirectory}/new-skill/SKILL.md');
+    file.parent.createSync(recursive: true);
+    file.writeAsStringSync(
+      '---\nname: new-skill\ndescription: Newly saved workflow\n---\nDo the work.',
+    );
+    expect(skills.all.any((skill) => skill.name == 'new-skill'), isFalse);
+
+    await run(ApprovalMode.bypass, skills: skills);
+
+    expect(completion.firstSystemPrompt, contains('**new-skill**'));
   });
 
   test('手动模式批准后执行 shell', () async {
@@ -455,6 +506,7 @@ class _ToolCompletionService extends ChatCompletionsService {
   String? nextToolName;
   Map<String, dynamic> nextArguments = {};
   int _turn = 0;
+  String? firstSystemPrompt;
 
   @override
   Stream<ChatStreamEvent> getCompletion({
@@ -467,6 +519,10 @@ class _ToolCompletionService extends ChatCompletionsService {
     Future<void>? cancelSignal,
     int? outputRoom,
   }) async* {
+    firstSystemPrompt ??= messages
+        .whereType<SystemMessage>()
+        .map((message) => message.content)
+        .join('\n');
     final turn = _turn++;
     final first = turn == 0 || (turn == 1 && nextToolName != null);
     yield ChatStreamEvent.fromJson({

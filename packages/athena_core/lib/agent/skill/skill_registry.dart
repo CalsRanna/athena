@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/agent/skill/skill_creator.dart';
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
@@ -17,7 +18,9 @@ class SkillRegistry {
   String? _homeDir;
 
   /// 内置 Skill：不来自文件系统，由代码注册，始终可用。
-  final Map<String, Skill> _builtinSkills = {};
+  final Map<String, Skill> _builtinSkills = {
+    skillCreatorSkill.name: skillCreatorSkill,
+  };
 
   /// Skill 最近访问时间戳（毫秒），用于 level1 排序。
   ///
@@ -96,20 +99,15 @@ class SkillRegistry {
 
   String? getLevel2Content(String name) {
     _noteAccess(name);
-    return _skills[name]?.body ?? _builtinSkills[name]?.body;
+    return _builtinSkills[name]?.body ?? _skills[name]?.body;
   }
 
   Skill? get(String name) {
     _noteAccess(name);
-    return _skills[name] ?? _builtinSkills[name];
+    return _builtinSkills[name] ?? _skills[name];
   }
 
-  List<Skill> get all {
-    final result = <Skill>[];
-    result.addAll(_skills.values);
-    result.addAll(_builtinSkills.values);
-    return result;
-  }
+  List<Skill> get all => {..._skills, ..._builtinSkills}.values.toList();
 
   void pushContext(String skillName) {
     _contextStack.add(skillName);
@@ -143,8 +141,9 @@ class SkillRegistry {
 
   /// 删除用户级 Skill：删除其目录并从内存移除。
   ///
-  /// 内置 Skill（如 memory）或未找到时返回 false，不做任何删除。
+  /// 内置 Skill 或未找到时返回 false，不做任何删除。
   bool deleteSkill(String name) {
+    if (_builtinSkills.containsKey(name)) return false;
     final skill = _skills[name];
     if (skill == null) return false;
     final dir = Directory(skill.sourcePath);
@@ -164,7 +163,7 @@ class SkillRegistry {
 
   Skill? get currentContext {
     if (_contextStack.isEmpty) return null;
-    return _skills[_contextStack.last];
+    return _builtinSkills[_contextStack.last] ?? _skills[_contextStack.last];
   }
 
   /// 访问时间文件：与技能目录同级，`skills/.usage.json`。
@@ -196,9 +195,9 @@ class SkillRegistry {
 
   void _saveUsage() {
     try {
-      // 只留当前存在的用户技能，避免文件随时间无界增长。
+      // 只留当前存在的技能（含内置），避免文件随时间无界增长。
       final known = <String, int>{
-        for (final skill in _skills.values)
+        for (final skill in all)
           if (_skillAccessTimestamps.containsKey(skill.name))
             skill.name: _skillAccessTimestamps[skill.name]!,
       };

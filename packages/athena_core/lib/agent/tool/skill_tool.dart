@@ -76,6 +76,7 @@ class SkillTool extends Tool implements CancellableTool {
     Future<void>? cancelSignal,
   }) async {
     final name = args['name'] as String;
+    _registry.reload();
     final skill = _registry.get(name);
     if (skill == null) {
       return ToolExecutionResult.error('Error: Skill "$name" not found.');
@@ -98,6 +99,10 @@ class SkillTool extends Tool implements CancellableTool {
     _registry.pushContext(name);
     final buffer = StringBuffer();
     buffer.writeln('Skill "$name" loaded successfully.');
+    buffer.writeln(
+      'User skills directory: '
+      '${p.normalize(p.absolute(_registry.skillsDirectory))}',
+    );
     if (skill.isBuiltin) {
       buffer.writeln('This built-in skill has no resource directory.');
     } else {

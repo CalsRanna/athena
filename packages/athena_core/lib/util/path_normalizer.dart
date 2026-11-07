@@ -167,13 +167,15 @@ String protectedWritePathError(String path) =>
     'Error: Blocked: writing to credential or Athena data directories '
     '($path) is not allowed. Athena data is managed by its own tools.';
 
-/// 写入禁区：凭据目录与应用数据目录（`~/.athena` 由仓储管理，写
-/// `permissions.json` 等于给自己授权）。只拦写入而不像读取那样连 `.env`
+/// 写入禁区：凭据目录与应用数据目录，技能文件除外（见 CONVENTIONS.md §12.5）。
+/// `permissions.json` 等应用配置仍由仓储管理。只拦写入而不像读取那样连 `.env`
 /// 一并拦截——写 `.env` 不会把密钥带进上下文，仍按正常审批处理。
 bool isProtectedWritePath(String normalizedPath) {
-  for (final seg in normalizedPath.split('/')) {
-    final lower = seg.toLowerCase();
-    if (lower == '.ssh' || lower == '.aws' || lower == '.athena') return true;
+  final segments = p.split(normalizedPath);
+  for (var i = 0; i < segments.length; i++) {
+    final lower = segments[i].toLowerCase();
+    if (lower == '.ssh' || lower == '.aws') return true;
+    if (lower == '.athena' && !_isSkillFile(segments, i)) return true;
   }
   return false;
 }
@@ -184,12 +186,12 @@ bool isProtectedWritePath(String normalizedPath) {
 /// 按路径段精确匹配,避免子串误伤（如 `my.credentials.txt` 不算——
 /// 段名是 `my.credentials.txt`,不是 `credentials`）。
 bool isSensitivePath(String normalizedPath) {
-  final segments = normalizedPath.split('/');
-  for (final seg in segments) {
-    final lower = seg.toLowerCase();
+  final segments = p.split(normalizedPath);
+  for (var i = 0; i < segments.length; i++) {
+    final lower = segments[i].toLowerCase();
     if (lower == '.ssh' ||
         lower == '.aws' ||
-        lower == '.athena' ||
+        (lower == '.athena' && !_isSkillFile(segments, i)) ||
         lower == 'credentials' ||
         lower == 'id_rsa' ||
         lower == 'id_ed25519' ||
@@ -200,3 +202,8 @@ bool isSensitivePath(String normalizedPath) {
   }
   return false;
 }
+
+// 仅放行 skills/<name>/ 下的文件；skills/.usage.json 等目录元数据仍受保护。
+bool _isSkillFile(List<String> segments, int athenaIndex) =>
+    segments.length > athenaIndex + 3 &&
+    segments[athenaIndex + 1].toLowerCase() == 'skills';

@@ -2,7 +2,13 @@ import 'dart:io';
 
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/tool/file_read_tool.dart';
+import 'package:athena_core/agent/tool/file_update_tool.dart';
+import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
+import 'package:athena_core/util/path_normalizer.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 /// `skill` 工具的 resource 参数是模型可以直接指定的相对路径：边界与
@@ -45,6 +51,88 @@ void main() {
 
     expect(result, contains('follow the reference'));
     expect(registry.currentContext?.name, 'demo');
+  });
+
+  test('默认通过 skill 工具加载内置创建技能，无需用户安装', () async {
+    final result = await tool.executeResult({'name': 'skill-creator'});
+
+    expect(result.status, ToolResultStatus.success);
+    expect(result.text, contains(registry.get('skill-creator')!.body));
+    expect(result.text, contains(p.absolute(registry.skillsDirectory)));
+    expect(registry.currentContext?.name, 'skill-creator');
+    expect(registry.currentContext?.isBuiltin, isTrue);
+    expect(
+      Directory('${registry.skillsDirectory}/skill-creator').existsSync(),
+      isFalse,
+    );
+  });
+
+  test('现有文件工具保存技能和资源后，无需手动刷新即可加载', () async {
+    const content = '''
+---
+name: meeting-summary
+description: "Summarize decisions: list owners and deadlines."
+---
+# Meeting summary
+Read references/format.md and summarize the supplied notes.
+''';
+    final directory = p.join(registry.skillsDirectory, 'meeting-summary');
+    final path = resolveRealPathSync(p.join(directory, 'SKILL.md'));
+    final writer = FileWriteTool();
+    final saved = await writer.executeResult({
+      'path': path,
+      'content': content,
+    });
+    expect(saved.status, ToolResultStatus.success);
+    final resource = await writer.executeResult({
+      'path': resolveRealPathSync(p.join(directory, 'references', 'format.md')),
+      'content': 'List decisions and action items.',
+    });
+    expect(resource.status, ToolResultStatus.success);
+
+    final loaded = await tool.executeResult({'name': 'meeting-summary'});
+    expect(loaded.status, ToolResultStatus.success);
+    expect(loaded.text, contains('# Meeting summary'));
+    expect(registry.level1Prompt, contains('**meeting-summary**'));
+    expect(
+      await tool.execute({
+        'name': 'meeting-summary',
+        'resource': 'references/format.md',
+      }),
+      contains('List decisions and action items.'),
+    );
+    expect(
+      await FileReadTool().execute({'path': path}),
+      contains('# Meeting summary'),
+    );
+
+    final updated = await FileUpdateTool().executeResult({
+      'path': path,
+      'old_string': '# Meeting summary',
+      'new_string': '# Updated summary',
+    });
+    expect(updated.status, ToolResultStatus.success);
+    expect(
+      await tool.execute({'name': 'meeting-summary'}),
+      contains('# Updated summary'),
+    );
+
+    final restarted = SkillRegistry()..loadAll(homeDir: root.path);
+    expect(
+      restarted.get('meeting-summary')!.body,
+      contains('# Updated summary'),
+    );
+  });
+
+  test('磁盘上的技能已失效时不继续返回缓存正文', () async {
+    File(
+      p.join(registry.skillsDirectory, 'demo', 'SKILL.md'),
+    ).writeAsStringSync('invalid skill');
+
+    final result = await tool.executeResult({'name': 'demo'});
+
+    expect(result.status, ToolResultStatus.executionError);
+    expect(registry.all.any((skill) => skill.name == 'demo'), isFalse);
   });
 
   test('读取技能目录内的资源文件', () async {
