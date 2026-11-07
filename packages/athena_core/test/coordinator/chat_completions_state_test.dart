@@ -194,6 +194,10 @@ void main() {
     ];
     reflectionResponse = jsonEncode({
       'should_learn': true,
+      'durability': 'long_term',
+      'reuse_reason':
+          'Future configuration checks use the same verified format constraint.',
+      'evidence': 'The corrected configuration passed the subsequent checks.',
       'lesson': 'Check the corrected configuration with the tool.',
       'context': 'The first two checks failed; later checks returned ok.',
       'confidence': 0.9,
@@ -228,6 +232,107 @@ void main() {
     expect(source.toolCalls, contains('experience_learn'));
     expect(source.toolResults, contains('Experience recorded successfully'));
   });
+
+  test('反思修订相关旧经验，下一轮目录只使用修订结论且保留来源与作用域', () async {
+    final experiences = ExperienceRepository(homeDir: tmp.path);
+    registry.register(ExperienceLearnTool(repository: experiences));
+    final original = await experiences.save(
+      lesson: '配置旧规则',
+      sentinelId: 'direct',
+      scope: 'shared',
+      sourceChatId: chat.id,
+      sourceMessageId: 'original-message',
+    );
+    await experiences.save(lesson: '配置其他角色', sentinelId: 'other');
+    final retired = await experiences.save(
+      lesson: '配置归档',
+      sentinelId: 'direct',
+    );
+    await experiences.update(
+      sentinelId: 'direct',
+      id: retired.id,
+      status: 'archived',
+    );
+    echo.failuresRemaining = 2;
+    replies = [
+      chatEvents(tools: true),
+      chatEvents(tools: true),
+      chatEvents(),
+      chatEvents(),
+    ];
+    reflectionResponse = jsonEncode({
+      'should_learn': true,
+      'action': 'update',
+      'experience_id': original.id,
+      'durability': 'long_term',
+      'confidence': 0.95,
+      'reuse_reason': 'Future configuration checks use this stable constraint.',
+      'evidence': 'The corrected format passed the later checks.',
+      'lesson': '配置修订规则',
+      'scope': 'self',
+    });
+
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    final request = bodies.singleWhere((b) => b['stream'] != true);
+    final input =
+        jsonDecode((request['messages'] as List).last['content'] as String)
+            as Map;
+    expect((input['related_experiences'] as List).map((e) => e['id']), [
+      original.id,
+    ]);
+    final saved = (await experiences.listForSentinel('direct')).single;
+    expect(saved.id, original.id);
+    expect(saved.lesson, '配置修订规则');
+    expect(saved.scope, 'shared');
+    expect(saved.sourceMessageId, 'original-message');
+    expect(saved.context, contains('The corrected format'));
+
+    await send();
+    final nextContext = jsonEncode(bodies.last['messages']);
+    expect(nextContext, contains('配置修订规则'));
+    final systems = (bodies.last['messages'] as List).where(
+      (m) => m['role'] == 'system',
+    );
+    expect(jsonEncode(systems.toList()), isNot(contains('配置旧规则')));
+  });
+
+  for (final extra in <Map<String, dynamic>>[
+    {'durability': 'session_only'},
+    {'reuse_reason': ''},
+    {'evidence': ''},
+    {'action': 'update', 'experience_id': 'not-a-candidate'},
+  ]) {
+    test('不持久化无长期价值或不合法的反思：$extra', () async {
+      final experiences = ExperienceRepository(homeDir: tmp.path);
+      registry.register(ExperienceLearnTool(repository: experiences));
+      echo.failuresRemaining = 2;
+      reflectionResponse = jsonEncode({
+        'should_learn': true,
+        'action': 'create',
+        'durability': 'long_term',
+        'confidence': 1.0,
+        'lesson': 'Temporary port for this run',
+        'reuse_reason': 'future use',
+        'evidence': 'a check result',
+        ...extra,
+      });
+      final events = await send();
+      expect(events.whereType<RunError>(), isEmpty);
+      expect(
+        events.whereType<RunOutcomeChanged>().last.outcome.reflectionAttempted,
+        isTrue,
+      );
+      expect(await experiences.listAll(), isEmpty);
+      final saved = await storage.sessionRepository.getMessagesByChatId(
+        chat.id!,
+      );
+      expect(
+        saved.any((m) => m.toolCalls.contains('experience_learn')),
+        isFalse,
+      );
+    });
+  }
 
   test('累计多次调用的输出 token，排除输入与重复推理用量，重载保留且下次归零', () async {
     for (final (index, reply) in replies.indexed) {

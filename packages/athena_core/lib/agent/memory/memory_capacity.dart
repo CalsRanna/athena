@@ -13,8 +13,8 @@ import 'package:athena_core/entity/experience_entity.dart';
 /// 余量仍由 `ContextBudget` 在每次请求前兜底。
 ///
 /// 容量治理分两道：
-/// - 写入端（`experience_learn` 的 create）在超限时拒绝写入，要求先归档或
-///   合并——遗忘是显式决策，不是静默丢弃；
+/// - 写入端（`experience_learn` 的 create / update）拒绝超限增长，要求先
+///   归档或合并——遗忘是显式决策，不是静默丢弃；
 /// - 注入端只做安全网，用于升级前就已超限的历史数据与手工塞进目录的文件。
 abstract final class MemoryCapacity {
   /// 注入目录的字符上限。
@@ -58,18 +58,30 @@ abstract final class MemoryCapacity {
   static int catalogChars(Iterable<ExperienceEntity> experiences) =>
       experiences.fold(0, (sum, e) => sum + renderEntry(e).length + 1);
 
-  /// [existing] 再加一条 [lesson] 是否会超出预算。
+  /// [existing] 新增 [lesson] 或修订 [replacing] 是否会造成超限增长。
   ///
-  /// 判据是「当前集合 + 新条目」：只要目录已经装满，写入就该被拦下来，
+  /// 目录装满时拒绝新增与增长，允许缩短或等长修订，
   /// 让模型先做取舍，而不是让注入端替它挑一条丢掉。
   static bool exceedsCapacity({
     required Iterable<ExperienceEntity> existing,
     required String lesson,
     required bool shared,
-  }) =>
-      catalogChars(existing) +
-          pendingEntryChars(lesson: lesson, shared: shared) >
-      maxCatalogChars;
+    ExperienceEntity? replacing,
+  }) {
+    final before = catalogChars(existing);
+    final after = replacing == null
+        ? before + pendingEntryChars(lesson: lesson, shared: shared)
+        : before -
+              renderEntry(replacing).length +
+              _line(
+                id: replacing.id,
+                shared: shared,
+                date: _formatDate(replacing.createdAt),
+                lesson: lesson,
+              ).length;
+    // 历史目录已超限时，仍允许等长修订或缩短以逐步整理。
+    return after > maxCatalogChars && (replacing == null || after > before);
+  }
 
   /// 取预算内的前缀，返回保留项与被丢弃的条数。
   ///

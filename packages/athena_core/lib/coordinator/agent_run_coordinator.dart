@@ -425,6 +425,8 @@ class AgentRunCoordinator {
         model: model,
         baseMessages: baseMessages,
         currentMessageId: () => _liveMessages[chatId]?.id,
+        recallExperiences: (query) =>
+            _experienceRepository.searchForSentinel(sentinelKey, query),
         memoryPrompt: MemoryPrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null

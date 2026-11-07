@@ -10,7 +10,8 @@ abstract final class MemoryPrompt {
   /// 极简提示：始终注入，几乎不占 token 预算，仅告知能力的存在。
   static const String hint =
       '你有经验记忆工具：experience_learn、experience_recall。'
-      '每个任务开始时会注入当前有效的记忆目录；需要支持性上下文或标签时，'
+      '每个任务开始时会注入尚未归档的经验参考；需要支持性上下文或标签时，'
       '调用 experience_recall。'
+      '仅保存有证据且能跨任务复用的经验，临时状态和单次排错默认不记录。'
       '经验默认按角色隔离，仅对通用用户偏好或沟通风格使用 scope="shared"。';
 }

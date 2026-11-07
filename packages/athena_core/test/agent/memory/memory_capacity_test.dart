@@ -202,7 +202,7 @@ void main() {
       expect(retried, contains('Experience recorded successfully'));
     });
 
-    test('update 与 archive 不受容量限制', () async {
+    test('目录已满时仍允许缩短经验和归档', () async {
       await fillToCapacity();
       final target = (await repo.listForSentinel('1')).first;
 
@@ -217,6 +217,66 @@ void main() {
           args({'action': 'archive', 'experience_id': target.id}),
         ),
         isNot(startsWith('Error:')),
+      );
+    });
+
+    test('更新增长导致目录超限时拒绝，原经验与注入目录保持不变', () async {
+      await fillToCapacity();
+      final target = (await repo.listForSentinel('1')).first;
+      final before = MemoryCapacity.catalogChars(
+        await repo.listForSentinel('1'),
+      );
+      final result = await tool.execute(
+        args({
+          'action': 'update',
+          'experience_id': target.id,
+          'lesson': 'z' * 500,
+        }),
+      );
+      expect(result, contains('not updated'));
+      expect(result, contains('Nothing was written'));
+      expect(
+        (await repo.getForSentinel('1', target.id))!.lesson,
+        target.lesson,
+      );
+      expect(
+        MemoryCapacity.catalogChars(await repo.listForSentinel('1')),
+        before,
+      );
+    });
+
+    test('目录已满仍允许等长修订、仅改上下文以及修订归档经验', () async {
+      await fillToCapacity();
+      final target = (await repo.listForSentinel('1')).first;
+      expect(
+        await tool.execute(
+          args({
+            'action': 'update',
+            'experience_id': target.id,
+            'lesson': 'z' * 400,
+          }),
+        ),
+        contains('updated successfully'),
+      );
+      expect(
+        await tool.execute({
+          '_sentinel_id': '1',
+          'action': 'update',
+          'experience_id': target.id,
+          'context': 'new supporting evidence',
+        }),
+        contains('updated successfully'),
+      );
+      await repo.update(sentinelId: '1', id: target.id, status: 'archived');
+      expect(
+        await tool.execute(
+          args({
+            'action': 'update',
+            'experience_id': target.id,
+            'lesson': 'z' * 500,
+          }),
+        ),
+        contains('updated successfully'),
       );
     });
   });

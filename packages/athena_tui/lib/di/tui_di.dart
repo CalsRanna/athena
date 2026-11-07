@@ -182,6 +182,8 @@ class TuiDi {
     toolRegistry = buildToolRegistry(
       skillRegistry: skillRegistry,
       experienceRepository: experienceRepo,
+      chatRepository: chatRepo,
+      messageRepository: messageRepo,
       sentinelRepository: sentinelRepo,
       settings: userSettings,
       outputStore: outputStore,

@@ -30,6 +30,7 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         toolExperienceSourceKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
@@ -122,6 +123,7 @@ class AgentService {
 
     /// 协调层在迭代切换时创建新消息，因此执行工具时再读取当前标识。
     String? Function()? currentMessageId,
+    Future<List<ExperienceEntity>> Function(String query)? recallExperiences,
 
     /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
     String? skillPrompt,
@@ -230,6 +232,7 @@ class AgentService {
         model: model,
         messages: prompts.messages,
         currentMessageId: currentMessageId,
+        recallExperiences: recallExperiences,
         runtimeMessageIndex: prompts.runtimeMessageIndex,
         runtimePrompt: runtimePrompt,
         projectMessageIndex: prompts.projectMessageIndex,
@@ -715,6 +718,7 @@ class _AgentLoop {
     required ModelEntity model,
     required List<ChatMessage> messages,
     required String? Function()? currentMessageId,
+    required Future<List<ExperienceEntity>> Function(String)? recallExperiences,
     required int runtimeMessageIndex,
     required String? runtimePrompt,
     required int projectMessageIndex,
@@ -750,6 +754,7 @@ class _AgentLoop {
        _onCompact = onCompact,
        _messages = messages,
        _currentMessageId = currentMessageId,
+       _recallExperiences = recallExperiences,
        _runId = runId,
        _sentinelId = sentinelId,
        _jsonMode = jsonMode,
@@ -782,6 +787,7 @@ class _AgentLoop {
   /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
   final List<ChatMessage> _messages;
   final String? Function()? _currentMessageId;
+  final Future<List<ExperienceEntity>> Function(String)? _recallExperiences;
   final int _runId;
   final String? _sentinelId;
   final bool _jsonMode;
@@ -1394,6 +1400,11 @@ class _AgentLoop {
     required int iteration,
   }) async* {
     _token.throwIfCancelled();
+    final related =
+        (await _recallExperiences?.call(task) ?? <ExperienceEntity>[])
+            .take(5)
+            .toList();
+    _token.throwIfCancelled();
     final response = await _service._chatService.complete(
       messages: [
         ChatMessage.system(ReflectionPrompt.system),
@@ -1403,6 +1414,7 @@ class _AgentLoop {
             task: task,
             toolResults: _reflectionToolResults,
             finalResponse: finalResponse,
+            relatedExperiences: related,
           ),
         ),
       ],
@@ -1412,7 +1424,10 @@ class _AgentLoop {
     );
     _token.throwIfCancelled();
 
-    final proposal = ReflectionProposal.tryParse(response);
+    final proposal = ReflectionProposal.tryParse(
+      response,
+      allowedExperienceIds: related.map((e) => e.id).toSet(),
+    );
     if (proposal == null) return;
 
     final arguments = jsonEncode(proposal.toToolArguments());

@@ -18,6 +18,8 @@ import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/agent/tool/web_search_tool.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:meta/meta.dart';
@@ -38,6 +40,8 @@ ToolRegistry buildToolRegistry({
   required ExperienceRepository experienceRepository,
   required SentinelRepository sentinelRepository,
   required UserSettingsStore settings,
+  ChatRepository? chatRepository,
+  MessageRepository? messageRepository,
   ToolOutputStore? outputStore,
 
   /// 后台任务登记表（桌面端有 shell 才有意义）。null = 新建一个。
@@ -75,7 +79,11 @@ ToolRegistry buildToolRegistry({
     WebSearchTool(settings: settings),
     SkillTool(skillRegistry),
     ExperienceLearnTool(repository: experienceRepository),
-    ExperienceRecallTool(repository: experienceRepository),
+    ExperienceRecallTool(
+      repository: experienceRepository,
+      chatRepository: chatRepository,
+      messageRepository: messageRepository,
+    ),
     SentinelListTool(repository: sentinelRepository),
     SentinelGetTool(repository: sentinelRepository),
   ]);

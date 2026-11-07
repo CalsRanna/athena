@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/memory/memory_digest.dart';
@@ -247,44 +248,81 @@ void main() {
   });
 
   group('ReflectionProposal', () {
+    String proposal(Map<String, dynamic> changes) => jsonEncode({
+      'should_learn': true,
+      'action': 'create',
+      'durability': 'long_term',
+      'reuse_reason': 'Future builds use the same verified SDK constraint.',
+      'evidence': 'The build passed with the required SDK version.',
+      'lesson': 'Use the SDK version required by this toolchain.',
+      'confidence': 0.95,
+      ...changes,
+    });
+
+    test('高置信度的临时经验、缺少复用理由或验证依据都不记录', () {
+      for (final changes in <Map<String, dynamic>>[
+        {'durability': 'session_only', 'confidence': 1.0},
+        {'durability': null},
+        {'reuse_reason': '  '},
+        {'evidence': ''},
+        {'confidence': 0.89},
+      ]) {
+        expect(ReflectionProposal.tryParse(proposal(changes)), isNull);
+      }
+    });
+
+    test('只能修订提供的候选，保留作用域并把依据交给标准工具审批', () {
+      final text = proposal({
+        'action': 'update',
+        'experience_id': 'known',
+        'scope': 'self',
+      });
+      expect(ReflectionProposal.tryParse(text), isNull);
+      final parsed = ReflectionProposal.tryParse(
+        text,
+        allowedExperienceIds: {'known'},
+      )!;
+      final args = parsed.toToolArguments();
+      expect(args['action'], 'update');
+      expect(args['experience_id'], 'known');
+      expect(args.containsKey('scope'), isFalse);
+      expect(args['context'], contains('Future builds'));
+      expect(args['context'], contains('The build passed'));
+      expect(
+        ReflectionProposal.tryParse(proposal({'action': 'archive'})),
+        isNull,
+      );
+    });
     test('低置信度、空 lesson 或显式不学都不产生提案', () {
       expect(
-        ReflectionProposal.tryParse(
-          '{"should_learn":true,"lesson":"x","confidence":0.5}',
-        ),
+        ReflectionProposal.tryParse(proposal({'confidence': 0.5})),
         isNull,
       );
-      expect(
-        ReflectionProposal.tryParse(
-          '{"should_learn":true,"lesson":"  ","confidence":0.9}',
-        ),
-        isNull,
-      );
+      expect(ReflectionProposal.tryParse(proposal({'lesson': '  '})), isNull);
       expect(ReflectionProposal.tryParse('{"should_learn":false}'), isNull);
     });
 
     test('超长 lesson 与非法 scope 的处理', () {
       final tooLong = 'x' * (ExperienceEntity.maxLessonLength + 1);
       expect(
-        ReflectionProposal.tryParse(
-          '{"should_learn":true,"lesson":"$tooLong","confidence":0.9}',
-        ),
+        ReflectionProposal.tryParse(proposal({'lesson': tooLong})),
         isNull,
       );
 
-      final proposal = ReflectionProposal.tryParse(
-        '{"should_learn":true,"lesson":"x","scope":"global","confidence":0.9}',
-      );
-      expect(proposal!.scope, 'self');
+      final parsed = ReflectionProposal.tryParse(proposal({'scope': 'global'}));
+      expect(parsed!.scope, 'self');
     });
 
     test('提案转成标准工具调用参数，带上调用说明', () {
-      final proposal = ReflectionProposal.tryParse(
-        '{"should_learn":true,"lesson":"x","context":"c","tags":["a","b"],'
-        '"confidence":0.9}',
+      final parsed = ReflectionProposal.tryParse(
+        proposal({
+          'lesson': 'x',
+          'context': 'c',
+          'tags': ['a', 'b'],
+        }),
       )!;
 
-      final args = proposal.toToolArguments();
+      final args = parsed.toToolArguments();
 
       expect(args['action'], 'create');
       expect(args['lesson'], 'x');

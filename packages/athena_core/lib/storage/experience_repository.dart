@@ -85,6 +85,11 @@ class ExperienceRepository {
 
   // === 检索 ===
 
+  Future<ExperienceEntity?> getForSentinel(String sentinelId, String id) async {
+    final file = _locateFile(sentinelId, id);
+    return file == null ? null : _readFile(file);
+  }
+
   /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
   Future<List<ExperienceEntity>> _listPrivate(
     String sentinelId, {
