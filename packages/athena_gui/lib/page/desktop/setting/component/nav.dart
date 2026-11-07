@@ -30,26 +30,12 @@ class AthenaSettingsNav extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 0, 12),
-            child: Row(
-              children: [
-                Image.asset(
-                  'asset/image/launcher_icon_macos_512x512.png',
-                  width: 24,
-                  height: 24,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Settings',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AthenaTextStyle.title.copyWith(
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(6, 8, 0, 16),
+            child: Text(
+              'Settings',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
             ),
           ),
           search,
