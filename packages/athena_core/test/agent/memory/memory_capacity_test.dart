@@ -134,6 +134,10 @@ void main() {
 
     Map<String, dynamic> args(Map<String, dynamic> extra) => {
       'lesson': 'a lesson',
+      'durability': 'long_term',
+      'reuse_reason': 'Future builds under the same stable constraint.',
+      'evidence': 'The controlled build check passed.',
+      'confidence': 0.95,
       'call_description': 'record a lesson',
       '_sentinel_id': '1',
       ...extra,
@@ -259,12 +263,15 @@ void main() {
         contains('updated successfully'),
       );
       expect(
-        await tool.execute({
-          '_sentinel_id': '1',
-          'action': 'update',
-          'experience_id': target.id,
-          'context': 'new supporting evidence',
-        }),
+        await tool.execute(
+          args({
+            '_sentinel_id': '1',
+            'action': 'update',
+            'experience_id': target.id,
+            'lesson': '',
+            'context': 'new supporting evidence',
+          }),
+        ),
         contains('updated successfully'),
       );
       await repo.update(sentinelId: '1', id: target.id, status: 'archived');

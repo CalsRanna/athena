@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/memory/experience_write_policy.dart';
 import 'package:athena_core/agent/memory/memory_capacity.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/entity/experience_entity.dart';
@@ -35,8 +36,11 @@ class ExperienceLearnTool extends Tool {
       'user preference. Temporary paths, ports, task progress, one-off fixes, '
       'ordinary tool usage and facts already available in project instructions '
       'belong in the conversation, not long-term memory. Repeated failures '
-      'within one run do not establish lasting value. Explain the reuse '
-      'conditions and evidence in context; revise an existing lesson instead '
+      'within one run do not establish lasting value. Create and update require '
+      'durability="long_term", reuse_reason, evidence, and confidence >= '
+      '${ExperienceWritePolicy.minConfidence}. A user\'s explicit lasting '
+      'preference can serve as evidence without a tool check. State specific '
+      'reuse conditions; revise an existing lesson instead '
       'of adding a duplicate.\n'
       'Actions:\n'
       '- create (default): record a new experience\n'
@@ -93,6 +97,35 @@ class ExperienceLearnTool extends Tool {
             '(e.g., "Building a Flutter widget", "Debugging API errors"). '
             'Helps with future retrieval.',
       },
+      'durability': {
+        'type': 'string',
+        'enum': ['long_term', 'session_only'],
+        'description':
+            'Required for create/update. Only long_term knowledge can be '
+            'persisted; session_only facts must stay in the conversation.',
+      },
+      'reuse_reason': {
+        'type': 'string',
+        'description':
+            'Required for create/update. Concrete future independent tasks '
+            'and stable conditions where this lesson will be useful. '
+            '"Might be useful" or "avoid mistakes" is insufficient.',
+      },
+      'evidence': {
+        'type': 'string',
+        'description':
+            'Required for create/update. Actual observations that support '
+            'the lesson, or the user\'s explicit lasting preference. '
+            'A successful tool status or your own summary alone is not proof.',
+      },
+      'confidence': {
+        'type': 'number',
+        'minimum': ExperienceWritePolicy.minConfidence,
+        'maximum': 1,
+        'description':
+            'Required for create/update. Confidence in both the evidence '
+            'and lasting value; do not write below the minimum.',
+      },
       'tags': {
         'type': 'string',
         'description':
@@ -142,6 +175,14 @@ class ExperienceLearnTool extends Tool {
         '"archive".',
       );
     }
+    if (action != 'archive' && !ExperienceWritePolicy.accepts(args)) {
+      return const ToolExecutionResult.error(
+        'Error: Create/update requires durability="long_term", non-empty '
+        'reuse_reason and evidence, and finite confidence between '
+        '${ExperienceWritePolicy.minConfidence} and 1. If lasting value or '
+        'evidence is missing, do not retry by inventing it. Nothing was written.',
+      );
+    }
 
     try {
       if (action == 'create') {
@@ -185,7 +226,7 @@ class ExperienceLearnTool extends Tool {
         }
         final entity = await _repository.save(
           lesson: lesson.trim(),
-          context: context.trim(),
+          context: ExperienceWritePolicy.contextWithEvidence(context, args),
           tags: tags,
           source: source,
           sourceChatId: args[toolChatIdKey] as String?,
@@ -238,7 +279,10 @@ class ExperienceLearnTool extends Tool {
           sentinelId: sentinelId,
           id: experienceId,
           lesson: lesson.isEmpty ? null : lesson,
-          context: context.isEmpty ? null : context,
+          context: ExperienceWritePolicy.contextWithEvidence(
+            context.isEmpty ? original?.context ?? '' : context,
+            args,
+          ),
           tags: tags.isEmpty ? null : tags,
           scope: scope,
         );

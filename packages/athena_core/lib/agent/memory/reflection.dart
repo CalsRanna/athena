@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/memory/experience_write_policy.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
@@ -59,12 +60,12 @@ class ReflectionProposal {
 
     try {
       final json = jsonDecode(jsonText) as Map<String, dynamic>;
-      if (json['should_learn'] != true || json['durability'] != 'long_term') {
+      if (json['should_learn'] != true ||
+          !ExperienceWritePolicy.accepts(json)) {
         return null;
       }
       final reuseReason = (json['reuse_reason'] as String? ?? '').trim();
       final evidence = (json['evidence'] as String? ?? '').trim();
-      if (reuseReason.isEmpty || evidence.isEmpty) return null;
       final action = json['action'] as String? ?? 'create';
       final experienceId = json['experience_id'] as String?;
       if (action == 'update') {
@@ -74,11 +75,7 @@ class ReflectionProposal {
       }
       final lesson = (json['lesson'] as String? ?? '').trim();
       final confidence = (json['confidence'] as num?)?.toDouble() ?? 0;
-      if (lesson.isEmpty ||
-          lesson.length > ExperienceEntity.maxLessonLength ||
-          !confidence.isFinite ||
-          confidence < 0.9 ||
-          confidence > 1) {
+      if (lesson.isEmpty || lesson.length > ExperienceEntity.maxLessonLength) {
         return null;
       }
 
@@ -110,11 +107,11 @@ class ReflectionProposal {
     'action': action,
     if (experienceId != null) 'experience_id': experienceId,
     'lesson': lesson,
-    'context': [
-      if (context.isNotEmpty) context,
-      '长期复用理由：$reuseReason',
-      '验证依据：$evidence',
-    ].join('\n'),
+    if (context.isNotEmpty) 'context': context,
+    'durability': 'long_term',
+    'reuse_reason': reuseReason,
+    'evidence': evidence,
+    'confidence': confidence,
     if (tags.isNotEmpty) 'tags': tags,
     if (action == 'create') 'scope': scope,
     // 反思通道的程序化调用同样要带必填的调用说明（会作为卡片展示给用户）。
@@ -148,7 +145,7 @@ abstract final class ReflectionPrompt {
 参考 related_experiences：已有相同结论时不记录；新证据纠正或实质补全已有经验时用 update，
 只允许指定其中的 experience_id。没有对应条目才用 create。修订也必须满足长期价值和证据要求。
 lesson 不超过 ${ExperienceEntity.maxLessonLength} 个字符，支持性细节放入 context。
-只有置信度达到 0.9 且满足以上条件时才提出写入，否则返回 should_learn=false。
+只有置信度达到 ${ExperienceWritePolicy.minConfidence} 且满足以上条件时才提出写入，否则返回 should_learn=false。
 
 只返回一个 JSON 对象，格式为：
 {"should_learn":false}

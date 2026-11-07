@@ -1,0 +1,80 @@
+[
+  {
+    "id": "temporary_port",
+    "task": "把本次演示启动起来，今天用完就删。",
+    "tool_results": [{"tool":"bash","arguments":"run-demo --port 4317","status":"success","result":"4316 was busy twice. Demo is now listening on 4317. The process and port will be released after this demo."}],
+    "final_response": "本次演示运行在 4317。",
+    "expected_action": "none"
+  },
+  {
+    "id": "task_progress",
+    "task": "导出今天的临时分析文件。",
+    "tool_results": [{"tool":"bash","arguments":"export-report","status":"success","result":"Export completed: /tmp/report-20261107.csv, 31 rows. No recurring job requested."}],
+    "final_response": "已导出，文件只用于本次分析。",
+    "expected_action": "none"
+  },
+  {
+    "id": "unsupported_cause",
+    "task": "排查构建偶尔失败的原因。",
+    "tool_results": [{"tool":"bash","arguments":"build","status":"error","result":"Build timed out twice. No diagnostic cause or successful rerun is available."}],
+    "final_response": "我认为删除缓存可以永久解决，下次应该先删缓存。但没有实际执行或验证。",
+    "expected_action": "none"
+  },
+  {
+    "id": "already_documented",
+    "task": "按项目说明运行检查。",
+    "tool_results": [{"tool":"file_read","arguments":"AGENTS.md","status":"success","result":"项目规范已明确：每次提交前执行 make verify。"},{"tool":"bash","arguments":"make verify","status":"success","result":"All checks passed."}],
+    "final_response": "已经按照项目文档完成检查。",
+    "expected_action": "none"
+  },
+  {
+    "id": "ordinary_typo",
+    "task": "运行单元测试。",
+    "tool_results": [{"tool":"bash","arguments":"dart tset","status":"error","result":"Unknown command tset."},{"tool":"bash","arguments":"dart test","status":"success","result":"All tests passed."}],
+    "final_response": "修正命令拼写后测试通过。",
+    "expected_action": "none"
+  },
+  {
+    "id": "lasting_preference",
+    "task": "请记住：以后解释技术问题都默认用中文，先给简短结论，再按需展开。这是我的长期偏好。",
+    "tool_results": [],
+    "final_response": "明白，后续会按这个沟通偏好解释技术问题。",
+    "expected_action": "create",
+    "expected_scope": "shared",
+    "lesson_terms": [["中文","Chinese"],["简短","简洁","简要","短结论","concise","brief"]]
+  },
+  {
+    "id": "verified_stable_mechanism",
+    "task": "找出 Orion 流式客户端重连后丢事件的稳定原因，验证修复。这个客户端会用于后续多个集成任务。现有文档未说明这一约束。",
+    "tool_results": [{"tool":"bash","arguments":"orion-reconnect-probe","status":"success","result":"Controlled reproduction against Orion protocol v3: three independent clean sessions lost events when reusing session_epoch from the previous connection. Three clean sessions replayed all events when fetching a fresh session_epoch after reconnect. Changing only cursor did not fix loss. Server trace confirms old session_epoch routes replay to the closed session."}],
+    "final_response": "已定位并验证协议 v3 的会话约束：重连后需要取得新的 session_epoch，再恢复游标。",
+    "expected_action": "create",
+    "expected_scope": "self",
+    "lesson_terms": [["session_epoch"],["重连","reconnect"],["v3","版本 3","版本3"]]
+  },
+  {
+    "id": "duplicate_preference",
+    "task": "以后解释技术问题继续默认用中文，先给简短结论。我的长期偏好没有变化。",
+    "tool_results": [],
+    "final_response": "继续沿用你的沟通偏好。",
+    "existing": {"lesson":"用户长期偏好：技术解释默认中文，先给简短结论再按需展开。","scope":"shared","context":"用户已明确要求以后都这样。"},
+    "expected_action": "none"
+  },
+  {
+    "id": "correct_existing_rule",
+    "task": "复查已有的 Orion v3 重连经验。后续多个集成都依赖此机制，发现旧结论可能错了。",
+    "tool_results": [{"tool":"bash","arguments":"orion-reconnect-controlled-test","status":"success","result":"Three independent clean reproductions: reusing old session_epoch loses replayed events; fetching fresh session_epoch preserves all events with the same cursor. Server trace confirms epoch identifies the connection. Existing lesson to reuse old epoch is wrong."}],
+    "final_response": "已验证旧结论需要纠正：Orion v3 重连后必须获取新的 session_epoch，再恢复游标。",
+    "existing": {"lesson":"Orion v3 重连后应复用旧 session_epoch，再恢复游标。","context":"旧测试只观察过一次结果，未检查回放事件是否完整。"},
+    "expected_action": "update",
+    "expected_scope": "self",
+    "lesson_terms": [["session_epoch"],["新","fresh","new"],["v3","版本 3","版本3"]]
+  },
+  {
+    "id": "one_time_preference",
+    "task": "仅这次给海外同事看的回复使用英文。以后不用沿用，这不是我的长期语言偏好。",
+    "tool_results": [],
+    "final_response": "This response is in English for this occasion.",
+    "expected_action": "none"
+  }
+]

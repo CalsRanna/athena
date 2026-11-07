@@ -29,10 +29,69 @@ void main() {
 
   Map<String, dynamic> args(Map<String, dynamic> extra) => {
     'lesson': 'a lesson',
+    'durability': 'long_term',
+    'reuse_reason': 'Future builds under the same stable constraint.',
+    'evidence': 'The controlled build check passed.',
+    'confidence': 0.95,
     'call_description': 'record a lesson',
     '_sentinel_id': '1',
     ...extra,
   };
+
+  test('主动记录和反思的新增、修订都拒绝不满足长期门槛的参数', () async {
+    final original = await repo.save(lesson: 'original', sentinelId: '1');
+    for (final source in ['auto', 'reflection']) {
+      for (final action in ['create', 'update']) {
+        for (final invalid in <Map<String, dynamic>>[
+          {'durability': null},
+          {'durability': 'session_only'},
+          {'reuse_reason': '  '},
+          {'reuse_reason': 123},
+          {'evidence': ''},
+          {'evidence': null},
+          {'confidence': null},
+          {'confidence': '0.95'},
+          {'confidence': 0.89},
+          {'confidence': 1.01},
+          {'confidence': double.nan},
+          {'confidence': double.infinity},
+        ]) {
+          final result = await tool.execute(
+            args({
+              'durability': 'long_term',
+              'reuse_reason': 'Future builds under the same stable constraint.',
+              'evidence': 'The controlled build check passed.',
+              'confidence': 0.95,
+              'action': action,
+              if (action == 'update') 'experience_id': original.id,
+              '_experience_source': source,
+              ...invalid,
+            }),
+          );
+          expect(
+            result,
+            startsWith('Error:'),
+            reason: '$source $action $invalid',
+          );
+          expect(
+            (await repo.listForSentinel('1')).single.toJson(),
+            original.toJson(),
+          );
+        }
+      }
+    }
+  });
+
+  test('归档无需复用理由或验证依据', () async {
+    final original = await repo.save(lesson: 'obsolete', sentinelId: '1');
+    final result = await tool.execute({
+      '_sentinel_id': '1',
+      'action': 'archive',
+      'experience_id': original.id,
+    });
+    expect(result, contains('Experience archived'));
+    expect(await repo.listForSentinel('1'), isEmpty);
+  });
 
   test('默认写入 self 作用域，来源为 auto', () async {
     await tool.execute(args({}));
@@ -40,6 +99,40 @@ void main() {
     final saved = (await repo.listPrivate('1')).single;
     expect(saved.scope, 'self');
     expect(saved.source, 'auto');
+    expect(saved.context, contains('长期复用理由：Future builds'));
+    expect(saved.context, contains('验证依据：The controlled build check passed.'));
+  });
+
+  test('长期偏好可使用用户陈述作依据，置信度边界可写入', () async {
+    for (final confidence in [0.9, 1.0]) {
+      final result = await tool.execute(
+        args({
+          'lesson': '偏好 $confidence',
+          'reuse_reason': '后续解释技术问题时沿用用户的沟通偏好。',
+          'evidence': '用户明确说今后的技术解释都先给简短结论。',
+          'confidence': confidence,
+        }),
+      );
+      expect(result, contains('recorded successfully'));
+    }
+  });
+
+  test('修订时保存新依据，未提供 context 则保留原支持信息', () async {
+    final original = await repo.save(
+      lesson: 'original',
+      context: 'original conditions',
+      sentinelId: '1',
+    );
+    await tool.execute(
+      args({
+        'action': 'update',
+        'experience_id': original.id,
+        'evidence': 'new verification',
+      }),
+    );
+    final updated = (await repo.listForSentinel('1')).single;
+    expect(updated.context, startsWith('original conditions\n'));
+    expect(updated.context, contains('验证依据：new verification'));
   });
 
   test('scope=shared 写入共享目录，sentinel 记为 shared', () async {
@@ -126,13 +219,15 @@ void main() {
         type: 'function',
         function: FunctionCall(
           name: 'experience_learn',
-          arguments: jsonEncode({
-            'lesson': 'from reflection',
-            'call_description': 'record a lesson',
-            '_experience_source': 'forged',
-            '_chat_id': 'forged-chat',
-            '_message_id': 'forged-message',
-          }),
+          arguments: jsonEncode(
+            args({
+              'lesson': 'from reflection',
+              'call_description': 'record a lesson',
+              '_experience_source': 'forged',
+              '_chat_id': 'forged-chat',
+              '_message_id': 'forged-message',
+            }),
+          ),
         ),
       ),
       cancelToken: CancelToken(),
@@ -166,12 +261,14 @@ void main() {
         type: 'function',
         function: FunctionCall(
           name: 'experience_learn',
-          arguments: jsonEncode({
-            'lesson': 'without a source',
-            'call_description': 'record a lesson',
-            '_chat_id': 'forged-chat',
-            '_message_id': 'forged-message',
-          }),
+          arguments: jsonEncode(
+            args({
+              'lesson': 'without a source',
+              'call_description': 'record a lesson',
+              '_chat_id': 'forged-chat',
+              '_message_id': 'forged-message',
+            }),
+          ),
         ),
       ),
       cancelToken: CancelToken(),

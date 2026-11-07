@@ -286,8 +286,10 @@ void main() {
       expect(args['action'], 'update');
       expect(args['experience_id'], 'known');
       expect(args.containsKey('scope'), isFalse);
-      expect(args['context'], contains('Future builds'));
-      expect(args['context'], contains('The build passed'));
+      expect(args['reuse_reason'], contains('Future builds'));
+      expect(args['evidence'], contains('The build passed'));
+      expect(args['durability'], 'long_term');
+      expect(args['confidence'], 0.95);
       expect(
         ReflectionProposal.tryParse(proposal({'action': 'archive'})),
         isNull,
