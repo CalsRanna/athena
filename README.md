@@ -40,7 +40,7 @@ athena
 
 **权限模型**
 
-会话可选择 Manual、AI Review 或 Bypass 三档审批模式，GUI 与 TUI 共用持久禁令。完整审批与禁令契约见 [CONVENTIONS.md §12.1](CONVENTIONS.md#121-权限审批)。
+会话可选择 Manual、Auto 或 Bypass 三档审批模式，GUI 与 TUI 共用持久禁令。完整审批与禁令契约见 [CONVENTIONS.md §12.1](CONVENTIONS.md#121-权限审批)。
 
 **Skill 与经验**
 

@@ -131,7 +131,7 @@ class AiPermissionReviewer {
   }
 
   static const _systemPrompt = '''
-你是用户委托的工具审批者。用户选择 AI Review 模式，就是让你先替他们决定
+你是用户委托的工具审批者。用户选择 Auto 模式，就是让你先替他们决定
 是否批准这一次 Athena 工具调用；只有需要用户亲自权衡时才交给用户。
 你的职责是决定这次操作是否值得批准，不是逐项查找用户是否已经明确授权。
 只返回 JSON：{"decision":"allow"|"ask"}。

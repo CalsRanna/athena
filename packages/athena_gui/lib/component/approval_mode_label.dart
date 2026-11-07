@@ -2,7 +2,7 @@ import 'package:athena_core/entity/approval_mode.dart';
 
 /// 三档审批模式在界面上的文案（composer 菜单、移动端选择对话框共用）。
 extension ApprovalModeLabel on ApprovalMode {
-  /// 短名：`Manual` / `AI review` / `Bypass permissions`。
+  /// 短名：`Manual` / `Auto` / `Bypass permissions`。
   String get label => switch (this) {
     ApprovalMode.manual => 'Manual',
     ApprovalMode.auto => 'Auto',
