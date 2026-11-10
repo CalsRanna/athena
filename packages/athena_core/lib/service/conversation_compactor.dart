@@ -43,7 +43,7 @@ class ConversationCompactor {
   ///
   /// 摘要是模型可见的正文，所以用英文；它提示下游"这里丢过内容"，
   /// 而不是无声地少一段。
-  static const String _truncationMark = '\n…[truncated]';
+  static const String _truncationMark = '\n[truncated]';
 
   Stream<ContextCompactionUpdate> compact({
     required ContextCompactionRequest request,
@@ -279,7 +279,7 @@ class ConversationCompactor {
   /// 结果同样是恢复任务所需的。
   ///
   /// 尾部让位规则：被覆盖的前缀小于 [_minCoverTokens] 时，摘要预算的下限
-  /// （`max(128, …)`）不再随覆盖内容收缩，"摘要比被替换内容还长"会让提交守卫拒绝
+  /// （`max(128, )`）不再随覆盖内容收缩，"摘要比被替换内容还长"会让提交守卫拒绝
   /// 压缩。全部记录都放得下时前缀就是 0，同样落回这条退化路径——此时没有更早的
   /// 历史可摘要，行为与保留尾部之前一致。该循环同时保证前缀非空。
   int _tailLength(List<int> tokens, int tailBudget) {

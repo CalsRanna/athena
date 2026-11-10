@@ -155,8 +155,8 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
   // function call 的索引按出现顺序重新编号：ChatStreamAccumulator 把
   // tool_calls 的 index 直接当列表下标用，而 Responses 的 outputIndex 会
   // 因为 reasoning / message item 占据槽位而出现空洞。
-  // 键用 outputIndex：参数增量事件的 item_id 是 item 自身的 id（fc_…），
-  // 与 call_id（call_…）不是同一个值，且可为空；outputIndex 两边都必有。
+  // 键用 outputIndex：参数增量事件的 item_id 是 item 自身的 id（fc_），
+  // 与 call_id（call_）不是同一个值，且可为空；outputIndex 两边都必有。
   final callIndexes = <int, int>{};
   final calls = <int, FunctionCallOutputItemResponse>{};
   final arguments = <int, String>{};

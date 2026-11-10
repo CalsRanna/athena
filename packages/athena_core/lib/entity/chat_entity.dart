@@ -43,6 +43,10 @@ class ChatEntity {
   final int retention;
   final bool pinned;
 
+  /// 跑完时用户不在该会话、之后还没点进来过。侧栏行尾据此显示未读圆点，
+  /// 点进会话时清除；随会话行持久化，重启后仍在。
+  final bool unread;
+
   /// 最近一次推理的 prompt token 数（覆盖写，用于上下文窗口占用率）。
   /// 回退后为 [unknownContextTokens]，前端隐藏占用率，直到下一次用量上报。
   final int contextTokens;
@@ -84,6 +88,7 @@ class ChatEntity {
     this.reasoningEffort = defaultReasoningEffort,
     this.retention = -1,
     this.pinned = false,
+    this.unread = false,
     this.contextTokens = 0,
     this.cachedTokens = 0,
     this.workspacePath,
@@ -105,6 +110,7 @@ class ChatEntity {
       ),
       retention: json.getInt('retention', defaultValue: -1),
       pinned: json.getBool('pinned'),
+      unread: json.getBool('unread'),
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
       cachedTokens: json.getInt('cached_tokens', defaultValue: 0),
       workspacePath: json.getStringOrNull('workspace_path'),
@@ -129,6 +135,7 @@ class ChatEntity {
       'reasoning_effort': reasoningEffort,
       'retention': retention,
       'pinned': pinned ? 1 : 0,
+      'unread': unread ? 1 : 0,
       'context_tokens': contextTokens,
       'cached_tokens': cachedTokens,
       // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
@@ -155,6 +162,7 @@ class ChatEntity {
     Object? workspacePath = _unset,
     ApprovalMode? approvalMode,
     bool? pinned,
+    bool? unread,
     int? contextTokens,
     int? cachedTokens,
     DateTime? rewoundAt,
@@ -176,6 +184,7 @@ class ChatEntity {
           : workspacePath as String?,
       approvalMode: approvalMode ?? this.approvalMode,
       pinned: pinned ?? this.pinned,
+      unread: unread ?? this.unread,
       contextTokens: contextTokens ?? this.contextTokens,
       cachedTokens: cachedTokens ?? this.cachedTokens,
       rewoundAt: rewoundAt ?? this.rewoundAt,

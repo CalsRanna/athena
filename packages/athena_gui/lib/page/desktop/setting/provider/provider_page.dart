@@ -364,15 +364,15 @@ class _DesktopSettingProviderPageState
           ),
         if (!multiSelect && !provider.isPreset)
           DesktopContextMenuTile(
-            text: 'Rename…',
+            text: 'Rename',
             onTap: () => openProviderFormDialog(provider),
           ),
         if (deletable.isNotEmpty) const DesktopContextMenuSeparator(),
         if (deletable.isNotEmpty)
           DesktopContextMenuTile(
             text: deletable.length > 1
-                ? 'Delete ${deletable.length} providers…'
-                : 'Delete…',
+                ? 'Delete ${deletable.length} providers'
+                : 'Delete',
             danger: true,
             onTap: () => destroyProviders(deletable),
           ),
@@ -429,7 +429,7 @@ class _DesktopSettingProviderPageState
                 width: AthenaSettingsControlWidth.wide,
                 child: AthenaSettingsTextField(
                   controller: keyController,
-                  placeholder: 'sk-…',
+                  placeholder: 'sk-',
                   obscure: true,
                   onBlur: () => _commitKey(provider),
                   onSubmitted: (_) => _commitKey(provider),
@@ -486,7 +486,7 @@ class _DesktopSettingProviderPageState
                 control: AthenaSecondaryButton.small(
                   onTap: () => destroyProviders([provider]),
                   child: Text(
-                    'Delete…',
+                    'Delete',
                     style: AthenaTextStyle.label.copyWith(
                       color: colors.dangerText,
                     ),
@@ -544,12 +544,12 @@ class _DesktopSettingProviderPageState
                     onTap: () => checkConnection(model),
                   ),
                   DesktopContextMenuTile(
-                    text: 'Edit…',
+                    text: 'Edit',
                     onTap: () => editModel(provider, model),
                   ),
                   const DesktopContextMenuSeparator(),
                   DesktopContextMenuTile(
-                    text: 'Delete…',
+                    text: 'Delete',
                     danger: true,
                     onTap: () => destroyModel(model),
                   ),

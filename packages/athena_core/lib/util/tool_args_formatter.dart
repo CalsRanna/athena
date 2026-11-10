@@ -74,5 +74,5 @@ String _preview(String value) {
   final text = value.replaceAll(RegExp(r'\s+'), ' ').trim();
   final characters = text.runes;
   if (characters.length <= 200) return text;
-  return '${String.fromCharCodes(characters.take(200))}…';
+  return '${String.fromCharCodes(characters.take(200))}';
 }

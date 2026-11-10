@@ -125,6 +125,19 @@ class ChatStore {
     return updated;
   }
 
+  /// 设置会话的未读标记，返回更新后的会话；会话已被删除时返回 null。
+  ///
+  /// 与 [togglePin] 同样先读最新行再改，避免整行覆盖写回旧快照。不改
+  /// updatedAt：未读只是提示，不该让会话在列表里重新排序。
+  Future<ChatEntity?> setUnread(String chatId, {required bool unread}) async {
+    final latest = await _chatRepository.getChatById(chatId);
+    if (latest == null) return null;
+    if (latest.unread == unread) return latest;
+    final updated = latest.copyWith(unread: unread);
+    await _chatRepository.updateChat(updated);
+    return updated;
+  }
+
   /// 从 [fromIndex] 起删掉 [messages] 里的全部消息。
   ///
   /// 一次性收集 id 交给仓储按会话删除：一次读-改-写，而不是逐条删

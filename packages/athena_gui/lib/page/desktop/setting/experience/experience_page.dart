@@ -252,7 +252,7 @@ class _DesktopSettingExperiencePageState
         ),
       const DesktopContextMenuSeparator(),
       DesktopContextMenuTile(
-        text: targets.length > 1 ? 'Delete ${targets.length}…' : 'Delete…',
+        text: targets.length > 1 ? 'Delete ${targets.length}' : 'Delete',
         danger: true,
         onTap: () => destroyExperiences(targets),
       ),

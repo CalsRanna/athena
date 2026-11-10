@@ -50,7 +50,7 @@ class BackgroundTask {
     required this.startedAt,
   });
 
-  /// 面向前后端的短 id（bg-1、bg-2…）：模型要把它写进工具调用参数。
+  /// 面向前后端的短 id（bg-1、bg-2）：模型要把它写进工具调用参数。
   final String id;
   final String chatId;
   final String command;

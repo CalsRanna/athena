@@ -195,14 +195,13 @@ class DesktopChatListView extends StatelessWidget {
       builder: (context) {
         final selectedChat = chatViewModel.currentChat.value;
         final selectedIds = chatViewModel.selection.selectedChatIds.value;
-        final renamingIds = chatViewModel.selection.renamingChatIds.value;
         return Padding(
           padding: const EdgeInsets.only(bottom: 2),
           child: _ChatTile(
             active: selectedChat?.id == chat.id,
             chat: chat,
-            isRenaming: renamingIds.contains(chat.id),
             streaming: chatViewModel.isStreamingChat(chat.id!),
+            unread: chat.unread,
             onTap: () => _handleTap(chatViewModel, chat, index),
             onSecondaryTap: (details) =>
                 _openContextMenu(context, details, chat, chats),
@@ -219,14 +218,16 @@ class DesktopChatListView extends StatelessWidget {
 /// 侧栏的一条会话行。
 ///
 /// 行本身不带浮层：悬浮预览卡只挂在轮次条上（见 `turn_indicator.dart`），
-/// 会话行只有状态点、标题，以及 hover 才出现的 `⋮`。
+/// 会话行只有标题、运行中状态点，以及 hover 才出现的 `⋮`。
 class _ChatTile extends StatelessWidget {
   final bool active;
   final ChatEntity chat;
-  final bool isRenaming;
 
   /// 该对话的 Agent 正在后台运行（在列表上持续可见的指示）。
   final bool streaming;
+
+  /// 跑完时用户不在该对话、之后还没点进来过（未读圆点）。
+  final bool unread;
   final void Function()? onTap;
   final void Function(TapUpDetails)? onSecondaryTap;
   final bool selected;
@@ -236,8 +237,8 @@ class _ChatTile extends StatelessWidget {
   const _ChatTile({
     this.active = false,
     required this.chat,
-    this.isRenaming = false,
     this.streaming = false,
+    this.unread = false,
     this.onMore,
     this.onTap,
     this.onSecondaryTap,
@@ -249,11 +250,13 @@ class _ChatTile extends StatelessWidget {
     return DesktopMenuTile(
       active: active || selected,
       label: chat.title,
-      // 会话行 leading 是一个状态点（hover 时加深），不是图标
-      leadingBuilder: (hover) =>
-          StatusDot(hover: hover, streaming: streaming, renaming: isRenaming),
-      // 尾部只在 hover 时出现：一个 `⋮` 按钮（静止行没有尾部）。
-      hoverTrailing: onMore == null ? null : _MoreButton(onTap: onMore!),
+      // 行尾状态点：运行中优先，其次未读；hover 时让位给 `⋮`。
+      trailingBuilder: (hover) {
+        if (hover && onMore != null) return _MoreButton(onTap: onMore!);
+        if (streaming) return const StatusDot();
+        if (unread) return const StatusDot(unread: true);
+        return const SizedBox();
+      },
       onTap: onTap,
       onSecondaryTap: onSecondaryTap,
     );
@@ -323,7 +326,8 @@ class _SidebarNav extends StatelessWidget {
         label: 'New session',
         leading: const Icon(LucideIcons.pencilLine),
         // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
-        hoverTrailing: const _ShortcutHint(),
+        trailingBuilder: (hover) =>
+            hover ? const _ShortcutHint() : const SizedBox(),
         onTap: onCreateChat,
       ),
     );

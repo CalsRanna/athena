@@ -2,7 +2,7 @@
 ///
 /// 与各组件原有的私有 `_truncate(text, max)` 语义一致:
 /// 结果长度 = min(原文长度, max)。
-String truncateText(String text, int max, {String suffix = '…'}) {
+String truncateText(String text, int max, {String suffix = ''}) {
   if (text.length <= max) return text;
   final keep = max - suffix.length;
   if (keep <= 0) return suffix.substring(0, max);

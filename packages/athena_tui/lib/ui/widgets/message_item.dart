@@ -171,7 +171,7 @@ class MessageItem extends StatelessComponent {
           _Card(
             color: AthenaCardColors.toolResult,
             child: Text(
-              '↩ $name: ${sanitizeAnsi(truncateText(result, 2000, suffix: '…(截断)'))}',
+              '↩ $name: ${sanitizeAnsi(truncateText(result, 2000, suffix: '(截断)'))}',
               style: AthenaTextStyles.dim,
               softWrap: true,
             ),
@@ -226,7 +226,7 @@ class _ReasoningCard extends StatelessComponent {
               softWrap: true,
             )
           : // 流式刚开始、内容未到时用省略号占位
-            const Text('Thinking…', style: AthenaTextStyles.warning),
+            const Text('Thinking', style: AthenaTextStyles.warning),
     );
   }
 }

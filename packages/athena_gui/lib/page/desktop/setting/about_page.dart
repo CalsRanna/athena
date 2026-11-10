@@ -67,7 +67,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
       ],
     );
     final versionLabel = version.isEmpty
-        ? 'Loading…'
+        ? 'Loading'
         : buildNumber.isEmpty
         ? version
         : '$version ($buildNumber)';

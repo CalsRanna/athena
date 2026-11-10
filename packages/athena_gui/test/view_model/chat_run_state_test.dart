@@ -24,16 +24,16 @@ void main() {
       state.beginStreaming('c1');
       state.beginStreaming('c2');
 
-      state.endStreaming('c1');
+      expect(state.endStreaming('c1'), isTrue);
 
       expect(state.streamingChatIds.value, ['c2']);
       expect(state.isStreaming('c1'), isFalse);
     });
 
-    test('熄灭没点亮过的对话是 no-op', () {
+    test('熄灭没点亮过的对话是 no-op，并报告不是真正的收尾', () {
       state.beginStreaming('c1');
 
-      expect(() => state.endStreaming('c9'), returnsNormally);
+      expect(state.endStreaming('c9'), isFalse);
       expect(state.streamingChatIds.value, ['c1']);
     });
   });

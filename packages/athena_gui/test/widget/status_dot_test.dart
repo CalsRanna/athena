@@ -2,7 +2,6 @@ import 'dart:ui' show ImageByteFormat;
 
 import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,14 +11,13 @@ import '../support/athena_test_scope.dart';
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 状态点的三条口径：
-/// 1. **形状分状态**：不在跑（静止 / hover / 重命名）是 1px 描边的圆环，
-///    运行中是实心点——形状是一条不依赖颜色的状态线索；
-/// 2. 不在跑的三态是静态档位（同色不同 alpha），不随时间变化；
-/// 3. 运行中循环**色相**，且相对亮度钉在 `accent` 上——所以每个采样点的饱和度与
+/// 1. 只有运行中 / 未读才挂这个组件，画成实心点（静止行没有圆点）；
+/// 2. 运行中循环**色相**，且相对亮度钉在 `accent` 上——所以每个采样点的饱和度与
 ///    `computeLuminance()` 都必须落在 accent 的同一档里。用"颜色各不相同"当唯一判据
 ///    挡不住"随手换成一组别的颜色"，这两条断言才是这条口径的牙齿：只转色相是为了不改
 ///    语义（绿 / 橙 = 成功 / 警告），钉住亮度是为了不改视觉重量（沿用 accent 的 HSL
-///    明度时，黄绿相位对浅色画布只有 1.5:1，而 accent 是 4.3:1）。
+///    明度时，黄绿相位对浅色画布只有 1.5:1，而 accent 是 4.3:1）；
+/// 3. 未读固定 accent、静止不动。
 ///
 /// 容差不是 0：颜色表是按 96 档采样的，档与档之间做 RGB 直线插值（是弦不是弧），
 /// 实测整圈最大偏差为饱和度 0.021、相对亮度 0.004（后者已是 8bit 量化下限）。
@@ -28,9 +26,7 @@ void main() {
 
   Future<void> pumpDot(
     WidgetTester tester, {
-    bool hover = false,
-    bool streaming = false,
-    bool renaming = false,
+    bool unread = false,
     bool disableAnimations = false,
   }) => tester.pumpWidget(
     MaterialApp(
@@ -43,13 +39,7 @@ void main() {
         ),
       ),
       home: Scaffold(
-        body: Center(
-          child: StatusDot(
-            hover: hover,
-            streaming: streaming,
-            renaming: renaming,
-          ),
-        ),
+        body: Center(child: StatusDot(unread: unread)),
       ),
     ),
   );
@@ -65,11 +55,8 @@ void main() {
               .decoration
           as BoxDecoration;
 
-  /// 实心点的填充色（运行中）。
+  /// 实心点的填充色。
   Color fill(WidgetTester tester) => decoration(tester).color!;
-
-  /// 圆环的描边色（不在跑的三态）。
-  Color stroke(WidgetTester tester) => decoration(tester).border!.top.color;
 
   void expectSameColor(Color actual, Color expected, {String? reason}) {
     expect(actual.r, closeTo(expected.r, 0.01), reason: reason);
@@ -77,7 +64,7 @@ void main() {
     expect(actual.b, closeTo(expected.b, 0.01), reason: reason);
   }
 
-  /// 采一帧颜色（[read] 决定读填充还是描边），再前进 [step] 并重复 [samples] 次。
+  /// 采一帧颜色（[read] 决定从 decoration 里读什么），再前进 [step] 并重复 [samples] 次。
   Future<List<Color>> sample(
     WidgetTester tester, {
     required Color Function(WidgetTester) read,
@@ -92,74 +79,52 @@ void main() {
     return seen;
   }
 
-  testWidgets('不在跑的三态是圆环：1px 描边的三档静态色，不随时间变化', (tester) async {
+  testWidgets('运行中是实心点', (tester) async {
     await pumpDot(tester);
     final box = decoration(tester);
-    expect(box.color, isNull, reason: '圆环不该有填充');
-    expect(box.border!.top.width, 1);
-    expectSameColor(
-      box.border!.top.color,
-      colors.iconSecondary.withValues(alpha: 0.45),
-    );
-    expect(box.shape, BoxShape.circle, reason: '圆环的外形仍是直径 6 的圆，不能变成方角');
-    final idle = await sample(tester, read: stroke);
-    expect(
-      idle.every((c) => c == idle.first),
-      isTrue,
-      reason: '静止行不该有动画：$idle',
-    );
-
-    await pumpDot(tester, hover: true);
-    expect(stroke(tester).a, closeTo(0.45, 0.01));
-    await tester.pump(AthenaMotion.hover ~/ 2);
-    expect(stroke(tester).a, closeTo(0.6, 0.01));
-    await tester.pump(AthenaMotion.hover ~/ 2);
-    expectSameColor(
-      stroke(tester),
-      colors.iconSecondary.withValues(alpha: 0.75),
-      reason: 'hover 只加深透明度，形状不变',
-    );
-
-    await pumpDot(tester, renaming: true);
-    await tester.pump(AthenaMotion.hover);
-    expectSameColor(stroke(tester), colors.statusWarning);
-  });
-
-  testWidgets('运行中是实心点，不是圆环', (tester) async {
-    await pumpDot(tester, streaming: true);
-    final box = decoration(tester);
-    expect(box.color, isNotNull, reason: '运行中必须是实心点，实心/空心是状态线索');
+    expect(box.color, isNotNull, reason: '运行中的点必须是实心的');
     expect(box.border, isNull);
+    expect(box.shape, BoxShape.circle);
     await tester.pumpWidget(const SizedBox());
   });
 
-  /// 像素级确认"空心 / 实心"真的画出来了（`decoration` 有 border 不等于渲染成了圆环）。
-  testWidgets('像素级：圆环中心透明，实心点中心不透明', (tester) async {
+  testWidgets('未读是固定 accent 色、不循环，也不占 ticker', (tester) async {
+    await pumpDot(tester, unread: true);
+    expectSameColor(fill(tester), colors.accent);
+    final frozen = await sample(tester, read: fill);
+    expect(
+      frozen.every((c) => c == frozen.first),
+      isTrue,
+      reason: '未读态不该有色相循环：$frozen',
+    );
+    expect(tester.binding.transientCallbackCount, 0);
+
+    // 运行结束时同一个位置会从运行态切成未读态，控制器要跟着停。
+    await pumpDot(tester);
+    expect(tester.binding.transientCallbackCount, 1);
+    await pumpDot(tester, unread: true);
+    expect(tester.binding.transientCallbackCount, 0);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  /// 像素级确认实心点真的画出来了（`decoration` 有填充不等于渲染出了颜色）。
+  testWidgets('像素级：实心点中心不透明', (tester) async {
     const boundaryKey = ValueKey('dot-boundary');
-    Future<int> centerAlpha({
-      required bool streaming,
-      required bool disableAnimations,
-    }) async {
+    // 关掉循环再取像素：否则两次 runAsync 之间颜色会变，中心 alpha 不稳定。
+    Future<int> centerAlpha() async {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAthenaThemeData(AthenaColorMode.light),
           builder: (context, child) => AthenaTestScope(
             child: MediaQuery(
-              data: MediaQuery.of(context)
-                  .copyWith(disableAnimations: disableAnimations),
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
               child: child!,
             ),
           ),
-          home: Scaffold(
+          home: const Scaffold(
             body: Center(
-              child: RepaintBoundary(
-                key: boundaryKey,
-                child: StatusDot(
-                  hover: false,
-                  streaming: streaming,
-                  renaming: false,
-                ),
-              ),
+              child: RepaintBoundary(key: boundaryKey, child: StatusDot()),
             ),
           ),
         ),
@@ -182,33 +147,21 @@ void main() {
       return centerAlpha!;
     }
 
-    expect(await centerAlpha(streaming: false, disableAnimations: false), 0);
-    expect(
-      await centerAlpha(streaming: true, disableAnimations: true),
-      255,
-      reason: '实心点的中心必须是不透明的',
-    );
+    expect(await centerAlpha(), 255, reason: '实心点的中心必须是不透明的');
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('静止行不占 ticker，运行中才占', (tester) async {
+  testWidgets('挂载时占一个 ticker，卸载后释放', (tester) async {
     await pumpDot(tester);
-    expect(
-      tester.binding.transientCallbackCount,
-      0,
-      reason: '静止的侧栏行（常驻、数量多）不该持续重绘',
-    );
-
-    await pumpDot(tester, streaming: true);
     expect(tester.binding.transientCallbackCount, 1, reason: '运行中应有一个循环动画');
 
-    // 丢掉运行态再断言一次：控制器必须随状态结束，否则侧栏会一直空转。
-    await pumpDot(tester);
+    // 对话跑完时状态点会被摘掉：控制器必须一起释放，否则侧栏会一直空转。
+    await tester.pumpWidget(const SizedBox());
     expect(tester.binding.transientCallbackCount, 0);
   });
 
   testWidgets('运行中色相绕圈：颜色在变，但饱和度与相对亮度始终是 accent 的', (tester) async {
-    await pumpDot(tester, streaming: true);
+    await pumpDot(tester);
     final accentHsl = HSLColor.fromColor(colors.accent);
     final accentLuminance = colors.accent.computeLuminance();
     final seen = await sample(tester, read: fill);
@@ -244,7 +197,7 @@ void main() {
   });
 
   testWidgets('disableAnimations 时停在 accent 原色，不再循环', (tester) async {
-    await pumpDot(tester, streaming: true, disableAnimations: true);
+    await pumpDot(tester, disableAnimations: true);
     expectSameColor(fill(tester), colors.accent);
     final frozen = await sample(tester, read: fill);
     expect(

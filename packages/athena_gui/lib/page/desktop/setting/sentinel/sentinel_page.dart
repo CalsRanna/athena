@@ -269,8 +269,8 @@ class _DesktopSettingSentinelPageState
         if (deletable.isNotEmpty)
           DesktopContextMenuTile(
             text: deletable.length > 1
-                ? 'Delete ${deletable.length} Sentinels…'
-                : 'Delete…',
+                ? 'Delete ${deletable.length} Sentinels'
+                : 'Delete',
             danger: true,
             onTap: () => destroySentinels(deletable),
           ),
@@ -384,7 +384,7 @@ class _DesktopSettingSentinelPageState
                       else
                         const Icon(LucideIcons.sparkles),
                       const SizedBox(width: 6),
-                      Text(generating ? 'Generating…' : 'Generate metadata'),
+                      Text(generating ? 'Generating' : 'Generate metadata'),
                     ],
                   ),
                 ),
@@ -398,7 +398,7 @@ class _DesktopSettingSentinelPageState
                     controller: promptController,
                     enabled: !readOnly,
                     minLines: 14,
-                    placeholder: 'You are…',
+                    placeholder: 'You are',
                   ),
                   if (promptError != null) ...[
                     const SizedBox(height: 6),
@@ -428,7 +428,7 @@ class _DesktopSettingSentinelPageState
                 control: AthenaSecondaryButton.small(
                   onTap: () => destroySentinels([sentinel]),
                   child: Text(
-                    'Delete…',
+                    'Delete',
                     style: AthenaTextStyle.label.copyWith(
                       color: colors.dangerText,
                     ),

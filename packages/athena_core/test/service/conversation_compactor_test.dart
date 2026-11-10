@@ -262,7 +262,7 @@ void main() {
   test('尾部预算装得下全部历史时，只留到被覆盖部分仍够长', () async {
     final budget = ContextBudget(window);
     // 三条各约 1000 token，合计小于尾部预算（窗口 1/10）：全留会让覆盖为空，
-    // 摘要预算的下限（max(128, …)）就不再收缩，压缩会入不敷出。
+    // 摘要预算的下限（max(128, )）就不再收缩，压缩会入不敷出。
     final first = await store('user', 'd' * 2000);
     await store('user', 'e' * 2000);
     await store('user', 'f' * 2000);

@@ -459,7 +459,7 @@ class AgentService {
     } on CancelledException {
       rethrow;
     } catch (e) {
-      // 工具抛出的异常（读到非 UTF-8 文件、写入无权限目录……）作为工具结果
+      // 工具抛出的异常（读到非 UTF-8 文件、写入无权限目录）作为工具结果
       // 交还模型，而不是冒泡终止整个 run；并行组里的 Future.any 同样受益。
       LoggerUtil.w('tool ${toolCall.function.name} threw: $e');
       rawResult = 'Error: Tool "${toolCall.function.name}" failed: $e';

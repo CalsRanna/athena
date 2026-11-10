@@ -118,12 +118,12 @@ class _TuiAppState extends State<TuiApp> {
     final elicit = _elicitRequest;
     if (elicit != null && elicit.textIndex != null) {
       final question = elicit.questions[elicit.textIndex!].question;
-      return '为「${truncateText(question, 24)}」输入答案…';
+      return '为「${truncateText(question, 24)}」输入答案';
     }
     if (_keyInputProvider != null) {
-      return '为 ${_keyInputProvider!.name} 输入 API key…';
+      return '为 ${_keyInputProvider!.name} 输入 API key';
     }
-    return '输入消息…';
+    return '输入消息';
   }
 
   /// 输入区状态行:仅模态输入时显示。

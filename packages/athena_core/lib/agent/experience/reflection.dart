@@ -204,10 +204,10 @@ lesson 不超过 ${ExperienceEntity.maxLessonLength} 个字符，支持性细节
     // 测试/构建结论常在输出末尾，长输出同时保留开头和结尾。
     'result': result.length <= 2000
         ? result
-        : '${result.substring(0, 1000)}\n…[truncated]…\n'
+        : '${result.substring(0, 1000)}\n[truncated]\n'
               '${result.substring(result.length - 1000)}',
   };
 
   static String _truncate(String value, int max) =>
-      value.length <= max ? value : '${value.substring(0, max)}…';
+      value.length <= max ? value : '${value.substring(0, max)}';
 }

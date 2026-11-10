@@ -374,7 +374,7 @@ class ExperienceLearnTool extends Tool {
           final lesson = e.lesson.replaceAll(RegExp(r'\s+'), ' ').trim();
           final preview = lesson.length <= 60
               ? lesson
-              : '${lesson.substring(0, 60)}…';
+              : '${lesson.substring(0, 60)}';
           return '- ${e.id} (${e.scope}): $preview';
         })
         .join('\n');
@@ -668,7 +668,7 @@ class ExperienceRecallTool extends Tool {
 
   static String _sourceExcerpt(String text) => text.length <= 2000
       ? text
-      : '${text.substring(0, 1000)}\n…[truncated]…\n'
+      : '${text.substring(0, 1000)}\n[truncated]\n'
             '${text.substring(text.length - 1000)}';
 
   String _formatDate(DateTime dt) {

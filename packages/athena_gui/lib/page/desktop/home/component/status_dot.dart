@@ -1,33 +1,27 @@
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 会话行的状态点。静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
-/// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
+/// 会话行尾的状态点，两种状态共用同一颗直径约 6 逻辑的实心圆点：
 ///
-/// **形状分两态**：没有在跑（静止 / hover / 重命名）画成 1px 描边的圆环，
-/// 运行中（[streaming]）是实心点——形状本身就是一条不依赖颜色的状态线索。
+/// - **运行中**（默认）：色相绕 `accent` 转圈，见 [colorAt]；
+/// - **未读**（[unread]）：跑完但用户还没点进这条对话，固定 `accent` 色、不转圈。
 ///
-/// 运行中的实心点额外带一条**色相循环**：色相绕 `accent` 转圈、相对亮度钉在 `accent`
-/// 上，见 [colorAt]。只换色相是刻意的——换成另一组固定颜色（绿 / 橙）会被读成
+/// 静止 / hover / 重命名都没有圆点。
+///
+/// 运行中只换色相是刻意的：换成另一组固定颜色（绿 / 橙）会被读成
 /// `statusSuccess` / `statusWarning` 的语义，而"运行中"不是任何一种结果状态；
-/// 亮度不动则是为了让圆点在一圈里始终有同一个视觉重量。
+/// 亮度不动则是为了让圆点在一圈里始终有同一个视觉重量。未读态固定为 `accent`：
+/// 它是"有新内容"的中性提醒，不预示结果是成功还是失败。
 class StatusDot extends StatefulWidget {
-  final bool hover;
-  final bool streaming;
-  final bool renaming;
+  /// 未读态：跑完但用户还没点进来过。固定颜色、不循环。
+  final bool unread;
 
-  /// 色相绕一圈的时长。比 [AthenaMotion.cycle]（1800ms）更慢，这是刻意的：
+  /// 色相绕一圈的时长。比 `AthenaMotion.cycle`（1800ms）更慢，这是刻意的：
   /// 侧栏是常驻区域，圆点转太快会把注意力从正文抢走。
   static const Duration cycleDuration = Duration(milliseconds: 2400);
 
-  const StatusDot({
-    super.key,
-    required this.hover,
-    required this.streaming,
-    required this.renaming,
-  });
+  const StatusDot({super.key, this.unread = false});
 
   /// 循环走到 [t]（0..1）时的圆点颜色。
   ///
@@ -125,12 +119,12 @@ class _StatusDotState extends State<StatusDot>
   @override
   void didUpdateWidget(StatusDot oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.streaming != widget.streaming) _syncAnimation();
+    if (oldWidget.unread != widget.unread) _syncAnimation();
   }
 
-  /// 只有运行中才占一个 ticker：静止的侧栏行（数量多、常驻）不该持续重绘。
+  /// 只有运行中才转圈：未读态与"减弱动态效果"都不该占一个空转的 ticker。
   void _syncAnimation() {
-    if (widget.streaming && !_animationsDisabled) {
+    if (!widget.unread && !_animationsDisabled) {
       if (!_controller.isAnimating) _controller.repeat();
       return;
     }
@@ -148,45 +142,18 @@ class _StatusDotState extends State<StatusDot>
   @override
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
-    if (widget.streaming) {
-      if (_animationsDisabled) return _dot(colors.accent);
-      return AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) =>
-            _dot(StatusDot.colorAt(_controller.value, colors)),
-      );
-    }
-
-    final Color base;
-    final double alpha;
-    if (widget.renaming) {
-      base = colors.statusWarning;
-      alpha = 1;
-    } else {
-      base = colors.iconSecondary;
-      alpha = widget.hover ? 0.75 : 0.45;
-    }
-    return _ring(base.withValues(alpha: alpha));
+    if (widget.unread || _animationsDisabled) return _dot(colors.accent);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) =>
+          _dot(StatusDot.colorAt(_controller.value, colors)),
+    );
   }
 
-  /// 运行中的实心圆点（颜色由 [colorAt] 逐帧给出）。
+  /// 运行中的实心圆点（颜色由 [StatusDot.colorAt] 逐帧给出）。
   Widget _dot(Color color) => Container(
     width: 6,
     height: 6,
     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  );
-
-  /// 不在跑的三态（静止 / hover / 重命名）是**圆环**：1px 描边、中间空心。
-  ///
-  /// 形状本身参与区分状态（不只靠颜色），同时让常驻的会话行退后一档——运行中的
-  /// 实心点（还带色相循环）成为列表里唯一的实心焦点。外径仍是 6，行高不受影响。
-  Widget _ring(Color color) => AnimatedContainer(
-    duration: AthenaMotion.hover,
-    width: 6,
-    height: 6,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      border: Border.all(color: color, width: 1),
-    ),
   );
 }

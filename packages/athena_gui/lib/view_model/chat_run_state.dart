@@ -37,10 +37,16 @@ class ChatRunState {
     streamingChatIds.value = [...streamingChatIds.value, chatId];
   }
 
-  void endStreaming(String chatId) {
+  /// 熄灭运行指示；返回它原本是否在运行（重复收尾返回 false）。
+  ///
+  /// 调用方据返回值判断这是不是真正的收尾：用户手动停止会先立刻熄灭一次，之后
+  /// 异步收尾再调到这里，不该把用户亲手停掉的 run 当成新结束。
+  bool endStreaming(String chatId) {
+    if (!isStreaming(chatId)) return false;
     streamingChatIds.value = streamingChatIds.value
         .where((id) => id != chatId)
         .toList();
+    return true;
   }
 
   /// 实时进度只写给当前对话看的那些信号。

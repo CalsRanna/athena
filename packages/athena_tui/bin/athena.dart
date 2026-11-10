@@ -26,7 +26,7 @@ Future<void> main(List<String> args) async {
   final di = TuiDi(workspace: workspace.path);
   // 首次启动会从 models.dev 拉取最新模型目录(3.2MB,约几秒);
   // 缓存新鲜(7 天内)时秒过
-  stdout.writeln('Athena TUI 启动中…工作区: ${workspace.path}');
+  stdout.writeln('Athena TUI 启动中工作区: ${workspace.path}');
   await di.initialize();
   stdout.writeln('Athena TUI 就绪。');
 

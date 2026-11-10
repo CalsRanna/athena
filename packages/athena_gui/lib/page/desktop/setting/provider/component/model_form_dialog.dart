@@ -17,7 +17,7 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 ///
 /// 纵向表单：必填的 id 与名称在上，元数据（发布日期、上下文、价格）两两
 /// 并排，能力勾选在最后。价格只填每百万 token 的数字（`0.15`），展示时
-/// 由界面补 `$…/M`。
+/// 由界面补 `$/M`。
 class DesktopModelFormDialog extends StatefulWidget {
   final ModelEntity? model;
   final ProviderEntity provider;

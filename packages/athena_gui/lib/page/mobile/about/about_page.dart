@@ -52,7 +52,7 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
         const SizedBox(height: 2),
         Text('A cross-platform AI agent workspace.', style: captionStyle),
         const SizedBox(height: AthenaSpace.sm),
-        Text(version.isEmpty ? 'Loading…' : version, style: captionStyle),
+        Text(version.isEmpty ? 'Loading' : version, style: captionStyle),
       ],
     );
     final children = [

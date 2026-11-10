@@ -142,7 +142,7 @@ void main() {
     test('当前步是压缩：状态后接已结算的用量，正在跑的这次不算进次数', () {
       expect(
         StepCard.runningLabel([reasoning(), compaction()]),
-        '正在压缩上下文… · Thought 0.0 seconds',
+        '正在压缩上下文 · Thought 0.0 seconds',
       );
     });
 
@@ -329,7 +329,7 @@ void main() {
       await pumpCard(tester, [completedTool, thought, compaction()]);
 
       expect(
-        find.text('正在压缩上下文… · Used 1 tool · Thought 0.0 seconds'),
+        find.text('正在压缩上下文 · Used 1 tool · Thought 0.0 seconds'),
         findsOneWidget,
       );
       expect(find.byIcon(LucideIcons.fileArchive), findsOneWidget);

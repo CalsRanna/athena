@@ -37,7 +37,7 @@ final Map<String, Future<void>> _inProcess = {};
 
 /// 数据目录里锁文件的统一位置:`<root>/.locks/`。
 ///
-/// 锁文件全在这里,数据目录(`providers/`、`sentinels/`、`sessions/`……)只装
+/// 锁文件全在这里,数据目录(`providers/`、`sentinels/`、`sessions/`)只装
 /// 数据。锁按数据根内的**相对路径镜像**命名,于是 `.locks/sessions/{id}.jsonl.lock`
 /// 一眼能看出它保护的是谁。
 ///

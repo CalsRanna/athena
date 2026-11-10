@@ -11,24 +11,19 @@ class DesktopMenuTile extends StatefulWidget {
   final Widget? leading;
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
-  final Widget? trailing;
 
-  /// 仅在 hover 时出现的尾部（会话行 hover 才显示 `⋮`）。
-  final Widget? hoverTrailing;
-
-  /// 需要感知 hover 的 leading（状态点在 hover 时会加深）。
-  final Widget Function(bool hover)? leadingBuilder;
+  /// 尾部内容；[hover] 是整行的 hover 状态。尾部只有一份内容，需要在 hover 时
+  /// 换内容的行（会话行静止显示运行状态点、hover 换成 `⋮`）在这里分支即可。
+  final Widget Function(bool hover)? trailingBuilder;
 
   const DesktopMenuTile({
     super.key,
     required this.active,
     required this.label,
     this.leading,
-    this.leadingBuilder,
     this.onSecondaryTap,
     this.onTap,
-    this.trailing,
-    this.hoverTrailing,
+    this.trailingBuilder,
   });
 
   @override
@@ -63,9 +58,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
             : hover
             ? colors.surfaceHover
             : resting;
-        final leading = widget.leadingBuilder != null
-            ? widget.leadingBuilder!(hover)
-            : widget.leading;
+        final leading = widget.leading;
         final iconTheme = IconTheme(
           data: IconThemeData(
             color: contentColor,
@@ -74,17 +67,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
           child: leading ?? const SizedBox(),
         );
         final trailing =
-            widget.trailing ??
-            (widget.hoverTrailing == null
-                ? const SizedBox()
-                : IgnorePointer(
-                    ignoring: !hover,
-                    child: AnimatedOpacity(
-                      opacity: hover ? 1 : 0,
-                      duration: AthenaMotion.hover,
-                      child: widget.hoverTrailing,
-                    ),
-                  ));
+            widget.trailingBuilder?.call(hover) ?? const SizedBox();
         return AnimatedContainer(
           decoration: BoxDecoration(
             color: background,

@@ -54,7 +54,7 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
         error: descriptionError,
         child: AthenaSettingsTextField(
           controller: descriptionController,
-          placeholder: 'Use when…',
+          placeholder: 'Use when',
           onSubmitted: (_) => storeSkill(),
         ),
       ),

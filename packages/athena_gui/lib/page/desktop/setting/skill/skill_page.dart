@@ -303,7 +303,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
       if (!skill.isBuiltin) ...[
         const DesktopContextMenuSeparator(),
         DesktopContextMenuTile(
-          text: multiSelect ? 'Delete ${targets.length} skills…' : 'Delete…',
+          text: multiSelect ? 'Delete ${targets.length} skills' : 'Delete',
           danger: true,
           onTap: () => destroySkills(targets),
         ),

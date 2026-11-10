@@ -553,6 +553,11 @@ class ChatViewModel {
   Future<void> selectChat(ChatEntity chat) async {
     final loadGeneration = _window.beginLoad();
     currentChat.value = chat;
+    // 用户已经点进这条对话：跑完时留下的未读圆点立即消失，再落库。
+    if (chat.unread) {
+      _updateChatInLists(chat.copyWith(unread: false));
+      unawaited(_setChatUnread(chat.id!, unread: false));
+    }
     // 待发图片按对话分开，跟着对话一起换（文字草稿由页面同步，见
     // `DesktopHomePage._restoreComposerDraft`）
     _retargetPendingImages();
@@ -989,11 +994,7 @@ class ChatViewModel {
       _reportError(e.toString());
     } finally {
       _flushMessages();
-      _runState.endStreaming(chatId);
-      _runState.clearLiveProgressFor(
-        chatId,
-        currentChatId: currentChat.value?.id,
-      );
+      _finishStreaming(chatId);
       _runState.unregisterRun(chatId, settled);
       if (!settled.isCompleted) settled.complete();
     }
@@ -1114,11 +1115,29 @@ class ChatViewModel {
     if (!_runState.takeReportFinished(chatId)) return;
     // 汇报刚结束、用户的消息已接着开跑：指示归那条 sendMessage 管
     if (_runState.hasRun(chatId)) return;
-    _runState.endStreaming(chatId);
-    _runState.clearLiveProgressFor(
-      chatId,
-      currentChatId: currentChat.value?.id,
-    );
+    _finishStreaming(chatId);
+  }
+
+  /// 收尾一条会话的运行指示。真正结束时（不是手动停止后的重复收尾）若用户看的
+  /// 是别的对话，就点亮未读并落库：结果已经出来，但还没人看过。
+  void _finishStreaming(String chatId) {
+    final currentChatId = currentChat.value?.id;
+    if (_runState.endStreaming(chatId) && currentChatId != chatId) {
+      final chat = _chatForEvent(chatId);
+      if (chat != null) _updateChatInLists(chat.copyWith(unread: true));
+      unawaited(_setChatUnread(chatId, unread: true));
+    }
+    _runState.clearLiveProgressFor(chatId, currentChatId: currentChatId);
+  }
+
+  /// 未读标记落库；磁盘回来后按最新行就地更新列表（会话可能已被删）。
+  Future<void> _setChatUnread(String chatId, {required bool unread}) async {
+    try {
+      final updated = await _chatStore.setUnread(chatId, unread: unread);
+      if (updated != null) _updateChatInLists(updated);
+    } catch (e) {
+      _reportError(e.toString());
+    }
   }
 
   /// 事件所属会话的实体。
@@ -1176,11 +1195,7 @@ class ChatViewModel {
     // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
     // 只冲刷属于这个对话的挂起增量：无条件冲刷会把别的对话的缓冲也提交掉
     _window.flushFor(chatId);
-    _runState.endStreaming(chatId);
-    _runState.clearLiveProgressFor(
-      chatId,
-      currentChatId: currentChat.value?.id,
-    );
+    _finishStreaming(chatId);
   }
 
   /// 用户对当前审批请求做出决策（Allow / Deny）。

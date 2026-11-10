@@ -86,7 +86,7 @@ class _MobileDataPageState extends State<MobileDataPage> {
               onTap: _hasRewindSnapshots ? _clearRewindSnapshots : null,
               title: 'Rewind snapshots',
               subtitle: _usage == null
-                  ? 'Calculating…'
+                  ? 'Calculating'
                   : '${_sizeSummary(_usage!.rewindSnapshotCount, _usage!.rewindSnapshotBytes)}. '
                         'Recovery points created before each rewind.',
               trailing: '',
@@ -99,7 +99,7 @@ class _MobileDataPageState extends State<MobileDataPage> {
               onTap: _hasToolOutputs ? _clearToolOutputs : null,
               title: 'Tool outputs',
               subtitle: _usage == null
-                  ? 'Calculating…'
+                  ? 'Calculating'
                   : '${_sizeSummary(_usage!.toolOutputCount, _usage!.toolOutputBytes)}. '
                         'Clearing makes old tool results unreadable.',
               trailing: '',

@@ -184,7 +184,7 @@ lib/
 
 ## 5. 错误处理
 
-- **工具抛出的异常不冒泡**。工具内部异常（读到非 UTF-8 文件、写入无权限目录……）转成 `'Error: ...'` 文本作为工具结果交还模型，让模型自己纠正，而不是终止整个 run
+- **工具抛出的异常不冒泡**。工具内部异常（读到非 UTF-8 文件、写入无权限目录）转成 `'Error: ...'` 文本作为工具结果交还模型，让模型自己纠正，而不是终止整个 run
 - **损失必须显式**。适配器遇到无法映射的请求字段、无法表达的响应内容时抛 `UnsupportedError` / `FormatException` / `StateError`，**不静默丢弃**。宁可让调用方收到明确失败，也不要让用户看到「看起来成功了」的错误结果
 - **错误文案遵守 §4 的英文约定**，工具返回的 `'Error: ...'` 也适用。这些消息可能不经翻译直接冒到用户面前（例：`onCompact` 的回调抛异常时 `agent_service.dart` 不 catch，它就成了 run 错误）
 - **取消优先于报错**。捕获异常时先 `throwIfCancelled()` 再 rethrow，避免取消被底层错误掩盖
@@ -282,7 +282,7 @@ cd packages/athena_gui && dart run build_runner build --delete-conflicting-outpu
 ```
 
 - type：`feat` / `fix` / `refactor` / `docs` / `chore` / `build` / `test`
-- scope：包名或子系统名（`agent` / `storage` / `theme` / `athena_gui` / `step-primitives` …）
+- scope：包名或子系统名（`agent` / `storage` / `theme` / `athena_gui` / `step-primitives` ）
 - summary 与正文用**英文**，说明**为什么**这样改——尤其是被否决的方案与它的代价
 - 正文从简：主题一行说清改了什么，正文只在「为什么」不显然时才写，通常一两句
 - 提交信息中**不添加任何工具署名或生成标记**

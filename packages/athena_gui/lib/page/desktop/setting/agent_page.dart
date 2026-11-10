@@ -200,7 +200,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                 width: AthenaSettingsControlWidth.wide,
                 child: AthenaSettingsTextField(
                   controller: braveApiKeyController,
-                  placeholder: 'BSA…',
+                  placeholder: 'BSA',
                   obscure: true,
                   onBlur: _commitBraveApiKey,
                   onSubmitted: (_) => _commitBraveApiKey(),

@@ -107,7 +107,7 @@ class SkillLoader {
         final skill = parseSkillFile(skillFile);
         if (skill != null) skills.add(skill);
       } catch (error) {
-        // 读不出来（权限、非 UTF-8……）同样只跳过这一个，但要留痕：
+        // 读不出来（权限、非 UTF-8）同样只跳过这一个，但要留痕：
         // 一声不响地少一个技能，用户无从查起。
         LoggerUtil.w('Skill unreadable (${skillFile.path}): $error');
       }

@@ -352,6 +352,39 @@ void main() {
     });
   });
 
+  group('未读标记持久化', () {
+    test('默认未读为 false，改写后重读一致', () async {
+      final chatId = await createChat();
+      expect(
+        (await storage.sessionRepository.getChatById(chatId))!.unread,
+        isFalse,
+      );
+
+      final chat = await storage.sessionRepository.getChatById(chatId);
+      await storage.sessionRepository.updateChat(chat!.copyWith(unread: true));
+
+      expect(
+        (await storage.sessionRepository.getChatById(chatId))!.unread,
+        isTrue,
+      );
+    });
+
+    test('早期会话文件没有 unread 键时回落 false', () async {
+      final chatId = await createChat();
+      final file = File(p.join(storage.sessionsDir.path, '$chatId.jsonl'));
+      final lines = await file.readAsLines();
+      final row = jsonDecode(lines.first) as Map<String, dynamic>;
+      expect(row.remove('unread'), isNotNull);
+      lines[0] = jsonEncode(row);
+      await file.writeAsString('${lines.join('\n')}\n');
+
+      expect(
+        (await storage.sessionRepository.getChatById(chatId))!.unread,
+        isFalse,
+      );
+    });
+  });
+
   // replaceMessage 只重编码被改的那一行，其余行按原始字节拼回。这里锁住
   // 字节保留带来的可观察差异与几条容易踩坏的边界。
   group('replaceMessage 只重写目标行', () {

@@ -707,7 +707,7 @@ anthropic.InputSchema _toInputSchema(Map<String, dynamic>? parameters) {
   final schema = parameters ?? const <String, dynamic>{};
   final properties = schema['properties'];
   final required = schema['required'];
-  // 其余 JSON Schema 关键字（type / additionalProperties / $schema…）由
+  // 其余 JSON Schema 关键字（type / additionalProperties / $schema）由
   // `extra` 平铺回顶层，不能让工具声明在转换中丢字段。
   final extra = <String, dynamic>{
     for (final entry in schema.entries)

@@ -11,7 +11,7 @@ class InputArea extends StatelessComponent {
     required this.textController,
     required this.onSubmitted,
     required this.onKeyEvent,
-    this.placeholder = '输入消息…',
+    this.placeholder = '输入消息',
     this.statusText = '',
   });
 
@@ -20,7 +20,7 @@ class InputArea extends StatelessComponent {
   final ValueChanged<String> onSubmitted;
   final KeyEventHandler onKeyEvent;
 
-  /// 非默认时显示为输入框 placeholder(如"输入 API key…")。
+  /// 非默认时显示为输入框 placeholder(如"输入 API key")。
   final String placeholder;
 
   /// 非空时覆盖默认状态行(如 API key 输入提示)。
@@ -33,7 +33,7 @@ class InputArea extends StatelessComponent {
     return Column(
       children: [
         if (controller.isRewinding.value)
-          const Text('正在回退会话…', style: AthenaTextStyles.dim),
+          const Text('正在回退会话', style: AthenaTextStyles.dim),
         if (controller.pendingImageUrls.value.isNotEmpty)
           Text(
             '已恢复 ${controller.pendingImageUrls.value.split(',').length} 张图片 · /clearimages 移除',

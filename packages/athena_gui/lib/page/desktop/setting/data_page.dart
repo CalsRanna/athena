@@ -57,7 +57,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
             AthenaSettingsRow(
               label: 'Rewind snapshots',
               description: _usage == null
-                  ? 'Calculating…'
+                  ? 'Calculating'
                   : '${_sizeSummary(_usage!.rewindSnapshotCount, _usage!.rewindSnapshotBytes)}. '
                         'Recovery points created before each rewind.',
               descriptionMaxLines: 3,
@@ -69,7 +69,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
             AthenaSettingsRow(
               label: 'Tool outputs',
               description: _usage == null
-                  ? 'Calculating…'
+                  ? 'Calculating'
                   : '${_sizeSummary(_usage!.toolOutputCount, _usage!.toolOutputBytes)}. '
                         'Saved long tool results; clearing makes them unreadable '
                         'from old messages.',
