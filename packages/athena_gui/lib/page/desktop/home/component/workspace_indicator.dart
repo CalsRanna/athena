@@ -1,14 +1,16 @@
-import 'package:athena_gui/widget/tag.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:path/path.dart' as p;
+import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 上下文条上的「本会话工作文件夹」入口，紧跟在 Sentinel chip 之后。
+/// 上下文条上的「本会话工作文件夹」入口，紧跟在 Sentinel 图标之后。
 ///
-/// 与 Sentinel 用同一种 chip（`filled: false`——带的底色已是浅灰，chip 再画
-/// 一层同色底就成了看不见的胶囊）。未设置时显示 `No folder`；设置后显示
-/// 文件夹名，并在 chip 内出现清除按钮（native 目录选择器选不出「不指定」，
-/// 清除必须另有入口）。完整路径放在 tooltip 里，标签会被截断。
+/// 与图片加号同一种 ghost 图标按钮（16 字形 + 6 内边距 = 28 方盒）：设置后显示
+/// `folder`，未设置显示 `folderX`；当前路径放在 tooltip 里。点击弹出小菜单：
+/// 选择文件夹 / 清除文件夹（native 目录选择器选不出「不指定」，清除必须另有
+/// 入口）。
 ///
 /// 只影响后续 run：运行中的 run 已在开始时解析并持有自己的基准，改这项不会
 /// 让正在跑的一轮中途换目录。
@@ -26,26 +28,63 @@ class DesktopWorkspaceIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.athenaColors;
     final set = path != null && path!.isNotEmpty;
     return Tooltip(
       // 只放路径本身/一句话，宽度受限后长路径才换行而不是拉成一整条
       message: set ? path! : 'No working folder',
       preferBelow: false,
       constraints: const BoxConstraints(maxWidth: 280),
-      child: AthenaContextChip(
-        leading: const Icon(LucideIcons.folder),
-        label: set ? p.basename(path!) : 'No folder',
-        onTap: onTap,
-        filled: false,
-        // 内层 onTap 在命中测试里先于 chip 的 onTap 生效
-        trailing: set
-            ? GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onClear,
-                child: const Icon(LucideIcons.x, size: 12),
-              )
-            : null,
+      child: Builder(
+        builder: (context) => AthenaGhostButton(
+          padding: const EdgeInsets.all(6),
+          onTap: () => DesktopContextMenuManager.instance.show(
+            context,
+            _WorkspaceMenu(
+              anchor: contextMenuAnchorOf(context),
+              hasFolder: set,
+              onChoose: onTap,
+              onClear: onClear,
+            ),
+          ),
+          child: Icon(
+            set ? LucideIcons.folder : LucideIcons.folderX,
+            color: colors.textPrimary,
+            size: AthenaIcon.regularSize,
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _WorkspaceMenu extends StatelessWidget {
+  final Rect anchor;
+  final bool hasFolder;
+  final void Function()? onChoose;
+  final void Function()? onClear;
+
+  const _WorkspaceMenu({
+    required this.anchor,
+    required this.hasFolder,
+    this.onChoose,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DesktopContextMenu(
+      offset: Offset(anchor.left, anchor.top - 8),
+      upward: true,
+      width: 240,
+      children: [
+        DesktopContextMenuTile(text: 'Choose folder', onTap: onChoose),
+        DesktopContextMenuTile(
+          text: 'Clear folder',
+          enabled: hasFolder,
+          onTap: hasFolder ? onClear : null,
+        ),
+      ],
     );
   }
 }

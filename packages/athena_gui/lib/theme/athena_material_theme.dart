@@ -56,6 +56,16 @@ ThemeData buildAthenaThemeData(AthenaColorMode mode) {
         ),
       ),
     ),
+    // 全站提示框统一走反色面（浅色主题近黑、深色主题反白），文案用 caption：
+    // 与 composer 的上下文占用 tooltip 同款，不再逐处手写底色与内边距。
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: colors.surfaceRaised,
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      textStyle: AthenaTextStyle.caption.copyWith(color: colors.textOnRaised),
+    ),
     scaffoldBackgroundColor: colors.surface,
     dividerColor: colors.divider,
     splashFactory: NoSplash.splashFactory,

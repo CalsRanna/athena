@@ -12,8 +12,8 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 输入框工具栏最右的上下文占用指示器。
 ///
-/// 12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 给一句深色 tooltip
-/// （`Context 181.6k / 1M (18%)`）和 ghost 底色（与其他控件同一份
+/// 12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 给一句反色底 tooltip
+/// （`Context 181.6k / 1M (18%)`，样式由全局 `tooltipTheme` 提供）和 ghost 底色（与其他控件同一份
 /// [AthenaGhostButton] 实现），点击才在圆环上方弹出明细面板（标题行 +
 /// 分段占用条 + 缓存命中 / 未命中 / 剩余三行图例）。
 ///
@@ -72,17 +72,12 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         color: stats.nearLimit ? colors.statusWarning : colors.textSecondary,
       ),
     );
-    // tooltip 是深色底白字的一句话，明细留给点击。
+    // tooltip 是深色底白字的一句话（底色与字号由全局 tooltipTheme 统一），
+    // 明细留给点击。
     return Tooltip(
       message: 'Context ${stats.summary}',
       preferBelow: false,
       verticalOffset: 16,
-      decoration: BoxDecoration(
-        color: colors.surfaceRaised,
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      textStyle: AthenaTextStyle.caption.copyWith(color: colors.textOnRaised),
       // 12 圆环 + 8 内边距 = 28 方盒，与同一行的 ghost 控件同档
       child: AthenaGhostButton(
         onTap: () => _openDetails(stats),

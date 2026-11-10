@@ -38,13 +38,10 @@ class DesktopMessageInput extends StatelessWidget {
   /// 点击模型名：回传那一块（含 hover 填充）的全局矩形，模型菜单锚在它上方。
   final void Function(Rect anchor)? onModelTap;
 
-  /// 点击 Sentinel chip：回传 chip 的全局矩形，角色菜单锚在它上方。
+  /// 点击 Sentinel 图标：回传图标的全局矩形，角色菜单锚在它上方。
   final void Function(Rect anchor)? onSentinelTap;
 
-  /// 清除本会话的 Sentinel（回到「不选择任何 Sentinel」）。
-  final void Function()? onSentinelClear;
-
-  /// 选择/清除本会话的工作文件夹（目录选择器在 ViewModel 层弹）。
+  /// 选择/清除本会话的工作文件夹（菜单在指示器里弹，选择器在 ViewModel 层弹）。
   final void Function()? onWorkspaceTap;
   final void Function()? onWorkspaceClear;
 
@@ -63,7 +60,6 @@ class DesktopMessageInput extends StatelessWidget {
     this.onTerminated,
     this.onModelTap,
     this.onSentinelTap,
-    this.onSentinelClear,
     this.onWorkspaceTap,
     this.onWorkspaceClear,
     this.onApprovalModeChange,
@@ -71,7 +67,6 @@ class DesktopMessageInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    final colors = context.athenaColors;
     return SignalBuilder(
       builder: (context) {
         final queued = chatViewModel.queuedMessages.value;
@@ -104,43 +99,6 @@ class DesktopMessageInput extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  // 上下文条：灰底、无描边
-                  Container(
-                    height: 40,
-                    // 带内首个元素距容器左缘 17（含 chip 自身 10）
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    alignment: Alignment.centerLeft,
-                    decoration: BoxDecoration(
-                      color: colors.surfaceButtonSecondary,
-                      borderRadius: BorderRadius.circular(
-                        AthenaRadius.container,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        DesktopSentinelIndicator(
-                          onTap: onSentinelTap,
-                          onClear: onSentinelClear,
-                        ),
-                        const SizedBox(width: 4),
-                        // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
-                        // current* 信号而不是 chat 字段，两种状态一个来源
-                        DesktopWorkspaceIndicator(
-                          path: chatViewModel.currentWorkspacePath.value,
-                          onTap: onWorkspaceTap,
-                          onClear: onWorkspaceClear,
-                        ),
-                        const Spacer(),
-                        // 当前保留策略同时服务草稿和已有会话，选项从 chip 向上展开。
-                        DesktopContextSelector(
-                          currentRetention:
-                              chatViewModel.currentRetention.value,
-                          onSelected: onRetentionChange,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
                   _ComposerInputBox(
                     focusNode: focusNode,
@@ -175,31 +133,23 @@ class DesktopMessageInput extends StatelessWidget {
                   // 容器之外的一行
                   Row(
                     children: [
-                      // 左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
-                      // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
-                      // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
-                      // 文字控件的 hover 底按内容整形：左右各 6、上下 3（行盒 22
-                      // 撑到 28），与裸字形补出来的方盒同高。
-                      Builder(
-                        builder: (context) => AthenaGhostButton(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          onTap: () => DesktopPermissionModeMenu.show(
-                            context,
-                            contextMenuAnchorOf(context),
-                            current: approvalMode,
-                            onSelected: onApprovalModeChange,
-                          ),
-                          child: DesktopPermissionModeLabel(
-                            current: approvalMode,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
                       // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
                       DesktopImageSelector(onSelected: onImageSelected),
+                      const SizedBox(width: 4),
+                      DesktopSentinelIndicator(onTap: onSentinelTap),
+                      const SizedBox(width: 4),
+                      // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
+                      // current* 信号而不是 chat 字段，两种状态一个来源
+                      DesktopWorkspaceIndicator(
+                        path: chatViewModel.currentWorkspacePath.value,
+                        onTap: onWorkspaceTap,
+                        onClear: onWorkspaceClear,
+                      ),
+                      const SizedBox(width: 4),
+                      DesktopContextSelector(
+                        currentRetention: chatViewModel.currentRetention.value,
+                        onSelected: onRetentionChange,
+                      ),
                       const Spacer(),
                       // 用 Builder 拿到这一整块的矩形回传，菜单右边要与它对齐
                       Builder(
@@ -234,6 +184,28 @@ class DesktopMessageInput extends StatelessWidget {
                           ),
                         ),
                       ],
+                      const SizedBox(width: 4),
+                      // 审批模式：一段文字（Bypass permissions），点开 Mode 菜单。
+                      // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
+                      // 文字控件的 hover 底按内容整形：左右各 6、上下 3（行盒 22
+                      // 撑到 28），与同一行的裸字形方盒同高。
+                      Builder(
+                        builder: (context) => AthenaGhostButton(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          onTap: () => DesktopPermissionModeMenu.show(
+                            context,
+                            contextMenuAnchorOf(context),
+                            current: approvalMode,
+                            onSelected: onApprovalModeChange,
+                          ),
+                          child: DesktopPermissionModeLabel(
+                            current: approvalMode,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 4),
                       const DesktopTokenIndicator(),
                     ],

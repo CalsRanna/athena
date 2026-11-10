@@ -18,8 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 
 import '../support/athena_test_scope.dart';
 
@@ -221,16 +221,16 @@ void main() {
     await settle(tester);
   }
 
-  /// composer 上下文条上的角色 chip 文案。
-  Finder sentinelChipLabel(String label) => find.descendant(
+  /// composer 上下文条上的角色图标：`userRound` = 有角色，`userRoundX` = 不用角色。
+  Finder sentinelChipIcon(IconData icon) => find.descendant(
     of: find.byType(DesktopSentinelIndicator),
-    matching: find.text(label),
+    matching: find.byIcon(icon),
   );
 
-  /// composer 上下文条上的工作文件夹 chip 文案（只显示目录名）。
-  Finder workspaceChipLabel(String label) => find.descendant(
+  /// composer 上下文条上的工作文件夹图标：`folder` = 已设置，`folderX` = 未设置。
+  Finder workspaceChipIcon(IconData icon) => find.descendant(
     of: find.byType(DesktopWorkspaceIndicator),
-    matching: find.text(label),
+    matching: find.byIcon(icon),
   );
 
   testWidgets('启动落在草稿页：开屏焦点就在 composer', (tester) async {
@@ -347,14 +347,28 @@ void main() {
     await tapSidebarNewChat(tester);
 
     expect(
-      sentinelChipLabel('Inherit Probe'),
+      sentinelChipIcon(LucideIcons.userRound),
       findsOneWidget,
       reason: '草稿的角色应继承来源对话，而不是回到默认 Athena',
     );
     expect(
-      workspaceChipLabel(p.basename(workspace.path)),
+      GetIt.instance<ChatViewModel>().currentSentinel.value?.name,
+      'Inherit Probe',
+    );
+    expect(
+      find.byTooltip('Inherit Probe'),
+      findsOneWidget,
+      reason: '角色名收在图标的 tooltip 里',
+    );
+    expect(
+      workspaceChipIcon(LucideIcons.folder),
       findsOneWidget,
       reason: '草稿的工作文件夹应继承来源对话，否则新对话的 shell 会跑回主目录',
+    );
+    expect(
+      find.byTooltip(workspace.path),
+      findsOneWidget,
+      reason: '设置态的图标要把完整路径带在 tooltip 里',
     );
     // 继承只是初值：模型/保留策略不跟着走（用户只要求角色与文件夹）
     expect(
@@ -373,13 +387,14 @@ void main() {
     );
     await pumpHome(tester);
     await selectSourceChat(tester, source);
-    expect(sentinelChipLabel('No Sentinel'), findsOneWidget);
+    expect(sentinelChipIcon(LucideIcons.userRoundX), findsOneWidget);
+    expect(find.byTooltip('No Sentinel'), findsOneWidget);
 
     await tapSidebarNewChat(tester);
 
-    expect(sentinelChipLabel('No Sentinel'), findsOneWidget);
+    expect(sentinelChipIcon(LucideIcons.userRoundX), findsOneWidget);
     expect(
-      workspaceChipLabel('No folder'),
+      workspaceChipIcon(LucideIcons.folderX),
       findsOneWidget,
       reason: '来源没设工作文件夹时草稿也是"不指定"',
     );
@@ -398,7 +413,8 @@ void main() {
     );
     await pumpHome(tester);
 
-    expect(sentinelChipLabel('Athena'), findsOneWidget);
-    expect(workspaceChipLabel('No folder'), findsOneWidget);
+    expect(sentinelChipIcon(LucideIcons.userRound), findsOneWidget);
+    expect(find.byTooltip('Athena'), findsOneWidget);
+    expect(workspaceChipIcon(LucideIcons.folderX), findsOneWidget);
   });
 }

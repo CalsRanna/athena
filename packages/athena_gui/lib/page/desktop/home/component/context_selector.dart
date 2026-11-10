@@ -1,8 +1,8 @@
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/tag.dart';
-import 'package:flutter/widgets.dart';
+import 'package:athena_gui/widget/button.dart';
+import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 
@@ -19,17 +19,29 @@ class DesktopContextSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.athenaColors;
     final enabled = currentRetention != 0;
-    return AthenaContextChip(
-      leading: Icon(enabled ? AthenaIcons.time : LucideIcons.clockFading),
-      label: enabled ? 'Context on' : 'Context off',
-      filled: false,
-      onTap: () => DesktopContextMenuManager.instance.show(
-        context,
-        _ContextMenu(
-          anchor: contextMenuAnchorOf(context),
-          enabled: enabled,
-          onSelected: onSelected,
+    // 与图片加号同一种 ghost 图标按钮：16 字形 + 6 内边距 = 28 方盒。
+    // 标签收进 tooltip：Context on / Context off。
+    return Tooltip(
+      message: enabled ? 'Context on' : 'Context off',
+      preferBelow: false,
+      child: Builder(
+        builder: (context) => AthenaGhostButton(
+          padding: const EdgeInsets.all(6),
+          onTap: () => DesktopContextMenuManager.instance.show(
+            context,
+            _ContextMenu(
+              anchor: contextMenuAnchorOf(context),
+              enabled: enabled,
+              onSelected: onSelected,
+            ),
+          ),
+          child: Icon(
+            enabled ? AthenaIcons.time : LucideIcons.clockFading,
+            color: colors.textPrimary,
+            size: AthenaIcon.regularSize,
+          ),
         ),
       ),
     );
@@ -51,7 +63,7 @@ class _ContextMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     const width = 280.0;
     return DesktopContextMenu(
-      // 面板左右各有 4 内边距，整体右边与触发 chip 对齐。
+      // 面板左右各有 4 内边距，整体右边与触发按钮对齐。
       offset: Offset(anchor.right - width - 8, anchor.top - 8),
       upward: true,
       width: width,

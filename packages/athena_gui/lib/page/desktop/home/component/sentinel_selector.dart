@@ -10,9 +10,9 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// composer 上下文条里的 Sentinel 选择菜单：与模型选择菜单同一套 UI。
 ///
-/// 在 Sentinel chip [anchor] 上方弹出，左边与它对齐；每行只有角色名，当前会话
-/// 在用的行尾打钩。没有「No Sentinel」项——清掉角色走 chip 上的清除按钮，
-/// 选择器里再放一个"不选"只是重复入口。
+/// 在 Sentinel 图标 [anchor] 上方弹出，左边与它对齐；每行只有角色名，当前会话
+/// 在用的行尾打钩。列表末尾的「No Sentinel (Direct session)」清掉角色，回到
+/// 直接和模型对话。
 class DesktopSentinelMenu extends StatelessWidget {
   final Rect anchor;
   final void Function(SentinelEntity)? onSelected;
@@ -51,6 +51,13 @@ class DesktopSentinelMenu extends StatelessWidget {
                     : null,
                 onTap: () => onSelected?.call(sentinel),
               ),
+            const DesktopContextMenuSeparator(),
+            DesktopContextMenuTile(
+              text: SentinelViewModel.directChatOptionLabel,
+              selected: direct,
+              onTap: () =>
+                  onSelected?.call(SentinelViewModel.directChatSentinel),
+            ),
           ],
         ),
       ],

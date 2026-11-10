@@ -79,7 +79,7 @@
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaTextButton` / `AthenaIconButton` / `AthenaGhostIconButton` / `AthenaGhostButton` | 桌面与移动 | 按钮角色。**主路径操作按钮一律从 Primary CTA 派生**；两种 ghost 见下（方形图标键 / 按内容整形的行内键） |
 | `AthenaInput` / `AthenaFormField` / `AthenaFormTileLabel` | 桌面与移动 | 输入框 / 带标签与校验的字段 / 表单标签 |
 | `AthenaSwitch` / `AthenaCheckbox` | 桌面与移动 | 开关 / 勾选框 |
-| `AthenaTag` / `AthenaTagButton` / `AthenaContextChip` | 桌面与移动 | 筛选 chip / 可点 tag 按钮 / composer 上的上下文 chip |
+| `AthenaTag` / `AthenaTagButton` | 桌面与移动 | 筛选 chip / 可点 tag 按钮 |
 | `AthenaHover` | 指针交互 | hover 状态机骨架，见下 |
 | `AthenaScaffold` / `AthenaAppBar` | 桌面与移动 | 页面外壳，按平台分叉 |
 | `AthenaDesktopDialog` / `AthenaDialogActions` | 桌面 | 对话框外壳与底部动作行，见下 |
@@ -184,6 +184,18 @@ hover 的视觉反馈按组件角色选择，不使用覆盖所有控件的文�
 水波（splash）**GUI 两端关闭**（`splashFactory: NoSplash.splashFactory`）。`Material` 只在结构必需处出现：桌面设置面板内的 `TextField` 需要 `Material` 祖先（设置路由是非透明路由，没有 `Scaffold`），以及浮层的透明包装。
 
 **`Colors.transparent` 不能用作动画的静止态**——它的 RGB 是黑，`AnimatedContainer` 从它插值到浅色时会先闪一下深色。用目标色的 `withValues(alpha: 0)`，RGB 全程一致、只有 alpha 在动。这条在本项目被独立踩过多次，是全站最容易复发的坑。
+
+### Tooltip
+
+全站提示框的材质只在 `buildAthenaThemeData` 的 `tooltipTheme` 定义一次：`surfaceRaised` 反色底（浅色近黑、深色反白，见 [DESIGN.md §2](DESIGN.md#2-色彩)）、`AthenaRadius.control` 圆角、左右 8 / 上下 5 内边距，文案用 `AthenaTextStyle.caption` 配 `textOnRaised`。调用点只给 `message` 与必要的定位参数——composer 底部一行的提示统一 `preferBelow: false`，长文本（完整路径等）用 `maxWidth: 280`——**不要**手写 `decoration`、`textStyle` 或 `padding`，否则会与全站样式漂移。
+
+提示文案承担被收起的标签：composer 的角色名、`Context on` / `Context off` 与工作文件夹的完整路径都放在 tooltip 里。
+
+### composer 上下文入口
+
+composer 下方那一行的 Sentinel、工作文件夹与上下文保留策略入口与图片加号同档：`AthenaGhostButton` + `AthenaIcon.regularSize` 字形 + 6 内边距 = 28 方盒，不带文字标签。状态靠字形区分：角色 `userRound` / 直接对话 `userRoundX`，文件夹 `folder` / 未设置 `folderX`，保留策略 `clock` / `clockFading`。
+
+清除不在图标上挂叉：Sentinel 菜单末尾的 `No Sentinel (Direct session)` 清掉角色；文件夹入口点击弹出 `Choose folder` / `Clear folder` 菜单（未设置时清除项禁用）。
 
 ### 滚动（桌面与移动）
 

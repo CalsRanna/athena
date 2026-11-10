@@ -4,9 +4,12 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
+import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -21,13 +24,13 @@ import '../support/athena_test_scope.dart';
 
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
-/// composer 下方那一行控件（审批模式、图片加号、模型名、推理强度、token 圆环）
-/// 的 hover 底必须长得一样：都是 28 高的圆角小方块，且都在文字行盒外面还留一圈
-/// 内边距。
+/// composer 下方那一行控件（审批模式、图片加号、Sentinel / 文件夹 / 上下文
+/// 入口、模型名、推理强度、token 圆环）的 hover 底必须长得一样：都是 28 高的
+/// 圆角小方块，且都在文字行盒外面还留一圈内边距。
 ///
 /// 这是**观感一致性**的回归护栏：图片加号与 token 圆环过去各自实现 hover，
 /// 一个紧贴 16px 字形、一个根本没有底色，和旁边包着文字的小胶囊放在一起
-/// 明显不像同一类按钮。三者现在都走 [AthenaGhostButton]。
+/// 明显不像同一类按钮。这些控件现在都走 [AthenaGhostButton]。
 void main() {
   late Directory tempRoot;
 
@@ -160,6 +163,27 @@ void main() {
     );
     expect(tester.getSize(imageBox).height, 28);
     expect(tester.getSize(tokenBox).height, 28);
+  });
+
+  testWidgets('上下文入口与图片加号同为 28 方盒、16 图标', (tester) async {
+    await pumpComposer(tester);
+
+    final owners = [
+      find.byType(DesktopImageSelector),
+      find.byType(DesktopSentinelIndicator),
+      find.byType(DesktopWorkspaceIndicator),
+      find.byType(DesktopContextSelector),
+    ];
+    for (final owner in owners) {
+      expect(owner, findsOneWidget);
+      final box = ghostOf(owner);
+      expect(box, findsOneWidget, reason: '入口自己就是 ghost 按钮');
+      expect(tester.getSize(box), const Size(28, 28));
+      final icon = tester.widget<Icon>(
+        find.descendant(of: owner, matching: find.byType(Icon)),
+      );
+      expect(icon.size, 16, reason: '图标统一取 regularSize');
+    }
   });
 
   testWidgets('发送/停止键的 hover 底与其他 ghost 控件同档', (tester) async {

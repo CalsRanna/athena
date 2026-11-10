@@ -61,12 +61,12 @@ void main() {
       final retention = ValueNotifier(-1);
       await pumpHost(tester, retention);
 
-      expect(find.text('Context on'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clock), findsOneWidget);
+      expect(find.byTooltip('Context on'), findsOneWidget);
       expect(find.byType(Icon), findsOneWidget, reason: '入口只有状态图标，无下拉箭头');
       final anchor = tester.getRect(find.byType(DesktopContextSelector));
 
-      await tester.tap(find.text('Context on'));
+      await tester.tap(find.byType(DesktopContextSelector));
       await tester.pumpAndSettle();
 
       expect(find.byType(DesktopContextMenu), findsOneWidget);
@@ -108,11 +108,11 @@ void main() {
 
       expect(retention.value, 0, reason: '关闭历史必须映射到零上下文策略');
       expect(find.byType(DesktopContextMenu), findsNothing);
-      expect(find.text('Context off'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clockFading), findsOneWidget);
       expect(find.byIcon(LucideIcons.clock), findsNothing);
+      expect(find.byTooltip('Context off'), findsOneWidget);
 
-      await tester.tap(find.text('Context off'));
+      await tester.tap(find.byType(DesktopContextSelector));
       await tester.pumpAndSettle();
       expect(
         find.descendant(
@@ -127,7 +127,6 @@ void main() {
 
       expect(retention.value, -1, reason: '重新开启历史必须恢复自动管理策略');
       expect(find.byType(DesktopContextMenu), findsNothing);
-      expect(find.text('Context on'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clock), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
@@ -139,16 +138,14 @@ void main() {
       final retention = ValueNotifier(0);
       await pumpHost(tester, retention, colorMode: AthenaColorMode.dark);
 
-      expect(find.text('Context off'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clockFading), findsOneWidget);
 
       // 对话切换会从外部更新策略，入口不能缓存之前的选择。
       retention.value = -1;
       await tester.pumpAndSettle();
-      expect(find.text('Context on'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clock), findsOneWidget);
 
-      await tester.tap(find.text('Context on'));
+      await tester.tap(find.byType(DesktopContextSelector));
       await tester.pumpAndSettle();
       await tester.tapAt(const Offset(16, 16));
       await tester.pumpAndSettle();

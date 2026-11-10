@@ -17,7 +17,7 @@ import 'package:flutter/widgets.dart';
 /// | 值 | token | 组件 |
 /// |---|---|---|
 /// | 4 | `xs` / `inline` | 徽标、行内代码、勾选框 |
-/// | 8 | `row` / `control` | 列表行、按钮、输入框 |
+/// | 8 | `row` / `control` | 列表行、按钮、输入框、提示框 |
 /// | 12 | `container` / `menu` / `composer` | 卡片、代码块、菜单、输入区 |
 /// | 16 | `panel` | 对话框、设置面板、底部面板 |
 /// | 999 | `pill` | chip、发送按钮、头像 |
