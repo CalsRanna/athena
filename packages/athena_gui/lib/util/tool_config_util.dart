@@ -11,8 +11,6 @@ const kToolConfigOrder = [
   'ask_user_question',
   'web_fetch',
   'web_search',
-  'sentinel_list',
-  'sentinel_get',
   'skill',
   'experience_recall',
   'experience_learn',
@@ -40,8 +38,6 @@ const kToolConfigCopy = <String, (String, String)>{
   'skill': ('Skills', 'Load workspace skills on demand.'),
   'experience_learn': ('Record experience', 'Save lessons for future runs.'),
   'experience_recall': ('Recall experience', 'Search lessons saved earlier.'),
-  'sentinel_list': ('List Sentinels', 'Read the Sentinel directory.'),
-  'sentinel_get': ('Read a Sentinel', 'Read one Sentinel definition.'),
   'tool_output_read': (
     'Read tool output',
     'Page back through truncated tool output.',

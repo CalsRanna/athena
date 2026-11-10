@@ -27,7 +27,6 @@ void main() {
       'tool_output_read': {'output_id': 'test'},
       'background_task': {'action': 'list'},
       'experience_recall': {'query': 'test'},
-      'sentinel_list': {},
     }.entries) {
       expect(service.check(1, call.key, call.value), PermissionVerdict.prompt);
       expect(

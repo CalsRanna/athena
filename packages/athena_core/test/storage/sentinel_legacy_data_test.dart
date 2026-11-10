@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
@@ -67,14 +65,5 @@ isPreset: false
             as Map;
     // 文件用 camelCase(与 provider 一致),toJson 用下划线;这里比对文件侧
     expect(saved, {...registeredFileFields, 'description': 'Updated'});
-
-    final listing = await SentinelListTool(repository: repository).execute({});
-    final details = await SentinelGetTool(
-      repository: repository,
-    ).execute({'sentinel_name': 'Reviewer'});
-    expect(listing, contains('Updated'));
-    expect(details, contains('Find correctness issues.'));
-    expect('$listing\n$details', isNot(contains('Avatar')));
-    expect('$listing\n$details', isNot(contains('legacy-avatar')));
   });
 }

@@ -8,8 +8,6 @@ import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
@@ -17,7 +15,6 @@ import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/agent/tool/web_search_tool.dart';
 import 'package:athena_core/storage/experience_repository.dart';
-import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
@@ -49,12 +46,12 @@ const kUndeactivatableToolNames = {
 ///
 /// 前端只提供自己特有的差异项（工作目录），清单本身在这里。
 ///
-/// 技能创建复用文件与 shell 工具，按需加载时重新扫描；角色不提供改写工具。
+/// 技能创建复用文件与 shell 工具，按需加载时重新扫描；角色定义不提供读写
+/// 工具，始终由用户在设置中维护。
 /// 技能目录与审批边界见 CONVENTIONS.md §12.5。
 ToolRegistry buildToolRegistry({
   required SkillRegistry skillRegistry,
   required ExperienceRepository experienceRepository,
-  required SentinelRepository sentinelRepository,
   required UserSettingsStore settings,
   ChatRepository? chatRepository,
   MessageRepository? messageRepository,
@@ -100,8 +97,6 @@ ToolRegistry buildToolRegistry({
       chatRepository: chatRepository,
       messageRepository: messageRepository,
     ),
-    SentinelListTool(repository: sentinelRepository),
-    SentinelGetTool(repository: sentinelRepository),
   ]);
   return registry;
 }

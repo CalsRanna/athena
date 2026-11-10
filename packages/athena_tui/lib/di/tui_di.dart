@@ -184,7 +184,6 @@ class TuiDi {
       experienceRepository: experienceRepo,
       chatRepository: chatRepo,
       messageRepository: messageRepo,
-      sentinelRepository: sentinelRepo,
       settings: userSettings,
       outputStore: outputStore,
       backgroundTasks: BackgroundTaskService(

@@ -93,7 +93,6 @@ void main() {
     final toolRegistry = buildToolRegistry(
       skillRegistry: SkillRegistry(),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
-      sentinelRepository: storage.sentinelRepository,
       settings: UserSettingsStore(
         file: File(p.join(tmp.path, 'setting.yaml')),
         locks: LockRegistry(tmp),

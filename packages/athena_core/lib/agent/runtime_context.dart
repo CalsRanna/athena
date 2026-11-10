@@ -32,7 +32,7 @@ String runtimeContextPrompt(
     '你正在 ${_platformName()} 上的 $client 中运行。\n'
     '用户要求创建或编辑技能时，可使用现有文件或 Shell 工具读写技能文件；'
     '技能根目录以 skill 工具返回的路径为准，写入后用 skill 加载验证即可生效。'
-    '其他应用数据（角色、会话、经验、配置）由专用工具管理，'
+    '角色定义由用户在设置中维护，其他应用数据（会话、经验、配置）由专用工具管理，'
     '绝不要直接定位、读取或修改这些应用数据文件。',
   );
   if (workspace != null && workspace.isNotEmpty) {

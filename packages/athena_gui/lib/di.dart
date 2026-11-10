@@ -206,7 +206,6 @@ abstract final class DI {
         experienceRepository: getIt<ExperienceRepository>(),
         chatRepository: getIt<ChatRepository>(),
         messageRepository: getIt<MessageRepository>(),
-        sentinelRepository: getIt<SentinelRepository>(),
         settings: storage.userSettings,
         outputStore: getIt<ToolOutputStore>(),
         backgroundTasks: getIt<BackgroundTaskService>(),

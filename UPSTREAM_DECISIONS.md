@@ -90,7 +90,7 @@
 | 经验容量与显式遗忘 | `agent/experience/experience_capacity.dart:25` 定 16k 字符预算；写入端在 `agent/tool/experience_learn_tool.dart:165-172` 拒绝新增并要求先归档；`experience_capacity_test.dart`、`experience_digest_test.dart` 覆盖 |
 | 经验检索按字段加权 | `storage/experience_repository.dart:199-200`：lesson 3 分、tags 2 分、context 1 分；`experience_learn_tool_test.dart:98` 覆盖三类命中 |
 | 并行工具调用上限 8 | `agent/agent_service.dart:72` |
-| 工具面收敛 | `agent/tool/tool_set.dart:60-83`：桌面 14 个、移动 9 个，数量由 `tool_set_test.dart:74`（`hasLength(14)`）与 `:51-66` 的集合断言锁定。没有「工具越多越好」的存量，不要照抄上百个工具的实现 |
+| 工具面收敛 | `agent/tool/tool_set.dart:52-101`：桌面 12 个、移动 7 个，数量由 `tool_set_test.dart:71`（`hasLength(12)`）与 `:50-64` 的集合断言锁定。没有「工具越多越好」的存量，不要照抄上百个工具的实现 |
 
 ## §3 已否决
 
@@ -103,7 +103,7 @@
 | 照抄「Err on the side of blocking」这类强偏置 | Athena 审查器是单趟、没有后继阶段兜底，提示词正文反而要求「不要仅因写入文件、有副作用、缺少逐项授权或存在理论风险就选择 ask」（`agent/permission/ai_permission_reviewer.dart:144`）；单趟加偏置直接增加打扰 | 采纳两阶段复核，且有第二趟按意图放行 |
 | 给提问选项加 `preview` | 宿主两端都没有预览渲染；`agent/elicit/elicit_prompt.dart:7-8` 已写明「没有渲染方支持时生成它只会白烧 token」。外部实现的预览还限定单选 | GUI 与 TUI 的预览渲染进入排期 |
 | 每轮注入固定 token 预算数值、每会话数百次监视调用 | Athena 是交互式产品，用户在场，逐调用审查应更省；具体数值口径没有复用价值 | 出现长时间无人值守运行的真实场景，且有对应遥测 |
-| 堆工具数量与超大请求体 | 桌面 14 个、移动 9 个（`agent/tool/tool_set.dart:60-83`），没有靠缓存摊薄大请求的包袱 | 不适用：这是产品定位差异，不是待办 |
+| 堆工具数量与超大请求体 | 桌面 12 个、移动 7 个（`agent/tool/tool_set.dart:52-101`），没有靠缓存摊薄大请求的包袱 | 不适用：这是产品定位差异，不是待办 |
 
 ## §4 待核实
 

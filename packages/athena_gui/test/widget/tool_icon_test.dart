@@ -5,8 +5,6 @@ import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/storage/sentinel_store.dart';
-import 'package:athena_core/storage/yaml_sentinel_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,12 +18,6 @@ void main() {
       final registry = buildToolRegistry(
         skillRegistry: SkillRegistry(),
         experienceRepository: ExperienceRepository(homeDir: temp.path),
-        sentinelRepository: YamlSentinelRepository(
-          store: SentinelStore(
-            directory: Directory.fromUri(temp.uri.resolve('sentinels')),
-            locks: LockRegistry(temp),
-          ),
-        ),
         settings: UserSettingsStore(
           file: File.fromUri(temp.uri.resolve('setting.yaml')),
           locks: LockRegistry(temp),

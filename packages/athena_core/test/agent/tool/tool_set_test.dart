@@ -35,7 +35,6 @@ void main() {
   ToolRegistry registryFor({required bool mobile}) => buildToolRegistry(
     skillRegistry: SkillRegistry(),
     experienceRepository: ExperienceRepository(homeDir: temp.path),
-    sentinelRepository: storage.sentinelRepository,
     settings: storage.userSettings,
     outputStore: ToolOutputStore(directory: storage.toolOutputsDir),
     backgroundTasks: tasks,
@@ -58,8 +57,6 @@ void main() {
       'skill',
       'experience_learn',
       'experience_recall',
-      'sentinel_list',
-      'sentinel_get',
     });
     expect(names.intersection(kFileToolNames), isEmpty);
     expect(names.intersection(kShellToolNames), isEmpty);
@@ -71,7 +68,7 @@ void main() {
     expect(names.intersection(kFileToolNames), hasLength(3));
     expect(names.intersection(kShellToolNames), hasLength(1));
     expect(names, contains('background_task'));
-    expect(names, hasLength(14));
+    expect(names, hasLength(12));
   });
 
   test(
@@ -90,7 +87,7 @@ void main() {
       }
       expect(names, contains('file_write'));
       expect(names, contains('skill'));
-      expect(names, contains('sentinel_get'));
+      expect(names.where((name) => name.startsWith('sentinel_')), isEmpty);
     },
   );
 }

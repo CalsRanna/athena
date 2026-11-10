@@ -61,7 +61,6 @@ class StepCard extends StatefulWidget {
       'web_fetch' => LucideIcons.globe,
       'web_search' => LucideIcons.search,
       'skill' => LucideIcons.bookOpen,
-      'sentinel_list' || 'sentinel_get' => LucideIcons.userRound,
       'experience_learn' || 'experience_recall' => LucideIcons.brain,
       _ => LucideIcons.wrench,
     };
