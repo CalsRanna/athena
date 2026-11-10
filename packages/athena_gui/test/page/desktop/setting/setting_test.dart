@@ -65,6 +65,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 等 [condition] 成立再继续：设置项先落盘再更新 signal，CI 慢盘上
+  /// 固定次数的 [settle] 可能赶不上。
+  Future<void> settleUntil(
+    WidgetTester tester,
+    bool Function() condition,
+  ) async {
+    for (var i = 0; i < 200 && !condition(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      // 带时长 pump：真实 I/O 靠 runAsync 推进，fake 计时器靠这里推进。
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.pumpAndSettle();
+  }
+
   void expectTextColor(
     WidgetTester tester,
     String text,
@@ -86,6 +102,8 @@ void main() {
     tester.view.physicalSize = const Size(1200, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // router 是全局单例：断言失败会跳过测试末尾的清理，把设置页漏给下一个测试。
+    addTearDown(() => router.maybePop());
     await tester.pumpWidget(const AthenaApp());
     await settle(tester);
     unawaited(
@@ -105,7 +123,10 @@ void main() {
       await tester.tap(
         find.text(mode == AthenaThemeMode.dark ? 'Dark' : 'Light'),
       );
-      await settle(tester);
+      await settleUntil(
+        tester,
+        () => GetIt.instance<SettingViewModel>().themeMode.value == mode,
+      );
       expect(GetIt.instance<SettingViewModel>().themeMode.value, mode);
       expect(
         find.descendant(of: content, matching: find.text('Appearance')),
