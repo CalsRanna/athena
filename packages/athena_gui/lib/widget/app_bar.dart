@@ -26,8 +26,8 @@ class AthenaAppBar extends StatelessWidget {
   }
 }
 
-class MobilePopButton extends StatelessWidget {
-  const MobilePopButton({super.key});
+class _MobilePopButton extends StatelessWidget {
+  const _MobilePopButton();
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +130,7 @@ class _MobileAppBar extends StatelessWidget {
         height: AthenaIconButtonSize.touchTarget,
         // 尾部可以有多个按钮，不能固定分配四分之一宽度。
         child: NavigationToolbar(
-          leading: const MobilePopButton(),
+          leading: const _MobilePopButton(),
           middle: wrappedTitle,
           trailing: action,
           centerMiddle: true,

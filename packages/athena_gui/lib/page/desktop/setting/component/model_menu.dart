@@ -14,7 +14,7 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 /// 与 composer 的模型菜单是同一套视觉（`DesktopContextMenu` 面板 + 统一的
 /// 菜单条目 + 分组小标题），只是锚定方向不同：设置控件在内容区里，菜单向下
 /// 展开更自然，贴近窗底时再翻到上方。
-class DesktopSettingModelMenu extends StatelessWidget {
+class _DesktopSettingModelMenu extends StatelessWidget {
   final Rect anchor;
   final String? selectedId;
   final void Function(ModelEntity)? onSelected;
@@ -22,8 +22,7 @@ class DesktopSettingModelMenu extends StatelessWidget {
   /// 允许清空（`No model` 一项）。
   final VoidCallback? onCleared;
 
-  const DesktopSettingModelMenu({
-    super.key,
+  const _DesktopSettingModelMenu({
     required this.anchor,
     this.selectedId,
     this.onSelected,
@@ -39,7 +38,7 @@ class DesktopSettingModelMenu extends StatelessWidget {
   }) {
     DesktopContextMenuManager.instance.show(
       context,
-      DesktopSettingModelMenu(
+      _DesktopSettingModelMenu(
         anchor: anchor,
         selectedId: selectedId,
         onSelected: onSelected,
@@ -115,7 +114,7 @@ Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
   );
 }
 
-/// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [DesktopSettingModelMenu]。
+/// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [_DesktopSettingModelMenu]。
 class DesktopSettingModelSelector extends StatelessWidget {
   final String? modelId;
   final void Function(String)? onChanged;
@@ -135,7 +134,7 @@ class DesktopSettingModelSelector extends StatelessWidget {
     return AthenaSettingsSelect(
       label: label ?? 'No model',
       placeholder: label == null,
-      onTap: (anchor) => DesktopSettingModelMenu.show(
+      onTap: (anchor) => _DesktopSettingModelMenu.show(
         context,
         anchor,
         selectedId: modelId,

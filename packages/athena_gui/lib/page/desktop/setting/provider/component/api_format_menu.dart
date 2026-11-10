@@ -6,7 +6,7 @@ import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/widgets.dart';
 
 /// 设置行里的 API 格式选择：显示当前格式，自动同步时在前面加 `Auto · `，
-/// 点开 [DesktopSettingApiFormatMenu]。
+/// 点开 [_DesktopSettingApiFormatMenu]。
 class DesktopSettingApiFormatSelector extends StatelessWidget {
   final ProviderEntity provider;
 
@@ -24,7 +24,7 @@ class DesktopSettingApiFormatSelector extends StatelessWidget {
     final name = provider.apiFormat.label;
     return AthenaSettingsSelect(
       label: provider.apiFormatAuto ? 'Auto · $name' : name,
-      onTap: (anchor) => DesktopSettingApiFormatMenu.show(
+      onTap: (anchor) => _DesktopSettingApiFormatMenu.show(
         context,
         anchor,
         provider: provider,
@@ -38,13 +38,12 @@ class DesktopSettingApiFormatSelector extends StatelessWidget {
 ///
 /// 与设置里的模型菜单同一套视觉（`DesktopContextMenu` 面板 + 统一的菜单条目），
 /// 首项是「跟随 models.dev」，其余是三种协议。
-class DesktopSettingApiFormatMenu extends StatelessWidget {
+class _DesktopSettingApiFormatMenu extends StatelessWidget {
   final Rect anchor;
   final ProviderEntity provider;
   final void Function({required bool auto, ApiFormat? format}) onSelected;
 
-  const DesktopSettingApiFormatMenu({
-    super.key,
+  const _DesktopSettingApiFormatMenu({
     required this.anchor,
     required this.provider,
     required this.onSelected,
@@ -58,7 +57,7 @@ class DesktopSettingApiFormatMenu extends StatelessWidget {
   }) {
     DesktopContextMenuManager.instance.show(
       context,
-      DesktopSettingApiFormatMenu(
+      _DesktopSettingApiFormatMenu(
         anchor: anchor,
         provider: provider,
         onSelected: onSelected,

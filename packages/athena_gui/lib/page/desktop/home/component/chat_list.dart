@@ -1,13 +1,12 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
-import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/page/desktop/component/menu.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -147,16 +146,15 @@ class DesktopChatListView extends StatelessWidget {
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     if (chatViewModel.selection.isMultiSelect.value) {
-      final contextMenu = DesktopChatContextMenu(
+      final contextMenu = _ChatContextMenu(
         chat: chat,
         offset: position,
         multiSelect: true,
-        selectedCount: chatViewModel.selection.selectedChatIds.value.length,
         onDestroyed: () => _handleBatchDelete(context, chatViewModel, chats),
       );
       DesktopContextMenuManager.instance.show(context, contextMenu);
     } else {
-      final contextMenu = DesktopChatContextMenu(
+      final contextMenu = _ChatContextMenu(
         chat: chat,
         offset: position,
         onAutoRenamed: () => onAutoRenamed?.call(chat),
@@ -247,18 +245,46 @@ class _ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DesktopMenuTile(
-      active: active || selected,
-      label: chat.title,
-      // 行尾状态点：运行中优先，其次未读；hover 时让位给 `⋮`。
-      trailingBuilder: (hover) {
-        if (hover && onMore != null) return _MoreButton(onTap: onMore!);
-        if (streaming) return const StatusDot();
-        if (unread) return const StatusDot(unread: true);
-        return const SizedBox();
-      },
+    final colors = context.athenaColors;
+    final isActive = active || selected;
+    final contentColor = isActive ? colors.accent : colors.textRowLabel;
+    return AthenaHover(
       onTap: onTap,
       onSecondaryTap: onSecondaryTap,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        decoration: BoxDecoration(
+          color: isActive
+              ? colors.surfaceSelected
+              : hover
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+        ),
+        duration: AthenaMotion.hover,
+        // 固定高保证 hover 出现的 `⋮` 不改变行高。
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 11),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                chat.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AthenaTextStyle.body.copyWith(color: contentColor),
+              ),
+            ),
+            // 行尾状态点：运行中优先，其次未读；hover 时让位给 `⋮`。
+            if (hover && onMore != null)
+              _MoreButton(onTap: onMore!)
+            else if (streaming)
+              const StatusDot()
+            else if (unread)
+              const StatusDot(unread: true),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -293,6 +319,54 @@ class _MoreButton extends StatelessWidget {
   }
 }
 
+/// 会话行的右键菜单：右键与行尾的 `⋮` 按钮共用。
+class _ChatContextMenu extends StatelessWidget {
+  final ChatEntity chat;
+  final bool multiSelect;
+  final Offset offset;
+  final void Function()? onAutoRenamed;
+  final void Function()? onDestroyed;
+  final void Function()? onManualRenamed;
+  final void Function()? onPinned;
+
+  const _ChatContextMenu({
+    required this.chat,
+    this.multiSelect = false,
+    required this.offset,
+    this.onAutoRenamed,
+    this.onDestroyed,
+    this.onManualRenamed,
+    this.onPinned,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pinText = chat.pinned ? 'Unpin' : 'Pin';
+    final renameSubmenu = DesktopContextMenuTileWithSubmenu(
+      text: 'Rename',
+      enabled: !multiSelect,
+      submenuItems: [
+        DesktopContextMenuSubItem(text: 'Auto Rename', onTap: onAutoRenamed),
+        DesktopContextMenuSubItem(
+          text: 'Manual Rename',
+          onTap: onManualRenamed,
+        ),
+      ],
+    );
+    final children = [
+      DesktopContextMenuTile(
+        text: pinText,
+        onTap: onPinned,
+        enabled: !multiSelect,
+      ),
+      renameSubmenu,
+      const DesktopContextMenuSeparator(),
+      DesktopContextMenuTile(text: 'Delete', danger: true, onTap: onDestroyed),
+    ];
+    return DesktopContextMenu(offset: offset, width: 140, children: children);
+  }
+}
+
 /// 侧栏列表项：分组标题或一条会话。[index] 是会话在原始列表中的绝对下标。
 sealed class _SidebarItem {
   const _SidebarItem();
@@ -319,16 +393,48 @@ class _SidebarNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.athenaColors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-      child: DesktopMenuTile(
-        active: false,
-        label: 'New session',
-        leading: const Icon(LucideIcons.pencilLine),
-        // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
-        trailingBuilder: (hover) =>
-            hover ? const _ShortcutHint() : const SizedBox(),
+      child: AthenaHover(
         onTap: onCreateChat,
+        cursor: SystemMouseCursors.click,
+        builder: (context, hover) => AnimatedContainer(
+          decoration: BoxDecoration(
+            color: hover
+                ? colors.surfaceHover
+                : colors.surfaceHover.withValues(alpha: 0),
+            borderRadius: BorderRadius.circular(AthenaRadius.row),
+          ),
+          duration: AthenaMotion.hover,
+          // 固定高保证 hover 出现的快捷键提示不改变行高。
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 11),
+          child: Row(
+            children: [
+              IconTheme(
+                data: IconThemeData(
+                  color: colors.textRowLabel,
+                  size: AthenaIcon.regularSize,
+                ),
+                child: const Icon(LucideIcons.pencilLine),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'New session',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AthenaTextStyle.body.copyWith(
+                    color: colors.textRowLabel,
+                  ),
+                ),
+              ),
+              // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
+              if (hover) const _ShortcutHint(),
+            ],
+          ),
+        ),
       ),
     );
   }

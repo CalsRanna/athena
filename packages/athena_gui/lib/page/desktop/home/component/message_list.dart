@@ -5,7 +5,6 @@ import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
@@ -250,12 +249,22 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   }
 
   void openContextMenu(TapUpDetails details, MessageEntity message) {
-    final contextMenu = DesktopMessageContextMenu(
-      offset: details.globalPosition,
-      onCopied: () => copyMessage(message),
-      onDestroyed: () => destroyMessage(message),
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopContextMenu(
+        offset: details.globalPosition,
+        children: [
+          DesktopContextMenuTile(
+            text: 'Copy',
+            onTap: () => copyMessage(message),
+          ),
+          DesktopContextMenuTile(
+            text: 'Delete',
+            onTap: () => destroyMessage(message),
+          ),
+        ],
+      ),
     );
-    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
