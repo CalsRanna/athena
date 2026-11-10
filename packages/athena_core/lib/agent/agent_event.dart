@@ -137,6 +137,9 @@ class AgentToolResultEvent extends AgentEvent {
   final String? modelResult;
   final String? outputId;
   final ToolResultStatus status;
+
+  /// 需要模型看到的图片；协调层据此写入持久化的 tool_results。
+  final List<ToolResultImage> images;
   final Map<String, dynamic>? approvalReview;
   const AgentToolResultEvent({
     required this.id,
@@ -145,6 +148,7 @@ class AgentToolResultEvent extends AgentEvent {
     this.modelResult,
     this.outputId,
     this.status = ToolResultStatus.success,
+    this.images = const [],
     this.approvalReview,
   });
 }

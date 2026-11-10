@@ -1073,6 +1073,8 @@ class AgentRunCoordinator {
             'modelResult': event.modelResult ?? event.result,
             if (event.outputId != null) 'outputId': event.outputId,
             'status': event.status.name,
+            if (event.images.isNotEmpty)
+              'images': [for (final image in event.images) image.toJson()],
             if (event.approvalReview != null)
               'approvalReview': event.approvalReview,
           });

@@ -34,7 +34,7 @@ athena
 
 **内置工具**（桌面端 14 个，移动端 9 个）
 
-`file_read` / `file_write` / `file_update` 精确读改文件（带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` 按需加载技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` 查看角色；`tool_output_read` 分页读回超长输出。
+`file_read` / `file_write` / `file_update` 精确读改文件（`file_read` 对视觉模型可直接返回图片；带符号链接复核与外部修改检测）；`bash` / `powershell` 执行 shell（超时可控、可转后台、退出时按进程树终止）；`background_task` 查看与取回后台任务输出；`web_fetch` / `web_search` 联网；`ask_user_question` 向用户提结构化问题；`skill` 按需加载技能；`experience_learn` / `experience_recall` 沉淀与检索经验；`sentinel_list` / `sentinel_get` 查看角色；`tool_output_read` 分页读回超长输出。
 
 `bash` 与 `powershell` 按操作系统互斥注册。移动端不注册任意文件与进程工具，但保留联网、提问与经验工具。
 

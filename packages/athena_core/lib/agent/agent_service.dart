@@ -288,12 +288,16 @@ class AgentService {
     /// 这条工具调用产生的经验应记为哪种来源（反思通道传 `reflection`）。
     /// 只有引擎知道本次调用来自哪条通路，模型无法自行填写。
     String? experienceSource,
+
+    /// 当前模型能否看图。不能时工具即使读到了图片也不会交给模型。
+    bool supportsVision = true,
   }) async {
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
       String raw,
-      ToolResultStatus status,
-    ) async {
+      ToolResultStatus status, {
+      List<ToolResultImage> images = const [],
+    }) async {
       final output = await _toolRegistry.outputStore.prepare(raw);
       return ToolCallResultInternal(
         event: AgentToolResultEvent(
@@ -303,11 +307,13 @@ class AgentService {
           modelResult: output.modelResult,
           outputId: output.outputId,
           status: status,
+          images: images,
           approvalReview: approvalReview?.toJson(),
         ),
         processedResult: output.modelResult,
         rawResult: raw,
         status: status,
+        images: images,
       );
     }
 
@@ -395,6 +401,7 @@ class AgentService {
 
     late String rawResult;
     var status = ToolResultStatus.success;
+    var images = const <ToolResultImage>[];
     try {
       ToolExecutionResult? execution;
       if (tool == null) {
@@ -417,6 +424,7 @@ class AgentService {
       if (execution != null) {
         rawResult = execution.text;
         status = execution.status;
+        images = execution.images;
       }
     } on CancelledException {
       rethrow;
@@ -429,7 +437,19 @@ class AgentService {
     }
     cancelToken?.throwIfCancelled();
 
-    return result(rawResult, status);
+    if (images.isNotEmpty && !supportsVision) {
+      // 图片在请求里是 ContentPart，模型没有视觉能力时发出去只会得到
+      // 400 或一段它读不懂的占位。不如明确告诉模型「图看不到」。
+      rawResult =
+          'Error: The tool returned ${images.length} image(s), but the '
+          'current model does not support image input, so they were not '
+          'attached. Ask the user to describe the image or switch to a '
+          'vision-capable model.';
+      status = ToolResultStatus.executionError;
+      images = const [];
+    }
+
+    return result(rawResult, status, images: images);
   }
 
   void _logUsage(Usage? usage) {
@@ -1286,6 +1306,7 @@ class _AgentLoop {
     String content,
   ) async* {
     final toolCallDataList = <Map<String, dynamic>>[];
+    final resultImages = <ToolResultImage>[];
 
     // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
     // 审批的调用）进入串行组
@@ -1312,6 +1333,7 @@ class _AgentLoop {
       final data = await _executeOneTool(tc: tc);
       yield data.event;
       _messages.add(data.toolMessage);
+      resultImages.addAll(data.images);
       toolCallDataList.add(data.record);
       _recordFailure(data.event);
     }
@@ -1350,10 +1372,16 @@ class _AgentLoop {
         futures.remove(first!.f);
         yield first.r.event;
         _messages.add(first.r.toolMessage);
+        resultImages.addAll(first.r.images);
         toolCallDataList.add(first.r.record);
         _recordFailure(first.r.event);
       }
     }
+
+    // 图片只能在整批工具消息之后追加：Chat Completions 要求所有 tool
+    // 消息紧跟带 tool_calls 的 assistant，中间插入其它角色会被判非法。
+    final imageMessage = toolResultImagesMessage(resultImages);
+    if (imageMessage != null) _messages.add(imageMessage);
 
     yield AgentEvent.iterationComplete(
       toolCalls: toolCallDataList,
@@ -1484,6 +1512,7 @@ class _AgentLoop {
       messageId: _currentMessageId?.call(),
       allowBackgroundTasks: _allowBackgroundTasks,
       experienceSource: experienceSource,
+      supportsVision: _model.vision,
     );
     _reflectionToolResults.add(
       ReflectionPrompt.toolResult(
@@ -1502,6 +1531,7 @@ class _AgentLoop {
         toolCallId: tc.id,
         content: result.processedResult,
       ),
+      images: result.images,
       record: {
         'id': tc.id,
         'name': tc.function.name,
@@ -1542,7 +1572,17 @@ class _AgentLoop {
 
   String _latestUserTask() {
     for (final message in _messages.reversed) {
-      if (message is UserMessage) return '${message.content}';
+      if (message is! UserMessage) continue;
+      // 工具结果图片是引擎合成的请求片段，不是用户输入；把它当成任务
+      // 描述会让反思拿到一句「Images returned by...」。
+      final content = message.content;
+      if (content is UserPartsContent && content.parts.isNotEmpty) {
+        final first = content.parts.first;
+        if (first is TextContentPart && first.text == toolResultImagesMarker) {
+          continue;
+        }
+      }
+      return '${message.content}';
     }
     return '';
   }
@@ -1559,11 +1599,16 @@ class ToolCallResultInternal {
   final String processedResult;
   final String rawResult;
   final ToolResultStatus status;
+
+  /// 需要模型看到的图片；非视觉模型已在执行路径里剔除。
+  final List<ToolResultImage> images;
+
   const ToolCallResultInternal({
     required this.event,
     required this.processedResult,
     required this.rawResult,
     required this.status,
+    this.images = const [],
   });
 }
 
@@ -1620,10 +1665,12 @@ class _StreamingToolCall {
 class _ToolExecutionData {
   final AgentToolResultEvent event;
   final ChatMessage toolMessage;
+  final List<ToolResultImage> images;
   final Map<String, dynamic> record;
   const _ToolExecutionData({
     required this.event,
     required this.toolMessage,
+    this.images = const [],
     required this.record,
   });
 }

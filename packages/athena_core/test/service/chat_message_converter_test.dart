@@ -283,4 +283,67 @@ void main() {
       );
     });
   });
+
+  group('工具结果图片', () {
+    final pngData = base64Encode([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A]);
+
+    test('图片放在整批工具消息之后，不塞进 tool 消息', () async {
+      final messages = await _build([
+        _message(id: '1', role: 'user', content: '看下截图'),
+        _message(
+          id: '2',
+          role: 'assistant',
+          content: '我看看',
+          toolCalls: _call('c1', 'file_read'),
+          toolResults: [
+            {
+              'id': 'c1',
+              'name': 'file_read',
+              'result': 'Read image file /tmp/a.png',
+              'modelResult': 'Read image file /tmp/a.png',
+              'images': [
+                {'mediaType': 'image/png', 'data': pngData},
+              ],
+            },
+          ],
+        ),
+      ]);
+
+      expect(messages.whereType<ToolMessage>(), hasLength(1));
+      final last = messages.last as UserMessage;
+      final parts = (last.content as UserPartsContent).parts;
+      expect(parts.first, isA<TextContentPart>());
+      expect(
+        (parts.last as ImageContentPart).url,
+        startsWith('data:image/png;base64,'),
+      );
+    });
+
+    test('损坏的图片记录被忽略，不阻断历史', () async {
+      final messages = await _build([
+        _message(id: '1', role: 'user', content: '看下截图'),
+        _message(
+          id: '2',
+          role: 'assistant',
+          content: '我看看',
+          toolCalls: _call('c1', 'file_read'),
+          toolResults: [
+            {
+              'id': 'c1',
+              'name': 'file_read',
+              'result': 'Read image file /tmp/a.png',
+              'modelResult': 'Read image file /tmp/a.png',
+              'images': [
+                {'mediaType': '', 'data': ''},
+                'not a map',
+              ],
+            },
+          ],
+        ),
+      ]);
+
+      expect(messages.whereType<ToolMessage>(), hasLength(1));
+      expect(messages.last, isA<ToolMessage>());
+    });
+  });
 }

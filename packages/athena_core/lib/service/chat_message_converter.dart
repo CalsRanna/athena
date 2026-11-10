@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena_core/agent/tool/tool_output_store.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/conversation_summary.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -178,6 +179,7 @@ class ChatMessageConverter {
                   reasoningContent: reasoning,
                 ),
         );
+        final resultImages = <ToolResultImage>[];
         for (final tr in toolResults) {
           final m = tr as Map<String, dynamic>;
           final raw = m['result'] as String;
@@ -192,6 +194,13 @@ class ChatMessageConverter {
             // Legacy records use the same policy and content IDs as live runs.
             modelResult = (await _outputs.prepare(raw)).modelResult;
           }
+          final rawImages = m['images'];
+          if (rawImages is List) {
+            for (final image in rawImages) {
+              final parsed = ToolResultImage.tryFromJson(image);
+              if (parsed != null) resultImages.add(parsed);
+            }
+          }
           messages.add(
             ChatMessage.tool(
               toolCallId: m['id'] as String,
@@ -199,6 +208,9 @@ class ChatMessageConverter {
             ),
           );
         }
+        // 与实时运行同一顺序：图片统一放在整批工具消息之后。
+        final imageMessage = toolResultImagesMessage(resultImages);
+        if (imageMessage != null) messages.add(imageMessage);
         return messages;
       default:
         if (msg.imageUrls.isNotEmpty) {

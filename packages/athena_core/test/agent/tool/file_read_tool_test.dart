@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/tool/file_read_tool.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 import 'package:test/test.dart';
 
@@ -71,6 +73,56 @@ void main() {
 
     test('文件不存在时报错而不是被当成凭据', () async {
       expect(await read('$root/nope.txt'), contains('File not found'));
+    });
+  });
+
+  group('图片', () {
+    final pngBytes = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8'
+      'z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    );
+
+    test('PNG 以图片载荷返回，而不是当文本逐行读', () async {
+      final file = File('$root/shot.png')..writeAsBytesSync(pngBytes);
+
+      final result = await tool.executeResult({'path': file.path});
+
+      expect(result.status, ToolResultStatus.success);
+      expect(result.images, hasLength(1));
+      expect(result.images.single.mediaType, 'image/png');
+      expect(base64Decode(result.images.single.data), pngBytes);
+      expect(result.text, contains('image/png'));
+    });
+
+    test('按文件头识别，不依赖扩展名', () async {
+      final jpeg = File('$root/photo.dat')
+        ..writeAsBytesSync([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46]);
+
+      final result = await tool.executeResult({'path': jpeg.path});
+
+      expect(result.images.single.mediaType, 'image/jpeg');
+    });
+
+    test('超过大小上限时明确拒绝，不把半张图发给模型', () async {
+      // 魔数正确、体积超限：检测在解码前完成，内容不必是合法 PNG。
+      final file = File('$root/huge.png')
+        ..writeAsBytesSync([
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+          0x0D,
+          0x0A,
+          0x1A,
+          0x0A,
+          ...List<int>.filled(3600 * 1024, 0),
+        ]);
+
+      final result = await tool.executeResult({'path': file.path});
+
+      expect(result.status, ToolResultStatus.executionError);
+      expect(result.images, isEmpty);
+      expect(result.text, contains('larger'));
     });
   });
 }
