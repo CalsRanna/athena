@@ -50,7 +50,7 @@ GUI 与 TUI 内置 `skill-creator`。在桌面端或 TUI 对话中说「帮我�
 
 **Sentinel（角色）**
 
-角色以 system prompt 定义，由用户在设置中创建与编辑；Agent 只能查看。契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验)。
+角色以 system prompt 定义，并可为每个角色单独选择可用工具；由用户在设置中创建与编辑，Agent 只能查看。契约见 [CONVENTIONS.md §12.5](CONVENTIONS.md#125-skill-与经验)。
 
 **前端**
 

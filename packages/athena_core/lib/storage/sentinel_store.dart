@@ -92,6 +92,7 @@ class SentinelStore {
       prompt: raw['prompt'] is String ? raw['prompt'] as String : '',
       tags: raw['tags'] is String ? raw['tags'] as String : '',
       isPreset: raw['isPreset'] == true,
+      enabledTools: SentinelEntity.parseToolNames(raw['enabledTools']),
     );
   }
 
@@ -102,5 +103,6 @@ class SentinelStore {
     'prompt': sentinel.prompt,
     'tags': sentinel.tags,
     'isPreset': sentinel.isPreset,
+    if (sentinel.enabledTools != null) 'enabledTools': sentinel.enabledTools,
   };
 }

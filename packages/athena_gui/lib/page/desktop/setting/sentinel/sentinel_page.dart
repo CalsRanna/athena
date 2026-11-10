@@ -1,18 +1,24 @@
+import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
+import 'package:athena_gui/util/tool_config_util.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -72,6 +78,12 @@ class _DesktopSettingSentinelPageState
   bool dirty = false;
   String? nameError;
   String? promptError;
+
+  /// 正在编辑的工具白名单；null = 全部可用。
+  Set<String>? enabledToolsDraft;
+
+  /// 当前平台实际注册的工具；设置页只展示真实存在的。
+  late final List<Tool> registeredTools = GetIt.instance<ToolRegistry>().all;
 
   @override
   void initState() {
@@ -288,7 +300,7 @@ class _DesktopSettingSentinelPageState
     return AthenaSettingsPane(
       title: sentinel.name,
       header: header,
-      footer: dirty && !readOnly
+      footer: dirty
           ? AthenaSettingsSaveBar(
               onDiscard: () => _openSentinel(sentinel),
               onSave: () => storeSentinel(sentinel),
@@ -299,8 +311,9 @@ class _DesktopSettingSentinelPageState
           first: true,
           title: 'Identity',
           description: readOnly
-              ? 'The built-in Sentinel can be read but not edited. Duplicate '
-                    'it to make your own version.'
+              ? 'The built-in Sentinel\'s identity and prompt are locked. '
+                    'Its tools can still be changed; duplicate it to make your '
+                    'own version.'
               : null,
           trailing: readOnly
               ? AthenaSecondaryButton.small(
@@ -401,6 +414,7 @@ class _DesktopSettingSentinelPageState
             ),
           ],
         ),
+        _buildToolsSection(),
         if (!readOnly)
           AthenaSettingsSection(
             title: 'Danger zone',
@@ -432,6 +446,63 @@ class _DesktopSettingSentinelPageState
     descriptionController.text = sentinel.description;
     tagsController.text = sentinel.tags;
     promptController.text = sentinel.prompt;
+    enabledToolsDraft = sentinel.enabledTools?.toSet();
+  }
+
+  /// 工具区按固定顺序展示；未登记的工具排在最后。
+  List<Tool> get _displayTools => orderedToolsForConfig(registeredTools);
+
+  bool _isToolOn(String name) =>
+      kUndeactivatableToolNames.contains(name) ||
+      (enabledToolsDraft?.contains(name) ?? true);
+
+  void _setToolEnabled(String name, bool enabled) {
+    final all = registeredTools.map((tool) => tool.name).toSet();
+    final next = {
+      ...?enabledToolsDraft,
+      // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
+      // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
+      if (enabledToolsDraft == null) ...all,
+      if (enabledToolsDraft == null) ...kToolConfigOrder,
+      ...kUndeactivatableToolNames,
+    };
+    if (enabled) {
+      next.add(name);
+    } else {
+      next.remove(name);
+    }
+    setState(() {
+      // 全部选中等价于「不限制」：存回 null，新增工具才会自动出现。
+      enabledToolsDraft = next.containsAll(all) ? null : next;
+    });
+    _recomputeDirty();
+  }
+
+  Widget _buildToolsSection() {
+    return AthenaSettingsSection(
+      title: 'Tools',
+      description:
+          'Choose which tools this Sentinel can use. Tools marked Always on '
+          'are required by the engine.',
+      children: [
+        for (final tool in _displayTools)
+          AthenaSettingsRow(
+            label: kToolConfigCopy[tool.name]?.$1 ?? tool.name,
+            description:
+                kToolConfigCopy[tool.name]?.$2 ??
+                tool.description.split('\n').first,
+            badge: kUndeactivatableToolNames.contains(tool.name)
+                ? 'Always on'
+                : null,
+            control: AthenaSwitch(
+              value: _isToolOn(tool.name),
+              onChanged: kUndeactivatableToolNames.contains(tool.name)
+                  ? null
+                  : (enabled) => _setToolEnabled(tool.name, enabled),
+            ),
+          ),
+      ],
+    );
   }
 
   void _recomputeDirty() {
@@ -443,7 +514,8 @@ class _DesktopSettingSentinelPageState
         nameController.text != sentinel.name ||
         descriptionController.text != sentinel.description ||
         tagsController.text != sentinel.tags ||
-        promptController.text != sentinel.prompt;
+        promptController.text != sentinel.prompt ||
+        !setEquals(enabledToolsDraft, sentinel.enabledTools?.toSet());
     if (next != dirty && mounted) setState(() => dirty = next);
   }
 
@@ -464,6 +536,9 @@ class _DesktopSettingSentinelPageState
       description: descriptionController.text.trim(),
       tags: tagsController.text.trim(),
       prompt: prompt,
+      enabledTools: enabledToolsDraft == null
+          ? null
+          : (enabledToolsDraft!.toList()..sort()),
     );
     await viewModel.updateSentinel(copied);
     if (!mounted) return;
@@ -526,6 +601,7 @@ class _DesktopSettingSentinelPageState
       description: source.description,
       prompt: source.prompt,
       tags: source.tags,
+      enabledTools: source.enabledTools,
     );
     final created = await viewModel.createSentinel(copy);
     if (!mounted) return;

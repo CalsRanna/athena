@@ -8,8 +8,18 @@ class ToolRegistry {
   ToolRegistry({
     ToolOutputStore? outputStore,
     BackgroundTaskService? backgroundTasks,
-  }) : outputStore = outputStore ?? ToolOutputStore(),
-       backgroundTasks = backgroundTasks ?? BackgroundTaskService();
+  }) : this._(
+         outputStore ?? ToolOutputStore(),
+         backgroundTasks ?? BackgroundTaskService(),
+         {},
+       );
+
+  ToolRegistry._(
+    this.outputStore,
+    this.backgroundTasks,
+    this._tools, {
+    Set<String>? excluded,
+  }) : _excluded = excluded;
 
   final ToolOutputStore outputStore;
 
@@ -17,7 +27,34 @@ class ToolRegistry {
   /// 仍然存在的资源」，由注册表持有，工具与协调层共用同一份。
   final BackgroundTaskService backgroundTasks;
 
-  final Map<String, Tool> _tools = {};
+  final Map<String, Tool> _tools;
+
+  /// 本视图相对完整注册表被排除的工具名；完整注册表为 null。
+  final Set<String>? _excluded;
+
+  /// 生成一次 run 的受限视图：只保留 [enabled] 中的工具（null = 不限制）。
+  ///
+  /// 视图共享 [outputStore] 与 [backgroundTasks]：这两者是跨调用资源，
+  /// 不能按角色分裂。被排除的工具 [get] 返回 null；[isExcluded] 用来把
+  /// 「本角色禁用」与「根本没有这个工具」区分开。
+  ToolRegistry filtered({Set<String>? enabled}) {
+    if (enabled == null) return this;
+    return ToolRegistry._(
+      outputStore,
+      backgroundTasks,
+      {
+        for (final entry in _tools.entries)
+          if (enabled.contains(entry.key)) entry.key: entry.value,
+      },
+      excluded: {
+        for (final name in _tools.keys)
+          if (!enabled.contains(name)) name,
+      },
+    );
+  }
+
+  /// 该工具名是否因本次 run 的工具配置而被排除。
+  bool isExcluded(String name) => _excluded?.contains(name) ?? false;
 
   /// OpenAI tool definitions 缓存：工具集在一次 run 内不变，而 Agent
   /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。

@@ -169,6 +169,7 @@ class MobileSentinelListPage extends StatelessWidget {
       description: source.description,
       prompt: source.prompt,
       tags: source.tags,
+      enabledTools: source.enabledTools,
     );
     final viewModel = GetIt.instance<SentinelViewModel>();
     final created = await viewModel.createSentinel(copy);

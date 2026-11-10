@@ -24,6 +24,22 @@ import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:meta/meta.dart';
 
+/// 与注入到上下文的系统块强耦合、因此不随角色工具配置关闭的工具。
+///
+/// - [tool_output_read]：截断提示直接教模型调用它
+/// - [experience_learn] / [experience_recall]：经验提示与目录无条件注入，
+///   反思通道还会程序化调用 [experience_learn]
+/// - [skill]：skill level1 目录无条件注入
+///
+/// 角色工具配置只裁剪这组之外的业务工具；要放开这里，得同时把对应的
+/// 提示块按有效工具集收口。
+const kUndeactivatableToolNames = {
+  'tool_output_read',
+  'experience_learn',
+  'experience_recall',
+  'skill',
+};
+
 /// 内置工具集的唯一真相源。
 ///
 /// 每个前端各有自己的装配层（GUI 的 `di.dart`、TUI 的 `tui_di.dart`），

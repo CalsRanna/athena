@@ -382,6 +382,6 @@ core 的 `TokenUsage` 记录单次响应的用量与输出时长，`RunStatistic
 - 反思同时检索最多 5 条当前角色可见、尚未归档的相关经验；允许新增或修订这些候选中的一条，重复结论不再新增，修订沿用标准审批并保留原作用域与最初来源
 - 新建经验由引擎关联来源会话与实际承载 `experience_learn` 调用的消息，检索时返回来源标识；修订和归档保留最初来源，旧经验缺失来源时为空
 - `experience_recall` 可按 `source_experience_id` 读回来源消息和同轮此前记录的有限摘录（最多 8 条）；只能读取当前角色、当前项目或无项目限制的来源会话，shared 经验不额外授予其他角色或其他项目的会话读取权。无来源或来源已删除/回退时明确告知；不返回隐藏推理和协议状态
-- Sentinel 是一段由用户维护的 system prompt，删除角色时级联清理其私有经验（shared 经验不受影响）
+- Sentinel 是一段由用户维护的 system prompt，外加一份可选的工具白名单（`enabledTools`，null = 全部注册工具）。与注入的系统块强耦合的工具（`tool_output_read` / `skill` / `experience_learn` / `experience_recall`）恒开，不受白名单裁剪；删除角色时级联清理其私有经验（shared 经验不受影响）
 
 core 的 `agent/skill/` 负责技能加载与排序，`agent/experience/` 负责经验目录、容量预算与失败反思，`agent/tool/` 提供对应工具，存储层负责经验隔离。验证覆盖技能目录排序与排序持久化、资源读取边界、经验可见范围与来源标注、目录容量边界与写入拦截、失败反思，以及删除角色时的经验级联清理。

@@ -8,6 +8,13 @@ class SentinelEntity {
   final String tags;
   final bool isPreset;
 
+  /// 本角色可用的工具名白名单。
+  ///
+  /// `null` = 不限制（全部已注册工具）。非 null 时只启用列出的工具；
+  /// 与注入的系统块强耦合的工具不在此列，见 `kUndeactivatableToolNames`。
+  /// 旧数据没有该字段，按 `null` 处理，不需要迁移。
+  final List<String>? enabledTools;
+
   const SentinelEntity({
     this.id,
     required this.name,
@@ -15,6 +22,7 @@ class SentinelEntity {
     this.prompt = '',
     this.tags = '',
     this.isPreset = false,
+    this.enabledTools,
   });
 
   factory SentinelEntity.fromJson(Map<String, dynamic> json) {
@@ -25,6 +33,7 @@ class SentinelEntity {
       prompt: json.getString('prompt'),
       tags: json.getString('tags'),
       isPreset: json.getBool('is_preset'),
+      enabledTools: parseToolNames(json['enabled_tools']),
     );
   }
 
@@ -36,7 +45,18 @@ class SentinelEntity {
       'prompt': prompt,
       'tags': tags,
       'is_preset': isPreset ? 1 : 0,
+      if (enabledTools != null) 'enabled_tools': enabledTools,
     };
+  }
+
+  /// 工具名清单：缺失或形态不符时返回 null（不限制），
+  /// 空列表是显式的「一个都不启用」。
+  static List<String>? parseToolNames(Object? raw) {
+    if (raw is! List) return null;
+    return [
+      for (final item in raw)
+        if (item is String && item.isNotEmpty) item,
+    ];
   }
 
   /// 内置角色名。两者都是开箱即用的预设,见 `SentinelSeed.builtins`。
@@ -71,6 +91,9 @@ class SentinelEntity {
     return tags.split(',').map((e) => e.trim()).toList();
   }
 
+  /// 白名单:区分「未传参(保留原值)」与「显式置 null(恢复不限制)」。
+  static const _unset = Object();
+
   SentinelEntity copyWith({
     String? id,
     String? name,
@@ -78,6 +101,7 @@ class SentinelEntity {
     String? prompt,
     String? tags,
     bool? isPreset,
+    Object? enabledTools = _unset,
   }) {
     return SentinelEntity(
       id: id ?? this.id,
@@ -86,6 +110,9 @@ class SentinelEntity {
       prompt: prompt ?? this.prompt,
       tags: tags ?? this.tags,
       isPreset: isPreset ?? this.isPreset,
+      enabledTools: identical(enabledTools, _unset)
+          ? this.enabledTools
+          : enabledTools as List<String>?,
     );
   }
 }

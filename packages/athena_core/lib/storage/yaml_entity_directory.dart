@@ -224,12 +224,16 @@ String encodeYamlMap(Map<String, dynamic> raw) {
   for (final entry in raw.entries) {
     final value = entry.value;
     if (value is List) {
-      // 空列表也要写出(`models: []`):读回时「没有这个键」与「一个模型都没有」
-      // 在语义上等同,但显式写出来,用户编辑时能看出这里可以加条目。
+      // 空列表也要写出(`models: []`):显式写出来,用户编辑时能看出这里
+      // 可以加条目;列表的「空」与「缺键」是否有区别由各自的 Store 决定。
       buf.writeln('${entry.key}:${value.isEmpty ? ' []' : ''}');
       for (final item in value) {
-        if (item is! Map) continue;
-        buf.writeln('  - ${_encodeListEntry(item)}');
+        // Provider 的 models 是对象列表,Sentinel 的工具白名单是标量列表。
+        if (item is Map) {
+          buf.writeln('  - ${_encodeListEntry(item)}');
+        } else {
+          buf.writeln('  - ${YamlScalarCodec.encode(item)}');
+        }
       }
     } else {
       buf.writeln('${entry.key}: ${YamlScalarCodec.encode(value)}');

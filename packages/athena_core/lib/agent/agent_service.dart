@@ -30,6 +30,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         toolExperienceSourceKey,
         toolExperienceWorkspaceKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_set.dart'
+    show kUndeactivatableToolNames;
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -161,6 +163,10 @@ class AgentService {
     /// 请求前读取所属会话的待通知任务；完整响应后用
     /// [AgentBackgroundTasksNotifiedEvent] 确认，失败时仍由宿主保留待汇报项。
     List<BackgroundTask> Function()? pendingBackgroundTasks,
+
+    /// 本角色允许的工具名；null = 不限制。与 [kUndeactivatableToolNames]
+    /// 求并集后生效：模型看到的 schema 与执行闸门共用这份集合。
+    Set<String>? enabledTools,
   }) async* {
     if (_runs.containsKey(runId)) {
       throw StateError('Agent run $runId is already active.');
@@ -169,6 +175,14 @@ class AgentService {
     final state = _AgentRunState(token: cancelToken);
     _runs[runId] = state;
     final token = state.cancelToken;
+
+    // 本次 run 的有效工具集：角色配置 + 与系统块强耦合的常开工具。
+    // 模型 schema、执行查找与反思通道都走这一个视图，避免三处口径漂移。
+    final registry = _toolRegistry.filtered(
+      enabled: enabledTools == null
+          ? null
+          : {...enabledTools, ...kUndeactivatableToolNames},
+    );
 
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
@@ -206,6 +220,7 @@ class AgentService {
       model: model,
       sentinelId: sentinelId,
       workspace: workspace,
+      registry: registry,
     );
 
     // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
@@ -242,6 +257,7 @@ class AgentService {
         runId: runId,
         sentinelId: sentinelId,
         jsonMode: jsonMode,
+        registry: registry,
         permissionGate: permissionGate,
         permissionService: permissionService,
         onPermission: onPermission,
@@ -291,14 +307,18 @@ class AgentService {
 
     /// 当前模型能否看图。不能时工具即使读到了图片也不会交给模型。
     bool supportsVision = true,
+
+    /// 本次 run 的工具视图；null = 完整注册表（测试与直接调用）。
+    ToolRegistry? toolRegistry,
   }) async {
+    final registry = toolRegistry ?? _toolRegistry;
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
       String raw,
       ToolResultStatus status, {
       List<ToolResultImage> images = const [],
     }) async {
-      final output = await _toolRegistry.outputStore.prepare(raw);
+      final output = await registry.outputStore.prepare(raw);
       return ToolCallResultInternal(
         event: AgentToolResultEvent(
           id: toolCall.id,
@@ -327,7 +347,17 @@ class AgentService {
       return result(msg, ToolResultStatus.invalidArguments);
     }
 
-    final tool = _toolRegistry.get(toolCall.function.name);
+    // 角色工具配置之外的调用：模型看不到 schema，但仍可能凭提示词或历史
+    // 猜出名字。必须在权限门之前拒绝——否则会先给一个不可用的工具弹审批。
+    if (registry.isExcluded(toolCall.function.name)) {
+      return result(
+        'Error: Tool "${toolCall.function.name}" is not available for this '
+        'Sentinel.',
+        ToolResultStatus.blocked,
+      );
+    }
+
+    final tool = registry.get(toolCall.function.name);
 
     // 参数校验
     if (tool != null) {
@@ -487,10 +517,12 @@ class AgentService {
     PermissionCallback? onPermission,
     String? workspace,
     bool bypassPermissions = false,
+    ToolRegistry? toolRegistry,
   }) {
+    final registry = toolRegistry ?? _toolRegistry;
     final parallelCalls = <ToolCall>[];
     for (final tc in toolCalls) {
-      final tool = _toolRegistry.get(tc.function.name);
+      final tool = registry.get(tc.function.name);
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
@@ -531,11 +563,12 @@ class AgentService {
     required ModelEntity model,
     String? sentinelId,
     String? workspace,
+    required ToolRegistry registry,
   }) {
     final userDecisions = <Map<String, Object?>>[];
     return (ctx) async {
       cancelToken.throwIfCancelled();
-      final tool = _toolRegistry.get(ctx.name);
+      final tool = registry.get(ctx.name);
       final serviceVerdict = permissionService?.check(
         runId,
         ctx.name,
@@ -643,9 +676,9 @@ class AgentService {
         : '$runtimePrompt\n$date';
   }
 
-  /// 从 ToolRegistry 构建 OpenAI Tool 列表。
-  List<Tool>? _buildTools() {
-    final defs = _toolRegistry.definitions;
+  /// 从本次 run 的工具视图构建 OpenAI Tool 列表。
+  List<Tool>? _buildTools(ToolRegistry registry) {
+    final defs = registry.definitions;
     if (defs.isEmpty) return null;
     return defs
         .map(
@@ -755,6 +788,7 @@ class _AgentLoop {
     required int runId,
     required String? sentinelId,
     required bool jsonMode,
+    required ToolRegistry registry,
     required PermissionGate? permissionGate,
     required PermissionService? permissionService,
     required PermissionCallback? onPermission,
@@ -786,6 +820,7 @@ class _AgentLoop {
        _runId = runId,
        _sentinelId = sentinelId,
        _jsonMode = jsonMode,
+       _registry = registry,
        _permissionGate = permissionGate,
        _permissionService = permissionService,
        _onPermission = onPermission,
@@ -819,6 +854,9 @@ class _AgentLoop {
   final int _runId;
   final String? _sentinelId;
   final bool _jsonMode;
+
+  /// 本次 run 的有效工具视图（已按角色配置过滤）。
+  final ToolRegistry _registry;
   final PermissionGate? _permissionGate;
   final PermissionService? _permissionService;
   final PermissionCallback? _onPermission;
@@ -956,7 +994,7 @@ class _AgentLoop {
     yield AgentEvent.turnStart(iteration: iteration);
     _iterationsExecuted++;
 
-    final tools = _service._buildTools();
+    final tools = _service._buildTools(_registry);
     if (_chat.retention == -1 &&
         _onCompact != null &&
         !_compactionFailed &&
@@ -1317,6 +1355,7 @@ class _AgentLoop {
       onPermission: _onPermission,
       workspace: _workspace,
       bypassPermissions: _bypassPermissions,
+      toolRegistry: _registry,
     );
     final sequentialCalls = [
       for (final tc in toolCalls)
@@ -1403,7 +1442,7 @@ class _AgentLoop {
     if (ReflectionPolicy.shouldReflect(outcome) &&
         // 自动汇报是附加路径，不为汇报失败额外生成经验。
         _allowReflection &&
-        _service._toolRegistry.get('experience_learn') != null) {
+        _registry.get('experience_learn') != null) {
       _reflectionAttempted = true;
       try {
         yield* _runReflection(
@@ -1513,6 +1552,7 @@ class _AgentLoop {
       allowBackgroundTasks: _allowBackgroundTasks,
       experienceSource: experienceSource,
       supportsVision: _model.vision,
+      toolRegistry: _registry,
     );
     _reflectionToolResults.add(
       ReflectionPrompt.toolResult(
