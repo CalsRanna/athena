@@ -80,8 +80,9 @@ class DesktopMessageInput extends StatelessWidget {
         final reasoningEffort = chatViewModel.currentReasoningEffort.value;
         final approvalMode = chatViewModel.currentApprovalMode.value;
         // 版式：
-        // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
-        // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
+        // 输入框是一个白底描边的独立圆角容器，文字、附件入口与发送都在里面；
+        // 容器**外面**单独排一行会话级配置（Sentinel、文件夹、上下文、模型、
+        // 推理强度、审批与 token）。
         return Padding(
           padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
           child: Center(
@@ -103,7 +104,13 @@ class DesktopMessageInput extends StatelessWidget {
                   _ComposerInputBox(
                     focusNode: focusNode,
                     builder: (focusNode) => Row(
+                      // 多行时图标跟着最后一行走：贴内容区底部，而不是悬在
+                      // 整块高度的中间。
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // 附件入口属于本次输入，和文字同在容器内；
+                        // 容器外那一行只留会话级配置。
+                        DesktopImageSelector(onSelected: onImageSelected),
                         Expanded(
                           child: _Input(
                             controller: controller,
@@ -133,9 +140,6 @@ class DesktopMessageInput extends StatelessWidget {
                   // 容器之外的一行
                   Row(
                     children: [
-                      // 加号自己带 ghost 包裹（图标 16 + 6 内边距 = 28 方盒）
-                      DesktopImageSelector(onSelected: onImageSelected),
-                      const SizedBox(width: 4),
                       DesktopSentinelIndicator(onTap: onSentinelTap),
                       const SizedBox(width: 4),
                       // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
@@ -315,7 +319,7 @@ class _InputState extends State<_Input> {
       cursorColor: colors.textInput,
       decoration: inputDecoration,
       style: inputTextStyle,
-      maxLines: 4,
+      maxLines: 12,
       minLines: 1,
       onChanged: (_) => _scrollToCaret(),
       contextMenuBuilder: (context, editable) {
@@ -393,7 +397,7 @@ class _InputState extends State<_Input> {
     );
     return Padding(
       // 占位符距容器左缘 10
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: content,
     );
   }
@@ -705,7 +709,7 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
         boxShadow: AthenaShadow.raised(colors.shadow),
       ),
       duration: AthenaMotion.hover,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: widget.builder(widget.focusNode),
     );
   }

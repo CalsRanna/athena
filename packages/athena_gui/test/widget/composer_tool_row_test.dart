@@ -18,15 +18,17 @@ import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../support/athena_test_scope.dart';
 
 import 'package:athena_gui/theme/athena_material_theme.dart';
 
-/// composer 下方那一行控件（审批模式、图片加号、Sentinel / 文件夹 / 上下文
-/// 入口、模型名、推理强度、token 圆环）的 hover 底必须长得一样：都是 28 高的
-/// 圆角小方块，且都在文字行盒外面还留一圈内边距。
+/// composer 的各个入口控件（输入容器内的图片加号与发送键，下方那一行的
+/// 审批模式、Sentinel / 文件夹 / 上下文入口、模型名、推理强度、token 圆环）
+/// 的 hover 底必须长得一样：都是 28 高的圆角小方块，且都在文字行盒外面还留
+/// 一圈内边距。
 ///
 /// 这是**观感一致性**的回归护栏：图片加号与 token 圆环过去各自实现 hover，
 /// 一个紧贴 16px 字形、一个根本没有底色，和旁边包着文字的小胶囊放在一起
@@ -189,15 +191,19 @@ void main() {
   testWidgets('发送/停止键的 hover 底与其他 ghost 控件同档', (tester) async {
     await pumpComposer(tester);
 
-    // 输入容器里唯一的 ghost 按钮就是发送键
+    // 输入容器里有且只有两个 ghost 按钮：图片加号与发送键
     final inputBox = find
         .ancestor(
           of: find.byType(TextField),
           matching: find.byType(AnimatedContainer),
         )
         .first;
-    final send = find.descendant(
-      of: inputBox,
+    expect(
+      find.descendant(of: inputBox, matching: find.byType(AthenaGhostButton)),
+      findsNWidgets(2),
+    );
+    final send = find.ancestor(
+      of: find.byIcon(LucideIcons.arrowUp),
       matching: find.byType(AthenaGhostButton),
     );
     expect(send, findsOneWidget);
@@ -288,5 +294,36 @@ void main() {
       ),
     );
     expect(ring.value, 0);
+  });
+
+  testWidgets('多行输入时加号与发送键贴着内容区底部', (tester) async {
+    await pumpComposer(tester);
+    await tester.enterText(
+      find.byType(TextField),
+      'a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl',
+    );
+    await tester.pump();
+
+    final inputBox = tester.getRect(
+      find
+          .ancestor(
+            of: find.byType(TextField),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first,
+    );
+    final imageGhost = tester.getRect(
+      ghostOf(find.byType(DesktopImageSelector)),
+    );
+    final sendGhost = tester.getRect(
+      find.ancestor(
+        of: find.byIcon(LucideIcons.arrowUp),
+        matching: find.byType(AthenaGhostButton),
+      ),
+    );
+    // 容器 1px 描边 + 纵向 padding 8：内容区底部 = 容器底 - 9。居中对齐时
+    // 多行会把图标留在整块高度中间，底缘远高于这里。
+    expect(imageGhost.bottom, closeTo(inputBox.bottom - 9, 0.5));
+    expect(sendGhost.bottom, closeTo(inputBox.bottom - 9, 0.5));
   });
 }
