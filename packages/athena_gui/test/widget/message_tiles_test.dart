@@ -125,7 +125,7 @@ void main() {
     await pumpMessages(tester, [first, done], streaming: false);
     expect(find.byType(StreamingIndicator), findsNothing);
     expect(find.byTooltip('Copy'), findsOneWidget);
-    expect(find.text('1m5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
+    expect(find.text('1m 5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
     expect(tester.getSize(find.byType(MessageActionBar)).height, height);
 
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -155,7 +155,7 @@ void main() {
     await tester.tap(find.byTooltip('Copy'));
     expect(copied, 'First answer\n\nSecond answer');
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('1m5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
+    expect(find.text('1m 5s · 245 tokens · 4.9 tokens/s'), findsOneWidget);
     await mouse.removePointer();
   });
 
