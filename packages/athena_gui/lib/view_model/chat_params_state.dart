@@ -18,9 +18,9 @@ import 'package:signals/signals.dart';
 ///   所以入口是 [setFromChat] 而不是八个散落的赋值；
 /// - **角色要过 [displaySentinel]**：显式选择「不用角色」（[ChatEntity.noSentinelId]）
 ///   得显示成 directChatSentinel，而不是当成「没选」去回退默认角色；
-/// - **草稿起点只从两处取**：设置里的默认模型、审批档位与推理强度，加上会话默认
-///   （保留策略、温度）。只有工作文件夹与角色会从来源对话继承——审批档位刻意
-///   不继承（见 [resetToDraftDefaults]）。
+/// - **草稿起点只从两处取**：上次在 composer 里选的模型（[SettingViewModel.chatModel]）、
+///   审批档位与推理强度，加上会话默认（保留策略、温度）。只有工作文件夹与角色会从
+///   来源对话继承——审批档位刻意不继承（见 [resetToDraftDefaults]）。
 class ChatParamsState {
   ChatParamsState({
     required SettingViewModel settingViewModel,
@@ -96,7 +96,8 @@ class ChatParamsState {
   /// 整块依赖 [currentModel]，为 null 时什么都不渲染，看起来像模型清单没刷新；
   /// 其实清单是新的，只是「当前用哪个模型」没跟上。
   ///
-  /// 已经有当前模型时不覆盖：那要么来自设置里的默认模型，要么是用户在菜单里选的。
+  /// 已经有当前模型时不覆盖：那要么来自上次在 composer 里选的模型，
+  /// 要么是用户刚在菜单里选的。
   Future<void> adoptFirstAvailableModel() async {
     if (currentModel.value != null) return;
     final candidate = _modelViewModel.enabledModels.value.firstOrNull;

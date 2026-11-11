@@ -1,12 +1,5 @@
-import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_gui/page/mobile/chat/component/model_selector.dart';
-import 'package:athena_gui/theme/athena_icons.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
-import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
@@ -18,7 +11,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileAgentPage extends StatefulWidget {
@@ -30,7 +22,6 @@ class MobileAgentPage extends StatefulWidget {
 
 class _MobileAgentPageState extends State<MobileAgentPage> {
   final viewModel = GetIt.instance.get<SettingViewModel>();
-  final modelViewModel = GetIt.instance<ModelViewModel>();
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
@@ -43,13 +34,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
 
   String? retriesError;
   String? outputLimitError;
-
-  @override
-  void initState() {
-    super.initState();
-    // 用户可能刚在 Providers 里启用了一家，保证下拉里是最新的模型。
-    modelViewModel.loadEnabledModels();
-  }
 
   @override
   void dispose() {
@@ -69,8 +53,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 12),
-            _buildModelsSection(context),
-            const SizedBox(height: 32),
             _buildRequestSection(context),
             const SizedBox(height: 32),
             _buildToolsSection(context),
@@ -78,61 +60,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildModelsSection(BuildContext context) {
-    return SignalBuilder(
-      builder: (context) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const AthenaFormTileLabel.large(title: 'Default models'),
-            const SizedBox(height: 16),
-            AthenaFormField(
-              label: 'Session model',
-              control: _ModelDropdown(
-                groupedModels: modelViewModel.groupedEnabledModels.value,
-                model: viewModel.chatModel.value,
-                onChanged: viewModel.updateChatModelId,
-                provider: viewModel.chatModelProvider.value,
-              ),
-              description:
-                  'The model new sessions and the agent loop start with.',
-              descriptionGap: 8,
-            ),
-            const SizedBox(height: 16),
-            AthenaFormField(
-              label: 'Session naming model',
-              control: _ModelDropdown(
-                groupedModels: modelViewModel.groupedEnabledModels.value,
-                model: viewModel.chatNamingModel.value,
-                onChanged: viewModel.updateChatNamingModelId,
-                provider: viewModel.chatNamingModelProvider.value,
-              ),
-              description:
-                  'Names a session after its first exchange. Falls back to the '
-                  'session model.',
-              descriptionGap: 8,
-            ),
-            const SizedBox(height: 16),
-            AthenaFormField(
-              label: 'Sentinel metadata model',
-              control: _ModelDropdown(
-                groupedModels: modelViewModel.groupedEnabledModels.value,
-                model: viewModel.sentinelMetadataGenerationModel.value,
-                onChanged: viewModel.updateSentinelMetadataGenerationModelId,
-                provider:
-                    viewModel.sentinelMetadataGenerationModelProvider.value,
-              ),
-              description:
-                  'Generates a Sentinel\'s name, description and tags from its '
-                  'system prompt.',
-              descriptionGap: 8,
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -275,88 +202,5 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     final value = braveApiKeyController.text.trim();
     if (value == viewModel.braveApiKey.value) return;
     await viewModel.updateBraveApiKey(value);
-  }
-}
-
-/// 模型下拉：显示 `模型名 | provider`，点开 [MobileModelDialog]。
-class _ModelDropdown extends StatelessWidget {
-  final Map<String, List<ModelEntity>>? groupedModels;
-  final ModelEntity? model;
-  final void Function(String)? onChanged;
-  final ProviderEntity? provider;
-  const _ModelDropdown({
-    this.groupedModels,
-    this.model,
-    this.onChanged,
-    this.provider,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final boxDecoration = BoxDecoration(
-      color: colors.inputBackground.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(AthenaRadius.container),
-    );
-    final icon = Icon(
-      AthenaIcons.dropdown,
-      color: colors.textInput,
-      size: AthenaIcon.inlineSize,
-    );
-    final children = [Expanded(child: _buildText()), icon];
-    final row = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: children,
-    );
-    final container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: row,
-    );
-    final mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: showModelSelectorDialog,
-      child: mouseRegion,
-    );
-  }
-
-  void handleTap(ModelEntity model) {
-    AthenaDialog.dismiss();
-    onChanged?.call(model.id!);
-  }
-
-  void showModelSelectorDialog() {
-    if (groupedModels == null || groupedModels!.isEmpty) return;
-    AthenaDialog.show(
-      MobileModelDialog(groupedModels: groupedModels!, onTap: handleTap),
-      barrierDismissible: true,
-    );
-  }
-
-  Widget _buildText() {
-    return SignalBuilder(
-      builder: (context) {
-        final colors = context.athenaColors;
-        final textStyle = AthenaTextStyle.row.copyWith(color: colors.textInput);
-        if (model == null) {
-          return Text(
-            'No Model',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: textStyle,
-          );
-        }
-        return Text(
-          '${model?.name} | ${provider?.name}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
-        );
-      },
-    );
   }
 }

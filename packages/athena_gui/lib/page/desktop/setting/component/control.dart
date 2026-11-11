@@ -377,8 +377,8 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
   }
 }
 
-/// 小徽标（挂在默认模型名后的 `Default` 那种）：浅灰底、说明字号、
-/// 圆角 4。用在行标签后面（`Built-in` / `Archived`）与菜单条目里。
+/// 小徽标（行标题后的 `Built-in` / `Archived` 那种）：浅灰底、说明字号、
+/// 圆角 4。用在行标签后面与菜单条目里。
 class AthenaSettingsBadge extends StatelessWidget {
   final String text;
   const AthenaSettingsBadge({super.key, required this.text});

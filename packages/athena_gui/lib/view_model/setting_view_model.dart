@@ -24,25 +24,18 @@ import 'package:signals/signals.dart';
 class SettingViewModel {
   // GUI 偏好的键名
   static const String _keyChatModelId = 'chat_model_id';
-  static const String _keyChatNamingModelId = 'chat_naming_model_id';
-  static const String _keySentinelMetadataGenerationModelId =
-      'sentinel_metadata_generation_model_id';
   static const String _keyMaxRetries = 'max_retries';
   static const String _keyDefaultReasoningEffort = 'default_reasoning_effort';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyTextSize = 'text_size';
 
-  // 模型 ID 设置
+  /// 用户最后一次在 composer 里选的模型，新会话从它起步。
+  ///
+  /// 没有设置项：只在用户显式切换模型时写（见 [rememberModel]），打开旧会话
+  /// 与「补第一个可用模型」都不改它。
   final chatModelId = signal('');
-  final chatNamingModelId = signal('');
-  final sentinelMetadataGenerationModelId = signal('');
   final chatModel = signal<ModelEntity?>(null);
-  final chatNamingModel = signal<ModelEntity?>(null);
-
-  final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
   final chatModelProvider = signal<ProviderEntity?>(null);
-  final chatNamingModelProvider = signal<ProviderEntity?>(null);
-  final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
 
   /// 新建会话的审批档位起点（会话自己的档位在 `ChatEntity.approvalMode`）。
   ///
@@ -100,23 +93,16 @@ class SettingViewModel {
 
   /// 加载所有设置
   Future<void> initSignals() async {
-    for (final key in [
-      _keyChatModelId,
-      _keyChatNamingModelId,
-      _keySentinelMetadataGenerationModelId,
-    ]) {
-      // 更早的版本把模型 id 存成整数;启动升级时保留了 整数 → UUID 的映射,
-      // 这里换成 UUID 并落盘。get() 保留原始类型,这个 is int 判断才成立。
-      final old = await _settings.get(key);
-      if (old is int) {
-        await _settings.setString(key, _storage.legacyModelIds['$old'] ?? '');
-      }
+    // 更早的版本把模型 id 存成整数;启动升级时保留了 整数 → UUID 的映射,
+    // 这里换成 UUID 并落盘。get() 保留原始类型,这个 is int 判断才成立。
+    final oldModelId = await _settings.get(_keyChatModelId);
+    if (oldModelId is int) {
+      await _settings.setString(
+        _keyChatModelId,
+        _storage.legacyModelIds['$oldModelId'] ?? '',
+      );
     }
     chatModelId.value = await _settings.getString(_keyChatModelId) ?? '';
-    chatNamingModelId.value =
-        await _settings.getString(_keyChatNamingModelId) ?? '';
-    sentinelMetadataGenerationModelId.value =
-        await _settings.getString(_keySentinelMetadataGenerationModelId) ?? '';
     await _agentSettings.init();
     maxRetries.value = await _settings.getInt(_keyMaxRetries) ?? 10;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
@@ -125,25 +111,10 @@ class SettingViewModel {
     );
     braveApiKey.value = await _settings.loadBraveApiKey() ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
-    chatNamingModel.value = await _modelRepository.getModelById(
-      chatNamingModelId.value,
-    );
-    sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
-      sentinelMetadataGenerationModelId.value,
-    );
     if (chatModel.value != null) {
       chatModelProvider.value = await _providerRepository.getProviderById(
         chatModel.value!.providerId,
       );
-    }
-    if (chatNamingModel.value != null) {
-      chatNamingModelProvider.value = await _providerRepository.getProviderById(
-        chatNamingModel.value!.providerId,
-      );
-    }
-    if (sentinelMetadataGenerationModel.value != null) {
-      sentinelMetadataGenerationModelProvider.value = await _providerRepository
-          .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
     }
     await initThemeMode();
     await initTextSize();
@@ -175,41 +146,17 @@ class SettingViewModel {
     textSize.value = size;
   }
 
-  /// 更新聊天模型 ID
-  Future<void> updateChatModelId(String modelId) async {
-    await _settings.setString(_keyChatModelId, modelId);
-    chatModelId.value = modelId;
-    chatModel.value = await _modelRepository.getModelById(modelId);
-    if (chatModel.value != null) {
-      chatModelProvider.value = await _providerRepository.getProviderById(
-        chatModel.value!.providerId,
-      );
-    }
-  }
-
-  /// 更新聊天命名模型 ID
-  Future<void> updateChatNamingModelId(String modelId) async {
-    await _settings.setString(_keyChatNamingModelId, modelId);
-    chatNamingModelId.value = modelId;
-    chatNamingModel.value = await _modelRepository.getModelById(modelId);
-    if (chatNamingModel.value != null) {
-      chatNamingModelProvider.value = await _providerRepository.getProviderById(
-        chatNamingModel.value!.providerId,
-      );
-    }
-  }
-
-  /// 更新 Sentinel 元数据生成模型 ID
-  Future<void> updateSentinelMetadataGenerationModelId(String modelId) async {
-    await _settings.setString(_keySentinelMetadataGenerationModelId, modelId);
-    sentinelMetadataGenerationModelId.value = modelId;
-    sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
-      modelId,
+  /// 记住用户最后一次在 composer 里选的模型，新会话从它起步。
+  ///
+  /// 只在用户显式切换模型时调用：打开旧会话、以及「没有当前模型就补第一个
+  /// 可用模型」都不写——否则会话的打开顺序会改写这条偏好。
+  Future<void> rememberModel(ModelEntity model) async {
+    await _settings.setString(_keyChatModelId, model.id!);
+    chatModelId.value = model.id!;
+    chatModel.value = model;
+    chatModelProvider.value = await _providerRepository.getProviderById(
+      model.providerId,
     );
-    if (sentinelMetadataGenerationModel.value != null) {
-      sentinelMetadataGenerationModelProvider.value = await _providerRepository
-          .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
-    }
   }
 
   /// 更新最大重试次数

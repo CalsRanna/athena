@@ -2,13 +2,12 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/component/tool_config.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -64,6 +63,10 @@ class DesktopSettingSentinelPage extends StatefulWidget {
 class _DesktopSettingSentinelPageState
     extends State<DesktopSettingSentinelPage> {
   late final viewModel = GetIt.instance<SentinelViewModel>();
+  late final modelViewModel = GetIt.instance<ModelViewModel>();
+
+  /// 生成按钮本身：生成前弹出的模型菜单锚在它下方。
+  final _generateButtonKey = GlobalKey();
 
   /// 正在编辑的角色；null 表示停在列表。
   String? openId;
@@ -363,11 +366,12 @@ class _DesktopSettingSentinelPageState
           title: 'System prompt',
           description: readOnly
               ? null
-              : 'Generate fills in the name, description and tags '
-                    'from this prompt using the Sentinel metadata model.',
+              : 'Generate fills in the name, description and tags from this '
+                    'prompt. You pick the model each time.',
           trailing: readOnly
               ? null
               : AthenaSecondaryButton.small(
+                  key: _generateButtonKey,
                   onTap: generating ? null : generateSentinel,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -552,6 +556,10 @@ class _DesktopSettingSentinelPageState
     AthenaDialog.success('Sentinel saved');
   }
 
+  /// 生成入口：校验提示词后先让用户选模型，选中才发起请求。
+  ///
+  /// 每次生成都重新选，不记忆也不落设置——元数据生成是低频动作，多一次
+  /// 点选换来「用哪个模型」始终可见。
   Future<void> generateSentinel() async {
     if (viewModel.isGenerating.value) return;
     if (promptController.text.trim().isEmpty) {
@@ -559,9 +567,43 @@ class _DesktopSettingSentinelPageState
       return;
     }
     setState(() => promptError = null);
+    // 用户可能刚在 Providers 里启用了一家，保证菜单里是最新的模型。
+    await modelViewModel.loadEnabledModels();
+    if (!mounted) return;
+    final groups = modelViewModel.groupedEnabledModels.value;
+    if (groups.isEmpty) {
+      AthenaDialog.warning('No enabled models found');
+      return;
+    }
+    final anchorContext = _generateButtonKey.currentContext;
+    if (anchorContext == null || !anchorContext.mounted) return;
+    final anchor = DesktopContextMenu.contextMenuAnchorOf(anchorContext);
+    DesktopContextMenuManager.instance.show(
+      anchorContext,
+      DesktopContextMenu(
+        offset: Offset(anchor.left, anchor.bottom + 4),
+        width: 240,
+        children: [
+          DesktopContextMenuList(
+            maxHeight: 360,
+            children: [
+              for (final entry in groups.entries) ...[
+                DesktopContextMenuGroupLabel(text: entry.key),
+                for (final model in entry.value)
+                  DesktopContextMenuTile(
+                    text: model.name,
+                    onTap: () => _generateWith(model.id!),
+                  ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateWith(String modelId) async {
     try {
-      final modelId = await _getModelId();
-      if (modelId == null) return;
       final generated = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
@@ -648,19 +690,5 @@ class _DesktopSettingSentinelPageState
         dirty = false;
       }
     });
-  }
-
-  Future<String?> _getModelId() async {
-    final settingViewModel = GetIt.instance<SettingViewModel>();
-    final modelResolver = GetIt.instance<ModelResolver>();
-    final model = await modelResolver.resolveModel(
-      preferredModelId:
-          settingViewModel.sentinelMetadataGenerationModelId.value,
-    );
-    if (model == null) {
-      if (mounted) AthenaDialog.warning('No enabled models found');
-      return null;
-    }
-    return model.id!;
   }
 }

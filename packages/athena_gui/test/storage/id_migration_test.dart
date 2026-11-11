@@ -17,11 +17,7 @@ void main() {
   late FileStorage storage;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({
-      'chat_model_id': 3,
-      'chat_naming_model_id': 3,
-      'sentinel_metadata_generation_model_id': 3,
-    });
+    SharedPreferences.setMockInitialValues({'chat_model_id': 3});
     home = await Directory.systemTemp.createTemp('athena_gui_ids_');
     DI.ensureInitialized(homeDirOverride: home.path);
     storage = GetIt.instance<FileStorage>();
@@ -51,18 +47,10 @@ void main() {
     final provider =
         (await storage.providerRepository.getAllProviders()).single;
     final prefs = await SharedPreferences.getInstance();
-    for (final key in [
-      'chat_model_id',
-      'chat_naming_model_id',
-      'sentinel_metadata_generation_model_id',
-    ]) {
-      // prefs 里的整数已经搬进 setting.yaml 并换成了 UUID；源键被移除
-      expect(prefs.get(key), isNull);
-      expect(await storage.userSettings.getString(key), model.id);
-    }
+    // prefs 里的整数已经搬进 setting.yaml 并换成了 UUID；源键被移除
+    expect(prefs.get('chat_model_id'), isNull);
+    expect(await storage.userSettings.getString('chat_model_id'), model.id);
     expect(settings.chatModel.value?.id, model.id);
-    expect(settings.chatNamingModel.value?.id, model.id);
-    expect(settings.sentinelMetadataGenerationModel.value?.id, model.id);
     expect(settings.chatModelProvider.value?.id, provider.id);
     await storage.load();
     await settings.initSignals();

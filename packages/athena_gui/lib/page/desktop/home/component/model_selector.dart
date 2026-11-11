@@ -11,11 +11,11 @@ import 'package:get_it/get_it.dart';
 /// 模型描述，每行只有模型名。
 ///
 /// 在触发行 [anchor]（composer 右下的模型名那一块）上方弹出，右边与它对齐。
-/// 当前会话在用的模型行尾打钩；设置里的默认模型带 `Default` 小标（新会话用它
-/// 起步）。启用了多个 provider 时按 provider 分组、组名用说明字号；只有一个
-/// provider 时不显示组名——只有一组时列表就是平铺的。
+/// 当前会话在用的模型行尾打钩；上次在 composer 里选的模型带 `Default` 小标
+/// （新会话从它起步）。启用了多个 provider 时按 provider 分组、组名用说明字号；
+/// 只有一个 provider 时不显示组名——只有一组时列表就是平铺的。
 ///
-/// 设置页里选默认模型走另一套控件（`DesktopSettingModelSelector`）。
+/// 设置页里没有模型选择：新会话的起点就是这里最后一次的选择。
 class DesktopModelMenu extends StatelessWidget {
   final Rect anchor;
   final void Function(ModelEntity)? onSelected;

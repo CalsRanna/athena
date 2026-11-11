@@ -41,16 +41,4 @@ class ModelResolver {
 
     return (model: models.first, provider: provider);
   }
-
-  /// 仅解析模型。若 [preferredModelId] 有效，优先使用；
-  /// 否则回退到数据库中第一个模型。返回 null 表示无可用。
-  Future<ModelEntity?> resolveModel({String? preferredModelId}) async {
-    if (preferredModelId != null && preferredModelId.isNotEmpty) {
-      final model = await _modelRepo.getModelById(preferredModelId);
-      if (model != null) return model;
-    }
-
-    final models = await _modelRepo.getAllModels();
-    return models.isNotEmpty ? models.first : null;
-  }
 }

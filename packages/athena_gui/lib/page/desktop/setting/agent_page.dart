@@ -1,5 +1,3 @@
-import 'package:athena_gui/page/desktop/setting/component/model_menu.dart';
-import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
@@ -10,13 +8,15 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 桌面端 Agent 设置：默认模型、请求设置与工具。
+/// 桌面端 Agent 设置：请求设置与工具。
 ///
-/// 每一行**改了即存**，没有页面级 Save：模型下拉与分段控件点选即生效；
+/// 每一行**改了即存**，没有页面级 Save：分段控件点选即生效；
 /// 数字与密钥输入在失焦或回车时提交，非法值就地报错并回退。
+///
+/// 这里没有默认模型：新会话用上次在 composer 里选的模型，Sentinel 元数据
+/// 生成在每次生成前单独选模型。
 @RoutePage()
 class DesktopSettingAgentPage extends StatefulWidget {
   const DesktopSettingAgentPage({super.key});
@@ -28,7 +28,6 @@ class DesktopSettingAgentPage extends StatefulWidget {
 
 class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   final viewModel = GetIt.instance<SettingViewModel>();
-  final modelViewModel = GetIt.instance<ModelViewModel>();
   late final retriesController = TextEditingController(
     text: viewModel.maxRetries.value.toString(),
   );
@@ -43,13 +42,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   String? outputLimitError;
 
   @override
-  void initState() {
-    super.initState();
-    // 用户可能刚在 Providers 里启用了一家，保证下拉里是最新的模型。
-    modelViewModel.loadEnabledModels();
-  }
-
-  @override
   void dispose() {
     retriesController.dispose();
     outputLimitController.dispose();
@@ -62,63 +54,8 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     return AthenaSettingsPane(
       title: 'Agent',
       children: [
-        SignalBuilder(
-          builder: (context) {
-            final hasModels =
-                modelViewModel.groupedEnabledModels.value.isNotEmpty;
-            return AthenaSettingsSection(
-              first: true,
-              title: 'Default models',
-              description:
-                  'The model each job starts with. You can still switch models '
-                  'inside a session.',
-              children: [
-                if (!hasModels)
-                  const AthenaSettingsEmptyState(
-                    icon: LucideIcons.cpu,
-                    title: 'No enabled models',
-                    hint:
-                        'Enable a provider and add an API key to pick default '
-                        'models.',
-                  ),
-                if (hasModels) ...[
-                  AthenaSettingsRow(
-                    label: 'Session model',
-                    description:
-                        'The model new sessions and the agent loop start with.',
-                    control: _buildModelSelect(
-                      viewModel.chatModelId.value,
-                      viewModel.updateChatModelId,
-                    ),
-                  ),
-                  AthenaSettingsRow(
-                    label: 'Session naming model',
-                    description:
-                        'Names a session after its first exchange. Falls back to '
-                        'the session model.',
-                    control: _buildModelSelect(
-                      viewModel.chatNamingModelId.value,
-                      viewModel.updateChatNamingModelId,
-                      clearable: true,
-                    ),
-                  ),
-                  AthenaSettingsRow(
-                    label: 'Sentinel metadata model',
-                    description:
-                        'Generates a Sentinel\'s name, description '
-                        'and tags from its system prompt.',
-                    control: _buildModelSelect(
-                      viewModel.sentinelMetadataGenerationModelId.value,
-                      viewModel.updateSentinelMetadataGenerationModelId,
-                      clearable: true,
-                    ),
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
         AthenaSettingsSection(
+          first: true,
           title: 'Model requests',
           children: [
             AthenaSettingsRow(
@@ -211,21 +148,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildModelSelect(
-    String modelId,
-    Future<void> Function(String) onChanged, {
-    bool clearable = false,
-  }) {
-    return SizedBox(
-      width: AthenaSettingsControlWidth.wide,
-      child: DesktopSettingModelSelector(
-        modelId: modelId,
-        clearable: clearable,
-        onChanged: onChanged,
-      ),
     );
   }
 

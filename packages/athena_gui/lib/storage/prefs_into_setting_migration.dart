@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// **保留原始类型**，不统一转成字符串：GUI 更早的版本把模型 id 存成整数，
 /// `SettingViewModel` 靠 `is int` 认出它们再换成 UUID（见 [UserSettingsStore.get]）。
-/// 这里若转成 `"3"`，那条替换逻辑就永远不会触发，用户的默认模型会静默失效。
+/// 这里若转成 `"3"`，那条替换逻辑就永远不会触发，用户的模型偏好会静默失效。
 ///
 /// 幂等靠「搬完就删源键」实现，不需要版本标记：重跑时源键已不存在，无事发生。
 /// 用 [SharedPreferences.remove] 而不是 `clear()`——虽然插件侧的 `clear` 带
@@ -30,8 +30,6 @@ class PrefsIntoSettingMigration {
     'window_height',
     'window_width',
     'chat_model_id',
-    'chat_naming_model_id',
-    'sentinel_metadata_generation_model_id',
     'max_retries',
     'brave_api_key',
     'theme_mode',

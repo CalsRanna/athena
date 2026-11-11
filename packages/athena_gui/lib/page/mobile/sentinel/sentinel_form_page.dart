@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/page/mobile/chat/component/model_selector.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/component/tool_config.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -260,23 +262,23 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       AthenaDialog.warning('Prompt is required');
       return;
     }
-    AthenaDialog.loading();
-    try {
-      final modelId = await _getModelId();
-      if (modelId == null) return;
-      final sentinel = await viewModel.generateSentinel(
-        promptController.text,
-        modelId: modelId,
-      );
-      if (sentinel != null) {
-        nameController.text = sentinel.name;
-        descriptionController.text = sentinel.description;
-      } else {
-        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+    await _pickModel((modelId) async {
+      AthenaDialog.loading();
+      try {
+        final sentinel = await viewModel.generateSentinel(
+          promptController.text,
+          modelId: modelId,
+        );
+        if (sentinel != null) {
+          nameController.text = sentinel.name;
+          descriptionController.text = sentinel.description;
+        } else {
+          AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+        }
+      } finally {
+        AthenaDialog.dismiss();
       }
-    } finally {
-      AthenaDialog.dismiss();
-    }
+    });
   }
 
   Future<void> generateSentinelDescription() async {
@@ -284,23 +286,23 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       AthenaDialog.warning('Prompt is required');
       return;
     }
-    AthenaDialog.loading();
-    try {
-      final modelId = await _getModelId();
-      if (modelId == null) return;
-      final description = await viewModel.generateSentinelDescription(
-        promptController.text,
-        modelId: modelId,
-        existingName: nameController.text,
-      );
-      if (description != null) {
-        descriptionController.text = description;
-      } else {
-        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+    await _pickModel((modelId) async {
+      AthenaDialog.loading();
+      try {
+        final description = await viewModel.generateSentinelDescription(
+          promptController.text,
+          modelId: modelId,
+          existingName: nameController.text,
+        );
+        if (description != null) {
+          descriptionController.text = description;
+        } else {
+          AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+        }
+      } finally {
+        AthenaDialog.dismiss();
       }
-    } finally {
-      AthenaDialog.dismiss();
-    }
+    });
   }
 
   Future<void> generateSentinelName() async {
@@ -308,22 +310,22 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       AthenaDialog.warning('Prompt is required');
       return;
     }
-    AthenaDialog.loading();
-    try {
-      final modelId = await _getModelId();
-      if (modelId == null) return;
-      final name = await viewModel.generateSentinelName(
-        promptController.text,
-        modelId: modelId,
-      );
-      if (name != null) {
-        nameController.text = name;
-      } else {
-        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+    await _pickModel((modelId) async {
+      AthenaDialog.loading();
+      try {
+        final name = await viewModel.generateSentinelName(
+          promptController.text,
+          modelId: modelId,
+        );
+        if (name != null) {
+          nameController.text = name;
+        } else {
+          AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
+        }
+      } finally {
+        AthenaDialog.dismiss();
       }
-    } finally {
-      AthenaDialog.dismiss();
-    }
+    });
   }
 
   @override
@@ -415,17 +417,29 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     return null;
   }
 
-  Future<String?> _getModelId() async {
-    final settingViewModel = GetIt.instance<SettingViewModel>();
-    final modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
-    if (modelId.isNotEmpty) return modelId;
+  /// 生成前让用户选模型：每次生成都重新选，不记忆也不落设置。
+  ///
+  /// 选中后先关掉选择面板再执行 [onPicked]；点外部关掉面板则什么都不发生。
+  Future<void> _pickModel(
+    Future<void> Function(String modelId) onPicked,
+  ) async {
     final modelViewModel = GetIt.instance<ModelViewModel>();
+    // 用户可能刚在 Providers 里启用了一家，保证面板里是最新的模型。
     await modelViewModel.loadEnabledModels();
-    if (modelViewModel.enabledModels.value.isEmpty) {
-      AthenaDialog.dismiss();
+    if (!mounted) return;
+    final grouped = modelViewModel.groupedEnabledModels.value;
+    if (grouped.isEmpty) {
       AthenaDialog.warning('No enabled models found');
-      return null;
+      return;
     }
-    return modelViewModel.enabledModels.value.first.id!;
+    AthenaDialog.show(
+      MobileModelDialog(
+        groupedModels: grouped,
+        onTap: (model) {
+          AthenaDialog.dismiss();
+          unawaited(onPicked(model.id!));
+        },
+      ),
+    );
   }
 }

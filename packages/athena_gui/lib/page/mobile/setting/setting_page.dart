@@ -35,7 +35,7 @@ class MobileSettingPage extends StatelessWidget {
             ),
             onTap: () => const MobileAgentRoute().push<void>(context),
             title: 'Agent',
-            subtitle: 'Default models, limits and tools',
+            subtitle: 'Limits and tools',
             trailing: '',
           ),
           MobileSettingTile(

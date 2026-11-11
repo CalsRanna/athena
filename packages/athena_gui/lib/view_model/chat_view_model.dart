@@ -358,7 +358,7 @@ class ChatViewModel {
   /// 不落盘，`sessions/` 目录与侧栏里只有真正聊过的
   /// 对话。会话参数全部取自草稿态的 `current*` 信号——用户在 composer 上改过
   /// 的模型/角色/温度/上下文保留/推理强度/工作文件夹都要带过去；草稿没定
-  /// 模型时回退到设置里的默认对话模型。**不动 [pendingImages]**：调用方发送
+  /// 模型时回退到上次在 composer 里选的模型。**不动 [pendingImages]**：调用方发送
   /// 首条消息时还要读它。
   Future<ChatEntity?> createChat() async {
     isLoading.value = true;
@@ -711,7 +711,7 @@ class ChatViewModel {
       _applyChatUpdate(
         persist: () => _supportService.updateModel(chat, model.id!),
         // 用调用方传进来的实体而不是落库结果：provider 要按它的 id 去查
-        sync: (updated) => _params.setModel(model),
+        sync: (updated) => _rememberModel(model),
       );
 
   Future<void> updateSentinel(
@@ -804,8 +804,16 @@ class ChatViewModel {
     }
   }
 
-  Future<void> updateCurrentModel(ModelEntity model) async {
+  Future<void> updateCurrentModel(ModelEntity model) => _rememberModel(model);
+
+  /// 用户显式切换模型：更新草稿态信号，并记住它作为新会话的起点。
+  ///
+  /// 只有用户的显式选择走这里。[ChatParamsState.setModel] 的自动补位
+  /// （「没有当前模型就取第一个可用模型」）不经过本方法，避免把兜底值
+  /// 当成用户偏好写进设置。
+  Future<void> _rememberModel(ModelEntity model) async {
     await _params.setModel(model);
+    await _settingViewModel.rememberModel(model);
   }
 
   /// 草稿态的显式选择（含入口注入的绑定角色），落盘时随草稿一起写入。

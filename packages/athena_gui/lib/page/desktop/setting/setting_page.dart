@@ -65,10 +65,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
         'Agent',
         LucideIcons.workflow,
         keywords: [
-          'models',
-          'session',
-          'naming',
-          'sentinel metadata',
           'attempts',
           'retries',
           'output',
