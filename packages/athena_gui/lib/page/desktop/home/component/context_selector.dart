@@ -63,8 +63,9 @@ class _ContextMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     const width = 280.0;
     return DesktopContextMenu(
-      // 面板左右各有 4 内边距，整体右边与触发按钮对齐。
-      offset: Offset(anchor.right - width - 8, anchor.top - 8),
+      // 入口在 composer 那一行的最左侧，菜单从它的左缘向右展开：
+      // 与 Sentinel、文件夹两个邻居同向，靠右对齐会整块压到窗口左缘。
+      offset: Offset(anchor.left, anchor.top - 8),
       upward: true,
       width: width,
       children: [

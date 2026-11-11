@@ -25,7 +25,8 @@ void main() {
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Align(
-            alignment: Alignment.bottomRight,
+            // 真实位置在 composer 那一行的最左侧，菜单因此向右展开。
+            alignment: Alignment.bottomLeft,
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: ValueListenableBuilder<int>(
@@ -74,7 +75,7 @@ void main() {
       expect(find.text('Temperature'), findsNothing);
       expect(find.byType(Slider), findsNothing);
       final menu = tester.getRect(panel());
-      expect(menu.right, closeTo(anchor.right, 0.5));
+      expect(menu.left, closeTo(anchor.left, 0.5));
       expect(menu.bottom, closeTo(anchor.top - 8, 0.5));
       // 测试字体把每个字母画成方块，固定 18 行盒下说明会折成三行。
       expect(menu.height, lessThan(340), reason: '菜单高度贴合两项内容');

@@ -164,11 +164,16 @@ class _ContextDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
     final width = DesktopContextMenuConfiguration.widthOf(context);
-    // 缓存命中用全站唯一的强调色；未命中沿用圆环色，接近上限时同样转警示
+    // 缓存命中用全站唯一的强调色。
+    //
+    // 未命中不能取 `textSecondary`：它与 accent 的明度几乎相同（浅色 L* 44.5 /
+    // 45.3，深色 74.3 / 69.9），8px 色点与 6px 细条上只剩色相可辨，读起来像同
+    // 一段。`borderStrong` 与 accent 差 L*≈17（深色 ≈20），并与 Free 的 `border`
+    // 一起构成「深 → 中 → 浅」的三级明度阶梯；接近上限时照旧转警示色。
     final cachedColor = colors.accent;
     final uncachedColor = stats.nearLimit
         ? colors.statusWarning
-        : colors.textSecondary;
+        : colors.borderStrong;
     final freeColor = colors.border;
     // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
     final titleStyle = AthenaTextStyle.body.copyWith(

@@ -32,8 +32,8 @@ class DesktopPermissionModeLabel extends StatelessWidget {
 /// 审批模式菜单：`Mode` 标题 + 三行（名称 + 一句说明），当前档行尾打钩。
 ///
 /// 不放数字快捷键——Athena 没有对应的按键。
-/// 锚在触发块 [anchor] 上方、左边与它对齐；选中即保存到当前会话
-/// （或草稿），下一轮 run 生效。
+/// 锚在触发块 [anchor] 上方、右边与它对齐（它现在排在工具行右端，菜单
+/// 向左展开）；选中即保存到当前会话（或草稿），下一轮 run 生效。
 class DesktopPermissionModeMenu extends StatelessWidget {
   final Rect anchor;
   final ApprovalMode current;
@@ -64,10 +64,13 @@ class DesktopPermissionModeMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const width = 296.0;
     return DesktopContextMenu(
-      offset: Offset(anchor.left, anchor.top - 8),
+      // 入口在工具行右端（模型名之后、token 圆环之前），菜单向右会探出窗口，
+      // 所以右缘与触发块对齐、向左展开。
+      offset: Offset(anchor.right - width - 8, anchor.top - 8),
       upward: true,
-      width: 296,
+      width: width,
       children: [
         const DesktopContextMenuGroupLabel(text: 'Mode'),
         for (final mode in ApprovalMode.values)

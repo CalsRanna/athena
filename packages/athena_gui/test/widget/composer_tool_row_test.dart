@@ -7,6 +7,7 @@ import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
+import 'package:athena_gui/page/desktop/home/component/permission_mode_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
@@ -294,6 +295,70 @@ void main() {
       ),
     );
     expect(ring.value, 0);
+  });
+
+  testWidgets('明细面板的 Cached / Uncached 不能用同明度的两色', (tester) async {
+    await pumpComposer(tester);
+    await tester.tap(find.byType(DesktopTokenIndicator));
+    await tester.pumpAndSettle();
+
+    // 图例三行的色点（8x8 圆），顺序即 Cached / Uncached / Free
+    final dots = tester
+        .widgetList<Container>(
+          find.descendant(
+            of: find.byType(DesktopContextMenu),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Container &&
+                  widget.decoration is BoxDecoration &&
+                  (widget.decoration! as BoxDecoration).shape ==
+                      BoxShape.circle,
+            ),
+          ),
+        )
+        .toList();
+    expect(dots.length, 3);
+    double luminanceOf(Container dot) =>
+        ((dot.decoration! as BoxDecoration).color!).computeLuminance();
+    final cached = luminanceOf(dots[0]);
+    final uncached = luminanceOf(dots[1]);
+    final free = luminanceOf(dots[2]);
+
+    // 明度（而不是色相）才是小面积色块上唯一可靠的区分维度：`accent` 与
+    // `textSecondary` 的明度几乎相同，8px 色点和 6px 细条上读起来是同一个颜色。
+    expect(
+      (cached - uncached).abs(),
+      greaterThan(0.1),
+      reason: 'Cached 与 Uncached 必须有明显的明度差',
+    );
+    expect(uncached, greaterThan(cached), reason: '未命中比命中浅');
+    expect(free, greaterThan(uncached), reason: '三段构成深 → 中 → 浅的阶梯');
+    DesktopContextMenuManager.instance.dismiss();
+  });
+
+  testWidgets('审批模式菜单右缘与触发块对齐，向左展开', (tester) async {
+    await pumpComposer(tester);
+    final label = find.byType(DesktopPermissionModeLabel);
+    final button = tester.getRect(
+      find.ancestor(of: label, matching: find.byType(AthenaGhostButton)),
+    );
+
+    await tester.tap(label);
+    await tester.pumpAndSettle();
+
+    final menu = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(DesktopContextMenu),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    // 审批模式排在工具行右端：向左展开才不会探出窗口右缘被钳制回来
+    expect(menu.right, closeTo(button.right, 0.5));
+    expect(menu.left, lessThan(button.left));
+    expect(menu.bottom, closeTo(button.top - 8, 0.5));
+    DesktopContextMenuManager.instance.dismiss();
   });
 
   testWidgets('多行输入时加号与发送键贴着内容区底部', (tester) async {
