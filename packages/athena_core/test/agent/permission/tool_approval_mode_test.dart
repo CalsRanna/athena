@@ -53,6 +53,8 @@ void main() {
     bool withApprovalCallback = true,
     ElicitPrompt? onElicit,
     void Function()? duringApproval,
+    ApprovalMode Function()? modeNow,
+    bool withReviewContext = false,
     SkillRegistry? skills,
     String request = '查看仓库状态',
   }) async {
@@ -91,12 +93,13 @@ void main() {
           permissionService: withPermissionService
               ? PermissionService(store: store)
               : null,
-          permissionReviewContext: mode == ApprovalMode.auto
+          permissionReviewContext:
+              mode == ApprovalMode.auto || withReviewContext
               ? PermissionReviewContext.fromMessages([
                   MessageEntity(chatId: '1', role: 'user', content: request),
                 ])
               : null,
-          bypassPermissions: mode == ApprovalMode.bypass,
+          currentApprovalMode: modeNow ?? () => mode,
           onPermission: withApprovalCallback
               ? (_, arguments) async {
                   duringApproval?.call();
@@ -123,6 +126,30 @@ void main() {
     expect(prompts, hasLength(1));
     expect(jsonDecode(prompts.single)['command'], 'git status');
     expect(completion.reviews, isEmpty);
+  });
+
+  test('Manual 下即使携带审核上下文也不调用 AI 审核', () async {
+    final result = await run(
+      ApprovalMode.manual,
+      approved: true,
+      withReviewContext: true,
+    );
+    expect(result.status, ToolResultStatus.success);
+    expect(completion.reviews, isEmpty);
+    expect(prompts, hasLength(1));
+  });
+
+  test('运行中切到 Bypass：后续调用立即不再询问', () async {
+    completion.callCount = 2;
+    var mode = ApprovalMode.manual;
+    final result = await run(
+      ApprovalMode.manual,
+      approved: true,
+      modeNow: () => mode,
+      duringApproval: () => mode = ApprovalMode.bypass,
+    );
+    expect(result.status, ToolResultStatus.success);
+    expect(prompts, hasLength(1));
   });
 
   test('同一轮对话通过现有工具保存后立即加载新技能', () async {

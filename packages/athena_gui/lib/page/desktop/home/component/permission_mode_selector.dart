@@ -33,7 +33,7 @@ class DesktopPermissionModeLabel extends StatelessWidget {
 ///
 /// 不放数字快捷键——Athena 没有对应的按键。
 /// 锚在触发块 [anchor] 上方、右边与它对齐（它现在排在工具行右端，菜单
-/// 向左展开）；选中即保存到当前会话（或草稿），下一轮 run 生效。
+/// 向左展开）；选中即保存到当前会话（或草稿），对当前 run 立即生效。
 class DesktopPermissionModeMenu extends StatelessWidget {
   final Rect anchor;
   final ApprovalMode current;

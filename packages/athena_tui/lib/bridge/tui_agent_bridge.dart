@@ -8,6 +8,7 @@ import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/rewind_result.dart';
@@ -122,6 +123,15 @@ class TuiAgentBridge {
     return _coordinator.queueInput(chatId, message);
   }
 
+  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _coordinator.updateApprovalMode(chatId, mode);
+  }
+
+  /// 指定会话当前是否为 Bypass。
+  bool isBypassPermissions(String chatId) =>
+      _coordinator.isBypassPermissions(chatId);
+
   // ─── TUI 侧实现:终端内模态 ─────────────────────────────
 
   /// 测试入口:直接请求一次权限(走与 Agent 相同的 handler 逻辑)。
@@ -171,6 +181,10 @@ class TuiAgentBridge {
     String arguments,
     CancelToken cancelToken,
   ) async {
+    // 切档与权限请求可能擦肩而过：只要已经切到 Bypass，就不再补一条提示。
+    if (_coordinator.isBypassPermissions(chatId)) {
+      return const PermissionDecision(approved: true);
+    }
     final handler = permissionHandler;
     if (handler == null) {
       // UI 未就绪时拒绝,避免 Agent 挂起等待

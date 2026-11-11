@@ -72,7 +72,7 @@ class ChatUpdateService {
 
   /// 设置本会话的工具审批档位。
   ///
-  /// 只影响后续 run：运行中的 run 已在开始时读过自己那份档位。
+  /// 运行中的 run 也会立即改用新档位（协调层在每次工具调用前读取）。
   Future<ChatEntity> updateApprovalMode(ChatEntity chat, ApprovalMode mode) {
     return _applyField(chat, (c) => c.copyWith(approvalMode: mode));
   }

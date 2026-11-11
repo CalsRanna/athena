@@ -511,6 +511,7 @@ class ChatController {
     if (chat?.id == null) return;
     final updated = await _supportService.updateApprovalMode(chat!, mode);
     currentChat.value = updated;
+    _bridge.updateApprovalMode(updated.id!, updated.approvalMode);
     await _reloadChats();
   }
 

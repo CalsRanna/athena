@@ -156,6 +156,12 @@ class AgentRunCoordinator {
   /// 按会话而非进程持有：多对话可同时运行，各自的工作文件夹不能串台。
   final Map<String, String?> _workspaceByChat = {};
 
+  /// chatId → 当前审批档位。
+  ///
+  /// run 开始时从会话行读入，运行中可由 [updateApprovalMode] 改写；权限门
+  /// 每次工具调用前读取，因此切档对当前这一轮立即生效。
+  final Map<String, ApprovalMode> _approvalModeByChat = {};
+
   /// Coordinator 从 run 建立的第一刻就持有取消令牌。此前令牌直到
   /// AgentService.run 才创建，用户在上下文构建/自动压缩期间点击停止会丢失。
   final Map<String, CancelToken> _cancelTokenByChat = {};
@@ -258,6 +264,17 @@ class AgentRunCoordinator {
   /// 用于 UI 切换到运行中的对话时恢复实时进度（DB 里只有迭代边界前的旧态）。
   MessageEntity? liveMessage(String chatId) => _liveMessages[chatId];
 
+  /// 运行中切换审批档位：落库与 UI 同步由调用方完成，这里只改本轮 run
+  /// 权限门读取的值。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _approvalModeByChat[chatId] = mode;
+  }
+
+  /// 指定会话当前是否为 Bypass。审批回调据此在切档瞬间直接放行，
+  /// 不经 UI 再弹一次卡片。
+  bool isBypassPermissions(String chatId) =>
+      _approvalModeByChat[chatId] == ApprovalMode.bypass;
+
   Stream<RunEvent> send({
     required MessageEntity message,
     required ChatEntity chat,
@@ -270,6 +287,8 @@ class AgentRunCoordinator {
     if (_runIdByChat.containsKey(chatId)) {
       throw StateError('Chat $chatId already has an active Agent run.');
     }
+    // 新一轮以会话行为准；运行中切档走 updateApprovalMode 改写这里。
+    _approvalModeByChat[chatId] = chat.approvalMode;
 
     final activity = await _claimSession(chatId);
     if (isRewindingChat(chatId)) {
@@ -394,14 +413,10 @@ class AgentRunCoordinator {
 
       // Read original messages, including compacted user instructions. Generated
       // summaries, skills, experiences and tool outputs cannot grant authorization.
-      // 档位取自本会话（chat 由调用方按 id 取最新行），因此运行中改档位
-      // 不影响这一轮，下一轮生效。
-      final approvalMode = chat.approvalMode;
-      final reviewContext = approvalMode == ApprovalMode.auto
-          ? PermissionReviewContext.fromMessages(
-              await _messageRepo.getMessagesByChatId(chatId),
-            )
-          : null;
+      // 始终构建审核上下文：档位可能在运行中切到 Auto，权限门要能立即用上。
+      final reviewContext = PermissionReviewContext.fromMessages(
+        await _messageRepo.getMessagesByChatId(chatId),
+      );
       cancelToken.throwIfCancelled();
 
       // 3. 追加 assistant 占位消息
@@ -460,7 +475,8 @@ class AgentRunCoordinator {
         enabledTools: sentinel?.enabledTools?.toSet(),
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
-        bypassPermissions: approvalMode == ApprovalMode.bypass,
+        currentApprovalMode: () =>
+            _approvalModeByChat[chatId] ?? chat.approvalMode,
         workspace: workspace,
         onPermission: (toolName, arguments) =>
             _askPermission(chatId, toolName, arguments, cancelToken),
@@ -530,7 +546,7 @@ class AgentRunCoordinator {
     // 本 run 状态已在 finally 清理，递归 send 不会触发 already-active 保护；
     // 事件流连续，UI 的一次 sendMessage await 覆盖整条 run 链。
     // stop（取消）后同样接续：打断只作用于当前轮，排队消息照常进入下一轮。
-    yield* _continuePendingInputs(chat, chatId, jsonMode: jsonMode);
+    yield* _continuePendingInputs(chatId, jsonMode: jsonMode);
 
     // ─── 接续待汇报的后台任务 ───
     // 会话此刻已空闲：尚未在 run 中确认通知的任务合并成一次汇报回合。
@@ -560,14 +576,16 @@ class AgentRunCoordinator {
   /// 不能因为排队期间跑的是汇报 run 就断掉——汇报 run 不走 [send]，
   /// 没有那一段收尾。
   Stream<RunEvent> _continuePendingInputs(
-    ChatEntity chat,
     String chatId, {
     required bool jsonMode,
   }) async* {
     await _rewinds[chatId]?.future;
     final pending = _pendingInputs[chatId];
     if (pending == null || pending.isEmpty) return;
-    if (await _chatRepo.getChatById(chatId) == null) {
+    // 排队期间用户可能改过档位、模型或工作文件夹：按落库后的最新会话行
+    // 起 run，而不是入队那一刻的快照。
+    final latest = await _chatRepo.getChatById(chatId);
+    if (latest == null) {
       // 删除竞态防护：chat 已删除则丢弃排队消息
       _pendingInputs.remove(chatId);
       return;
@@ -575,7 +593,7 @@ class AgentRunCoordinator {
     final next = pending.removeAt(0);
     yield* send(
       message: next,
-      chat: chat,
+      chat: latest,
       jsonMode: jsonMode,
       persistUserMessage: false,
     );
@@ -697,6 +715,8 @@ class AgentRunCoordinator {
   /// - **不能再启动后台任务**：避免「任务→汇报→任务」的无限链。
   Future<void> _runReport(ChatEntity chat, List<BackgroundTask> tasks) async {
     final chatId = chat.id!;
+    // chat 来自仓库读取，是用户刚改过档位后的最新一行。
+    _approvalModeByChat[chatId] = chat.approvalMode;
     if (_runIdByChat.containsKey(chatId)) {
       // 期间有人抢先起了 run（用户消息等）：把任务放回待汇报，run 收尾时再来。
       _pendingReports.putIfAbsent(chatId, () => []).addAll(tasks);
@@ -780,13 +800,10 @@ class AgentRunCoordinator {
         // 输出；AI 审核读的是落库的对话，这条不会成为授权依据。
         ChatMessage.user(_backgroundReportPrompt(tasks)),
       ];
-      // 档位取自本会话；chat 来自仓库读取，是用户刚改过档位后的最新一行。
-      final approvalMode = chat.approvalMode;
-      final reviewContext = approvalMode == ApprovalMode.auto
-          ? PermissionReviewContext.fromMessages(
-              await _messageRepo.getMessagesByChatId(chatId),
-            )
-          : null;
+      // 始终构建审核上下文：档位可能在运行中切到 Auto，权限门要能立即用上。
+      final reviewContext = PermissionReviewContext.fromMessages(
+        await _messageRepo.getMessagesByChatId(chatId),
+      );
       cancelToken.throwIfCancelled();
 
       final assistantMessage = await _chatStore.appendAssistantPlaceholder(
@@ -817,7 +834,8 @@ class AgentRunCoordinator {
         enabledTools: sentinel?.enabledTools?.toSet(),
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
-        bypassPermissions: approvalMode == ApprovalMode.bypass,
+        currentApprovalMode: () =>
+            _approvalModeByChat[chatId] ?? chat.approvalMode,
         onPermission: (toolName, arguments) =>
             _askPermission(chatId, toolName, arguments, cancelToken),
         cancelToken: cancelToken,
@@ -866,11 +884,7 @@ class AgentRunCoordinator {
 
     // 汇报期间用户可能发过消息：TUI 那条路径会把它落库进协调层的排队队列，
     // 而汇报 run 不走 send，所以这里补一次接续，别让用户的消息等到下次发言。
-    await for (final event in _continuePendingInputs(
-      chat,
-      chatId,
-      jsonMode: false,
-    )) {
+    await for (final event in _continuePendingInputs(chatId, jsonMode: false)) {
       emit(event);
     }
 

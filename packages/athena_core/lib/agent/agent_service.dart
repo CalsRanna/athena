@@ -8,6 +8,7 @@ import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart'
     show ElicitChannel, ElicitChannelAware, ElicitPrompt;
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
@@ -131,8 +132,9 @@ class AgentService {
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
 
-    /// 所有权限模式：需要审批的调用直接放行（不问 AI、不弹窗）；deny 规则仍生效。
-    bool bypassPermissions = false,
+    /// 读取当前审批档位：权限门在每次工具调用前调用它，因此运行中切换
+    /// 档位立即生效；deny 规则仍生效。
+    ApprovalMode Function()? currentApprovalMode,
 
     /// 本次 run 的工作文件夹（已校验存在的绝对路径）。
     /// null = 不指定：shell 默认用户主目录、文件工具相对路径按进程当前
@@ -207,7 +209,7 @@ class AgentService {
       cancelToken: token,
       reviewContext: permissionReviewContext,
       userAnswers: userAnswers,
-      bypassPermissions: bypassPermissions,
+      currentApprovalMode: currentApprovalMode,
       provider: provider,
       model: model,
       sentinelId: sentinelId,
@@ -256,7 +258,7 @@ class AgentService {
         elicitChannel: elicitChannel,
         workspace: workspace,
         allowReflection: allowReflection,
-        bypassPermissions: bypassPermissions,
+        currentApprovalMode: currentApprovalMode,
         allowBackgroundTasks: allowBackgroundTasks,
         pendingBackgroundTasks: pendingBackgroundTasks,
       ).run();
@@ -559,7 +561,7 @@ class AgentService {
     required CancelToken cancelToken,
     required PermissionReviewContext? reviewContext,
     required List<Map<String, Object?>> userAnswers,
-    required bool bypassPermissions,
+    required ApprovalMode Function()? currentApprovalMode,
     required ProviderEntity provider,
     required ModelEntity model,
     String? sentinelId,
@@ -569,6 +571,8 @@ class AgentService {
     final userDecisions = <Map<String, Object?>>[];
     return (ctx) async {
       cancelToken.throwIfCancelled();
+      // 每次调用前读取：运行中切档从下一次工具调用起生效。
+      final mode = currentApprovalMode?.call() ?? ApprovalMode.manual;
       final tool = registry.get(ctx.name);
       final serviceVerdict = permissionService?.check(
         runId,
@@ -594,12 +598,14 @@ class AgentService {
       }
 
       // 提问本身就是人机通道；显式 deny 仍生效，但不叠加审批卡片。
-      if (tool is ElicitChannelAware || bypassPermissions) {
+      if (tool is ElicitChannelAware || mode == ApprovalMode.bypass) {
         return (block: false, reason: '');
       }
 
       if (verdict == PermissionVerdict.prompt) {
-        if (reviewContext != null && tool != null) {
+        if (mode == ApprovalMode.auto &&
+            reviewContext != null &&
+            tool != null) {
           final review = await _permissionReviewer.review(
             context: reviewContext,
             toolName: ctx.name,
@@ -623,7 +629,14 @@ class AgentService {
               reason: 'Tool call denied by a permission rule.',
             );
           }
-          if (review.allowed) return (block: false, reason: '');
+          // 审核期间切档：Bypass 直接放行；切回 Manual 则放弃 AI 结论改问人。
+          final reviewMode = currentApprovalMode?.call() ?? ApprovalMode.manual;
+          if (reviewMode == ApprovalMode.bypass) {
+            return (block: false, reason: '');
+          }
+          if (review.allowed && reviewMode == ApprovalMode.auto) {
+            return (block: false, reason: '');
+          }
         }
         if (onPermission == null) {
           return (
@@ -796,7 +809,7 @@ class _AgentLoop {
     required ElicitChannel elicitChannel,
     required String? workspace,
     required bool allowReflection,
-    required bool bypassPermissions,
+    required ApprovalMode Function()? currentApprovalMode,
     required bool allowBackgroundTasks,
     required List<BackgroundTask> Function()? pendingBackgroundTasks,
   }) : _service = service,
@@ -828,7 +841,7 @@ class _AgentLoop {
        _elicitChannel = elicitChannel,
        _workspace = workspace,
        _allowReflection = allowReflection,
-       _bypassPermissions = bypassPermissions,
+       _currentApprovalMode = currentApprovalMode,
        _allowBackgroundTasks = allowBackgroundTasks,
        _pendingBackgroundTasks = pendingBackgroundTasks;
 
@@ -868,7 +881,7 @@ class _AgentLoop {
 
   /// 自动汇报跳过失败反思；审批模式独立决定工具的放行方式。
   final bool _allowReflection;
-  final bool _bypassPermissions;
+  final ApprovalMode Function()? _currentApprovalMode;
 
   /// 本轮是否允许启动后台任务。
   final bool _allowBackgroundTasks;
@@ -1355,7 +1368,7 @@ class _AgentLoop {
       permissionService: _permissionService,
       onPermission: _onPermission,
       workspace: _workspace,
-      bypassPermissions: _bypassPermissions,
+      bypassPermissions: _currentApprovalMode?.call() == ApprovalMode.bypass,
       toolRegistry: _registry,
     );
     final sequentialCalls = [

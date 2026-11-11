@@ -341,8 +341,8 @@ class _TuiAppState extends State<TuiApp> {
         _pushSystemMessage(_helpText);
       case '/review':
         // 档位挂在会话上：没有当前会话就无处可改，先提示而不是静默失败。
-        final chat = _controller.currentChat.value;
-        if (chat?.id == null) {
+        final chatId = _controller.currentChat.value?.id;
+        if (chatId == null) {
           _pushSystemMessage('还没有会话，先发一条消息或 /new 新建。');
           return;
         }
@@ -354,17 +354,20 @@ class _TuiAppState extends State<TuiApp> {
             _ => null,
           };
           if (mode == null) {
-            _pushSystemMessage('用法: /review [manual|ai|bypass]');
+            _pushSystemMessage('用法: /review [manual|auto|bypass]');
             return;
           }
           await _controller.switchApprovalMode(mode);
+          if (mode == ApprovalMode.bypass) {
+            _approvePendingPermissions(chatId);
+          }
         }
         final label = switch (_controller.currentChat.value!.approvalMode) {
           ApprovalMode.manual => 'Manual',
           ApprovalMode.auto => 'Auto',
           ApprovalMode.bypass => 'Bypass permissions',
         };
-        _pushSystemMessage('审批模式：$label（本会话），下一轮生效。');
+        _pushSystemMessage('审批模式：$label（本会话），立即生效。');
       case '/rewind':
         await _rewind(args);
       case '/clearimages':
@@ -1026,6 +1029,23 @@ class _TuiAppState extends State<TuiApp> {
     }
     setState(() => _permissionQueue.remove(request));
     _permissionScrollController.jumpTo(0);
+  }
+
+  /// 切到 Bypass 时收掉该会话已挂起的审批：请求按批准完成并退出队列。
+  void _approvePendingPermissions(String chatId) {
+    final requests = _permissionQueue
+        .where((request) => request.chatId == chatId)
+        .toList();
+    if (requests.isEmpty) return;
+    setState(
+      () => _permissionQueue.removeWhere((request) => request.chatId == chatId),
+    );
+    _permissionScrollController.jumpTo(0);
+    for (final request in requests) {
+      if (!request.completer.isCompleted) {
+        request.completer.complete(const PermissionDecision(approved: true));
+      }
+    }
   }
 
   Future<void> _saveApiKey(ProviderEntity provider, String apiKey) async {

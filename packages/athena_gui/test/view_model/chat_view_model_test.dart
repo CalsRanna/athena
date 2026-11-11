@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -13,6 +15,7 @@ import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -311,6 +314,26 @@ void main() {
         expect(viewModel.error.value, isNull);
         expect(viewModel.chats.value.single.approvalMode, mode);
         expect(viewModel.currentApprovalMode.value, mode);
+      });
+    });
+
+    testWidgets('切到 bypass 时挂起的审批按批准完成', (tester) async {
+      await tester.runAsync(() async {
+        final chat = await seedChat();
+        viewModel.currentChat.value = chat;
+        final completer = Completer<PermissionDecision>();
+        viewModel.pendingApprovals.value = [
+          ApprovalRequest(
+            chatId: chat.id!,
+            toolName: 'bash',
+            arguments: '{}',
+            completer: completer,
+          ),
+        ];
+
+        await viewModel.updateApprovalMode(ApprovalMode.bypass, chat: chat);
+
+        expect((await completer.future).approved, isTrue);
       });
     });
 

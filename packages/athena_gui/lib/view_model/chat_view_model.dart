@@ -275,6 +275,14 @@ class ChatViewModel {
     // 审批请求 → 会话内卡片；决策完成（含 run 取消自动拒绝）后自动移除。
     // VM 与应用同生命周期，订阅无需取消。
     streamDelegate.approvalRequests.listen((request) {
+      // 请求可能赶在切档之后才送达：已 Bypass 就直接放行，不再补卡片。
+      if (streamDelegate.isBypassPermissions(request.chatId)) {
+        streamDelegate.respondApproval(
+          request,
+          const PermissionDecision(approved: true),
+        );
+        return;
+      }
       pendingApprovals.value = [...pendingApprovals.value, request];
       unawaited(
         request.completer.future.whenComplete(() {
@@ -767,14 +775,34 @@ class ChatViewModel {
 
   /// 设置本会话的工具审批档位。
   ///
-  /// 只影响后续 run：运行中的 run 已在开始时读过自己那份档位。
+  /// 协调层在每次工具调用前读取档位，因此运行中切换立即生效；切到 Bypass
+  /// 时，已经挂起的审批请求按批准处理，不再等用户点卡片。
   Future<void> updateApprovalMode(
     ApprovalMode mode, {
     required ChatEntity chat,
   }) => _applyChatUpdate(
     persist: () => _supportService.updateApprovalMode(chat, mode),
-    sync: (updated) => _params.setApprovalMode(updated.approvalMode),
+    sync: (updated) {
+      _params.setApprovalMode(updated.approvalMode);
+      final chatId = updated.id;
+      if (chatId == null) return;
+      _stream.updateApprovalMode(chatId, updated.approvalMode);
+      if (updated.approvalMode == ApprovalMode.bypass) {
+        _approvePendingApprovals(chatId);
+      }
+    },
   );
+
+  /// 切到 Bypass 时收掉该会话已挂起的审批卡：请求按批准完成，UI 随之移除。
+  void _approvePendingApprovals(String chatId) {
+    for (final request
+        in pendingApprovals.value.where((r) => r.chatId == chatId).toList()) {
+      _stream.respondApproval(
+        request,
+        const PermissionDecision(approved: true),
+      );
+    }
+  }
 
   Future<void> updateCurrentModel(ModelEntity model) async {
     await _params.setModel(model);

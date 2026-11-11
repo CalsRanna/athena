@@ -9,6 +9,7 @@ import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/rewind_result.dart';
@@ -115,6 +116,15 @@ class AgentStreamDelegate {
     return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
   }
 
+  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _coordinator.updateApprovalMode(chatId, mode);
+  }
+
+  /// 指定会话当前是否为 Bypass。
+  bool isBypassPermissions(String chatId) =>
+      _coordinator.isBypassPermissions(chatId);
+
   Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
       _coordinator.rewindToUserMessage(chatId, messageId);
 
@@ -144,6 +154,10 @@ class AgentStreamDelegate {
     String arguments,
     CancelToken cancelToken,
   ) async {
+    // 切档与权限请求可能擦肩而过：只要已经切到 Bypass，就不再补一张卡片。
+    if (_coordinator.isBypassPermissions(chatId)) {
+      return const PermissionDecision(approved: true);
+    }
     final completer = Completer<PermissionDecision>();
     _approvalController.add(
       ApprovalRequest(

@@ -115,7 +115,7 @@ flutter pub get && cd packages/athena_tui && dart run bin/athena.dart
 | `/sentinels` `Ctrl+S` | 选择角色 |
 | `/providers` | 配置 Provider 的 API key |
 | `/format` | 配置 Provider 的 API 格式 |
-| `/review [manual\|ai\|bypass]` | 查看或切换当前会话的审批模式（下一轮生效） |
+| `/review [manual\|auto\|bypass]` | 查看或切换当前会话的审批模式（立即生效） |
 | `/json <文本>` | 以 JSON 模式运行 |
 | `/help` / `/quit` | 帮助 / 退出 |
 
