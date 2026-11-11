@@ -16,6 +16,7 @@ void main() {
     int? tokens,
     double? rate,
     bool streaming = true,
+    Duration finishedAfter = const Duration(seconds: 10),
   }) => tester.pumpWidget(
     MaterialApp(
       theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
@@ -25,9 +26,7 @@ void main() {
           statistics: RunStatistics(
             id: 'run-1',
             startedAt: startedAt,
-            finishedAt: streaming
-                ? null
-                : startedAt.add(const Duration(seconds: 10)),
+            finishedAt: streaming ? null : startedAt.add(finishedAfter),
             outputTokens: tokens,
             outputTokensPerSecond: rate,
           ),
@@ -102,5 +101,49 @@ void main() {
     expect(find.text('10s'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('耗时跨过一分钟与一小时各分量带空格', (tester) async {
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(seconds: 59),
+    );
+    expect(find.text('59s'), findsOneWidget);
+
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(seconds: 60),
+    );
+    expect(find.text('1m 0s'), findsOneWidget);
+
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(seconds: 90),
+    );
+    expect(find.text('1m 30s'), findsOneWidget);
+
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(minutes: 59, seconds: 59),
+    );
+    expect(find.text('59m 59s'), findsOneWidget);
+
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(seconds: 3600),
+    );
+    expect(find.text('1h 0m 0s'), findsOneWidget);
+
+    await pumpStatistics(
+      tester,
+      streaming: false,
+      finishedAfter: const Duration(seconds: 3661),
+    );
+    expect(find.text('1h 1m 1s'), findsOneWidget);
   });
 }
