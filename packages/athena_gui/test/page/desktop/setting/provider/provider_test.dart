@@ -6,11 +6,13 @@ import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_name_form.dart';
 import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart';
+import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,16 +55,17 @@ void main() {
       .widgetList<AthenaSettingsListRow>(find.byType(AthenaSettingsListRow))
       .where((row) => row.label.startsWith('Provider '));
 
-  testWidgets('adding a provider inline can be cancelled or submitted once', (
-    tester,
-  ) async {
+  testWidgets('adding a provider uses a dialog that can be cancelled or '
+      'submitted once', (tester) async {
     tester.view.physicalSize = const Size(1080, 720);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.runAsync(() => GetIt.instance<FileStorage>().load());
     await tester.pumpWidget(
       MaterialApp(
-        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
+        navigatorKey: AthenaRouter.router.navigatorKey,
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
+            .copyWith(platform: TargetPlatform.macOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const AthenaSettingsPanel(
           nav: SizedBox(width: AthenaSettings.navWidth),
@@ -71,23 +74,29 @@ void main() {
       ),
     );
     await settle(tester);
-    await tester.tap(find.text('Add'));
-    await tester.pump();
+    final addButton = find.widgetWithText(AthenaPrimaryButton, 'Add');
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
     final nameField = find.descendant(
       of: find.byType(DesktopProviderNameForm),
       matching: find.byType(TextField),
     );
+    final dialogAddButton = find.descendant(
+      of: find.byType(DesktopProviderNameForm),
+      matching: find.text('Add'),
+    );
     await tester.enterText(nameField, 'Discarded draft');
     await tester.tap(find.text('Cancel'));
-    await tester.pump();
-    await tester.tap(find.text('Add'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(DesktopProviderNameForm), findsNothing);
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
     expect(tester.widget<TextField>(nameField).controller!.text, isEmpty);
     await tester.enterText(nameField, '  Local preview  ');
     await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.text('Add'));
-      await tester.tap(find.text('Add'));
+      await tester.tap(dialogAddButton);
+      await tester.tap(dialogAddButton);
     });
     await settle(tester);
     expect(find.text('API key'), findsOneWidget);

@@ -1,14 +1,13 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
+import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
-/// 新建时嵌在列表内，重命名时嵌在对话框内；两处共用同一条保存路径。
+/// 新建与重命名 provider 的对话框内容；两处共用同一条保存路径。
 class DesktopProviderNameForm extends StatefulWidget {
   final ProviderEntity? provider;
   final VoidCallback onCancel;
@@ -45,55 +44,29 @@ class _DesktopProviderNameFormState extends State<DesktopProviderNameForm> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final field = DesktopSettingFormField(
-      label: 'Name',
-      child: AthenaSettingsTextField(
-        controller: nameController,
-        autofocus: true,
-        enabled: !saving,
-        placeholder: 'e.g. Local Ollama',
-        onChanged: (_) => setState(() {}),
-        onSubmitted: (_) => storeProvider(),
-      ),
-    );
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AthenaSecondaryButton.small(
-          onTap: saving ? null : widget.onCancel,
-          child: const Text('Cancel'),
+        DesktopSettingFormField(
+          label: 'Name',
+          child: AthenaSettingsTextField(
+            controller: nameController,
+            autofocus: true,
+            enabled: !saving,
+            placeholder: 'e.g. Local Ollama',
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => storeProvider(),
+          ),
         ),
-        const SizedBox(width: 8),
-        AthenaPrimaryButton.small(
-          onTap: saving || nameController.text.trim().isEmpty
+        const SizedBox(height: AthenaSpace.xxl),
+        DesktopSettingFormActions(
+          onCancel: saving ? null : widget.onCancel,
+          onConfirm: saving || nameController.text.trim().isEmpty
               ? null
               : storeProvider,
-          child: Text(widget.provider == null ? 'Add' : 'Save'),
+          confirmLabel: widget.provider == null ? 'Add' : 'Save',
         ),
       ],
-    );
-    if (widget.provider != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [field, const SizedBox(height: 16), actions],
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.all(AthenaSpace.md),
-      decoration: BoxDecoration(
-        color: colors.surfacePanel,
-        border: Border.all(color: colors.neutralBorder),
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(child: field),
-          const SizedBox(width: 8),
-          actions,
-        ],
-      ),
     );
   }
 

@@ -69,7 +69,6 @@ class _DesktopSettingProviderPageState
 
   /// 正在查看的 provider；null 表示停在列表。
   String? openId;
-  bool adding = false;
   bool showDisabled = false;
   final searchController = TextEditingController();
   _Status status = _Status.all;
@@ -179,7 +178,7 @@ class _DesktopSettingProviderPageState
         sort = option;
         _selection.clear();
       }),
-      onAdd: adding ? null : createProvider,
+      onAdd: () => openProviderFormDialog(),
       menus: [
         Tooltip(
           message: _syncDescription(),
@@ -190,14 +189,6 @@ class _DesktopSettingProviderPageState
         ),
       ],
       children: [
-        if (adding)
-          AthenaSettingsInset(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
-            child: DesktopProviderNameForm(
-              onCancel: () => setState(() => adding = false),
-              onStored: _openProvider,
-            ),
-          ),
         if (providers.isEmpty)
           AthenaSettingsEmptyState(
             icon: AthenaIcons.connection,
@@ -331,10 +322,7 @@ class _DesktopSettingProviderPageState
     nameController.text = provider.name;
     keyController.text = provider.apiKey;
     urlController.text = provider.baseUrl;
-    setState(() {
-      adding = false;
-      openId = provider.id;
-    });
+    setState(() => openId = provider.id);
   }
 
   void _closeProvider() {
@@ -680,20 +668,18 @@ class _DesktopSettingProviderPageState
     }
   }
 
-  void createProvider() {
-    if (listController.hasClients) listController.jumpTo(0);
-    setState(() => adding = true);
-  }
-
-  void openProviderFormDialog(ProviderEntity provider) {
+  void openProviderFormDialog([ProviderEntity? provider]) {
     AthenaDialog.show(
       AthenaDesktopDialog(
-        title: 'Rename provider',
+        title: provider == null ? 'Add provider' : 'Rename provider',
         onClose: AthenaDialog.dismiss,
         child: DesktopProviderNameForm(
           provider: provider,
           onCancel: AthenaDialog.dismiss,
-          onStored: (_) => AthenaDialog.dismiss(),
+          onStored: (stored) {
+            AthenaDialog.dismiss();
+            if (provider == null) _openProvider(stored);
+          },
         ),
       ),
     );
