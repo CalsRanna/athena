@@ -3,16 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/path_normalizer.dart';
-
-/// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
-const kFileToolNames = {'file_read', 'file_write', 'file_update'};
-
-/// Shell 类工具:禁令按整条命令匹配，不分析命令语义。
-///
-/// 与 [kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
-/// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
-const kShellToolNames = {'bash', 'powershell'};
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 
 /// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
 ///
@@ -57,7 +48,8 @@ class PermissionRule {
     // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
     if (kind == RuleKind.origin && tool != 'web_fetch') {
       return null;
-    } else if (kind == RuleKind.path && !kFileToolNames.contains(tool)) {
+    } else if (kind == RuleKind.path &&
+        !PermissionRule.kFileToolNames.contains(tool)) {
       return null;
     } else if (wildcard) {
       return null;
@@ -81,7 +73,7 @@ class PermissionRule {
         // pattern 为空 → 禁止该工具的所有调用
         if (pattern.isEmpty) return true;
         if (keyArg == null) return false;
-        if (kShellToolNames.contains(toolName)) {
+        if (PermissionRule.kShellToolNames.contains(toolName)) {
           return _normalizeCommandForDenyMatch(keyArg) ==
               _normalizeCommandForDenyMatch(pattern);
         }
@@ -136,8 +128,8 @@ class PermissionRule {
   /// 目录下的规则(macOS 的 `/tmp` 即 `/private/tmp`)不再命中,deny 规则
   /// 也能被链接绕开。对已解析的 keyArg 再解析一次结果不变。
   bool _matchesPath(String keyArg) {
-    var p = resolveRealPathSync(pattern);
-    var k = resolveRealPathSync(keyArg);
+    var p = PathNormalizer.resolveRealPathSync(pattern);
+    var k = PathNormalizer.resolveRealPathSync(keyArg);
     if (p.endsWith('/')) p = p.substring(0, p.length - 1);
     if (k.endsWith('/')) k = k.substring(0, k.length - 1);
     if (p.contains('*') || p.contains('?')) {
@@ -158,6 +150,15 @@ class PermissionRule {
         .replaceAll('___DSTAR___', r'.*');
     return RegExp('^$escaped\$').hasMatch(value);
   }
+
+  /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
+  static const kFileToolNames = {'file_read', 'file_write', 'file_update'};
+
+  /// Shell 类工具:禁令按整条命令匹配，不分析命令语义。
+  ///
+  /// 与 [PermissionRule.kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
+  /// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
+  static const kShellToolNames = {'bash', 'powershell'};
 }
 
 /// 规则持久化存储(`FileStorage.permissionsFile`,GUI 与 TUI 共用)。
@@ -224,16 +225,16 @@ class PermissionStore {
     }
     final file = _file!;
     final locks = _locks!;
-    await withFileLock(locks.forTarget(file), () async {
+    await FileLocking.withFileLock(locks.forTarget(file), () async {
       var current = _parse(file);
       if (current == null) {
         // 坏文件以内存里最后一份有效规则为基础重写,先留备份
-        final backup = await preserveCorruptFile(file);
+        final backup = await FileLocking.preserveCorruptFile(file);
         LoggerUtil.w('${file.path} is corrupt, backed up to $backup');
         current = List.of(rules);
       }
       if (!_contains(current, rule)) current.add(rule);
-      await atomicWriteString(
+      await FileLocking.atomicWriteString(
         file,
         const JsonEncoder.withIndent(
           '  ',

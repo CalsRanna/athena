@@ -434,7 +434,10 @@ class AgentRunCoordinator {
         experiencePrompt: ExperiencePrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
-            : runtimeContextPrompt(_runtimeEnvironment, workspace: workspace),
+            : RuntimeContext.runtimeContextPrompt(
+                _runtimeEnvironment,
+                workspace: workspace,
+              ),
         // turnStart has finalized the preceding iteration before this callback
         // runs. Exclude the new placeholder and queued, not-yet-sent inputs.
         onCompact: (request) => compactor.compact(
@@ -626,7 +629,7 @@ class AgentRunCoordinator {
   /// 后台任务结束的回调：决定「现在汇报」还是「攒到会话空闲再汇报」。
   void _onBackgroundTaskCompleted(BackgroundTask task) {
     if (isRewindingChat(task.chatId)) return;
-    if (!shouldReportTaskCompletion(task)) return;
+    if (!task.shouldReportCompletion) return;
     if (!_agentSettings.backgroundTaskReports.value) return;
     final chatId = task.chatId;
     _pendingReports.putIfAbsent(chatId, () => []).add(task);
@@ -805,7 +808,7 @@ class AgentRunCoordinator {
         // 汇报说明在上面的末条 user 消息里，不能顶替掉它
         runtimePrompt: _runtimeEnvironment == null
             ? null
-            : runtimeContextPrompt(
+            : RuntimeContext.runtimeContextPrompt(
                 _runtimeEnvironment,
                 workspace: _workspaceByChat[chatId],
               ),

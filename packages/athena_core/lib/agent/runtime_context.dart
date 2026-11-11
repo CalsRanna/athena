@@ -8,47 +8,49 @@ import 'package:athena_core/util/platform_util.dart';
 /// 装配层把该事实注入系统提示。
 enum RuntimeEnvironment { gui, tui }
 
-/// Local calendar date only; appended to the runtime context, stable within a day.
-String currentDatePrompt(DateTime date) {
-  final year = date.year.toString().padLeft(4, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '当前日期：$year-$month-$day。';
-}
-
-/// 生成运行环境提示文本，与日期合并后作为最后一条 system 消息注入。
-///
-/// [workspace] 非空时额外声明本会话的工作文件夹：shell 的默认工作目录与
-/// 文件工具的相对路径基准随会话变化，而工具描述是构造期的静态文本，
-/// 承载不了该事实，只能在此声明。
-String runtimeContextPrompt(
-  RuntimeEnvironment environment, {
-  String? workspace,
-}) {
-  final client = environment == RuntimeEnvironment.gui
-      ? 'Athena 图形界面应用'
-      : 'Athena 终端界面（TUI）';
-  final buffer = StringBuffer(
-    '你正在 ${_platformName()} 上的 $client 中运行。\n'
-    '用户要求创建或编辑技能时，可使用现有文件或 Shell 工具读写技能文件；'
-    '技能根目录以 skill 工具返回的路径为准，写入后用 skill 加载验证即可生效。'
-    '角色定义由用户在设置中维护，其他应用数据（会话、经验、配置）由专用工具管理，'
-    '绝不要直接定位、读取或修改这些应用数据文件。',
-  );
-  if (workspace != null && workspace.isNotEmpty) {
-    buffer.write(
-      '\n你的工作文件夹是 $workspace。Shell 命令默认在此运行，'
-      '文件工具的相对路径也以此为基准解析。',
-    );
+abstract final class RuntimeContext {
+  /// Local calendar date only; appended to the runtime context, stable within a day.
+  static String currentDatePrompt(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '当前日期：$year-$month-$day。';
   }
-  return buffer.toString();
-}
 
-String _platformName() {
-  if (PlatformUtil.isMacOS) return 'macOS';
-  if (PlatformUtil.isWindows) return 'Windows';
-  if (PlatformUtil.isLinux) return 'Linux';
-  if (PlatformUtil.isIOS) return 'iOS';
-  if (PlatformUtil.isAndroid) return 'Android';
-  return '未知平台';
+  /// 生成运行环境提示文本，与日期合并后作为最后一条 system 消息注入。
+  ///
+  /// [workspace] 非空时额外声明本会话的工作文件夹：shell 的默认工作目录与
+  /// 文件工具的相对路径基准随会话变化，而工具描述是构造期的静态文本，
+  /// 承载不了该事实，只能在此声明。
+  static String runtimeContextPrompt(
+    RuntimeEnvironment environment, {
+    String? workspace,
+  }) {
+    final client = environment == RuntimeEnvironment.gui
+        ? 'Athena 图形界面应用'
+        : 'Athena 终端界面（TUI）';
+    final buffer = StringBuffer(
+      '你正在 ${RuntimeContext._platformName()} 上的 $client 中运行。\n'
+      '用户要求创建或编辑技能时，可使用现有文件或 Shell 工具读写技能文件；'
+      '技能根目录以 skill 工具返回的路径为准，写入后用 skill 加载验证即可生效。'
+      '角色定义由用户在设置中维护，其他应用数据（会话、经验、配置）由专用工具管理，'
+      '绝不要直接定位、读取或修改这些应用数据文件。',
+    );
+    if (workspace != null && workspace.isNotEmpty) {
+      buffer.write(
+        '\n你的工作文件夹是 $workspace。Shell 命令默认在此运行，'
+        '文件工具的相对路径也以此为基准解析。',
+      );
+    }
+    return buffer.toString();
+  }
+
+  static String _platformName() {
+    if (PlatformUtil.isMacOS) return 'macOS';
+    if (PlatformUtil.isWindows) return 'Windows';
+    if (PlatformUtil.isLinux) return 'Linux';
+    if (PlatformUtil.isIOS) return 'iOS';
+    if (PlatformUtil.isAndroid) return 'Android';
+    return '未知平台';
+  }
 }

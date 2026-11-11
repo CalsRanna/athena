@@ -4,7 +4,7 @@ import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/desktop_list_selection.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';

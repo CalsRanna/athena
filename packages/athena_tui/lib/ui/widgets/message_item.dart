@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_tui/ui/widgets/compaction_card.dart';
-import 'package:athena_core/util/tool_args_formatter.dart';
+import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/ui/widgets/message_card.dart';
@@ -95,7 +95,7 @@ class MessageItem extends StatelessComponent {
           color: borderColor,
           borderStyle: borderStyle,
           child: Text(
-            sanitizeAnsi(message.content),
+            TextUtil.sanitizeAnsi(message.content),
             style: contentStyle,
             softWrap: true,
           ),
@@ -143,7 +143,9 @@ class MessageItem extends StatelessComponent {
                 ),
                 if (arguments.isNotEmpty)
                   Text(
-                    sanitizeAnsi(toolArgPreview(name, arguments)),
+                    TextUtil.sanitizeAnsi(
+                      ToolArgsFormatter.toolArgPreview(name, arguments),
+                    ),
                     style: AthenaTextStyles.dim,
                     softWrap: true,
                   ),
@@ -171,7 +173,7 @@ class MessageItem extends StatelessComponent {
           _Card(
             color: AthenaCardColors.toolResult,
             child: Text(
-              '↩ $name: ${sanitizeAnsi(truncateText(result, 2000, suffix: '(截断)'))}',
+              '↩ $name: ${TextUtil.sanitizeAnsi(TextUtil.truncateText(result, 2000, suffix: '(截断)'))}',
               style: AthenaTextStyles.dim,
               softWrap: true,
             ),
@@ -221,7 +223,7 @@ class _ReasoningCard extends StatelessComponent {
       color: AthenaCardColors.reasoning,
       child: content.isNotEmpty
           ? Text(
-              sanitizeAnsi(content),
+              TextUtil.sanitizeAnsi(content),
               style: AthenaTextStyles.dim,
               softWrap: true,
             )

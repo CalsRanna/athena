@@ -59,7 +59,7 @@ void main() {
 
   test('加锁会建出中间目录,锁文件内容为空', () async {
     final lock = locks.forTarget(File(p.join(tmp.path, 'sessions', 'x.jsonl')));
-    final content = await withFileLock(lock, () async {
+    final content = await FileLocking.withFileLock(lock, () async {
       expect(await lock.parent.exists(), isTrue);
       return lock.readAsBytes();
     });
@@ -73,7 +73,7 @@ void main() {
     final order = <int>[];
     await Future.wait([
       for (var i = 0; i < 5; i++)
-        withFileLock(lock, () async {
+        FileLocking.withFileLock(lock, () async {
           inFlight++;
           if (inFlight > peak) peak = inFlight;
           await Future<void>.delayed(const Duration(milliseconds: 5));

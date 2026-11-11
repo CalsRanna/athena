@@ -1,5 +1,5 @@
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/window_util.dart';
+import 'package:athena_gui/util/platform/window_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

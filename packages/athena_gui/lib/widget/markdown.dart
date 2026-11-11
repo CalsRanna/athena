@@ -171,11 +171,6 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
   }
 }
 
-bool _hasClass(md.Element element, String className) {
-  final classes = element.attributes['class']?.split(RegExp(r'\s+'));
-  return classes?.contains(className) ?? false;
-}
-
 class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
   final void Function(String?)? onTap;
 
@@ -188,7 +183,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    if (!_hasClass(element, 'footnote-backref')) return null;
+    if (!_MarkdownHelpers._hasClass(element, 'footnote-backref')) return null;
 
     final colors = context.athenaColors;
     final button = Tooltip(
@@ -392,7 +387,7 @@ class _FlutterMarkdown extends StatelessWidget {
     final last = nodes.last;
     return last is md.Element &&
         last.tag == 'section' &&
-        _hasClass(last, 'footnotes');
+        _MarkdownHelpers._hasClass(last, 'footnotes');
   }
 
   Future<void> openLink(String? url) async {
@@ -503,5 +498,12 @@ class _SupBuilder extends MarkdownElementBuilder {
       child: container,
     );
     return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+}
+
+abstract final class _MarkdownHelpers {
+  static bool _hasClass(md.Element element, String className) {
+    final classes = element.attributes['class']?.split(RegExp(r'\s+'));
+    return classes?.contains(className) ?? false;
   }
 }

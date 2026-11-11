@@ -6,79 +6,6 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-/// 仅生成 Sentinel 名称的 prompt
-const _nameGenerationPrompt = '''
-你是一个专业的AI助手名称生成器。根据用户提供的角色提示词，生成一个简洁的名称。
-只返回 JSON 格式：{"name": "..."}
-
-示例：
-用户输入: "一位专精于中国古典文学的学者，精通诗词歌赋"
-输出: {"name": "诗词大家"}
-''';
-
-/// 仅生成 Sentinel 描述的 prompt
-const _descriptionGenerationPrompt = '''
-你是一个专业的AI助手描述生成器。根据用户提供的角色提示词和已有名称，生成简短的描述。
-只返回 JSON 格式：{"description": "..."}
-
-示例：
-用户输入: "一位专精于中国古典文学的学者，精通诗词歌赋"
-已有名称: "诗词大家"
-输出: {"description": "专精中国古典文学的虚拟学者，精通诗词歌赋，提供各朝代文学作品的赏析与解读。"}
-''';
-
-const _metadataGenerationPrompt = '''
-角色：
-你是一位专业的AI助手元数据生成器,擅长分析用户输入的角色提示词,并生成相应的名称、描述、
-标签。
-
-目标：
-1. 分析用户提供的角色提示词
-2. 生成符合提示词内容的name(名称)
-3. 创建简洁的description(描述)
-4. 提供相关的tags(标签)
-5. 将所有生成的信息组织成JSON格式输出
-
-风格：
-保持输出简洁明了,description不要过长。name、description和tags可以使用中文。
-
-内容与上下文：
-你需要理解各种可能的角色提示词,包括但不限于不同领域的专业知识、特定任务、角色扮演等。无论
-用户输入什么,都要基于输入内容生成所需的元数据,而不是将用户输入作为消息直接使用。
-
-输入：
-用户将提供一个角色提示词,可能是几个词到几个句子不等。
-
-响应：
-返回一个JSON对象,包含以下字段:
-- name: 字符串,角色的名称
-- description: 字符串,简短的描述
-- tags: 字符串数组,相关标签
-
-受众：
-使用该系统的开发者或用户,他们需要为自定义的角色快速生成元数据。
-
-工作流：
-1. 仔细阅读并分析用户提供的角色提示词
-2. 提取提示词中的关键信息和主题
-3. 基于分析结果生成简洁的name
-4. 创建简短的description,概括角色的主要功能或特点
-5. 选择3-5个相关的tags
-6. 将所有生成的信息组织成指定的JSON格式
-7. 检查确保所有字段都已填写,且内容与原始提示词相符
-8. 返回生成的JSON对象
-
-示例:
-用户输入: "一位专精于中国古典文学的学者,精通诗词歌赋,能够赏析解读各朝代的文学作品。"
-
-输出:
-{
-  "name": "诗词大家",
-  "description": "专精中国古典文学的虚拟学者,精通诗词歌赋,提供各朝代文学作品的赏析与解读。",
-  "tags": ["中国文学", "古典诗词", "文学赏析", "学者"]
-}
-''';
-
 /// SentinelService 负责 Sentinel 生成相关的网络请求
 class SentinelService {
   final LlmClient _llmClient;
@@ -93,7 +20,7 @@ class SentinelService {
   }) async {
     final sentinel = await _generateWithPrompt(
       prompt: prompt,
-      systemPrompt: _nameGenerationPrompt,
+      systemPrompt: SentinelService._nameGenerationPrompt,
       provider: provider,
       model: model,
     );
@@ -112,7 +39,7 @@ class SentinelService {
         : prompt;
     final sentinel = await _generateWithPrompt(
       prompt: userContent,
-      systemPrompt: _descriptionGenerationPrompt,
+      systemPrompt: SentinelService._descriptionGenerationPrompt,
       provider: provider,
       model: model,
     );
@@ -163,9 +90,82 @@ class SentinelService {
   }) async {
     return _generateWithPrompt(
       prompt: prompt,
-      systemPrompt: _metadataGenerationPrompt,
+      systemPrompt: SentinelService._metadataGenerationPrompt,
       provider: provider,
       model: model,
     );
   }
+
+  /// 仅生成 Sentinel 名称的 prompt
+  static const _nameGenerationPrompt = '''
+你是一个专业的AI助手名称生成器。根据用户提供的角色提示词，生成一个简洁的名称。
+只返回 JSON 格式：{"name": "..."}
+
+示例：
+用户输入: "一位专精于中国古典文学的学者，精通诗词歌赋"
+输出: {"name": "诗词大家"}
+''';
+
+  /// 仅生成 Sentinel 描述的 prompt
+  static const _descriptionGenerationPrompt = '''
+你是一个专业的AI助手描述生成器。根据用户提供的角色提示词和已有名称，生成简短的描述。
+只返回 JSON 格式：{"description": "..."}
+
+示例：
+用户输入: "一位专精于中国古典文学的学者，精通诗词歌赋"
+已有名称: "诗词大家"
+输出: {"description": "专精中国古典文学的虚拟学者，精通诗词歌赋，提供各朝代文学作品的赏析与解读。"}
+''';
+
+  static const _metadataGenerationPrompt = '''
+角色：
+你是一位专业的AI助手元数据生成器,擅长分析用户输入的角色提示词,并生成相应的名称、描述、
+标签。
+
+目标：
+1. 分析用户提供的角色提示词
+2. 生成符合提示词内容的name(名称)
+3. 创建简洁的description(描述)
+4. 提供相关的tags(标签)
+5. 将所有生成的信息组织成JSON格式输出
+
+风格：
+保持输出简洁明了,description不要过长。name、description和tags可以使用中文。
+
+内容与上下文：
+你需要理解各种可能的角色提示词,包括但不限于不同领域的专业知识、特定任务、角色扮演等。无论
+用户输入什么,都要基于输入内容生成所需的元数据,而不是将用户输入作为消息直接使用。
+
+输入：
+用户将提供一个角色提示词,可能是几个词到几个句子不等。
+
+响应：
+返回一个JSON对象,包含以下字段:
+- name: 字符串,角色的名称
+- description: 字符串,简短的描述
+- tags: 字符串数组,相关标签
+
+受众：
+使用该系统的开发者或用户,他们需要为自定义的角色快速生成元数据。
+
+工作流：
+1. 仔细阅读并分析用户提供的角色提示词
+2. 提取提示词中的关键信息和主题
+3. 基于分析结果生成简洁的name
+4. 创建简短的description,概括角色的主要功能或特点
+5. 选择3-5个相关的tags
+6. 将所有生成的信息组织成指定的JSON格式
+7. 检查确保所有字段都已填写,且内容与原始提示词相符
+8. 返回生成的JSON对象
+
+示例:
+用户输入: "一位专精于中国古典文学的学者,精通诗词歌赋,能够赏析解读各朝代的文学作品。"
+
+输出:
+{
+  "name": "诗词大家",
+  "description": "专精中国古典文学的虚拟学者,精通诗词歌赋,提供各朝代文学作品的赏析与解读。",
+  "tags": ["中国文学", "古典诗词", "文学赏析", "学者"]
+}
+''';
 }

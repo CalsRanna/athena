@@ -6,8 +6,8 @@ import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
-import 'package:athena_gui/util/message_display_util.dart';
-import 'package:athena_gui/util/sliver_item_metrics.dart';
+import 'package:athena_gui/component/message_display.dart';
+import 'package:athena_gui/component/sliver_item_metrics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
 
@@ -146,7 +146,7 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
 
   @override
   Widget build(BuildContext context) {
-    final renderItems = _buildMessageListRenderItems(
+    final renderItems = _MessageListRenderItems._buildMessageListRenderItems(
       widget.messages,
       loading: widget.loading,
     );
@@ -346,56 +346,61 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
   }
 }
 
-/// 整个窗口的展示预计算：分卡 → 卡片内步骤分组 → 工具调用 JSON 解析。
-///
-/// **每次 build 都重跑一遍，这是量过之后有意保留的。** 实测 50 条消息（其中
-/// 25 条各带 3 个工具调用、正文 2000 字）单次约 0.45 ms，`toolLabel` 那条路径
-/// （75 次 `jsonDecode`）约 0.07 ms；流式期间 10 次/秒，合计约 5 ms/秒，不到
-/// 单核的 1%。为这点开销加一层按消息内容的缓存，换来的是缓存失效与陈旧展示
-/// 这两类难查的 bug，不划算。真正贵的是正文的 markdown 重排与 layout，那由
-/// 合并提交频率（见 core 的 StreamingMessageBuffer）控制，不在这里。
-///
-/// 如果哪天要重新评估，先量再改：消息数与每条的步骤数是线性的，先确认单次
-/// 超过约 5 ms 再谈 memoize。
-List<_MessageListRenderItem> _buildMessageListRenderItems(
-  List<MessageEntity> messages, {
-  required bool loading,
-}) {
-  final cards = buildMessageDisplayCards(messages);
-  final result = <_MessageListRenderItem>[];
-  for (final (cardIndex, cardMessages) in cards.indexed) {
-    final message = cardMessages.first;
-    if (!isAssistantCardMessage(message)) {
-      result.add(
-        _MessageListRenderItem(message: message, addCardSpacing: cardIndex > 0),
+abstract final class _MessageListRenderItems {
+  /// 整个窗口的展示预计算：分卡 → 卡片内步骤分组 → 工具调用 JSON 解析。
+  ///
+  /// **每次 build 都重跑一遍，这是量过之后有意保留的。** 实测 50 条消息（其中
+  /// 25 条各带 3 个工具调用、正文 2000 字）单次约 0.45 ms，`toolLabel` 那条路径
+  /// （75 次 `jsonDecode`）约 0.07 ms；流式期间 10 次/秒，合计约 5 ms/秒，不到
+  /// 单核的 1%。为这点开销加一层按消息内容的缓存，换来的是缓存失效与陈旧展示
+  /// 这两类难查的 bug，不划算。真正贵的是正文的 markdown 重排与 layout，那由
+  /// 合并提交频率（见 core 的 StreamingMessageBuffer）控制，不在这里。
+  ///
+  /// 如果哪天要重新评估，先量再改：消息数与每条的步骤数是线性的，先确认单次
+  /// 超过约 5 ms 再谈 memoize。
+  static List<_MessageListRenderItem> _buildMessageListRenderItems(
+    List<MessageEntity> messages, {
+    required bool loading,
+  }) {
+    final cards = MessageDisplay.buildMessageDisplayCards(messages);
+    final result = <_MessageListRenderItem>[];
+    for (final (cardIndex, cardMessages) in cards.indexed) {
+      final message = cardMessages.first;
+      if (!MessageDisplay.isAssistantCardMessage(message)) {
+        result.add(
+          _MessageListRenderItem(
+            message: message,
+            addCardSpacing: cardIndex > 0,
+          ),
+        );
+        continue;
+      }
+
+      final streaming =
+          loading &&
+          cardIndex == cards.length - 1 &&
+          cardMessages.last.runStatistics?.finishedAt == null;
+
+      final layouts = MessageDisplay.buildAssistantMessageLayouts(
+        cardMessages,
+        loading: streaming,
       );
-      continue;
+      if (layouts.isEmpty) continue;
+      for (final (index, layout) in layouts.indexed) {
+        result.add(
+          _MessageListRenderItem(
+            message: layout.message,
+            layout: layout,
+            cardMessages: cardMessages,
+            isCardHeader: index == 0,
+            isCardTail: index == layouts.length - 1,
+            addCardSpacing: cardIndex > 0 && index == 0,
+            streaming: streaming,
+          ),
+        );
+      }
     }
 
-    final streaming =
-        loading &&
-        cardIndex == cards.length - 1 &&
-        cardMessages.last.runStatistics?.finishedAt == null;
-
-    final layouts = buildAssistantMessageLayouts(
-      cardMessages,
-      loading: streaming,
-    );
-    if (layouts.isEmpty) continue;
-    for (final (index, layout) in layouts.indexed) {
-      result.add(
-        _MessageListRenderItem(
-          message: layout.message,
-          layout: layout,
-          cardMessages: cardMessages,
-          isCardHeader: index == 0,
-          isCardTail: index == layouts.length - 1,
-          addCardSpacing: cardIndex > 0 && index == 0,
-          streaming: streaming,
-        ),
-      );
-    }
+    return result;
   }
-
-  return result;
 }

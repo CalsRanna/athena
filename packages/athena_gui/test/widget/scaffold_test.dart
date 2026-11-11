@@ -13,7 +13,7 @@ void main() {
       const appBarKey = Key('app-bar');
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light)
+          theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
               .copyWith(platform: platform),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: const MediaQuery(

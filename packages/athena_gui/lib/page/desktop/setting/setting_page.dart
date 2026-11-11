@@ -209,7 +209,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   /// 从路由栈里读出当前打开的分区。
   SettingSection? _sectionFromRouter() {
-    for (final match in router.currentSegments.reversed) {
+    for (final match in AthenaRouter.router.currentSegments.reversed) {
       if (match.name != DesktopSettingRoute.name) continue;
       final children = match.children;
       if (children == null || children.isEmpty) return null;

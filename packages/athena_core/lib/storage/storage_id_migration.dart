@@ -80,38 +80,47 @@ class StorageIdMigration {
   Directory get _backup => Directory(p.join(root.path, 'backups', 'ids-v1'));
   File get _journal => File(p.join(_work.path, 'ready.json'));
 
-  Future<Map<String, String>>
-  run() => withFileLock(_locks.named('storage-migration'), () async {
-    final state = await _readVersionState();
-    if (state != null) {
-      if (state['version'] != version) {
-        throw StateError('Unsupported storage version: ${state['version']}');
+  Future<Map<String, String>> run() => FileLocking.withFileLock(
+    _locks.named('storage-migration'),
+    () async {
+      final state = await _readVersionState();
+      if (state != null) {
+        if (state['version'] != version) {
+          throw StateError('Unsupported storage version: ${state['version']}');
+        }
+        return Map<String, String>.from(
+          state['legacy_model_ids'] as Map? ?? {},
+        );
       }
-      return Map<String, String>.from(state['legacy_model_ids'] as Map? ?? {});
-    }
-    if (!await _journal.exists()) await _prepare();
-    final journal = jsonDecode(await _journal.readAsString()) as Map;
-    final entries = (journal['files'] as List).cast<Map>();
-    // 所有新文件先落盘，再清理旧文件名；断电后可用同一清单重放。
-    for (final entry in entries) {
-      final target = entry['target'] as String?;
-      if (target == null) continue;
-      final staged = File(p.join(_work.path, entry['staged'] as String));
-      await atomicWriteString(_file(target), await staged.readAsString());
-    }
-    for (final entry in entries) {
-      if (entry['source'] == entry['target']) continue;
-      final source = _file(entry['source'] as String);
-      if (await source.exists()) await source.delete();
-    }
-    final models = Map<String, String>.from(journal['legacy_model_ids'] as Map);
-    await atomicWriteString(
-      versionFile,
-      jsonEncode({'version': version, 'legacy_model_ids': models}),
-    );
-    await _work.delete(recursive: true);
-    return models;
-  });
+      if (!await _journal.exists()) await _prepare();
+      final journal = jsonDecode(await _journal.readAsString()) as Map;
+      final entries = (journal['files'] as List).cast<Map>();
+      // 所有新文件先落盘，再清理旧文件名；断电后可用同一清单重放。
+      for (final entry in entries) {
+        final target = entry['target'] as String?;
+        if (target == null) continue;
+        final staged = File(p.join(_work.path, entry['staged'] as String));
+        await FileLocking.atomicWriteString(
+          _file(target),
+          await staged.readAsString(),
+        );
+      }
+      for (final entry in entries) {
+        if (entry['source'] == entry['target']) continue;
+        final source = _file(entry['source'] as String);
+        if (await source.exists()) await source.delete();
+      }
+      final models = Map<String, String>.from(
+        journal['legacy_model_ids'] as Map,
+      );
+      await FileLocking.atomicWriteString(
+        versionFile,
+        jsonEncode({'version': version, 'legacy_model_ids': models}),
+      );
+      await _work.delete(recursive: true);
+      return models;
+    },
+  );
 
   /// 读已落盘的版本状态；没有标记返回 null（= 首次升级）。
   ///
@@ -326,10 +335,13 @@ class StorageIdMigration {
       // 路径也须在 ready 前验证，避免提交到一半才发现非法目标。
       _file(target);
       final staged = '${files.length}.new';
-      await atomicWriteString(File(p.join(_work.path, staged)), output);
+      await FileLocking.atomicWriteString(
+        File(p.join(_work.path, staged)),
+        output,
+      );
       files.add({'source': source, 'target': target, 'staged': staged});
     }
-    await atomicWriteString(
+    await FileLocking.atomicWriteString(
       _journal,
       jsonEncode({
         'files': files,

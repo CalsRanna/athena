@@ -90,7 +90,7 @@ void main() {
       locks: storage.locks,
     );
     final outputStore = ToolOutputStore(directory: storage.toolOutputsDir);
-    final toolRegistry = buildToolRegistry(
+    final toolRegistry = ToolSet.buildToolRegistry(
       skillRegistry: SkillRegistry(),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
       settings: UserSettingsStore(

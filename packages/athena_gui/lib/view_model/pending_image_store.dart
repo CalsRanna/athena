@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_gui/util/clipboard_image_service.dart';
+import 'package:athena_gui/util/platform/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:signals/signals.dart';
 

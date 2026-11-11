@@ -198,7 +198,7 @@ class WebFetchTool extends Tool implements CancellableTool {
     final looksLikeHtml =
         contentType.toLowerCase().contains('text/html') || _hasHtmlTags(raw);
     final output = format == 'markdown' && looksLikeHtml
-        ? htmlToMarkdown(raw, pageUrl: currentUri)
+        ? HtmlToMarkdown.htmlToMarkdown(raw, pageUrl: currentUri)
         : raw;
     final result = StringBuffer()
       ..writeln('Status: ${response.statusCode}')

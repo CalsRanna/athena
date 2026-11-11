@@ -65,12 +65,15 @@ class StorageMaintenance {
         p.join(directory.path, '${name.substring(0, marker)}.jsonl'),
       );
       try {
-        await withFileLock(_storage.locks.forTarget(base), () async {
-          if (await entry.exists()) {
-            await entry.delete();
-            deleted++;
-          }
-        });
+        await FileLocking.withFileLock(
+          _storage.locks.forTarget(base),
+          () async {
+            if (await entry.exists()) {
+              await entry.delete();
+              deleted++;
+            }
+          },
+        );
       } catch (e) {
         LoggerUtil.w('Failed to delete rewind snapshot ${entry.path}: $e');
       }

@@ -81,7 +81,9 @@ void main() {
       expect(provider.apiFormat, ApiFormat.chatCompletions, reason: name);
       expect(
         provider.baseUrl,
-        modelCatalogConfig.singleWhere((c) => c.localName == name).localBaseUrl,
+        ModelCatalogConfig.modelCatalogConfig
+            .singleWhere((c) => c.localName == name)
+            .localBaseUrl,
       );
     }
   });
@@ -209,7 +211,7 @@ Future<void> _cache(
   FileStorage storage,
   Map<String, dynamic> data,
   DateTime fetchedAt,
-) => atomicWriteString(
+) => FileLocking.atomicWriteString(
   storage.catalogCacheFile,
   jsonEncode({'fetched_at': fetchedAt.millisecondsSinceEpoch, 'data': data}),
 );

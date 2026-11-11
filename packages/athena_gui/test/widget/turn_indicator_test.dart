@@ -3,7 +3,7 @@ import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
 import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/util/chat_turn_util.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,7 +61,7 @@ void main() {
     }
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: RepaintBoundary(
@@ -193,7 +193,7 @@ void main() {
       onTurnSelected: (_) {},
       windowCurrentTurn: 1,
     );
-    final colors = colorsOf(AthenaColorMode.light);
+    final colors = AthenaTheme.colorsOf(AthenaColorMode.light);
 
     // 导航器报的是**窗口内**下标（宿主 _selectTurn 也按这个口径换算）：1 指的是
     // 整段会话的第 6 轮，高亮必须落在页内第 6 条上，不能落在整段第 1 条上

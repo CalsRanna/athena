@@ -1,5 +1,5 @@
 import 'package:athena_core/util/platform_util.dart';
-import 'package:athena_gui/util/window_util.dart';
+import 'package:athena_gui/util/platform/window_util.dart';
 import 'package:windows_single_instance/windows_single_instance.dart';
 
 /// Windows 单实例守卫。

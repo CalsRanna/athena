@@ -171,7 +171,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
 
   void _handleTap() {
     if (widget.onTap == null) return;
-    widget.onTap!(contextMenuAnchorOf(context));
+    widget.onTap!(DesktopContextMenu.contextMenuAnchorOf(context));
   }
 }
 
@@ -427,7 +427,7 @@ class AthenaSettingsMenuButton extends StatelessWidget {
   }
 
   void _open(BuildContext context) {
-    final anchor = contextMenuAnchorOf(context);
+    final anchor = DesktopContextMenu.contextMenuAnchorOf(context);
     final screenHeight = MediaQuery.sizeOf(context).height;
     // 面板自带 4 内边距，条目宽 + 8 才是面板外宽
     final left = anchor.right - menuWidth - 8;

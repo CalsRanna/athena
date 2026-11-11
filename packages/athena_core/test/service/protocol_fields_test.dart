@@ -11,7 +11,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/responses_adapter.dart';
 import 'package:athena_core/storage/file_storage.dart';
-import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/service/retry.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -62,7 +62,7 @@ void main() {
   ];
 
   test('Responses 实际请求携带显式控制参数与 strict', () {
-    final body = toResponseRequest(
+    final body = ResponsesAdapter.toResponseRequest(
       request({
         'max_completion_tokens': 1234,
         'top_p': 0.4,
@@ -104,7 +104,10 @@ void main() {
       'stop': ['END'],
       'user': 'user-test',
     });
-    final body = toMessageRequest(req, maxTokens: 4096).toJson();
+    final body = MessagesAdapter.toMessageRequest(
+      req,
+      maxTokens: 4096,
+    ).toJson();
     expect(body['max_tokens'], 1234);
     expect(body['top_p'], 0.4);
     expect(body['top_k'], 12);
@@ -115,14 +118,20 @@ void main() {
       'disable_parallel_tool_use': true,
     });
     expect((body['tools'] as List).single['strict'], true);
-    expect(toMessageRequest(req, maxTokens: 1000).maxTokens, 1000);
+    expect(
+      MessagesAdapter.toMessageRequest(req, maxTokens: 1000).maxTokens,
+      1000,
+    );
   });
 
   for (final choice in ['auto', 'none', 'required']) {
     test('两条适配器映射 tool_choice=$choice', () {
       final req = request({'tools': tools, 'tool_choice': choice});
-      expect(toResponseRequest(req).toJson()['tool_choice'], choice);
-      expect(toMessageRequest(req).toJson()['tool_choice'], {
+      expect(
+        ResponsesAdapter.toResponseRequest(req).toJson()['tool_choice'],
+        choice,
+      );
+      expect(MessagesAdapter.toMessageRequest(req).toJson()['tool_choice'], {
         'type': choice == 'required' ? 'any' : choice,
       });
     });
@@ -130,13 +139,13 @@ void main() {
 
   test('未提供 tool_choice 时仍映射并行开关；指定工具保留名称', () {
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request({'parallel_tool_calls': false}),
       ).toJson()['tool_choice'],
       {'type': 'auto', 'disable_parallel_tool_use': true},
     );
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request({
           'tool_choice': {
             'type': 'function',
@@ -149,7 +158,10 @@ void main() {
   });
 
   test('不能等价表达的显式参数必须失败，冲突上限不能静默择一', () {
-    for (final convert in [toResponseRequest, toMessageRequest]) {
+    for (final convert in [
+      ResponsesAdapter.toResponseRequest,
+      MessagesAdapter.toMessageRequest,
+    ]) {
       for (final fields in [
         {'seed': 42},
         {'n': 2},
@@ -165,7 +177,7 @@ void main() {
       );
     }
     expect(
-      () => toMessageRequest(
+      () => MessagesAdapter.toMessageRequest(
         request({
           'metadata': {'key': 'value'},
         }),
@@ -173,13 +185,15 @@ void main() {
       throwsUnsupportedError,
     );
     expect(
-      () => toResponseRequest(request({'prompt_cache_retention': '24h'})),
+      () => ResponsesAdapter.toResponseRequest(
+        request({'prompt_cache_retention': '24h'}),
+      ),
       throwsUnsupportedError,
     );
   });
 
   test('Messages 缓存读写纳入总输入，同时保留缓存写入明细', () {
-    final result = messageToChatCompletion(
+    final result = MessagesAdapter.messageToChatCompletion(
       anthropic.Message.fromJson(messageJson()),
     );
     expect(result.usage!.promptTokens, 130);
@@ -202,7 +216,7 @@ void main() {
       },
       {'type': 'message_stop'},
     ];
-    final chunks = await normalizeMessagesStream(
+    final chunks = await MessagesAdapter.normalizeMessagesStream(
       Stream.fromIterable(events.map(anthropic.MessageStreamEvent.fromJson)),
     ).toList();
     final acc = ChatStreamAccumulator();
@@ -229,7 +243,7 @@ void main() {
   }.entries) {
     test('Messages ${entry.key} 映射并保留原始原因', () {
       final result =
-          messageToChatCompletion(
+          MessagesAdapter.messageToChatCompletion(
                 anthropic.Message.fromJson(messageJson(stop: entry.key)),
               )
               as DetailedChatCompletion;
@@ -241,13 +255,13 @@ void main() {
   test('Messages pause_turn/compaction 明确不支持，拒答说明不为空', () {
     for (final stop in ['pause_turn', 'compaction']) {
       expect(
-        () => messageToChatCompletion(
+        () => MessagesAdapter.messageToChatCompletion(
           anthropic.Message.fromJson(messageJson(stop: stop)),
         ),
         throwsUnsupportedError,
       );
     }
-    final result = messageToChatCompletion(
+    final result = MessagesAdapter.messageToChatCompletion(
       anthropic.Message.fromJson({
         ...messageJson(stop: 'refusal'),
         'content': <dynamic>[],
@@ -273,7 +287,7 @@ void main() {
         },
       ],
     };
-    final chunks = await normalizeResponsesStream(
+    final chunks = await ResponsesAdapter.normalizeResponsesStream(
       Stream.fromIterable([
         const RefusalDeltaEvent(
           outputIndex: 0,
@@ -296,7 +310,9 @@ void main() {
       chunks.whereType<CompletionDetailsChunk>().single.details['refusal'],
       'Cannot answer',
     );
-    final complete = responseToChatCompletion(Response.fromJson(response));
+    final complete = ResponsesAdapter.responseToChatCompletion(
+      Response.fromJson(response),
+    );
     expect(complete.text, 'Cannot answer');
     expect(complete.choices.single.message.refusal, 'Cannot answer');
   });
@@ -316,15 +332,19 @@ void main() {
         },
       ],
     });
-    final assistant = responseToChatCompletion(response).choices.single.message;
+    final assistant = ResponsesAdapter.responseToChatCompletion(
+      response,
+    ).choices.single.message;
     final next = request().copyWith(
       messages: [ChatMessage.user('hi'), assistant],
     );
-    final input = toResponseRequest(next).toJson()['input'] as List;
+    final input =
+        ResponsesAdapter.toResponseRequest(next).toJson()['input'] as List;
     expect(input.last['content'], [
       {'type': 'refusal', 'refusal': 'Cannot answer'},
     ]);
-    final messages = toMessageRequest(next).toJson()['messages'] as List;
+    final messages =
+        MessagesAdapter.toMessageRequest(next).toJson()['messages'] as List;
     expect(messages.last['content'], [
       {'type': 'text', 'text': 'Cannot answer'},
     ]);
@@ -337,7 +357,8 @@ void main() {
         const AssistantMessage(content: 'answer', refusal: ''),
       ],
     );
-    final messages = toMessageRequest(req).toJson()['messages'] as List;
+    final messages =
+        MessagesAdapter.toMessageRequest(req).toJson()['messages'] as List;
     expect(messages.last['content'], [
       {'type': 'text', 'text': 'answer'},
     ]);
@@ -383,7 +404,7 @@ void main() {
 
   test('Responses error 与 EOF 报错；failed 不能伪装成功', () async {
     await expectLater(
-      normalizeResponsesStream(
+      ResponsesAdapter.normalizeResponsesStream(
         Stream.value(
           const ErrorEvent(code: 'rate_limit_exceeded', message: 'wait'),
         ),
@@ -391,11 +412,11 @@ void main() {
       throwsA(isA<RateLimitException>()),
     );
     await expectLater(
-      normalizeResponsesStream(const Stream.empty()).toList(),
+      ResponsesAdapter.normalizeResponsesStream(const Stream.empty()).toList(),
       throwsStateError,
     );
     expect(
-      () => responseToChatCompletion(
+      () => ResponsesAdapter.responseToChatCompletion(
         Response.fromJson({
           ...reasoningResponse(tools: false),
           'status': 'failed',
@@ -406,7 +427,7 @@ void main() {
     );
     for (final status in ['queued', 'in_progress', 'cancelled']) {
       expect(
-        () => responseToChatCompletion(
+        () => ResponsesAdapter.responseToChatCompletion(
           Response.fromJson({
             ...reasoningResponse(tools: false),
             'status': status,
@@ -419,13 +440,13 @@ void main() {
 
   test('Responses 区分工具结束、内容过滤与 token 截断', () {
     expect(
-      responseToChatCompletion(
+      ResponsesAdapter.responseToChatCompletion(
         Response.fromJson(reasoningResponse()),
       ).choices.single.finishReason,
       FinishReason.toolCalls,
     );
     final result =
-        responseToChatCompletion(
+        ResponsesAdapter.responseToChatCompletion(
               Response.fromJson({
                 ...reasoningResponse(status: 'incomplete'),
                 'incomplete_details': {'reason': 'content_filter'},
@@ -480,7 +501,7 @@ void main() {
     final provider = responsesProvider().copyWith(
       apiFormat: ApiFormat.chatCompletions,
     );
-    final chunks = await normalizeChatCompletionsStream(
+    final chunks = await ChatCompletionsState.normalizeChatCompletionsStream(
       Stream.fromIterable([
         ChatStreamEvent.fromJson({
           'choices': [
@@ -507,7 +528,7 @@ void main() {
       'No',
     );
     await expectLater(
-      normalizeChatCompletionsStream(
+      ChatCompletionsState.normalizeChatCompletionsStream(
         const Stream.empty(),
         provider,
         'test-model',
@@ -545,7 +566,11 @@ void main() {
         },
       ],
     });
-    final normalized = normalizeChatCompletion(raw, provider, 'test-model');
+    final normalized = ChatCompletionsState.normalizeChatCompletion(
+      raw,
+      provider,
+      'test-model',
+    );
     final state =
         (normalized.choices.single.message as ChatCompletionsAssistantMessage)
             .chatCompletionsState!;
@@ -566,7 +591,7 @@ void main() {
       includeReasoning: true,
     );
     final req = request().copyWith(messages: history);
-    final replayed = restoreChatCompletionsRequest(
+    final replayed = ChatCompletionsState.restoreChatCompletionsRequest(
       req,
       provider,
     ).toJson()['messages'][0];
@@ -575,7 +600,7 @@ void main() {
     expect(jsonEncode(history.first.toJson()), isNot(contains('opaque')));
     expect(
       jsonEncode(
-        restoreChatCompletionsRequest(
+        ChatCompletionsState.restoreChatCompletionsRequest(
           req,
           provider.copyWith(baseUrl: 'https://other.test'),
         ).toJson(),
@@ -587,7 +612,7 @@ void main() {
     );
     expect(
       jsonEncode(
-        restoreChatCompletionsRequest(
+        ChatCompletionsState.restoreChatCompletionsRequest(
           req.copyWith(messages: edited),
           provider,
         ).toJson(),

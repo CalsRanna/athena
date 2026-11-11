@@ -179,7 +179,7 @@ class TuiDi {
 
     // ── 工具 ──
     // 清单在 athena_core 的 buildToolRegistry;TUI 只额外指定工作目录。
-    toolRegistry = buildToolRegistry(
+    toolRegistry = ToolSet.buildToolRegistry(
       skillRegistry: skillRegistry,
       experienceRepository: experienceRepo,
       chatRepository: chatRepo,

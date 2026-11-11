@@ -40,7 +40,7 @@ void main() {
       SentinelEntity.daedalusName,
     ))!;
     expect(daedalus.isNameLocked, isTrue);
-    expect(daedalus.prompt, daedalusPresetPrompt);
+    expect(daedalus.prompt, DaedalusPresetPrompt.daedalusPresetPrompt);
   });
 
   test('已存在 Athena 的老用户会补上 Daedalus', () async {
@@ -84,7 +84,7 @@ void main() {
       SentinelEntity.daedalusName,
     );
     expect(rebuilt, isNotNull);
-    expect(rebuilt!.prompt, daedalusPresetPrompt);
+    expect(rebuilt!.prompt, DaedalusPresetPrompt.daedalusPresetPrompt);
   });
 
   test('重复执行幂等，不会重复建角色', () async {

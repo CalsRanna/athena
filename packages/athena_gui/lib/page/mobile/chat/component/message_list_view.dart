@@ -214,10 +214,11 @@ class _MessageListViewState extends State<MessageListView> {
                     key: ObjectKey(request),
                     request: request,
                     maxHeight:
-                        constraints.maxHeight * permissionCardMaxHeightFraction,
+                        constraints.maxHeight *
+                        PermissionApprovalCard.permissionCardMaxHeightFraction,
                     onDecision: (approved) => viewModel.respondApproval(
                       request,
-                      permissionDecisionOf(approved),
+                      PermissionApprovalCard.permissionDecisionOf(approved),
                     ),
                   ),
                 ),
@@ -233,7 +234,8 @@ class _MessageListViewState extends State<MessageListView> {
                     key: ObjectKey(request),
                     request: request,
                     maxHeight:
-                        constraints.maxHeight * permissionCardMaxHeightFraction,
+                        constraints.maxHeight *
+                        PermissionApprovalCard.permissionCardMaxHeightFraction,
                     onSubmit: (answers) =>
                         viewModel.respondElicit(request, answers),
                   ),

@@ -6,7 +6,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/util/tool_args_formatter.dart';
+import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/widgets/command_suggestions.dart';
@@ -118,7 +118,7 @@ class _TuiAppState extends State<TuiApp> {
     final elicit = _elicitRequest;
     if (elicit != null && elicit.textIndex != null) {
       final question = elicit.questions[elicit.textIndex!].question;
-      return '为「${truncateText(question, 24)}」输入答案';
+      return '为「${TextUtil.truncateText(question, 24)}」输入答案';
     }
     if (_keyInputProvider != null) {
       return '为 ${_keyInputProvider!.name} 输入 API key';
@@ -163,11 +163,13 @@ class _TuiAppState extends State<TuiApp> {
               flex: 2,
               child: PermissionBar(
                 title: _requestTitle('权限请求', _permissionRequest!.chatId),
-                summary: toolCallDescription(_permissionRequest!.arguments),
+                summary: ToolArgsFormatter.toolCallDescription(
+                  _permissionRequest!.arguments,
+                ),
                 scrollController: _permissionScrollController,
                 detail:
                     '${_permissionRequest!.toolName}: '
-                    '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
+                    '${ToolArgsFormatter.formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
                 hint: '[y] 允许本次  [n] 拒绝本次  [↑↓] 滚动',
               ),
             ),
@@ -436,7 +438,7 @@ class _TuiAppState extends State<TuiApp> {
         title: '回退到哪一轮发送前？',
         labels: [
           for (final (i, m) in targets.indexed)
-            '${i + 1}. ${truncateText(m.content, 60)}',
+            '${i + 1}. ${TextUtil.truncateText(m.content, 60)}',
         ],
         initialIndex: targets.length - 1,
       );
@@ -1134,7 +1136,7 @@ class _TuiAppState extends State<TuiApp> {
       labels: [
         for (final h in chats)
           '#${h.chat.id} ${h.chat.title} — '
-              '${truncateText(sanitizeAnsi(h.lastMessageContent), 24)}',
+              '${TextUtil.truncateText(TextUtil.sanitizeAnsi(h.lastMessageContent), 24)}',
       ],
       initialIndex: initial < 0 ? 0 : initial,
     );

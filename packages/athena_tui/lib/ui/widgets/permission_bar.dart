@@ -49,8 +49,8 @@ class PermissionBar extends StatelessComponent {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (summary != null)
-                    Text(sanitizeAnsi(summary!), softWrap: true),
-                  Text(sanitizeAnsi(detail), softWrap: true),
+                    Text(TextUtil.sanitizeAnsi(summary!), softWrap: true),
+                  Text(TextUtil.sanitizeAnsi(detail), softWrap: true),
                 ],
               ),
             ),

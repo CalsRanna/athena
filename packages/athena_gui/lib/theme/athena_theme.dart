@@ -5,22 +5,6 @@ import 'package:flutter/widgets.dart';
 /// 外观模式；与 `ThemeMode` 同名同序，持久化按 [name] 存字符串。
 enum AthenaThemeMode { light, dark, system }
 
-/// 把 [AthenaThemeMode] 解析成具体色板（system 按平台亮度）。
-AthenaColorMode resolveColorMode(AthenaThemeMode mode) {
-  return switch (mode) {
-    AthenaThemeMode.light => AthenaColorMode.light,
-    AthenaThemeMode.dark => AthenaColorMode.dark,
-    AthenaThemeMode.system =>
-      PlatformDispatcher.instance.platformBrightness == Brightness.light
-          ? AthenaColorMode.light
-          : AthenaColorMode.dark,
-  };
-}
-
-/// 按色板模式取语义色。
-AthenaColors colorsOf(AthenaColorMode mode) =>
-    mode == AthenaColorMode.light ? AthenaColors.light : AthenaColors.dark;
-
 /// 主题作用域：向子树提供色板、外观模式与目标平台。
 ///
 /// 取值入口是 `context.athenaColors`（见 `extension/athena_theme_context.dart`）。
@@ -66,4 +50,20 @@ class AthenaTheme extends InheritedWidget {
       colors != oldWidget.colors ||
       colorMode != oldWidget.colorMode ||
       platform != oldWidget.platform;
+
+  /// 把 [AthenaThemeMode] 解析成具体色板（system 按平台亮度）。
+  static AthenaColorMode resolveColorMode(AthenaThemeMode mode) {
+    return switch (mode) {
+      AthenaThemeMode.light => AthenaColorMode.light,
+      AthenaThemeMode.dark => AthenaColorMode.dark,
+      AthenaThemeMode.system =>
+        PlatformDispatcher.instance.platformBrightness == Brightness.light
+            ? AthenaColorMode.light
+            : AthenaColorMode.dark,
+    };
+  }
+
+  /// 按色板模式取语义色。
+  static AthenaColors colorsOf(AthenaColorMode mode) =>
+      mode == AthenaColorMode.light ? AthenaColors.light : AthenaColors.dark;
 }

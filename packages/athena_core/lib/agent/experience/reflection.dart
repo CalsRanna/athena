@@ -115,7 +115,9 @@ class ReflectionProposal {
     if (tags.isNotEmpty) 'tags': tags,
     if (action == 'create') 'scope': scope,
     // 反思通道的程序化调用同样要带必填的调用说明（会作为卡片展示给用户）。
-    toolCallDescriptionKey: action == 'update' ? '修订已验证的长期经验' : '记录可长期复用的经验',
+    ToolArguments.toolCallDescriptionKey: action == 'update'
+        ? '修订已验证的长期经验'
+        : '记录可长期复用的经验',
   };
 
   static String? _extractJsonObject(String text) {

@@ -11,7 +11,7 @@ void main() {
   Future<void> showMarkdown(WidgetTester tester, AthenaMarkdown child) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (_, child) => AthenaTestScope(child: child!),
         home: Scaffold(body: child),
       ),

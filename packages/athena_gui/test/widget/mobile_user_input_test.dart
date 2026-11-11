@@ -19,7 +19,7 @@ void main() {
       var submitted = 0;
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(mode),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(mode),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
@@ -35,7 +35,7 @@ void main() {
           ),
         ),
       );
-      final colors = colorsOf(mode);
+      final colors = AthenaTheme.colorsOf(mode);
       final composer = find.byType(UserInput);
       final shell = find.byKey(const Key('mobile-composer-shell'));
       Border border() =>

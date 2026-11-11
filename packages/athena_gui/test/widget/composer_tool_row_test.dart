@@ -89,7 +89,7 @@ void main() {
     addTearDown(focus.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageInput(
@@ -129,7 +129,7 @@ void main() {
     );
     expect(
       rows().map((tile) => tile.text),
-      reasoningEffortOptions.map((o) => o.$2),
+      ReasoningEffort.reasoningEffortOptions.map((o) => o.$2),
     );
     expect(selected(), 'High');
     expect(rows().singleWhere((tile) => tile.badge != null).text, 'Low');
@@ -254,7 +254,7 @@ void main() {
     addTearDown(focus.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageInput(controller: controller, focusNode: focus),

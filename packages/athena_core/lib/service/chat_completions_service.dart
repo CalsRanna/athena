@@ -7,44 +7,6 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-/// 自动重命名对话标题的提示词。
-const _namingPrompt = '''
-你的任务是为一段非结构化的对话生成一个极简、精准的标题。
-
-# 核心约束
-1.  **长度控制**:
-    - 中文标题:限制在 **4-10 个汉字** 以内。
-    - 英文标题:限制在 **2-6 个单词** 以内。
-    - 严禁过短(如仅一个词)或过长(如完整句子)。
-2.  **格式清洗**:
-    - **严禁**包含标点符号(如 `。` `?` `!`)。
-    - **严禁**包含特殊字符(如 `#` `*` `Emoji`)。
-    - **严禁**输出如 "标题:"、"Summary:" 等前缀。
-3.  **语言一致性**:标题必须与用户首要使用的语言保持一致。
-
-# 摘要逻辑
-- 分析用户的核心意图或主要话题。
-- 去除客套话(如"你好"、"请问"),直接提炼关键词。
-- 优先保留专有名词(如 "Flutter状态管理" > "关于状态管理的问题")。
-
-# 输出规范
-仅输出且只输出生成的标题文本。不要包裹在引号或代码块中。
-
-# 示例
-
-输入: "我想问一下关于那个最新的iPhone 15 Pro Max的散热问题"
-输出: iPhone15散热分析
-
-输入: "写一个Python脚本来自动备份MySQL数据库"
-输出: Python数据库备份脚本
-
-输入: "How do I implement a binary search tree in Golang?"
-输出: Golang Binary Search Tree
-
-输入: "今天天气不错,适合去哪玩?"
-输出: 游玩地点推荐
-''';
-
 /// 聊天相关的 AI 网络请求。
 ///
 /// 在 [LlmClient] 之上提供 chat 特有的默认值（如 StreamOptions、temperature）。
@@ -94,12 +56,13 @@ class ChatCompletionsService {
     int? outputRoom,
   }) async* {
     final effort = model.reasoning
-        ? _parseReasoningEffort(chat.reasoningEffort)
+        ? ChatCompletionsService._parseReasoningEffort(chat.reasoningEffort)
         : null;
     final request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
-      temperature: _acceptsTemperature(model.modelId, effort)
+      temperature:
+          ChatCompletionsService._acceptsTemperature(model.modelId, effort)
           ? chat.temperature
           : null,
       // 只有推理模型才带这个参数：会话上总有一档（默认 high），
@@ -147,7 +110,10 @@ class ChatCompletionsService {
   }) async* {
     final request = ChatCompletionCreateRequest(
       model: model.modelId,
-      messages: [ChatMessage.system(_namingPrompt), ChatMessage.user(value)],
+      messages: [
+        ChatMessage.system(ChatCompletionsService._namingPrompt),
+        ChatMessage.user(value),
+      ],
     );
     final stream = _llmClient.stream(
       provider: provider,
@@ -159,22 +125,60 @@ class ChatCompletionsService {
       yield chunk.choices!.first.delta.content ?? '';
     }
   }
-}
 
-// 会话温度是默认注入的采样参数；OpenAI 推理模型不接受时应省略。
-// 仅识别已知的 OpenAI 模型名（含 OpenRouter 命名空间），不禁用其他家的采样。
-bool _acceptsTemperature(String model, ReasoningEffort? effort) {
-  final id = model.toLowerCase().replaceFirst(RegExp(r'^openai/'), '');
-  if (RegExp(r'^o[134](?:-|$)').hasMatch(id)) return false;
-  if (!RegExp(r'^gpt-5(?:[.-]|$)').hasMatch(id)) return true;
-  // GPT-5 / mini / nano 没有 none 模式；后续版本仅在显式关闭推理时采样。
-  return RegExp(r'^gpt-5\.[1-9]').hasMatch(id) &&
-      effort == ReasoningEffort.none;
-}
+  /// 自动重命名对话标题的提示词。
+  static const _namingPrompt = '''
+你的任务是为一段非结构化的对话生成一个极简、精准的标题。
 
-/// 解析会话存储的推理强度字符串为官方枚举；未识别值返回 null
-/// （不传参，交由模型决定），避免把 unknown 发送到 API。
-ReasoningEffort? _parseReasoningEffort(String value) {
-  final parsed = ReasoningEffort.fromJson(value);
-  return parsed == ReasoningEffort.unknown ? null : parsed;
+# 核心约束
+1.  **长度控制**:
+    - 中文标题:限制在 **4-10 个汉字** 以内。
+    - 英文标题:限制在 **2-6 个单词** 以内。
+    - 严禁过短(如仅一个词)或过长(如完整句子)。
+2.  **格式清洗**:
+    - **严禁**包含标点符号(如 `。` `?` `!`)。
+    - **严禁**包含特殊字符(如 `#` `*` `Emoji`)。
+    - **严禁**输出如 "标题:"、"Summary:" 等前缀。
+3.  **语言一致性**:标题必须与用户首要使用的语言保持一致。
+
+# 摘要逻辑
+- 分析用户的核心意图或主要话题。
+- 去除客套话(如"你好"、"请问"),直接提炼关键词。
+- 优先保留专有名词(如 "Flutter状态管理" > "关于状态管理的问题")。
+
+# 输出规范
+仅输出且只输出生成的标题文本。不要包裹在引号或代码块中。
+
+# 示例
+
+输入: "我想问一下关于那个最新的iPhone 15 Pro Max的散热问题"
+输出: iPhone15散热分析
+
+输入: "写一个Python脚本来自动备份MySQL数据库"
+输出: Python数据库备份脚本
+
+输入: "How do I implement a binary search tree in Golang?"
+输出: Golang Binary Search Tree
+
+输入: "今天天气不错,适合去哪玩?"
+输出: 游玩地点推荐
+''';
+
+  // 会话温度是默认注入的采样参数；OpenAI 推理模型不接受时应省略。
+  // 仅识别已知的 OpenAI 模型名（含 OpenRouter 命名空间），不禁用其他家的采样。
+  static bool _acceptsTemperature(String model, ReasoningEffort? effort) {
+    final id = model.toLowerCase().replaceFirst(RegExp(r'^openai/'), '');
+    if (RegExp(r'^o[134](?:-|$)').hasMatch(id)) return false;
+    if (!RegExp(r'^gpt-5(?:[.-]|$)').hasMatch(id)) return true;
+    // GPT-5 / mini / nano 没有 none 模式；后续版本仅在显式关闭推理时采样。
+    return RegExp(r'^gpt-5\.[1-9]').hasMatch(id) &&
+        effort == ReasoningEffort.none;
+  }
+
+  /// 解析会话存储的推理强度字符串为官方枚举；未识别值返回 null
+  /// （不传参，交由模型决定），避免把 unknown 发送到 API。
+  static ReasoningEffort? _parseReasoningEffort(String value) {
+    final parsed = ReasoningEffort.fromJson(value);
+    return parsed == ReasoningEffort.unknown ? null : parsed;
+  }
 }

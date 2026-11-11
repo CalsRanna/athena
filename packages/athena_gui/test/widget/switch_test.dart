@@ -16,8 +16,8 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 void main() {
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode 轨道是胶囊、滑块压 raised 阴影', (tester) async {
-      final theme = buildAthenaThemeData(mode);
-      final colors = colorsOf(mode);
+      final theme = AthenaMaterialTheme.buildAthenaThemeData(mode);
+      final colors = AthenaTheme.colorsOf(mode);
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
@@ -63,13 +63,16 @@ void main() {
       WidgetTester tester, {
       required bool value,
     }) async {
-      final theme = buildAthenaThemeData(AthenaColorMode.light);
+      final theme = AthenaMaterialTheme.buildAthenaThemeData(
+        AthenaColorMode.light,
+      );
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
           builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
-            backgroundColor: colorsOf(AthenaColorMode.light).surface,
+            backgroundColor: AthenaTheme.colorsOf(AthenaColorMode.light)
+                .surface,
             body: Center(
               child: AthenaSwitch(value: value, onChanged: (_) {}),
             ),
@@ -94,7 +97,7 @@ void main() {
     var value = false;
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(

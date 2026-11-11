@@ -19,7 +19,7 @@ class SkillRegistry {
 
   /// 内置 Skill：不来自文件系统，由代码注册，始终可用。
   final Map<String, Skill> _builtinSkills = {
-    skillCreatorSkill.name: skillCreatorSkill,
+    SkillCreator.skillCreatorSkill.name: SkillCreator.skillCreatorSkill,
   };
 
   /// Skill 最近访问时间戳（毫秒），用于 level1 排序。

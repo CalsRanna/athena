@@ -17,6 +17,7 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/component/experience_format.dart';
 
 /// 经验管理列表：All / Shared / Private 过滤；活跃与归档分区展示。
 /// 长按归档/恢复或删除，点击进入详情。
@@ -156,7 +157,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     final owner = viewModel.ownerLabel(experience);
     return MobileGridTile(
       title: experience.lesson,
-      subtitle: '$owner · ${_formatDate(experience.createdAt)}',
+      subtitle: '$owner · ${ExperienceFormat.date(experience.createdAt)}',
       titleMaxLines: 3,
       subtitleMaxLines: 2,
       trailing: isArchived ? const Icon(LucideIcons.archive) : null,
@@ -201,9 +202,4 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
     AthenaDialog.show(SafeArea(child: padding));
   }
-}
-
-String _formatDate(DateTime dt) {
-  String pad(int n) => n.toString().padLeft(2, '0');
-  return '${dt.year}-${pad(dt.month)}-${pad(dt.day)}';
 }

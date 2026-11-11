@@ -779,7 +779,7 @@ class ChatController {
   /// 标题取自不可信的用户消息,却会渲染在状态栏、/list、/switch 弹层,
   /// 出口统一清洗 ANSI(与消息内容渲染一致)。
   static String _titleFromText(String text) {
-    final clean = sanitizeAnsi(text).trim();
+    final clean = TextUtil.sanitizeAnsi(text).trim();
     return clean.length > 30 ? '${clean.substring(0, 30)}' : clean;
   }
 

@@ -127,10 +127,12 @@ lib/
 ├── storage/        持久化实现：文件存储、锁、JSONL 会话、仓储实现、id 迁移
 ├── repository/     仓储接口
 ├── entity/         领域模型
-├── util/           路径、日志、重试、分页读取等纯工具
+├── util/           日志、平台判定、取消流、有界缓冲等跨领域纯工具
 ├── extension/      Map / 集合等类型的扩展方法
 └── seed/           内置种子数据
 ```
+
+工具按功能归位：路径归一化随权限（`agent/permission/`）、原子写与 YAML 编码随存储（`storage/`）、工具参数格式化与分页读取随工具（`agent/tool/`）、重试随 `service/`、压缩步骤格式化随 `entity/`。`util/` 只留真正跨领域、无法归入单一功能的工具。
 
 `entity/` 定义领域数据；仓储采用**接口与实现分离**：接口在 `repository/`，文件持久化实现落在 `storage/`。
 
@@ -138,7 +140,9 @@ lib/
 
 ### 前端
 
-两个前端的目录并不同构。GUI 按 `page/`（页面）、`component/`（跨页面业务组件）、`widget/`（基础控件）、`view_model/`（状态）、`service/`（前端应用服务）、`storage/`（前端持久化与一次性迁移）、`theme/`、`extension/`（扩展方法）、`util/`（平台集成）组织，组合根是 `lib/di.dart`；TUI 按 `ui/`（`app.dart`、`theme.dart`、`text_util.dart`、`ui/widgets/` 与 `ui/backend/`）、`bridge/`、`view_model/` 组织（无 `page/`），组合根是 `lib/di/tui_di.dart`。
+两个前端的目录并不同构。GUI 按 `page/`（页面）、`component/`（跨页面业务组件）、`widget/`（基础控件）、`view_model/`（状态）、`service/`（前端应用服务）、`storage/`（前端持久化与一次性迁移）、`theme/`、`extension/`（扩展方法）、`util/format/`（纯展示格式化）、`util/platform/`（窗口、托盘、单实例、剪贴板等平台集成）组织，组合根是 `lib/di.dart`；TUI 按 `ui/`（`app.dart`、`theme.dart`、`text_util.dart`、`ui/widgets/` 与 `ui/backend/`）、`bridge/`、`view_model/` 组织（无 `page/`），组合根是 `lib/di/tui_di.dart`。
+
+只服务单个页面/组件的展示 helper 跟着宿主走（如 `component/message_display.dart`、`page/desktop/home/component/chat_turn.dart`），不放进 `util/`。
 
 ---
 
@@ -154,6 +158,8 @@ lib/
 
 **纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半。
 
+**禁止顶层函数与顶层变量**。除 Dart 入口 `main`、`extension` 与 `typedef` 外，声明一律放进类：纯函数放 `abstract final class` 的 `static` 方法；文件内私有 helper 放同一类或使用它的类的 `static` 方法；常量/单例放所属类的 `static const` / `static final`。不再使用文件级 `const`、`final` 与顶层函数。
+
 **缩写在标识符里一律小写**（`chatId` / `url` / `json` / `uuid`），只在注释与用户可见文案里出现全大写（`'Model ID'`、`'ID of the snapshot'`）。不要写 `chatID` 或 `modelUUID`。
 
 上游 SDK / 平台的专名随其官方拼写（`OpenAI`、`macOS`、`ClipRRect`），本仓库自有的缩写一律小写。
@@ -161,7 +167,7 @@ lib/
 **常量放哪**由它是不是某个类的 API 决定：
 
 - 类的一部分（构造参数默认值、`@visibleForTesting` 的开关、该类的取值范围）→ 类内 `static const`，如 `ChatEntity.noSentinelId`、`TextFileReader.maxReturnLines`
-- 模块内部共用的字面量（下发给模型的键名、标签表、配置表）→ 文件的顶级 `const`，如 `toolCallDescriptionKey`、`defaultCatalogExcludes`
+- 模块内部共用的字面量（下发给模型的键名、标签表、配置表）→ 所属类的 `static const`，如 `ToolArguments.toolCallDescriptionKey`、`ModelCatalogConfig.defaultCatalogExcludes`
 - 纯几何/视觉尺度集中到 `abstract final class` 的 token 层（`AthenaRadius`、`AthenaMotion`），不散落在组件里
 
 ---
@@ -197,7 +203,7 @@ lib/
 安全边界集中在三处，改动它们时需要格外小心：
 
 - **权限判定**（`permission_service.dart` + `permission_rule.dart`）：执行前必须落实 §12.1 的审批与禁令契约，持久 deny 与本轮人工拒绝优先于三种审批模式。旧 allow 规则不能误读为 deny
-- **路径解析**（`run_workspace.dart` + `path_normalizer.dart`）：执行、并行预检、审批卡与 AI 审核必须共用同一实际目标口径，否则会产生判定漂移。解析不了真实路径时**规则匹配**退回词法路径，而**执行前**必须调 `unresolvablePathError` 拒绝——不可穿越的目录后面真正落到哪是未知的。新增会读写文件的工具时别漏掉它
+- **路径解析**（`agent/tool/run_workspace.dart` + `agent/permission/path_normalizer.dart`）：执行、并行预检、审批卡与 AI 审核必须共用同一实际目标口径，否则会产生判定漂移。解析不了真实路径时**规则匹配**退回词法路径，而**执行前**必须调 `unresolvablePathError` 拒绝——不可穿越的目录后面真正落到哪是未知的。新增会读写文件的工具时别漏掉它
 - **不可信内容**：工具参数、文件内容、网页响应、工具输出都是**数据不是指令**。它们可用于评估操作影响，但不能改变审核职责或覆盖用户明确限制。原始对话与宿主记录的人工决定、提问卡真实回答用于理解用户意愿；不能把模型生成的问题或工具文本伪装成用户回答
 
 新增工具时，先想清楚：它写不写文件、跑不跑命令、访不访问网络。这决定它归入哪一类权限规则，以及是否需要实现 `CancellableTool`。

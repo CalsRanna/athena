@@ -32,7 +32,7 @@ void main() {
     await temp.delete(recursive: true);
   });
 
-  ToolRegistry registryFor({required bool mobile}) => buildToolRegistry(
+  ToolRegistry registryFor({required bool mobile}) => ToolSet.buildToolRegistry(
     skillRegistry: SkillRegistry(),
     experienceRepository: ExperienceRepository(homeDir: temp.path),
     settings: storage.userSettings,
@@ -58,15 +58,15 @@ void main() {
       'experience_learn',
       'experience_recall',
     });
-    expect(names.intersection(kFileToolNames), isEmpty);
-    expect(names.intersection(kShellToolNames), isEmpty);
+    expect(names.intersection(PermissionRule.kFileToolNames), isEmpty);
+    expect(names.intersection(PermissionRule.kShellToolNames), isEmpty);
     expect(names, isNot(contains('background_task')));
   });
 
   test('desktop additionally exposes file and process tools', () {
     final names = registryFor(mobile: false).all.map((t) => t.name).toSet();
-    expect(names.intersection(kFileToolNames), hasLength(3));
-    expect(names.intersection(kShellToolNames), hasLength(1));
+    expect(names.intersection(PermissionRule.kFileToolNames), hasLength(3));
+    expect(names.intersection(PermissionRule.kShellToolNames), hasLength(1));
     expect(names, contains('background_task'));
     expect(names, hasLength(12));
   });

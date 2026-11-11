@@ -11,6 +11,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/component/experience_format.dart';
 
 /// 经验详情页：完整 lesson / context / tags / 归属与状态，
 /// 提供编辑、归档/恢复与删除。
@@ -54,9 +55,17 @@ class _MobileExperienceDetailPageState
           _metaRow(context, 'Scope', experience.scope),
           _metaRow(context, 'Source', experience.source),
           _metaRow(context, 'Status', isArchived ? 'Archived' : 'Active'),
-          _metaRow(context, 'Created', _formatDate(experience.createdAt)),
+          _metaRow(
+            context,
+            'Created',
+            ExperienceFormat.date(experience.createdAt),
+          ),
           if (experience.updatedAt != null)
-            _metaRow(context, 'Updated', _formatDate(experience.updatedAt!)),
+            _metaRow(
+              context,
+              'Updated',
+              ExperienceFormat.date(experience.updatedAt!),
+            ),
           if (experience.context.isNotEmpty) ...[
             const SizedBox(height: 16),
             _label(context, 'Context'),
@@ -177,9 +186,4 @@ class _MobileExperienceDetailPageState
     }
     AutoRouter.of(context).maybePop();
   }
-}
-
-String _formatDate(DateTime dt) {
-  String pad(int n) => n.toString().padLeft(2, '0');
-  return '${dt.year}-${pad(dt.month)}-${pad(dt.day)}';
 }

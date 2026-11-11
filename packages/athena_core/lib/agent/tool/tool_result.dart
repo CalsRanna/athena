@@ -14,7 +14,7 @@ enum ToolResultStatus {
 /// 图片在协议层不能放进工具消息：Chat Completions 的 tool 消息 content
 /// 只能是字符串；Messages/Responses 虽原生支持，但内部消息模型复用
 /// openai_dart 的 sealed `ChatMessage`，无法扩展 `ToolMessage`。所以图片统一
-/// 由 [toolResultImagesMessage] 转成一条 user 消息，追加在整批工具消息之后。
+/// 由 [ToolResultImages.toolResultImagesMessage] 转成一条 user 消息，追加在整批工具消息之后。
 class ToolResultImage {
   /// Base64 编码的图片字节，不含 `data:` 前缀。
   final String data;
@@ -34,24 +34,6 @@ class ToolResultImage {
     if (data is! String || data.isEmpty) return null;
     return ToolResultImage(data: data, mediaType: mediaType);
   }
-}
-
-/// 合成图片消息的正文标记，用于把它和真实用户输入区分开。
-const toolResultImagesMarker =
-    'Images returned by the tool calls above, in the same order.';
-
-/// 承载工具结果图片的 user 消息；没有图片时返回 null。
-///
-/// 调用方必须等整批工具消息都写入后再追加：Chat Completions 要求所有
-/// tool 消息紧跟在带 tool_calls 的 assistant 之后，中间插入 user 消息会被
-/// 兼容端判为非法请求。
-ChatMessage? toolResultImagesMessage(List<ToolResultImage> images) {
-  if (images.isEmpty) return null;
-  return ChatMessage.user([
-    ContentPart.text(toolResultImagesMarker),
-    for (final image in images)
-      ContentPart.imageBase64(data: image.data, mediaType: image.mediaType),
-  ]);
 }
 
 /// Execution status is independent of model-visible text.
@@ -86,4 +68,24 @@ class ToolFailure {
     required this.status,
     required this.message,
   });
+}
+
+abstract final class ToolResultImages {
+  /// 合成图片消息的正文标记，用于把它和真实用户输入区分开。
+  static const toolResultImagesMarker =
+      'Images returned by the tool calls above, in the same order.';
+
+  /// 承载工具结果图片的 user 消息；没有图片时返回 null。
+  ///
+  /// 调用方必须等整批工具消息都写入后再追加：Chat Completions 要求所有
+  /// tool 消息紧跟在带 tool_calls 的 assistant 之后，中间插入 user 消息会被
+  /// 兼容端判为非法请求。
+  static ChatMessage? toolResultImagesMessage(List<ToolResultImage> images) {
+    if (images.isEmpty) return null;
+    return ChatMessage.user([
+      ContentPart.text(ToolResultImages.toolResultImagesMarker),
+      for (final image in images)
+        ContentPart.imageBase64(data: image.data, mediaType: image.mediaType),
+    ]);
+  }
 }

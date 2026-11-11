@@ -87,7 +87,9 @@ class DesktopMessageInput extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: kChatColumnWidth),
+              constraints: const BoxConstraints(
+                maxWidth: ChatColumnMetrics.kChatColumnWidth,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,8 +164,9 @@ class DesktopMessageInput extends StatelessWidget {
                             horizontal: 6,
                             vertical: 3,
                           ),
-                          onTap: () =>
-                              onModelTap?.call(contextMenuAnchorOf(context)),
+                          onTap: () => onModelTap?.call(
+                            DesktopContextMenu.contextMenuAnchorOf(context),
+                          ),
                           child: const DesktopModelIndicator(),
                         ),
                       ),
@@ -178,7 +181,7 @@ class DesktopMessageInput extends StatelessWidget {
                             ),
                             onTap: () => DesktopReasoningEffortMenu.show(
                               context,
-                              contextMenuAnchorOf(context),
+                              DesktopContextMenu.contextMenuAnchorOf(context),
                               current: reasoningEffort,
                               onSelected: onReasoningEffortChange,
                             ),
@@ -201,7 +204,7 @@ class DesktopMessageInput extends StatelessWidget {
                           ),
                           onTap: () => DesktopPermissionModeMenu.show(
                             context,
-                            contextMenuAnchorOf(context),
+                            DesktopContextMenu.contextMenuAnchorOf(context),
                             current: approvalMode,
                             onSelected: onApprovalModeChange,
                           ),

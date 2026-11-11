@@ -15,7 +15,7 @@ void main() {
     test('${mobile ? '移动' : '桌面'}端所有注册工具均有明确图标', () async {
       final temp = await Directory.systemTemp.createTemp('athena_tool_icons_');
       addTearDown(() => temp.delete(recursive: true));
-      final registry = buildToolRegistry(
+      final registry = ToolSet.buildToolRegistry(
         skillRegistry: SkillRegistry(),
         experienceRepository: ExperienceRepository(homeDir: temp.path),
         settings: UserSettingsStore(
@@ -41,8 +41,8 @@ void main() {
   // 断言直接遍历 core 的清单，而不是再抄一份 ['bash', 'powershell']：
   // core 新增 shell 工具时这条自动跟着扩展，图标映射也必须跟上。
   test('core 里的每个 shell 工具都用终端图标', () {
-    expect(kShellToolNames, isNotEmpty);
-    for (final name in kShellToolNames) {
+    expect(PermissionRule.kShellToolNames, isNotEmpty);
+    for (final name in PermissionRule.kShellToolNames) {
       expect(StepCard.toolIcon(name), LucideIcons.terminal);
     }
   });

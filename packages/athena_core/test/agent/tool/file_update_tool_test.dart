@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/tool/file_update_tool.dart';
-import 'package:athena_core/util/path_normalizer.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,7 +12,7 @@ void main() {
   late FileUpdateTool tool;
 
   setUp(() {
-    root = normalizePathForMatch(
+    root = PathNormalizer.normalizePathForMatch(
       Directory.systemTemp
           .createTempSync('athena_file_update_')
           .resolveSymbolicLinksSync(),

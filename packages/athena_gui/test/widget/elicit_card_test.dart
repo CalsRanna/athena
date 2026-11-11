@@ -15,7 +15,7 @@ void main() {
   testWidgets('提问卡默认展开，收起后只留标题行与当前问题', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(

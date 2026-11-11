@@ -22,7 +22,7 @@ void main() {
         }
       }
 
-      final finished = cancellableStream(
+      final finished = CancellableStream.cancellableStream(
         source(),
         token.whenCancelled,
       ).toList();
@@ -39,7 +39,10 @@ void main() {
 
   test('natural completion preserves stream data', () async {
     expect(
-      await cancellableStream(Stream.fromIterable([1, 2]), null).toList(),
+      await CancellableStream.cancellableStream(
+        Stream.fromIterable([1, 2]),
+        null,
+      ).toList(),
       [1, 2],
     );
   });

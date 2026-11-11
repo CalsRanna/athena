@@ -62,7 +62,7 @@ void main() {
     await tester.runAsync(() => GetIt.instance<FileStorage>().load());
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const AthenaSettingsPanel(
           nav: SizedBox(width: AthenaSettings.navWidth),
@@ -128,7 +128,7 @@ void main() {
         });
         await tester.pumpWidget(
           MaterialApp(
-            theme: buildAthenaThemeData(mode),
+            theme: AthenaMaterialTheme.buildAthenaThemeData(mode),
             builder: (context, child) => AthenaTestScope(child: child!),
             home: const AthenaSettingsPanel(
               nav: SizedBox(width: AthenaSettings.navWidth),
@@ -148,7 +148,7 @@ void main() {
           'Provider A',
           'Provider C',
         ]);
-        final colors = colorsOf(mode);
+        final colors = AthenaTheme.colorsOf(mode);
         expect(
           tester.widget<Text>(find.text('Provider B')).style!.color,
           colors.textPrimary,

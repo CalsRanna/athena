@@ -1,5 +1,5 @@
 import 'package:athena_core/agent/permission/permission_prompt.dart';
-import 'package:athena_core/util/tool_args_formatter.dart';
+import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -9,8 +9,6 @@ import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
-
-const permissionCardMaxHeightFraction = 0.5;
 
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
@@ -34,6 +32,11 @@ class PermissionApprovalCard extends StatefulWidget {
 
   @override
   State<PermissionApprovalCard> createState() => _PermissionApprovalCardState();
+
+  static const permissionCardMaxHeightFraction = 0.5;
+
+  static PermissionDecision permissionDecisionOf(bool approved) =>
+      PermissionDecision(approved: approved);
 }
 
 class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
@@ -132,7 +135,10 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
         child: SizedBox(
           width: double.infinity,
           child: Text(
-            formatToolArgsForApproval(request.toolName, request.arguments),
+            ToolArgsFormatter.formatToolArgsForApproval(
+              request.toolName,
+              request.arguments,
+            ),
             style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
         ),
@@ -180,6 +186,3 @@ class _PermissionApprovalCardState extends State<PermissionApprovalCard> {
     );
   }
 }
-
-PermissionDecision permissionDecisionOf(bool approved) =>
-    PermissionDecision(approved: approved);

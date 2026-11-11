@@ -40,7 +40,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light)
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
             .copyWith(platform: TargetPlatform.iOS),
         builder: (_, child) => AthenaTestScope(child: child!),
         home: const MobileSentinelFormPage(sentinel: sentinel),

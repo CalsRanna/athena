@@ -46,7 +46,7 @@ void main() {
   testWidgets('纯空白输入不发送，也不新建对话', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light)
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
             .copyWith(platform: TargetPlatform.iOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const MobileChatPage(),

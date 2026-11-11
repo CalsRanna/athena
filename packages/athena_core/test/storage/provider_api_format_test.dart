@@ -145,7 +145,7 @@ void main() {
 /// 直接写一个 provider 文件:模拟用户手工编辑这个目录(文件即身份,
 /// 内容里不必有 id)。
 Future<void> _writeProvider(FileStorage storage, String id, String body) =>
-    atomicWriteString(
+    FileLocking.atomicWriteString(
       File(p.join(storage.providersDir.path, '$id.yaml')),
       body,
     );

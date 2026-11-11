@@ -185,7 +185,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final option in reasoningEffortOptions)
+                for (final option in ReasoningEffort.reasoningEffortOptions)
                   AthenaTagButton.small(
                     selected:
                         viewModel.defaultReasoningEffort.value == option.$1,

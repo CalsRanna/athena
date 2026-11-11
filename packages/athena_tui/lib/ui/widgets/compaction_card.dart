@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/compaction_step.dart';
-import 'package:athena_core/util/compaction_step_formatter.dart';
+import 'package:athena_core/entity/compaction_step_formatter.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/ui/widgets/message_card.dart';
@@ -45,20 +45,22 @@ class _CompactionCardState extends State<CompactionCard> {
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Text(
-              '${_expanded ? '▾' : '▸'} 上下文压缩 · ${compactionStatus(step, isLive: component.isLive)}',
+              '${_expanded ? '▾' : '▸'} 上下文压缩 · ${CompactionStepFormatter.compactionStatus(step, isLive: component.isLive)}',
               style: TextStyle(color: color, fontWeight: FontWeight.bold),
               softWrap: true,
             ),
           ),
           Text(
-            compactionTokenChange(step),
+            CompactionStepFormatter.compactionTokenChange(step),
             style: AthenaTextStyles.dim,
             softWrap: true,
           ),
           if (running) const StreamingProgressBar(width: 12, pulseWidth: 4),
           if (_expanded)
             Text(
-              sanitizeAnsi(compactionDetails(step)),
+              TextUtil.sanitizeAnsi(
+                CompactionStepFormatter.compactionDetails(step),
+              ),
               style: AthenaTextStyles.dim,
               softWrap: true,
             ),

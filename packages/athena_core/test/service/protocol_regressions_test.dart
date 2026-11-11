@@ -9,7 +9,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/responses_adapter.dart';
 import 'package:athena_core/service/responses_state.dart';
-import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/service/retry.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -110,7 +110,7 @@ void main() {
       '{"broken',
       '{"ok":1}',
     ]) {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         ChatCompletionCreateRequest(
           model: 'claude-sonnet-4-6',
           messages: [
@@ -157,7 +157,7 @@ void main() {
     },
   ];
   test('Chat details 增量展示可读内容，原生回传仍保留完整签名与密文', () async {
-    final chunks = await normalizeChatCompletionsStream(
+    final chunks = await ChatCompletionsState.normalizeChatCompletionsStream(
       Stream.fromIterable([
         for (final d in details)
           chunk({
@@ -174,7 +174,7 @@ void main() {
     final state = chunks.whereType<ChatCompletionsStateChunk>().single.state;
     expect(state.message.toJson()['reasoning_details'], details);
     expect(state.message.reasoningContent, isNull);
-    final response = normalizeChatCompletion(
+    final response = ChatCompletionsState.normalizeChatCompletion(
       ChatCompletion.fromJson({
         'object': 'chat.completion',
         'model': 'test',
@@ -206,7 +206,7 @@ void main() {
         'reasoning_details': [details.first],
       };
       final legacy = {'reasoning': '先读'};
-      final chunks = await normalizeChatCompletionsStream(
+      final chunks = await ChatCompletionsState.normalizeChatCompletionsStream(
         Stream.fromIterable([
           if (order == 'same')
             chunk({...delta, ...legacy})
@@ -297,7 +297,7 @@ void main() {
         }
       }
       events.add({'type': 'response.completed', 'response': response});
-      final chunks = await normalizeResponsesStream(
+      final chunks = await ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
         provider: responsesProvider(),
         model: 'test-reasoner',
@@ -332,7 +332,7 @@ void main() {
       {'type': 'response.completed', 'response': response},
     ];
     final acc = ChatStreamAccumulator();
-    await for (final c in normalizeResponsesStream(
+    await for (final c in ResponsesAdapter.normalizeResponsesStream(
       Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
     )) {
       acc.add(c);
@@ -363,7 +363,7 @@ void main() {
         {'type': 'response.completed', 'response': response},
       ];
       await expectLater(
-        normalizeResponsesStream(
+        ResponsesAdapter.normalizeResponsesStream(
           Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
         ).toList(),
         throwsA(isA<FormatException>()),

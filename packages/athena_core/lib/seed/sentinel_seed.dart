@@ -20,13 +20,13 @@ class SentinelSeed {
         (
           SentinelEntity.athenaName,
           '专业、冷静且深度的AI助手，以精准执行与逻辑严谨著称。',
-          athenaPresetPrompt,
+          AthenaPresetPrompt.athenaPresetPrompt,
           '专业助手, 冷静执行, 逻辑严谨, AI助手, 深度分析',
         ),
         (
           SentinelEntity.daedalusName,
           '专精软件工程的AI助手，擅长读懂现有代码、精准改动并验证结果。',
-          daedalusPresetPrompt,
+          DaedalusPresetPrompt.daedalusPresetPrompt,
           '软件工程, 代码编写, 重构, 调试, 工程实践',
         ),
       ];

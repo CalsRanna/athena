@@ -1,0 +1,214 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+
+abstract final class PathNormalizer {
+  /// 归一化文件路径,使权限匹配与工具执行使用同一条路径。
+  ///
+  /// - 分隔符统一为 '/'（Windows 反斜杠 → 正斜杠）
+  /// - 词法解析 `..` / `.`（`p.normalize`,不访问文件系统）
+  /// - 相对路径基于当前进程工作目录绝对化
+  ///
+  /// 作用：堵住 `allowed_dir/../../.ssh/authorized_keys` 型路径穿越——
+  /// 规则匹配与 `File(path)` 执行都基于归一化结果,穿越后的路径
+  /// 不再命中允许目录的前缀规则。
+  static String normalizePathForMatch(String path) {
+    var abs = p.normalize(path);
+    if (!p.isAbsolute(abs)) {
+      abs = p.join(Directory.current.path, abs);
+    }
+    // Windows 上 p.normalize/join 返回反斜杠分隔，统一为正斜杠
+    return abs.replaceAll('\\', '/');
+  }
+
+  /// 同步解析符号链接，得到调用真正会读写的路径（Windows 下为 best-effort）。
+  ///
+  /// 权限判定（规则、会话缓存、AI 审核、审批卡）与执行都必须基于这个结果：
+  /// 只做词法归一化时，`docs/setup.md -> ~/.zshrc` 这样的链接会让审批看到
+  /// 项目内路径、实际却写到主目录。逐段解析而不是直接
+  /// `resolveSymbolicLinksSync`，是因为后者要求整条路径存在——新建文件、
+  /// 链接到不存在目标的悬空链接（写入会凭空创建目标）都得一并解析。
+  /// 目标尚不存在的尾部原样保留。
+  ///
+  /// **已知边界：解析不了时退回词法路径，调用方分辨不出「解析失败」与「本来就没有
+  /// 链接」。** 这不是遗漏，是原语限制：路径上有**不可穿越的祖先目录**（该目录的
+  /// 执行位关掉）时，`typeSync` 与 `FileStat.statSync` 的返回与「路径真的不存在」
+  /// 完全一样——实测两者都不抛异常，都返回 `notFound`。
+  ///
+  /// 这个折中只给**规则匹配**用（规则能匹配上总比一条都匹配不上好）。**执行前**另有
+  /// [PathNormalizer.unresolvablePathError] 兜底：它在无法确定真实目标时直接拒绝，判据是
+  /// `openSync(read)` 的 errno——同一环境下实测，在不可穿越的目录里探一个不存在的
+  /// 名字抛 EACCES（errorCode 13），在可穿越的目录里抛 ENOENT（errorCode 2）。用
+  /// `openSync` 而不是 `listSync` 的两点理由写在那个函数上。
+  ///
+  /// 所以这里能安全地保持退回词法路径：`Directory(dir).statSync()` 连不可穿越的目录
+  /// 都能正常返回 `directory`（stat 只需要父目录可穿越），从 mode 位看不出「能不能
+  /// 穿越它」——靠 mode 猜还会在 root、ACL 与属主不同的情形下判断错，这条是实测过
+  /// 的，别再往这个方向试。
+  ///
+  /// 后果仍然要说清楚：审批卡、会话缓存与 deny 规则都会基于**词法路径**判断，而文件
+  /// 真正落到哪里是未知的；`realPathChangedSinceApproval` 用的是同一个函数，会得出
+  /// 「没有变化」的结论，也拦不住——拦住它的是执行前的 [PathNormalizer.unresolvablePathError]。
+  static String resolveRealPathSync(String path) {
+    final normalized = PathNormalizer.normalizePathForMatch(path);
+    try {
+      final parts = p.split(normalized);
+      var resolved = parts.first;
+      final pending = parts.sublist(1);
+      var hops = 0;
+      while (pending.isNotEmpty) {
+        final segment = pending.removeAt(0);
+        if (segment == '.') continue;
+        if (segment == '..') {
+          resolved = p.dirname(resolved);
+          continue;
+        }
+        final candidate = p.join(resolved, segment);
+        if (FileSystemEntity.typeSync(candidate, followLinks: false) !=
+            FileSystemEntityType.link) {
+          resolved = candidate;
+          continue;
+        }
+        // 与内核的 ELOOP 上限同量级，防止链接环
+        if (++hops > 40) return normalized;
+        final target = Link(candidate).targetSync();
+        final absolute = p.isAbsolute(target)
+            ? target
+            : p.join(resolved, target);
+        final targetParts = p.split(absolute);
+        resolved = targetParts.first;
+        pending.insertAll(0, targetParts.sublist(1));
+      }
+      return PathNormalizer.normalizePathForMatch(resolved);
+    } catch (_) {
+      // 只有 typeSync 认定是链接、targetSync 却失败时才会进来（链接被并发替换或
+      // 删除）。这里本来可以改成返回 null、让调用方拒绝执行，但那条路只在竞态下
+      // 可达、写不出会先失败的测试，于是按上面的边界记录现状，不引入测不到的代码。
+      return normalized;
+    }
+  }
+
+  /// 路径上有**不可穿越**的目录时返回原因，否则返回 null。
+  ///
+  /// 判据只要一次系统调用：对「最深的那个存在着的祖先目录」探测一个不存在的子项。
+  /// 实测在不可穿越的目录里，`File(...).openSync(mode: read)` 抛 EACCES
+  /// （errorCode 13），在可穿越的目录里抛 ENOENT（errorCode 2）——这正是
+  /// [PathNormalizer.resolveRealPathSync] 的「已知边界」里 `typeSync` / `FileStat.statSync` 给不出
+  /// 的区分。
+  ///
+  /// 用 `openSync(read)` 而不是 `listSync` 有两点理由：读一个不存在的路径**不需要**
+  /// 目录的读权限、只需要穿越权限，所以 mode 0111（只给穿越）的目录不会被误判；也
+  /// 不会列出内容，代价是一条轻量的系统调用。
+  ///
+  /// 从最深的祖先往上找，是因为哪一级存在本身也受同一种模糊影响：不可穿越目录的
+  /// 子目录会被 `statSync` 报成不存在，而它自己（父目录可穿越时）能正常 stat 到。
+  static String? unresolvablePathReason(String path) {
+    var current = p.dirname(PathNormalizer.normalizePathForMatch(path));
+    while (true) {
+      try {
+        if (Directory(current).statSync().type ==
+            FileSystemEntityType.directory) {
+          // 在最深的那个存在的祖先目录里探一个不存在的名字
+          final probe = p.join(current, '.athena-traversal-probe');
+          try {
+            File(probe).openSync(mode: FileMode.read).closeSync();
+            // 探针竟然打开了：说明这个目录可穿越（也不影响正确性）
+            return null;
+          } on FileSystemException catch (e) {
+            final code = e.osError?.errorCode;
+            // 2 = ENOENT / 20 = ENOTDIR：目录可穿越，只是探针名字不存在 —— 正常
+            if (code == 2 || code == 20) return null;
+            // 13 = EACCES 等：这一级走不进去
+            return '$current is not searchable (${e.osError?.message ?? e.message})';
+          }
+        }
+      } catch (_) {
+        // statSync 自己失败：继续往上找
+      }
+      final parent = p.dirname(current);
+      if (parent == current || current.isEmpty) return null; // 走到根，没发现问题
+      current = parent;
+    }
+  }
+
+  /// 执行前的路径复核：**无法确定真实目标时拒绝执行**。
+  ///
+  /// 与 [PathNormalizer.resolveRealPathSync] 的「解析不了就退回词法路径」不同——那个折中是给规则匹配
+  /// 用的（规则要能匹配上总比一条都匹配不上好）。而执行前必须能确定目标：路径上有
+  /// 不可穿越的目录时，审批卡、会话缓存与 deny 规则全都基于**词法路径**判断过一遍，
+  /// 文件真正落到哪里却是未知的（链接可能指向别处），这时继续执行就是把未知当已知。
+  ///
+  /// 只应在**文件工具执行前**调用（一次调用一次），不要放进权限判定那条热路径——
+  /// 那里每条规则的 pattern 与 key 都要解析一次路径，代价会被放大。
+  static String? unresolvablePathError(String path) {
+    final reason = PathNormalizer.unresolvablePathReason(path);
+    if (reason == null) return null;
+    return 'Error: Blocked: cannot determine the real path of $path because '
+        '$reason. Approval, deny rules and the audit trail were all computed '
+        'from the literal path, so this call is refused. Fix the permissions of '
+        'the directories leading to it, or use a path that is fully searchable.';
+  }
+
+  /// 执行前复核路径：[path] 应已由 `applyRunWorkspace` 解析为真实路径。
+  ///
+  /// 返回 null 表示路径仍指向审批时的位置；否则返回解析后的真实路径——
+  /// 说明审批之后链接被替换（或调用方传入了未解析的路径），调用方应拒绝执行，
+  /// 让新的真实路径重新走一遍审批。
+  static String? realPathChangedSinceApproval(String path) {
+    final real = PathNormalizer.resolveRealPathSync(path);
+    return real == PathNormalizer.normalizePathForMatch(path) ? null : real;
+  }
+
+  /// [PathNormalizer.realPathChangedSinceApproval] 命中时回给模型的错误：让它用真实路径
+  /// 重新发起调用，从而按真实目标重新审批。
+  static String symlinkChangedError(String path, String realPath) =>
+      'Error: $path resolves through a symbolic link to $realPath, which was '
+      'not the path reviewed for this call. Call the tool again with the real '
+      'path if you still intend to access it.';
+
+  static String protectedWritePathError(String path) =>
+      'Error: Blocked: writing to credential or Athena data directories '
+      '($path) is not allowed. Athena data is managed by its own tools.';
+
+  /// 写入禁区：凭据目录与应用数据目录，技能文件除外（见 CONVENTIONS.md §12.5）。
+  /// `permissions.json` 等应用配置仍由仓储管理。只拦写入而不像读取那样连 `.env`
+  /// 一并拦截——写 `.env` 不会把密钥带进上下文，仍按正常审批处理。
+  static bool isProtectedWritePath(String normalizedPath) {
+    final segments = p.split(normalizedPath);
+    for (var i = 0; i < segments.length; i++) {
+      final lower = segments[i].toLowerCase();
+      if (lower == '.ssh' || lower == '.aws') return true;
+      if (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i))
+        return true;
+    }
+    return false;
+  }
+
+  /// 判断归一化后的绝对路径是否触及敏感凭据位置（.ssh / .aws / .athena /
+  /// .env* / credentials / id_rsa / id_ed25519）。
+  ///
+  /// 按路径段精确匹配,避免子串误伤（如 `my.credentials.txt` 不算——
+  /// 段名是 `my.credentials.txt`,不是 `credentials`）。
+  static bool isSensitivePath(String normalizedPath) {
+    final segments = p.split(normalizedPath);
+    for (var i = 0; i < segments.length; i++) {
+      final lower = segments[i].toLowerCase();
+      if (lower == '.ssh' ||
+          lower == '.aws' ||
+          (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) ||
+          lower == 'credentials' ||
+          lower == 'id_rsa' ||
+          lower == 'id_ed25519' ||
+          lower == '.env' ||
+          lower.startsWith('.env.')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 仅放行 skills/<name>/ 下的文件；skills/.usage.json 等目录元数据仍受保护。
+  static bool _isSkillFile(List<String> segments, int athenaIndex) =>
+      segments.length > athenaIndex + 3 &&
+      segments[athenaIndex + 1].toLowerCase() == 'skills';
+}

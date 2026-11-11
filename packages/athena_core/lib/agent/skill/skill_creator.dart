@@ -1,11 +1,12 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 
-const skillCreatorSkill = Skill(
-  name: 'skill-creator',
-  description:
-      '创建或改进可复用的 Skill，包括指令设计、支持资源、保存和验证。用户希望将任务或工作流程整理成技能，或完善现有技能时使用。',
-  sourcePath: '(builtin)',
-  body: r'''
+abstract final class SkillCreator {
+  static const skillCreatorSkill = Skill(
+    name: 'skill-creator',
+    description:
+        '创建或改进可复用的 Skill，包括指令设计、支持资源、保存和验证。用户希望将任务或工作流程整理成技能，或完善现有技能时使用。',
+    sourcePath: '(builtin)',
+    body: r'''
 # Skill 创建助手
 
 将具体任务、领域知识或工作流程整理成可复用的 Skill，完成内容设计、资源组织、保存和验证。
@@ -119,4 +120,5 @@ description: "根据会议记录提取决策和待办；在用户需要会议总
 
 完成后简要说明保存位置、技能用途、验证结果，并给出一条可以直接尝试的请求。
 ''',
-);
+  );
+}

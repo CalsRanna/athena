@@ -9,7 +9,7 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light),
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );

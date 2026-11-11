@@ -13,9 +13,9 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
-import 'package:athena_gui/util/single_instance_util.dart';
-import 'package:athena_gui/util/system_tray_util.dart';
-import 'package:athena_gui/util/window_util.dart';
+import 'package:athena_gui/util/platform/single_instance_util.dart';
+import 'package:athena_gui/util/platform/system_tray_util.dart';
+import 'package:athena_gui/util/platform/window_util.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,16 +33,16 @@ void main(List<String> args) async {
   await SingleInstanceUtil.instance.ensureInitialized(args);
   final supportDir = await getApplicationSupportDirectory();
   DI.ensureInitialized(dataDirectory: supportDir.path);
-  await _bootstrapStorage();
+  await _AppBootstrap.storage();
   await GetIt.instance<PermissionService>().load();
   await GetIt.instance<SettingViewModel>().initThemeMode();
   await GetIt.instance<SettingViewModel>().initTextSize();
   if (PlatformUtil.isDesktop) {
     // 窗口原生背景色跟随当前主题（浅色下避免露出默认黑底）
-    final resolved = resolveColorMode(
+    final resolved = AthenaTheme.resolveColorMode(
       GetIt.instance<SettingViewModel>().themeMode.value,
     );
-    final windowBg = colorsOf(resolved);
+    final windowBg = AthenaTheme.colorsOf(resolved);
     await WindowUtil.instance.ensureInitialized(
       settings: GetIt.instance<FileStorage>().userSettings,
       backgroundColor: windowBg.surface,
@@ -73,15 +73,17 @@ void main(List<String> args) async {
   }
 }
 
-/// 文件存储启动序列:加载存储,再种子内置角色(首次启动)。
-Future<void> _bootstrapStorage() async {
-  final storage = GetIt.instance<FileStorage>();
-  await storage.load();
-  // 旧版 GUI 把偏好放在 SharedPreferences 里，一次性搬进 setting.yaml
-  await const PrefsIntoSettingMigration().run(storage.userSettings);
-  await const SentinelSeed().applyIfNeeded(
-    sentinelRepo: storage.sentinelRepository,
-  );
+abstract final class _AppBootstrap {
+  /// 文件存储启动序列:加载存储,再种子内置角色(首次启动)。
+  static Future<void> storage() async {
+    final storage = GetIt.instance<FileStorage>();
+    await storage.load();
+    // 旧版 GUI 把偏好放在 SharedPreferences 里，一次性搬进 setting.yaml
+    await const PrefsIntoSettingMigration().run(storage.userSettings);
+    await const SentinelSeed().applyIfNeeded(
+      sentinelRepo: storage.sentinelRepository,
+    );
+  }
 }
 
 class AthenaApp extends StatefulWidget {
@@ -100,8 +102,8 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
       builder: (context) {
         final settingViewModel = GetIt.instance<SettingViewModel>();
         final themeMode = settingViewModel.themeMode.value;
-        final resolved = resolveColorMode(themeMode);
-        final colors = colorsOf(resolved);
+        final resolved = AthenaTheme.resolveColorMode(themeMode);
+        final colors = AthenaTheme.colorsOf(resolved);
         if (PlatformUtil.isDesktop) {
           // 窗口原生背景色跟随主题（浅色下避免露出默认黑底）
           unawaited(windowManager.setBackgroundColor(colors.surface));
@@ -121,10 +123,14 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
           platform: defaultTargetPlatform,
           child: MaterialApp.router(
             debugShowCheckedModeBanner: false,
-            routerConfig: router.config(),
-            scaffoldMessengerKey: scaffoldMessengerKey,
-            theme: buildAthenaThemeData(AthenaColorMode.light),
-            darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
+            routerConfig: AthenaRouter.router.config(),
+            scaffoldMessengerKey: AthenaRouter.scaffoldMessengerKey,
+            theme: AthenaMaterialTheme.buildAthenaThemeData(
+              AthenaColorMode.light,
+            ),
+            darkTheme: AthenaMaterialTheme.buildAthenaThemeData(
+              AthenaColorMode.dark,
+            ),
             themeMode: switch (themeMode) {
               AthenaThemeMode.light => ThemeMode.light,
               AthenaThemeMode.dark => ThemeMode.dark,

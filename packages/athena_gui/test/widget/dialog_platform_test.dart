@@ -58,11 +58,11 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp.router(
-        theme: buildAthenaThemeData(AthenaColorMode.light)
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
             .copyWith(platform: platform),
         builder: (context, child) => AthenaTestScope(child: child!),
-        routerConfig: router.config(),
-        scaffoldMessengerKey: scaffoldMessengerKey,
+        routerConfig: AthenaRouter.router.config(),
+        scaffoldMessengerKey: AthenaRouter.scaffoldMessengerKey,
       ),
     );
     // 首页初始化是一串串行的真实文件 I/O，要交替给真实异步窗口再 pump。

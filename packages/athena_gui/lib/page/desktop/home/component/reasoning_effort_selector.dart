@@ -17,7 +17,7 @@ class DesktopReasoningEffortLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
     return Text(
-      reasoningEffortLabel(current),
+      ReasoningEffort.reasoningEffortLabel(current),
       // 与模型名同字号同字重（都是常规字重）
       style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
@@ -61,7 +61,7 @@ class DesktopReasoningEffortMenu extends StatelessWidget {
       anchor: anchor,
       children: [
         const DesktopContextMenuGroupLabel(text: 'Reasoning effort'),
-        for (final (value, label) in reasoningEffortOptions)
+        for (final (value, label) in ReasoningEffort.reasoningEffortOptions)
           DesktopContextMenuTile(
             text: label,
             badge: value == defaultEffort

@@ -59,7 +59,7 @@ void main() {
 
   group('请求映射', () {
     test('system 消息进 instructions，不进 input', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           messages: [ChatMessage.system('你是 Athena'), ChatMessage.user('你好')],
         ),
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('多条 system 消息合并，user 消息保留顺序', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           messages: [
             ChatMessage.system('第一段'),
@@ -90,7 +90,7 @@ void main() {
     });
 
     test('assistant 的 tool_calls 变成 function_call item', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           messages: [
             ChatMessage.user('列出文件'),
@@ -126,7 +126,7 @@ void main() {
     });
 
     test('tool 结果变成 function_call_output item', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           messages: [
             const ToolMessage(toolCallId: 'call_1', content: 'file_a\nfile_b'),
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('工具定义转成 Responses 的扁平 function 工具', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           tools: [
             Tool.function(
@@ -166,7 +166,7 @@ void main() {
     });
 
     test('temperature 与推理强度透传', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(temperature: 0.3, reasoningEffort: ReasoningEffort.high),
       );
 
@@ -175,7 +175,7 @@ void main() {
     });
 
     test('jsonObject 输出格式映射到 text.format', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(responseFormat: const JsonObjectResponseFormat()),
       );
 
@@ -183,7 +183,7 @@ void main() {
     });
 
     test('图片内容映射成 input_image', () {
-      final request = toResponseRequest(
+      final request = ResponsesAdapter.toResponseRequest(
         chatRequest(
           messages: [
             const UserMessage(
@@ -207,7 +207,7 @@ void main() {
 
     test('表达不了的内容显式失败，而不是静默丢弃', () {
       expect(
-        () => toResponseRequest(
+        () => ResponsesAdapter.toResponseRequest(
           chatRequest(
             messages: [
               const UserMessage(
@@ -220,7 +220,7 @@ void main() {
       );
 
       expect(
-        () => toResponseRequest(
+        () => ResponsesAdapter.toResponseRequest(
           chatRequest(
             responseFormat: const JsonSchemaResponseFormat(
               name: 'out',
@@ -261,7 +261,7 @@ void main() {
     ];
 
     test('文本与推理增量按 content / reasoningContent 呈现', () async {
-      final chunks = await normalizeResponsesStream(
+      final chunks = await ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable([
           ResponseStreamEvent.fromJson({
             'type': 'response.output_text.delta',
@@ -284,7 +284,7 @@ void main() {
     });
 
     test('工具调用：先给 id 与 name 建卡，再追加参数分片', () async {
-      final chunks = await normalizeResponsesStream(
+      final chunks = await ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable([
           ...toolCallEvents(),
           ResponseCompletedEvent(response: response()),
@@ -326,7 +326,7 @@ void main() {
       };
 
       final accumulator = ChatStreamAccumulator();
-      await for (final chunk in normalizeResponsesStream(
+      await for (final chunk in ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable(
           [
             // output_index 0 被 reasoning item 占据
@@ -362,7 +362,7 @@ void main() {
 
     test('归一流可被 ChatStreamAccumulator 直接消费（上层零改动）', () async {
       final accumulator = ChatStreamAccumulator();
-      await for (final chunk in normalizeResponsesStream(
+      await for (final chunk in ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable([
           ResponseStreamEvent.fromJson({
             'type': 'response.output_text.delta',
@@ -398,7 +398,7 @@ void main() {
     });
 
     test('usage 的缓存与推理明细映射到 Chat Completions 字段', () async {
-      final chunk = await normalizeResponsesStream(
+      final chunk = await ResponsesAdapter.normalizeResponsesStream(
         Stream.value(
           ResponseStreamEvent.fromJson({
             'type': 'response.completed',
@@ -424,7 +424,7 @@ void main() {
     });
 
     test('incomplete 归一成 length，供上层拒绝截断的工具调用', () async {
-      final chunk = await normalizeResponsesStream(
+      final chunk = await ResponsesAdapter.normalizeResponsesStream(
         Stream.value(
           ResponseStreamEvent.fromJson({
             'type': 'response.incomplete',
@@ -445,7 +445,7 @@ void main() {
 
     test('failed 带出服务端错误信息', () async {
       await expectLater(
-        normalizeResponsesStream(
+        ResponsesAdapter.normalizeResponsesStream(
           Stream.value(
             ResponseStreamEvent.fromJson({
               'type': 'response.failed',
@@ -473,7 +473,7 @@ void main() {
 
   group('非流式路径', () {
     test('toChatCompletion 提取文本、用量与 finishReason', () {
-      final completion = responseToChatCompletion(
+      final completion = ResponsesAdapter.responseToChatCompletion(
         response(
           output: [
             {
@@ -496,7 +496,7 @@ void main() {
     });
 
     test('incomplete 状态的响应对应 length', () {
-      final completion = responseToChatCompletion(
+      final completion = ResponsesAdapter.responseToChatCompletion(
         response(status: 'incomplete'),
       );
 

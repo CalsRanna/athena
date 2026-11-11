@@ -10,7 +10,7 @@ import 'package:athena_core/entity/conversation_summary.dart';
 import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
-import 'package:athena_core/util/atomic_file_write.dart';
+import 'package:athena_core/storage/atomic_file_write.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 单会话文件存储:`sessions/{chatId}.jsonl`。
@@ -59,12 +59,14 @@ class SessionJsonlStore {
 
   /// 进程内串行(读写都排队,读不会夹在本进程写的中间)。
   Future<T> _serialized<T>(Future<T> Function() action) {
-    return serialLock(_lock, action, (f) => _lock = f);
+    return SerialLock.serialLock(_lock, action, (f) => _lock = f);
   }
 
   /// 修改:进程内串行 + 跨进程文件锁。
   Future<T> _mutate<T>(Future<T> Function() action) {
-    return _serialized(() => withFileLock(_locks.forTarget(file), action));
+    return _serialized(
+      () => FileLocking.withFileLock(_locks.forTarget(file), action),
+    );
   }
 
   // ─────────────────────────── 会话元数据(首行) ───────────────────────────
@@ -159,7 +161,7 @@ class SessionJsonlStore {
           final updated = transform(decoded);
           updated['id'] = decoded['id'];
           updated['type'] = chatType;
-          await replaceFileContentBytes(
+          await AtomicFileWrite.replaceFileContentBytes(
             file,
             _spliceLine(bytes, range, updated),
           );
@@ -337,7 +339,10 @@ class SessionJsonlStore {
           row['id'] = id;
           row['type'] = messageType;
           row['seq'] = decoded['seq'];
-          await replaceFileContentBytes(file, _spliceLine(bytes, range, row));
+          await AtomicFileWrite.replaceFileContentBytes(
+            file,
+            _spliceLine(bytes, range, row),
+          );
           return;
         }
         searchFrom = hit + 1;
@@ -678,6 +683,6 @@ class SessionJsonlStore {
     for (final row in rows) {
       buf.writeln(jsonEncode(row));
     }
-    await atomicWriteString(file, buf.toString());
+    await FileLocking.atomicWriteString(file, buf.toString());
   }
 }

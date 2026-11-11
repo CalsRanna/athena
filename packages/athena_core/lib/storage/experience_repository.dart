@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/path_normalizer.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:athena_core/entity/experience_entity.dart';
@@ -27,7 +27,9 @@ class ExperienceRepository {
   final String? _homeDir;
 
   static String? normalizeWorkspacePath(String? path) =>
-      path == null || path.isEmpty ? null : normalizePathForMatch(path);
+      path == null || path.isEmpty
+      ? null
+      : PathNormalizer.normalizePathForMatch(path);
 
   /// 无项目限制的记录兼容所有项目；有项目限制的记录必须精确匹配。
   static bool isInWorkspace(String? recordedPath, String? currentPath) {
@@ -93,7 +95,7 @@ class ExperienceRepository {
     );
 
     final file = File('$dir/$id.json');
-    await atomicWriteString(file, _prettyJson(entity.toJson()));
+    await FileLocking.atomicWriteString(file, _prettyJson(entity.toJson()));
     return entity;
   }
 
@@ -441,7 +443,10 @@ class ExperienceRepository {
         : '$_basePath/$sentinelId';
     _ensureDir(targetDir);
     final targetFile = File('$targetDir/${entity.id}.json');
-    await atomicWriteString(targetFile, _prettyJson(entity.toJson()));
+    await FileLocking.atomicWriteString(
+      targetFile,
+      _prettyJson(entity.toJson()),
+    );
     if (file.path != targetFile.path) {
       await file.delete();
     }

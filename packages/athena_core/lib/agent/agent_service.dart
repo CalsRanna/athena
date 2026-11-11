@@ -21,17 +21,9 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
-    show
-        CancellableTool,
-        toolBackgroundDisabledKey,
-        toolChatIdKey,
-        toolMessageIdKey,
-        toolExecutionArguments,
-        toolExperienceSourceKey,
-        toolExperienceWorkspaceKey;
+    show CancellableTool, ToolArguments;
 import 'package:athena_core/agent/tool/tool_registry.dart';
-import 'package:athena_core/agent/tool/tool_set.dart'
-    show kUndeactivatableToolNames;
+import 'package:athena_core/agent/tool/tool_set.dart' show ToolSet;
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -164,7 +156,7 @@ class AgentService {
     /// [AgentBackgroundTasksNotifiedEvent] 确认，失败时仍由宿主保留待汇报项。
     List<BackgroundTask> Function()? pendingBackgroundTasks,
 
-    /// 本角色允许的工具名；null = 不限制。与 [kUndeactivatableToolNames]
+    /// 本角色允许的工具名；null = 不限制。与 [ToolSet.kUndeactivatableToolNames]
     /// 求并集后生效：模型看到的 schema 与执行闸门共用这份集合。
     Set<String>? enabledTools,
   }) async* {
@@ -181,7 +173,7 @@ class AgentService {
     final registry = _toolRegistry.filtered(
       enabled: enabledTools == null
           ? null
-          : {...enabledTools, ...kUndeactivatableToolNames},
+          : {...enabledTools, ...ToolSet.kUndeactivatableToolNames},
     );
 
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
@@ -374,13 +366,17 @@ class AgentService {
     }
 
     // Keep display metadata in the original JSON for UI/history only.
-    args = toolExecutionArguments(args);
+    args = ToolArguments.toolExecutionArguments(args);
 
     // 会话工作文件夹：在权限门之前解析，使规则匹配与文件执行共用同一
     // 绝对路径（展示用的 toolCall.function.arguments 保持原样）
     final rawArgs = args;
-    args = applyRunWorkspace(toolCall.function.name, args, workspace);
-    final approvalArguments = approvalArgumentsFor(
+    args = RunWorkspace.applyRunWorkspace(
+      toolCall.function.name,
+      args,
+      workspace,
+    );
+    final approvalArguments = RunWorkspace.approvalArgumentsFor(
       toolCall.function.name,
       rawArguments: toolCall.function.arguments,
       rawArgs: rawArgs,
@@ -411,22 +407,23 @@ class AgentService {
     // 引擎注入的运行期上下文：在权限门之后写入，既不参与规则匹配，
     // 也不会出现在展示用的原始参数 JSON 里。
     if (chatId != null) {
-      args[toolChatIdKey] = chatId;
+      args[ToolArguments.toolChatIdKey] = chatId;
     }
     if (!allowBackgroundTasks) {
-      args[toolBackgroundDisabledKey] = true;
+      args[ToolArguments.toolBackgroundDisabledKey] = true;
     }
     if (experienceSource != null) {
-      args[toolExperienceSourceKey] = experienceSource;
+      args[ToolArguments.toolExperienceSourceKey] = experienceSource;
     }
     if (toolCall.function.name == 'experience_learn') {
       // 即使宿主没有来源，也要覆盖模型传入的同名参数。
-      args[toolChatIdKey] = chatId;
-      args[toolMessageIdKey] = messageId;
+      args[ToolArguments.toolChatIdKey] = chatId;
+      args[ToolArguments.toolMessageIdKey] = messageId;
     }
     if (toolCall.function.name == 'experience_learn' ||
         toolCall.function.name == 'experience_recall') {
-      args[toolExperienceWorkspaceKey] = experienceWorkspace ?? workspace;
+      args[ToolArguments.toolExperienceWorkspaceKey] =
+          experienceWorkspace ?? workspace;
     }
 
     late String rawResult;
@@ -526,10 +523,14 @@ class AgentService {
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
-        args = toolExecutionArguments(args);
+        args = ToolArguments.toolExecutionArguments(args);
         // 与 executeToolCallInternal 同一解析口径：两处不一致会出现
         // 「预检放行、执行时被拦」或反向的判定漂移
-        args = applyRunWorkspace(tc.function.name, args, workspace);
+        args = RunWorkspace.applyRunWorkspace(
+          tc.function.name,
+          args,
+          workspace,
+        );
       } catch (_) {
         args = null;
       }
@@ -670,7 +671,7 @@ class AgentService {
   }
 
   String _runtimePromptWithDate(String? runtimePrompt) {
-    final date = currentDatePrompt(_now());
+    final date = RuntimeContext.currentDatePrompt(_now());
     return runtimePrompt == null || runtimePrompt.isEmpty
         ? date
         : '$runtimePrompt\n$date';
@@ -948,7 +949,7 @@ class _AgentLoop {
       st.accumulator.reasoning.isEmpty &&
       st.accumulator.reasoningContent.isEmpty &&
       st.accumulator.toolCalls.isEmpty &&
-      isContextOverflowError(error);
+      ContextBudget.isContextOverflowError(error);
 
   /// 压缩一次，并把步骤事件透传给前端；压缩后 [_messages] 换成落库历史重建的
   /// 候选（系统块 + 摘要 + 尾部原文）。
@@ -1419,7 +1420,7 @@ class _AgentLoop {
 
     // 图片只能在整批工具消息之后追加：Chat Completions 要求所有 tool
     // 消息紧跟带 tool_calls 的 assistant，中间插入其它角色会被判非法。
-    final imageMessage = toolResultImagesMessage(resultImages);
+    final imageMessage = ToolResultImages.toolResultImagesMessage(resultImages);
     if (imageMessage != null) _messages.add(imageMessage);
 
     yield AgentEvent.iterationComplete(
@@ -1618,7 +1619,8 @@ class _AgentLoop {
       final content = message.content;
       if (content is UserPartsContent && content.parts.isNotEmpty) {
         final first = content.parts.first;
-        if (first is TextContentPart && first.text == toolResultImagesMarker) {
+        if (first is TextContentPart &&
+            first.text == ToolResultImages.toolResultImagesMarker) {
           continue;
         }
       }

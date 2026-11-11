@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:collection';
 
 import 'package:athena_core/util/cancellable_stream.dart';
-import 'package:athena_core/util/atomic_file_write.dart';
+import 'package:athena_core/storage/atomic_file_write.dart';
 
 import 'package:athena_core/util/logger_util.dart';
 import 'package:crypto/crypto.dart';
@@ -36,7 +36,7 @@ class ToolOutputStore {
         await directory!.create(recursive: true);
         final file = File(p.join(directory!.path, '$id.txt'));
         if (!await file.exists()) {
-          await replaceFileContent(file, text);
+          await AtomicFileWrite.replaceFileContent(file, text);
         }
       });
       try {
@@ -161,7 +161,10 @@ class ToolOutputStore {
     var position = checkpoint.position;
     final characters = <int>[];
     outer:
-    await for (final chunk in cancellableStream(chunks, cancelSignal)) {
+    await for (final chunk in CancellableStream.cancellableStream(
+      chunks,
+      cancelSignal,
+    )) {
       for (final rune in chunk.runes) {
         index.add(current, position);
         if (current >= offset) characters.add(rune);

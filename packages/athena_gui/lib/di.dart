@@ -201,7 +201,7 @@ abstract final class DI {
     // 工具清单是引擎的事实，统一在 athena_core 的 buildToolRegistry 里；
     // 这里只提供 GUI 特有的差异项。
     getIt.registerLazySingleton(
-      () => buildToolRegistry(
+      () => ToolSet.buildToolRegistry(
         skillRegistry: getIt<SkillRegistry>(),
         experienceRepository: getIt<ExperienceRepository>(),
         chatRepository: getIt<ChatRepository>(),

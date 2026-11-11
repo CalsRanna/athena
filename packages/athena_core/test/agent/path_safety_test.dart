@@ -12,7 +12,7 @@ import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/util/path_normalizer.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
@@ -24,7 +24,7 @@ void main() {
   late String outside;
 
   setUp(() {
-    root = normalizePathForMatch(
+    root = PathNormalizer.normalizePathForMatch(
       Directory.systemTemp
           .createTempSync('athena_path_')
           .resolveSymbolicLinksSync(),
@@ -43,9 +43,12 @@ void main() {
       Link('$project/docs/setup.md').createSync('$outside/.zshrc');
       Link('$project/docs/cfg').createSync(outside);
 
-      expect(resolveRealPathSync('$project/docs/setup.md'), '$outside/.zshrc');
       expect(
-        resolveRealPathSync('$project/docs/cfg/new/file.txt'),
+        PathNormalizer.resolveRealPathSync('$project/docs/setup.md'),
+        '$outside/.zshrc',
+      );
+      expect(
+        PathNormalizer.resolveRealPathSync('$project/docs/cfg/new/file.txt'),
         '$outside/new/file.txt',
         reason: '新建文件时父目录的链接同样要解析',
       );
@@ -55,7 +58,7 @@ void main() {
       Link('$project/docs/dangling.md').createSync('../../home/created.md');
 
       expect(
-        resolveRealPathSync('$project/docs/dangling.md'),
+        PathNormalizer.resolveRealPathSync('$project/docs/dangling.md'),
         '$outside/created.md',
         reason: '写入悬空链接会凭空创建目标，必须按目标审批',
       );
@@ -65,12 +68,15 @@ void main() {
       Link('$project/a').createSync('$project/b');
       Link('$project/b').createSync('$project/a');
 
-      expect(resolveRealPathSync('$project/a/x'), '$project/a/x');
+      expect(
+        PathNormalizer.resolveRealPathSync('$project/a/x'),
+        '$project/a/x',
+      );
     });
 
     test('普通路径原样返回', () {
       expect(
-        resolveRealPathSync('$project/docs/../README.md'),
+        PathNormalizer.resolveRealPathSync('$project/docs/../README.md'),
         '$project/README.md',
       );
     });
@@ -81,10 +87,14 @@ void main() {
       Link('$project/docs/setup.md').createSync('$outside/.zshrc');
       final raw = {'path': 'docs/setup.md', 'content': 'x'};
 
-      final resolved = applyRunWorkspace('file_write', raw, project);
+      final resolved = RunWorkspace.applyRunWorkspace(
+        'file_write',
+        raw,
+        project,
+      );
       expect(resolved['path'], '$outside/.zshrc');
 
-      final shown = approvalArgumentsFor(
+      final shown = RunWorkspace.approvalArgumentsFor(
         'file_write',
         rawArguments: jsonEncode(raw),
         rawArgs: raw,
@@ -99,11 +109,15 @@ void main() {
       final rawJson = jsonEncode(raw);
 
       expect(
-        approvalArgumentsFor(
+        RunWorkspace.approvalArgumentsFor(
           'file_write',
           rawArguments: rawJson,
           rawArgs: raw,
-          resolvedArgs: applyRunWorkspace('file_write', raw, project),
+          resolvedArgs: RunWorkspace.applyRunWorkspace(
+            'file_write',
+            raw,
+            project,
+          ),
           workspace: project,
         ),
         rawJson,
@@ -214,7 +228,7 @@ void main() {
         });
         expect(result, startsWith('Error: Blocked'), reason: relative);
         expect(File(path).existsSync(), isFalse, reason: relative);
-        expect(isSensitivePath(path), isTrue, reason: relative);
+        expect(PathNormalizer.isSensitivePath(path), isTrue, reason: relative);
       }
     });
 
@@ -226,7 +240,7 @@ void main() {
       skillDirectory.createSync(recursive: true);
       final link = Link('${skillDirectory.path}/SKILL.md')
         ..createSync(data.path);
-      final resolved = applyRunWorkspace('file_write', {
+      final resolved = RunWorkspace.applyRunWorkspace('file_write', {
         'path': link.path,
         'content': 'changed',
       }, null);
@@ -242,7 +256,7 @@ void main() {
   test('路径规则按真实路径匹配：写在链接目录下的 deny 照常生效', () {
     Link('$root/linked').createSync(project);
     final real =
-        applyRunWorkspace('file_write', {
+        RunWorkspace.applyRunWorkspace('file_write', {
               'path': '$root/linked/docs/a.txt',
             }, null)['path']
             as String;
@@ -321,11 +335,17 @@ void main() {
     test('正常路径没有问题', () {
       File('$project/docs/a.md').writeAsStringSync('x');
 
-      expect(unresolvablePathReason('$project/docs/a.md'), isNull);
+      expect(
+        PathNormalizer.unresolvablePathReason('$project/docs/a.md'),
+        isNull,
+      );
     });
 
     test('还不存在的嵌套目录不算问题（file_write 会自己建）', () {
-      expect(unresolvablePathReason('$project/a/b/c.txt'), isNull);
+      expect(
+        PathNormalizer.unresolvablePathReason('$project/a/b/c.txt'),
+        isNull,
+      );
     });
 
     test('关掉执行位的目录会被指出来', () {
@@ -333,7 +353,9 @@ void main() {
       Process.runSync('chmod', ['000', '$project/locked']);
       addTearDown(() => Process.runSync('chmod', ['755', '$project/locked']));
 
-      final reason = unresolvablePathReason('$project/locked/a.md');
+      final reason = PathNormalizer.unresolvablePathReason(
+        '$project/locked/a.md',
+      );
 
       expect(reason, isNotNull);
       expect(reason, contains('locked'));
@@ -346,7 +368,10 @@ void main() {
       Process.runSync('chmod', ['111', '$project/xonly']);
       addTearDown(() => Process.runSync('chmod', ['755', '$project/xonly']));
 
-      expect(unresolvablePathReason('$project/xonly/a.md'), isNull);
+      expect(
+        PathNormalizer.unresolvablePathReason('$project/xonly/a.md'),
+        isNull,
+      );
     }, skip: Platform.isWindows);
   });
 }

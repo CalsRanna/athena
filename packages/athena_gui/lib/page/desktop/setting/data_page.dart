@@ -1,7 +1,7 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/byte_size.dart';
+import 'package:athena_gui/util/format/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -117,7 +117,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
       !_loadingUsage && (_usage?.toolOutputCount ?? 0) > 0;
 
   String _sizeSummary(int count, int bytes) =>
-      '$count ${count == 1 ? 'file' : 'files'} · ${formatByteSize(bytes)}';
+      '$count ${count == 1 ? 'file' : 'files'} · ${ByteSize.formatByteSize(bytes)}';
 
   Future<void> _loadUsage() async {
     StorageUsage usage;

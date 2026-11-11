@@ -11,7 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('档位清单与 core 同序同长', () {
     expect(
-      reasoningEffortOptions.map((option) => option.$1).toList(),
+      ReasoningEffort.reasoningEffortOptions
+          .map((option) => option.$1)
+          .toList(),
       ChatEntity.reasoningEfforts,
       reason: '选择列表按 core 定义的顺序从弱到强排列',
     );
@@ -20,7 +22,7 @@ void main() {
   test('core 的每个档位都有明确的显示名，不是回退成原值', () {
     for (final value in ChatEntity.reasoningEfforts) {
       expect(
-        reasoningEffortLabel(value),
+        ReasoningEffort.reasoningEffortLabel(value),
         isNot(value),
         reason: '$value 是 core 的档位，但 GUI 没有给它显示名',
       );
@@ -28,6 +30,6 @@ void main() {
   });
 
   test('未知值回退为原值（存储里可能残留旧档位）', () {
-    expect(reasoningEffortLabel('none'), 'none');
+    expect(ReasoningEffort.reasoningEffortLabel('none'), 'none');
   });
 }

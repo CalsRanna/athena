@@ -261,12 +261,15 @@ void main() {
     ]);
 
     test('按文件头声明媒体类型，识别不出时沿用 JPEG', () {
-      expect(sniffImageMediaType(png), 'image/png');
-      expect(sniffImageMediaType(jpeg), 'image/jpeg');
-      expect(sniffImageMediaType(gif), 'image/gif');
-      expect(sniffImageMediaType(webp), 'image/webp');
-      expect(sniffImageMediaType('not base64!'), 'image/jpeg');
-      expect(sniffImageMediaType(''), 'image/jpeg');
+      expect(ChatMessageConverter.sniffImageMediaType(png), 'image/png');
+      expect(ChatMessageConverter.sniffImageMediaType(jpeg), 'image/jpeg');
+      expect(ChatMessageConverter.sniffImageMediaType(gif), 'image/gif');
+      expect(ChatMessageConverter.sniffImageMediaType(webp), 'image/webp');
+      expect(
+        ChatMessageConverter.sniffImageMediaType('not base64!'),
+        'image/jpeg',
+      );
+      expect(ChatMessageConverter.sniffImageMediaType(''), 'image/jpeg');
     });
 
     test('仅图片的消息不带空 text part，data URL 带真实媒体类型', () async {

@@ -21,7 +21,7 @@ class MobileReasoningEffortDialog extends StatelessWidget {
       shrinkWrap: true,
       children: [
         const SizedBox(height: 8),
-        for (final option in reasoningEffortOptions)
+        for (final option in ReasoningEffort.reasoningEffortOptions)
           _MobileReasoningEffortTile(
             label: option.$2,
             selected: option.$1 == current,

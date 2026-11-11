@@ -1,12 +1,13 @@
-/// 内置 Athena 预设 sentinel 的系统提示词(单一事实来源)。
-///
-/// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量。
-///
-/// 只写引擎注入块承载不了的东西——身份定位与跨工具纪律。运行时环境(平台、
-/// GUI/TUI、工作目录)、日期、技能目录、经验目录、经验工具用法都由引擎在
-/// `layoutPromptMessages` 里按固定顺序注入,在此复述会双份占用 token,且随
-/// 外部状态漂移。专精编码的角色见 [daedalusPresetPrompt]。
-const athenaPresetPrompt = '''
+abstract final class AthenaPresetPrompt {
+  /// 内置 Athena 预设 sentinel 的系统提示词(单一事实来源)。
+  ///
+  /// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量。
+  ///
+  /// 只写引擎注入块承载不了的东西——身份定位与跨工具纪律。运行时环境(平台、
+  /// GUI/TUI、工作目录)、日期、技能目录、经验目录、经验工具用法都由引擎在
+  /// `layoutPromptMessages` 里按固定顺序注入,在此复述会双份占用 token,且随
+  /// 外部状态漂移。专精编码的角色见 [daedalusPresetPrompt]。
+  static const athenaPresetPrompt = '''
 你是 Athena，一个以**专业、冷静与深度**为核心特质的 AI 助手，具备自主执行复杂任务的能力。
 
 # 身份与定位
@@ -44,3 +45,4 @@ const athenaPresetPrompt = '''
 
 任务完成时给出简洁总结:做了什么、结果如何、还需用户注意什么。
 ''';
+}

@@ -1,13 +1,14 @@
-/// 内置 Daedalus 预设 sentinel 的系统提示词(单一事实来源)。
-///
-/// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量。
-///
-/// 与 [athenaPresetPrompt] 的分工:Athena 是通用助手,Daedalus 专精软件工程。
-/// 因此这里**只写编码场景特有的纪律**——先读后改、工具取舍、改完验证、融入
-/// 现有代码。平台、日期、工作目录、技能目录、经验用法都由引擎在
-/// `layoutPromptMessages` 里按序注入,不在此复述(复述会双份占 token,且随
-/// 外部状态漂移)。
-const daedalusPresetPrompt = '''
+abstract final class DaedalusPresetPrompt {
+  /// 内置 Daedalus 预设 sentinel 的系统提示词(单一事实来源)。
+  ///
+  /// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量。
+  ///
+  /// 与 [athenaPresetPrompt] 的分工:Athena 是通用助手,Daedalus 专精软件工程。
+  /// 因此这里**只写编码场景特有的纪律**——先读后改、工具取舍、改完验证、融入
+  /// 现有代码。平台、日期、工作目录、技能目录、经验用法都由引擎在
+  /// `layoutPromptMessages` 里按序注入,不在此复述(复述会双份占 token,且随
+  /// 外部状态漂移)。
+  static const daedalusPresetPrompt = '''
 你是 Daedalus，一名专注于软件工程的 AI 助手。名字取自为克里特岛建造迷宫的工匠:你的价值不在于说出漂亮的方案，而在于把复杂系统拆成清晰的部件，并在真实的代码库里把改动落地、跑通、验证。
 
 # 铁律:先读后改
@@ -51,3 +52,4 @@ const daedalusPresetPrompt = '''
 - 动手前的说明要简短:说清要做什么、为什么，不必复述代码。
 - 提交前确认用户是否要提交。未经要求不要 commit、不要 push、不要改版本号。
 ''';
+}

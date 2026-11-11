@@ -74,333 +74,6 @@ abstract final class ShellOutputPolicy {
   static const int budgetChars = headChars + tailChars;
 }
 
-/// 共享的参数描述生成（嵌入策略数字，避免散落）。
-String shellCommandParamDescription(String shellName) =>
-    'The $shellName command to execute. Avoid commands that wait for '
-    'interactive user input (they will hang until timeout).';
-
-String shellTimeoutParamDescription() =>
-    'Timeout in seconds. '
-    'Default ${ShellTimeoutPolicy.defaultSeconds}s. '
-    'Maximum ${ShellTimeoutPolicy.maxSeconds}s. '
-    'Pick a value based on the command: short queries (git status, ls, '
-    'pwd) need ${ShellTimeoutPolicy.defaultSeconds}s; package installs '
-    '(npm install, pub get, pip install) typically need 180-300s; full '
-    'builds (flutter build, cargo build) often need 300-600s; very long '
-    'tasks (large migrations, full test suites) may need up to '
-    '${ShellTimeoutPolicy.maxSeconds}s. '
-    'If a previous call returned a timeout error, retry with a larger '
-    'value (up to ${ShellTimeoutPolicy.maxSeconds}s) before giving up.';
-
-String shellWorkdirParamDescription([String? defaultWorkdir]) =>
-    defaultWorkdir == null
-    ? 'Working directory for the command. Defaults to the session working '
-          'folder when one is set (see the runtime context), otherwise to '
-          'the user home directory.'
-    : 'Working directory for the command. Defaults to $defaultWorkdir.';
-
-/// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
-/// 确保 Homebrew、用户级二进制目录等常见安装路径可被找到。
-Map<String, String> _buildEnvironment() {
-  final env = Map<String, String>.from(Platform.environment);
-  final home = env['HOME'] ?? env['USERPROFILE'] ?? '/';
-
-  // 按优先级排列的额外 PATH 目录（仅当目录实际存在时才加入）
-  final candidates = <String>[
-    '/opt/homebrew/bin',
-    '/opt/homebrew/sbin',
-    '/usr/local/bin',
-    '/usr/local/sbin',
-    p.join(home, '.local', 'bin'),
-    p.join(home, '.cargo', 'bin'),
-    p.join(home, 'go', 'bin'),
-  ];
-
-  final extraPaths = <String>[];
-  for (final dir in candidates) {
-    if (Directory(dir).existsSync()) {
-      extraPaths.add(dir);
-    }
-  }
-
-  if (extraPaths.isNotEmpty) {
-    final currentPath = env['PATH'] ?? '';
-    final separator = Platform.isWindows ? ';' : ':';
-    env['PATH'] = '${extraPaths.join(separator)}$separator$currentPath';
-  }
-
-  return env;
-}
-
-/// 启动 shell 进程但不等待它结束（后台任务的启动路径）。
-///
-/// 与 [runShellProcess] 共用同一份环境变量与工作目录口径，只是把
-/// 「等到退出/超时/取消」这一步交给调用方：后台任务的退出由
-/// BackgroundTaskService 观察。
-Future<Process> startShellProcess({
-  required String executable,
-  required List<String> arguments,
-  required String workdir,
-}) => Process.start(
-  executable,
-  arguments,
-  workingDirectory: workdir,
-  environment: _buildEnvironment(),
-);
-
-/// 终止 [process] 及其全部后代进程，返回退出码。
-///
-/// 与前台 shell 的超时/取消共用同一条路径：只 kill shell 本身会遗留
-/// 构建/测试等子进程。
-Future<int> terminateShellProcessTree(Process process) =>
-    _terminateProcessTree(process);
-
-/// 按 pid 终止一棵进程树，供「上次进程被强杀后遗留的孤儿」清理使用。
-///
-/// 调用方必须先确认该 pid 上的进程确实是本应用启动的任务（孤儿记录里的
-/// 命令行比对），否则 pid 复用会误杀无关进程。
-Future<void> terminateShellProcessTreeByPid(int pid) async {
-  if (Platform.isWindows) {
-    try {
-      await Process.run('taskkill', [
-        '/PID',
-        '$pid',
-        '/T',
-        '/F',
-      ]).timeout(const Duration(seconds: 2));
-    } catch (_) {
-      // 进程可能已退出；孤儿清理是尽力而为。
-    }
-    return;
-  }
-
-  await _terminateUnixTree(pid);
-}
-
-/// 用 [Process.start] 跑一个 shell 进程，对超时主动 kill。
-///
-/// 与 [Process.run] 的关键差异：超时不再只是抛 TimeoutException 任由后台进程
-/// 继续跑成为孤儿——这里会显式 [Process.kill]，并在错误信息里告诉 LLM 这是
-/// 超时、可以传更大的 timeout 重试。
-Future<String> runShellProcess({
-  required String executable,
-  required List<String> arguments,
-  required String workdir,
-  required int timeoutSeconds,
-  Future<void>? cancelSignal,
-  String? command,
-  bool clamped = false,
-  int? requestedTimeout,
-}) async => (await runShellProcessResult(
-  executable: executable,
-  arguments: arguments,
-  workdir: workdir,
-  timeoutSeconds: timeoutSeconds,
-  cancelSignal: cancelSignal,
-  command: command,
-  clamped: clamped,
-  requestedTimeout: requestedTimeout,
-)).text;
-
-Future<ToolExecutionResult> runShellProcessResult({
-  required String executable,
-  required List<String> arguments,
-  required String workdir,
-  required int timeoutSeconds,
-  Future<void>? cancelSignal,
-  String? command,
-  bool clamped = false,
-  int? requestedTimeout,
-}) async {
-  Process process;
-  try {
-    process = await Process.start(
-      executable,
-      arguments,
-      workingDirectory: workdir,
-      environment: _buildEnvironment(),
-    );
-  } catch (e) {
-    return ToolExecutionResult.error('Error launching command: $e');
-  }
-
-  // 两个流各用一份带上限的捕获器。为什么必须有上限、为什么被截断后仍要
-  // 继续读取，都写在 _CappedOutputCapture 上。
-  final stdoutCapture = _CappedOutputCapture();
-  final stderrCapture = _CappedOutputCapture();
-  final stdoutDone = process.stdout
-      .transform(systemEncoding.decoder)
-      .listen(stdoutCapture.add)
-      .asFuture<void>();
-  final stderrDone = process.stderr
-      .transform(systemEncoding.decoder)
-      .listen(stderrCapture.add)
-      .asFuture<void>();
-
-  var timedOut = false;
-  var cancelled = false;
-  int? exitCode;
-  final timeout = Completer<({bool cancelled, int? exitCode, bool timedOut})>();
-  final timer = Timer(Duration(seconds: timeoutSeconds), () {
-    timeout.complete((cancelled: false, exitCode: null, timedOut: true));
-  });
-  final outcome =
-      await Future.any<({bool cancelled, int? exitCode, bool timedOut})>([
-        process.exitCode.then(
-          (code) => (cancelled: false, exitCode: code, timedOut: false),
-        ),
-        timeout.future,
-        if (cancelSignal != null)
-          cancelSignal.then(
-            (_) => (cancelled: true, exitCode: null, timedOut: false),
-          ),
-      ]);
-  timer.cancel();
-  exitCode = outcome.exitCode;
-  timedOut = outcome.timedOut;
-  cancelled = outcome.cancelled;
-
-  if (timedOut || cancelled) {
-    // 停止与超时使用同一条进程树终止路径：先温和结束，1 秒后强杀。
-    // 仅 kill shell 本身会遗留 sleep/build 等子进程，因此必须处理整棵树。
-    exitCode = await _terminateProcessTree(process);
-  }
-
-  // 等待 stdout/stderr 流的完成，最多再给 500ms 兜底（防止极端情况下挂住）。
-  try {
-    await Future.wait([
-      stdoutDone,
-      stderrDone,
-    ]).timeout(const Duration(milliseconds: 500));
-  } catch (_) {
-    // 忽略：流读取失败不该阻塞结果返回。
-  }
-
-  if (cancelled) throw const CancelledException();
-
-  final buffer = StringBuffer();
-
-  if (timedOut) {
-    buffer.writeln(
-      'Error: command timed out after ${timeoutSeconds}s and the process was '
-      'killed. If this command is expected to take longer, retry with a '
-      'larger "timeout" value (max ${ShellTimeoutPolicy.maxSeconds}s).',
-    );
-    buffer.writeln();
-  } else if (clamped && requestedTimeout != null) {
-    buffer.writeln(
-      'Note: requested timeout ${requestedTimeout}s was clamped to '
-      '${timeoutSeconds}s (allowed range '
-      '${ShellTimeoutPolicy.minSeconds}-${ShellTimeoutPolicy.maxSeconds}s).',
-    );
-    buffer.writeln();
-  }
-
-  if (stdoutCapture.isNotEmpty) {
-    _writeCaptured(buffer, stdoutCapture);
-  }
-  if (stderrCapture.isNotEmpty) {
-    buffer.writeln('[stderr]');
-    _writeCaptured(buffer, stderrCapture);
-  }
-  buffer.writeln('[exit code: $exitCode]');
-  final text = buffer.toString();
-  return timedOut || exitCode != 0
-      ? ToolExecutionResult.error(text, exitCode: exitCode)
-      : ToolExecutionResult.success(text, exitCode: exitCode);
-}
-
-/// 终止 shell 及其子进程。Windows 用 taskkill /T；Unix 先通过 ps 快照收集
-/// 后代 PID，再从叶子到根发送信号，避免只杀 shell 留下构建/测试孤儿进程。
-Future<int> _terminateProcessTree(Process process) async {
-  if (Platform.isWindows) {
-    try {
-      await Process.run('taskkill', [
-        '/PID',
-        '${process.pid}',
-        '/T',
-        '/F',
-      ]).timeout(const Duration(seconds: 2));
-    } catch (_) {
-      process.kill();
-    }
-  } else {
-    await _terminateUnixTree(process.pid);
-  }
-  try {
-    return await process.exitCode.timeout(const Duration(seconds: 1));
-  } on TimeoutException {
-    // ps 不可用时仍有 Process 句柄可准确终止根进程。
-    process.kill(ProcessSignal.sigkill);
-    return process.exitCode.timeout(
-      const Duration(seconds: 1),
-      onTimeout: () => -1,
-    );
-  }
-}
-
-Future<void> _terminateUnixTree(int rootPid) async {
-  final before = await _unixProcessSnapshot();
-  final descendants = <_ProcessIdentity>[];
-  final pending = <int>[rootPid];
-  while (pending.isNotEmpty) {
-    final parent = pending.removeLast();
-    for (final child in before.values.where((p) => p.parentPid == parent)) {
-      descendants.add(child);
-      pending.add(child.pid);
-    }
-  }
-  final targets = [...descendants.reversed, ?before[rootPid]];
-  for (final target in targets) {
-    _killPid(target.pid, ProcessSignal.sigterm);
-  }
-  if (!before.containsKey(rootPid)) _killPid(rootPid, ProcessSignal.sigterm);
-  // 根 shell 先退出会让后代被收养，第二次沿根查树就找不到它们。保留首次
-  // 快照，并在强杀前核对启动时间，既清理顽固后代也避免 PID 复用误杀。
-  await Future<void>.delayed(const Duration(seconds: 1));
-  final after = await _unixProcessSnapshot();
-  for (final target in targets) {
-    if (after[target.pid]?.started == target.started) {
-      _killPid(target.pid, ProcessSignal.sigkill);
-    }
-  }
-}
-
-void _killPid(int pid, ProcessSignal signal) {
-  try {
-    Process.killPid(pid, signal);
-  } catch (_) {
-    // 已自行退出，继续清理其它已确认的进程。
-  }
-}
-
-Future<Map<int, _ProcessIdentity>> _unixProcessSnapshot() async {
-  try {
-    final result = await Process.run('ps', [
-      '-axo',
-      'pid=,ppid=,lstart=',
-    ]).timeout(const Duration(seconds: 1));
-    if (result.exitCode != 0) return {};
-    final snapshot = <int, _ProcessIdentity>{};
-    for (final line in result.stdout.toString().split('\n')) {
-      final columns = line.trim().split(RegExp(r'\s+'));
-      if (columns.length < 7) continue;
-      final pid = int.tryParse(columns[0]);
-      final parentPid = int.tryParse(columns[1]);
-      if (pid != null && parentPid != null) {
-        snapshot[pid] = _ProcessIdentity(
-          pid,
-          parentPid,
-          columns.skip(2).join(' '),
-        );
-      }
-    }
-    return snapshot;
-  } catch (_) {
-    return {};
-  }
-}
-
 class _ProcessIdentity {
   const _ProcessIdentity(this.pid, this.parentPid, this.started);
   final int pid;
@@ -476,24 +149,358 @@ class _CappedOutputCapture {
   }
 }
 
-/// 写入一段捕获到的输出；被截断时在头部与尾部之间显式说明丢了多少。
-///
-/// 文案是给模型看的（英文），并给出可执行的下一步：换更窄的命令重跑，而不是
-/// 让它以为拿到的就是全部。
-void _writeCaptured(StringBuffer buffer, _CappedOutputCapture capture) {
-  final captured = capture.finish();
-  if (captured.head.isNotEmpty) {
-    buffer.write(captured.head);
-    if (!captured.head.endsWith('\n')) buffer.writeln();
-  }
-  if (captured.dropped <= 0) return;
+abstract final class ShellRunner {
+  /// 共享的参数描述生成（嵌入策略数字，避免散落）。
+  static String shellCommandParamDescription(String shellName) =>
+      'The $shellName command to execute. Avoid commands that wait for '
+      'interactive user input (they will hang until timeout).';
 
-  buffer.writeln(
-    '[output truncated: ${captured.dropped} characters dropped from the '
-    'middle; showing the first ${captured.head.length} and the last '
-    '${captured.tail.length}. Re-run with a narrower command '
-    '(head / tail / grep) to read the missing part.]',
+  static String shellTimeoutParamDescription() =>
+      'Timeout in seconds. '
+      'Default ${ShellTimeoutPolicy.defaultSeconds}s. '
+      'Maximum ${ShellTimeoutPolicy.maxSeconds}s. '
+      'Pick a value based on the command: short queries (git status, ls, '
+      'pwd) need ${ShellTimeoutPolicy.defaultSeconds}s; package installs '
+      '(npm install, pub get, pip install) typically need 180-300s; full '
+      'builds (flutter build, cargo build) often need 300-600s; very long '
+      'tasks (large migrations, full test suites) may need up to '
+      '${ShellTimeoutPolicy.maxSeconds}s. '
+      'If a previous call returned a timeout error, retry with a larger '
+      'value (up to ${ShellTimeoutPolicy.maxSeconds}s) before giving up.';
+
+  static String shellWorkdirParamDescription([String? defaultWorkdir]) =>
+      defaultWorkdir == null
+      ? 'Working directory for the command. Defaults to the session working '
+            'folder when one is set (see the runtime context), otherwise to '
+            'the user home directory.'
+      : 'Working directory for the command. Defaults to $defaultWorkdir.';
+
+  /// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
+  /// 确保 Homebrew、用户级二进制目录等常见安装路径可被找到。
+  static Map<String, String> _buildEnvironment() {
+    final env = Map<String, String>.from(Platform.environment);
+    final home = env['HOME'] ?? env['USERPROFILE'] ?? '/';
+
+    // 按优先级排列的额外 PATH 目录（仅当目录实际存在时才加入）
+    final candidates = <String>[
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/usr/local/sbin',
+      p.join(home, '.local', 'bin'),
+      p.join(home, '.cargo', 'bin'),
+      p.join(home, 'go', 'bin'),
+    ];
+
+    final extraPaths = <String>[];
+    for (final dir in candidates) {
+      if (Directory(dir).existsSync()) {
+        extraPaths.add(dir);
+      }
+    }
+
+    if (extraPaths.isNotEmpty) {
+      final currentPath = env['PATH'] ?? '';
+      final separator = Platform.isWindows ? ';' : ':';
+      env['PATH'] = '${extraPaths.join(separator)}$separator$currentPath';
+    }
+
+    return env;
+  }
+
+  /// 启动 shell 进程但不等待它结束（后台任务的启动路径）。
+  ///
+  /// 与 [ShellRunner.runShellProcess] 共用同一份环境变量与工作目录口径，只是把
+  /// 「等到退出/超时/取消」这一步交给调用方：后台任务的退出由
+  /// BackgroundTaskService 观察。
+  static Future<Process> startShellProcess({
+    required String executable,
+    required List<String> arguments,
+    required String workdir,
+  }) => Process.start(
+    executable,
+    arguments,
+    workingDirectory: workdir,
+    environment: ShellRunner._buildEnvironment(),
   );
-  buffer.write(captured.tail);
-  if (!captured.tail.endsWith('\n')) buffer.writeln();
+
+  /// 终止 [process] 及其全部后代进程，返回退出码。
+  ///
+  /// 与前台 shell 的超时/取消共用同一条路径：只 kill shell 本身会遗留
+  /// 构建/测试等子进程。
+  static Future<int> terminateShellProcessTree(Process process) =>
+      ShellRunner._terminateProcessTree(process);
+
+  /// 按 pid 终止一棵进程树，供「上次进程被强杀后遗留的孤儿」清理使用。
+  ///
+  /// 调用方必须先确认该 pid 上的进程确实是本应用启动的任务（孤儿记录里的
+  /// 命令行比对），否则 pid 复用会误杀无关进程。
+  static Future<void> terminateShellProcessTreeByPid(int pid) async {
+    if (Platform.isWindows) {
+      try {
+        await Process.run('taskkill', [
+          '/PID',
+          '$pid',
+          '/T',
+          '/F',
+        ]).timeout(const Duration(seconds: 2));
+      } catch (_) {
+        // 进程可能已退出；孤儿清理是尽力而为。
+      }
+      return;
+    }
+
+    await ShellRunner._terminateUnixTree(pid);
+  }
+
+  /// 用 [Process.start] 跑一个 shell 进程，对超时主动 kill。
+  ///
+  /// 与 [Process.run] 的关键差异：超时不再只是抛 TimeoutException 任由后台进程
+  /// 继续跑成为孤儿——这里会显式 [Process.kill]，并在错误信息里告诉 LLM 这是
+  /// 超时、可以传更大的 timeout 重试。
+  static Future<String> runShellProcess({
+    required String executable,
+    required List<String> arguments,
+    required String workdir,
+    required int timeoutSeconds,
+    Future<void>? cancelSignal,
+    String? command,
+    bool clamped = false,
+    int? requestedTimeout,
+  }) async => (await ShellRunner.runShellProcessResult(
+    executable: executable,
+    arguments: arguments,
+    workdir: workdir,
+    timeoutSeconds: timeoutSeconds,
+    cancelSignal: cancelSignal,
+    command: command,
+    clamped: clamped,
+    requestedTimeout: requestedTimeout,
+  )).text;
+
+  static Future<ToolExecutionResult> runShellProcessResult({
+    required String executable,
+    required List<String> arguments,
+    required String workdir,
+    required int timeoutSeconds,
+    Future<void>? cancelSignal,
+    String? command,
+    bool clamped = false,
+    int? requestedTimeout,
+  }) async {
+    Process process;
+    try {
+      process = await Process.start(
+        executable,
+        arguments,
+        workingDirectory: workdir,
+        environment: ShellRunner._buildEnvironment(),
+      );
+    } catch (e) {
+      return ToolExecutionResult.error('Error launching command: $e');
+    }
+
+    // 两个流各用一份带上限的捕获器。为什么必须有上限、为什么被截断后仍要
+    // 继续读取，都写在 _CappedOutputCapture 上。
+    final stdoutCapture = _CappedOutputCapture();
+    final stderrCapture = _CappedOutputCapture();
+    final stdoutDone = process.stdout
+        .transform(systemEncoding.decoder)
+        .listen(stdoutCapture.add)
+        .asFuture<void>();
+    final stderrDone = process.stderr
+        .transform(systemEncoding.decoder)
+        .listen(stderrCapture.add)
+        .asFuture<void>();
+
+    var timedOut = false;
+    var cancelled = false;
+    int? exitCode;
+    final timeout =
+        Completer<({bool cancelled, int? exitCode, bool timedOut})>();
+    final timer = Timer(Duration(seconds: timeoutSeconds), () {
+      timeout.complete((cancelled: false, exitCode: null, timedOut: true));
+    });
+    final outcome =
+        await Future.any<({bool cancelled, int? exitCode, bool timedOut})>([
+          process.exitCode.then(
+            (code) => (cancelled: false, exitCode: code, timedOut: false),
+          ),
+          timeout.future,
+          if (cancelSignal != null)
+            cancelSignal.then(
+              (_) => (cancelled: true, exitCode: null, timedOut: false),
+            ),
+        ]);
+    timer.cancel();
+    exitCode = outcome.exitCode;
+    timedOut = outcome.timedOut;
+    cancelled = outcome.cancelled;
+
+    if (timedOut || cancelled) {
+      // 停止与超时使用同一条进程树终止路径：先温和结束，1 秒后强杀。
+      // 仅 kill shell 本身会遗留 sleep/build 等子进程，因此必须处理整棵树。
+      exitCode = await ShellRunner._terminateProcessTree(process);
+    }
+
+    // 等待 stdout/stderr 流的完成，最多再给 500ms 兜底（防止极端情况下挂住）。
+    try {
+      await Future.wait([
+        stdoutDone,
+        stderrDone,
+      ]).timeout(const Duration(milliseconds: 500));
+    } catch (_) {
+      // 忽略：流读取失败不该阻塞结果返回。
+    }
+
+    if (cancelled) throw const CancelledException();
+
+    final buffer = StringBuffer();
+
+    if (timedOut) {
+      buffer.writeln(
+        'Error: command timed out after ${timeoutSeconds}s and the process was '
+        'killed. If this command is expected to take longer, retry with a '
+        'larger "timeout" value (max ${ShellTimeoutPolicy.maxSeconds}s).',
+      );
+      buffer.writeln();
+    } else if (clamped && requestedTimeout != null) {
+      buffer.writeln(
+        'Note: requested timeout ${requestedTimeout}s was clamped to '
+        '${timeoutSeconds}s (allowed range '
+        '${ShellTimeoutPolicy.minSeconds}-${ShellTimeoutPolicy.maxSeconds}s).',
+      );
+      buffer.writeln();
+    }
+
+    if (stdoutCapture.isNotEmpty) {
+      ShellRunner._writeCaptured(buffer, stdoutCapture);
+    }
+    if (stderrCapture.isNotEmpty) {
+      buffer.writeln('[stderr]');
+      ShellRunner._writeCaptured(buffer, stderrCapture);
+    }
+    buffer.writeln('[exit code: $exitCode]');
+    final text = buffer.toString();
+    return timedOut || exitCode != 0
+        ? ToolExecutionResult.error(text, exitCode: exitCode)
+        : ToolExecutionResult.success(text, exitCode: exitCode);
+  }
+
+  /// 终止 shell 及其子进程。Windows 用 taskkill /T；Unix 先通过 ps 快照收集
+  /// 后代 PID，再从叶子到根发送信号，避免只杀 shell 留下构建/测试孤儿进程。
+  static Future<int> _terminateProcessTree(Process process) async {
+    if (Platform.isWindows) {
+      try {
+        await Process.run('taskkill', [
+          '/PID',
+          '${process.pid}',
+          '/T',
+          '/F',
+        ]).timeout(const Duration(seconds: 2));
+      } catch (_) {
+        process.kill();
+      }
+    } else {
+      await ShellRunner._terminateUnixTree(process.pid);
+    }
+    try {
+      return await process.exitCode.timeout(const Duration(seconds: 1));
+    } on TimeoutException {
+      // ps 不可用时仍有 Process 句柄可准确终止根进程。
+      process.kill(ProcessSignal.sigkill);
+      return process.exitCode.timeout(
+        const Duration(seconds: 1),
+        onTimeout: () => -1,
+      );
+    }
+  }
+
+  static Future<void> _terminateUnixTree(int rootPid) async {
+    final before = await ShellRunner._unixProcessSnapshot();
+    final descendants = <_ProcessIdentity>[];
+    final pending = <int>[rootPid];
+    while (pending.isNotEmpty) {
+      final parent = pending.removeLast();
+      for (final child in before.values.where((p) => p.parentPid == parent)) {
+        descendants.add(child);
+        pending.add(child.pid);
+      }
+    }
+    final targets = [...descendants.reversed, ?before[rootPid]];
+    for (final target in targets) {
+      ShellRunner._killPid(target.pid, ProcessSignal.sigterm);
+    }
+    if (!before.containsKey(rootPid))
+      ShellRunner._killPid(rootPid, ProcessSignal.sigterm);
+    // 根 shell 先退出会让后代被收养，第二次沿根查树就找不到它们。保留首次
+    // 快照，并在强杀前核对启动时间，既清理顽固后代也避免 PID 复用误杀。
+    await Future<void>.delayed(const Duration(seconds: 1));
+    final after = await ShellRunner._unixProcessSnapshot();
+    for (final target in targets) {
+      if (after[target.pid]?.started == target.started) {
+        ShellRunner._killPid(target.pid, ProcessSignal.sigkill);
+      }
+    }
+  }
+
+  static void _killPid(int pid, ProcessSignal signal) {
+    try {
+      Process.killPid(pid, signal);
+    } catch (_) {
+      // 已自行退出，继续清理其它已确认的进程。
+    }
+  }
+
+  static Future<Map<int, _ProcessIdentity>> _unixProcessSnapshot() async {
+    try {
+      final result = await Process.run('ps', [
+        '-axo',
+        'pid=,ppid=,lstart=',
+      ]).timeout(const Duration(seconds: 1));
+      if (result.exitCode != 0) return {};
+      final snapshot = <int, _ProcessIdentity>{};
+      for (final line in result.stdout.toString().split('\n')) {
+        final columns = line.trim().split(RegExp(r'\s+'));
+        if (columns.length < 7) continue;
+        final pid = int.tryParse(columns[0]);
+        final parentPid = int.tryParse(columns[1]);
+        if (pid != null && parentPid != null) {
+          snapshot[pid] = _ProcessIdentity(
+            pid,
+            parentPid,
+            columns.skip(2).join(' '),
+          );
+        }
+      }
+      return snapshot;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// 写入一段捕获到的输出；被截断时在头部与尾部之间显式说明丢了多少。
+  ///
+  /// 文案是给模型看的（英文），并给出可执行的下一步：换更窄的命令重跑，而不是
+  /// 让它以为拿到的就是全部。
+  static void _writeCaptured(
+    StringBuffer buffer,
+    _CappedOutputCapture capture,
+  ) {
+    final captured = capture.finish();
+    if (captured.head.isNotEmpty) {
+      buffer.write(captured.head);
+      if (!captured.head.endsWith('\n')) buffer.writeln();
+    }
+    if (captured.dropped <= 0) return;
+
+    buffer.writeln(
+      '[output truncated: ${captured.dropped} characters dropped from the '
+      'middle; showing the first ${captured.head.length} and the last '
+      '${captured.tail.length}. Re-run with a narrower command '
+      '(head / tail / grep) to read the missing part.]',
+    );
+    buffer.write(captured.tail);
+    if (!captured.tail.endsWith('\n')) buffer.writeln();
+  }
 }

@@ -162,7 +162,8 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                     selected: viewModel.defaultReasoningEffort.value,
                     onChanged: viewModel.updateDefaultReasoningEffort,
                     options: [
-                      for (final option in reasoningEffortOptions)
+                      for (final option
+                          in ReasoningEffort.reasoningEffortOptions)
                         AthenaSegmentOption(value: option.$1, label: option.$2),
                     ],
                   );

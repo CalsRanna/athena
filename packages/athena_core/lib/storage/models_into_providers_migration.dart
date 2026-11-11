@@ -42,7 +42,7 @@ class ModelsIntoProvidersMigration {
   File get _lockFile => _locks.named('models-into-providers-migration');
 
   Future<void> run() {
-    return withFileLock(_lockFile, () async {
+    return FileLocking.withFileLock(_lockFile, () async {
       if (await _marker.exists()) return;
       if (!await _modelsFile.exists()) {
         // 新装(还没有 models.json)或已迁移过:落标记即可
@@ -94,6 +94,6 @@ class ModelsIntoProvidersMigration {
   }
 
   Future<void> _writeMarker() async {
-    await atomicWriteString(_marker, 'version: $version\n');
+    await FileLocking.atomicWriteString(_marker, 'version: $version\n');
   }
 }

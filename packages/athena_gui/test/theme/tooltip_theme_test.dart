@@ -16,7 +16,8 @@ void main() {
     (AthenaColorMode.dark, AthenaColors.dark),
   ]) {
     test('${mode.name} tooltipTheme 使用反色面与 caption 文案', () {
-      final tooltipTheme = buildAthenaThemeData(mode).tooltipTheme;
+      final tooltipTheme = AthenaMaterialTheme.buildAthenaThemeData(mode)
+          .tooltipTheme;
 
       expect(
         tooltipTheme.decoration,

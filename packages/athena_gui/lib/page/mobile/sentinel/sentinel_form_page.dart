@@ -3,7 +3,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/tool_config_util.dart';
+import 'package:athena_gui/component/tool_config.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -153,7 +153,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
           style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: 8),
-        for (final tool in orderedToolsForConfig(registeredTools))
+        for (final tool in ToolConfig.orderedToolsForConfig(registeredTools))
           _buildToolRow(context, tool),
       ],
     );
@@ -161,8 +161,8 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   Widget _buildToolRow(BuildContext context, Tool tool) {
     final colors = context.athenaColors;
-    final locked = kUndeactivatableToolNames.contains(tool.name);
-    final copy = kToolConfigCopy[tool.name];
+    final locked = ToolSet.kUndeactivatableToolNames.contains(tool.name);
+    final copy = ToolConfig.kToolConfigCopy[tool.name];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -219,7 +219,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   bool _isToolOn(String name) =>
-      kUndeactivatableToolNames.contains(name) ||
+      ToolSet.kUndeactivatableToolNames.contains(name) ||
       (enabledToolsDraft?.contains(name) ?? true);
 
   void _setToolEnabled(String name, bool enabled) {
@@ -229,8 +229,8 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
       // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
       if (enabledToolsDraft == null) ...all,
-      if (enabledToolsDraft == null) ...kToolConfigOrder,
-      ...kUndeactivatableToolNames,
+      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
+      ...ToolSet.kUndeactivatableToolNames,
     };
     if (enabled) {
       next.add(name);

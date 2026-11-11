@@ -6,7 +6,7 @@ import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/util/clipboard_image_service.dart';
+import 'package:athena_gui/util/platform/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +69,7 @@ void main() {
     addTearDown(focus.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: DesktopMessageInput(

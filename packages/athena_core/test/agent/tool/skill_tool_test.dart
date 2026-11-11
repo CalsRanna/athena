@@ -7,7 +7,7 @@ import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
-import 'package:athena_core/util/path_normalizer.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -77,7 +77,9 @@ description: "Summarize decisions: list owners and deadlines."
 Read references/format.md and summarize the supplied notes.
 ''';
     final directory = p.join(registry.skillsDirectory, 'meeting-summary');
-    final path = resolveRealPathSync(p.join(directory, 'SKILL.md'));
+    final path = PathNormalizer.resolveRealPathSync(
+      p.join(directory, 'SKILL.md'),
+    );
     final writer = FileWriteTool();
     final saved = await writer.executeResult({
       'path': path,
@@ -85,7 +87,9 @@ Read references/format.md and summarize the supplied notes.
     });
     expect(saved.status, ToolResultStatus.success);
     final resource = await writer.executeResult({
-      'path': resolveRealPathSync(p.join(directory, 'references', 'format.md')),
+      'path': PathNormalizer.resolveRealPathSync(
+        p.join(directory, 'references', 'format.md'),
+      ),
       'content': 'List decisions and action items.',
     });
     expect(resource.status, ToolResultStatus.success);

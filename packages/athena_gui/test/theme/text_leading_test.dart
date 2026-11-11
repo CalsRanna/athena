@@ -41,7 +41,9 @@ void main() {
     testWidgets('$label 的文字在按钮内垂直居中', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(
+            AthenaColorMode.light,
+          ),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
             body: Center(
@@ -68,7 +70,7 @@ void main() {
   testWidgets('AthenaTag 的文字在胶囊内垂直居中', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const Scaffold(
           body: Center(child: AthenaTag(text: 'TAG')),
@@ -84,7 +86,7 @@ void main() {
   testWidgets('UI 预设不带字族，元信息带 Fira Code', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Column(
@@ -120,7 +122,7 @@ void main() {
   testWidgets('真实组件文字不夹带等宽字族', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Column(

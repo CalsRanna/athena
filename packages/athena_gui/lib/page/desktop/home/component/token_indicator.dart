@@ -126,32 +126,8 @@ class _ContextStats {
 
   /// `181.6k / 1M (18%)`，tooltip 与面板标题共用。窗口未知时只说用了多少。
   String get summary => windowUnknown
-      ? '${_compact(used)} (window unknown)'
-      : '${_compact(used)} / ${_compact(window)} (${_percent(used, window)})';
-}
-
-/// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
-String _compact(int value) {
-  if (value < 1000) return '$value';
-  var scaled = value / 1000;
-  var unit = 'k';
-  // 999.95k 起一位小数会进成 1000.0k，直接换到 M
-  if (scaled >= 999.95) {
-    scaled = value / 1000000;
-    unit = 'M';
-  }
-  final text = scaled.toStringAsFixed(1);
-  final trimmed = text.endsWith('.0')
-      ? text.substring(0, text.length - 2)
-      : text;
-  return '$trimmed$unit';
-}
-
-/// 整数百分比；有量但不足 1% 时给 `<1%` 而不是误导性的 `0%`。
-String _percent(int part, int whole) {
-  if (whole <= 0 || part <= 0) return '0%';
-  final pct = (part / whole * 100).round();
-  return pct == 0 ? '<1%' : '$pct%';
+      ? '${_TokenFormat._compact(used)} (window unknown)'
+      : '${_TokenFormat._compact(used)} / ${_TokenFormat._compact(window)} (${_TokenFormat._percent(used, window)})';
 }
 
 /// 明细面板：标题行、分段占用条、三行图例。
@@ -280,12 +256,12 @@ class _LegendRow extends StatelessWidget {
           dot,
           const SizedBox(width: 8),
           Expanded(child: Text(label, style: labelStyle)),
-          Text(_compact(tokens), style: valueStyle),
+          Text(_TokenFormat._compact(tokens), style: valueStyle),
           SizedBox(
             width: 40,
             child: Text(
               // 窗口未知时占比无从计算，用 `—` 而不是 0%：0% 会被读成"量为零"
-              window <= 0 ? '—' : _percent(tokens, window),
+              window <= 0 ? '—' : _TokenFormat._percent(tokens, window),
               textAlign: TextAlign.right,
               style: valueStyle,
             ),
@@ -327,4 +303,30 @@ class _UsageBarPainter extends CustomPainter {
   @override
   bool shouldRepaint(_UsageBarPainter oldDelegate) =>
       oldDelegate.track != track || !listEquals(oldDelegate.segments, segments);
+}
+
+abstract final class _TokenFormat {
+  /// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
+  static String _compact(int value) {
+    if (value < 1000) return '$value';
+    var scaled = value / 1000;
+    var unit = 'k';
+    // 999.95k 起一位小数会进成 1000.0k，直接换到 M
+    if (scaled >= 999.95) {
+      scaled = value / 1000000;
+      unit = 'M';
+    }
+    final text = scaled.toStringAsFixed(1);
+    final trimmed = text.endsWith('.0')
+        ? text.substring(0, text.length - 2)
+        : text;
+    return '$trimmed$unit';
+  }
+
+  /// 整数百分比；有量但不足 1% 时给 `<1%` 而不是误导性的 `0%`。
+  static String _percent(int part, int whole) {
+    if (whole <= 0 || part <= 0) return '0%';
+    final pct = (part / whole * 100).round();
+    return pct == 0 ? '<1%' : '$pct%';
+  }
 }

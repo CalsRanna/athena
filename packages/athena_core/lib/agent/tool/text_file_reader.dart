@@ -19,7 +19,7 @@ class TextFileReader {
   }) async {
     final stat = await file.stat();
     if (stat.size < _streamThreshold) {
-      final lines = await cancellableStream(
+      final lines = await CancellableStream.cancellableStream(
         file.openRead().transform(utf8.decoder).transform(const LineSplitter()),
         cancelSignal,
       ).toList();
@@ -53,7 +53,10 @@ class TextFileReader {
           .openRead(checkpoint.byte)
           .transform(utf8.decoder)
           .transform(const LineSplitter());
-      await for (final line in cancellableStream(stream, cancelSignal)) {
+      await for (final line in CancellableStream.cancellableStream(
+        stream,
+        cancelSignal,
+      )) {
         if (current >= start) lines.add(line);
         if (++current >= end) break;
       }
@@ -96,7 +99,7 @@ class TextFileReader {
       }
     }
 
-    await for (final chunk in cancellableStream(
+    await for (final chunk in CancellableStream.cancellableStream(
       file.openRead(),
       cancelSignal,
     )) {

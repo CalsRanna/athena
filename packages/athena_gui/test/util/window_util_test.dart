@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
-import 'package:athena_gui/util/window_util.dart';
+import 'package:athena_gui/util/platform/window_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

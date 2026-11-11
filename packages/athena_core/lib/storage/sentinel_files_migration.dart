@@ -36,7 +36,7 @@ class SentinelFilesMigration {
   File get _lockFile => _locks.named('sentinel-files-migration');
 
   Future<void> run() {
-    return withFileLock(_lockFile, () async {
+    return FileLocking.withFileLock(_lockFile, () async {
       if (await _marker.exists()) return;
       if (!await _sentinelsFile.exists()) {
         await _writeMarker();
@@ -79,6 +79,6 @@ class SentinelFilesMigration {
   }
 
   Future<void> _writeMarker() async {
-    await atomicWriteString(_marker, 'version: $version\n');
+    await FileLocking.atomicWriteString(_marker, 'version: $version\n');
   }
 }

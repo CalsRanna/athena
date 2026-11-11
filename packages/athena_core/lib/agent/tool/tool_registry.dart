@@ -87,7 +87,7 @@ class ToolRegistry {
 
   /// Model-facing schema: 业务参数 + 引擎注入的调用元数据。
   ///
-  /// [toolCallDescriptionKey] 为必填——卡片 header 与审批界面都靠它展示
+  /// [ToolArguments.toolCallDescriptionKey] 为必填——卡片 header 与审批界面都靠它展示
   /// 「这次调用在做什么」；缺失时由 [SchemaValidator] 判为参数非法并回退
   /// 给模型重发。
   static Map<String, dynamic> parametersFor(Tool tool) {
@@ -96,13 +96,13 @@ class ToolRegistry {
     final required = <String>[
       ...(declared is List ? declared.cast<String>() : const <String>[]),
     ];
-    if (!required.contains(toolCallDescriptionKey)) {
-      required.add(toolCallDescriptionKey);
+    if (!required.contains(ToolArguments.toolCallDescriptionKey)) {
+      required.add(ToolArguments.toolCallDescriptionKey);
     }
     return {
       ...parameters,
       'properties': {
-        toolCallDescriptionKey: {
+        ToolArguments.toolCallDescriptionKey: {
           'type': 'string',
           'description':
               'Required in every tool call. '

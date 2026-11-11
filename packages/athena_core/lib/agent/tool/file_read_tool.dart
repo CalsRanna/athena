@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
-import 'package:athena_core/util/path_normalizer.dart';
-import 'package:athena_core/util/text_file_reader.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
+import 'package:athena_core/agent/tool/text_file_reader.dart';
 
 class FileReadTool extends Tool implements CancellableTool {
   final TextFileReader _reader = TextFileReader();
@@ -83,15 +83,17 @@ class FileReadTool extends Tool implements CancellableTool {
     // 路径上有不可穿越的目录时，审批与 deny 规则看到的都是词法路径，而真正
     // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
     // 能确定目标，否则拒绝。
-    final unresolved = unresolvablePathError(path);
+    final unresolved = PathNormalizer.unresolvablePathError(path);
     if (unresolved != null) return ToolExecutionResult.error(unresolved);
 
-    final changed = realPathChangedSinceApproval(path);
+    final changed = PathNormalizer.realPathChangedSinceApproval(path);
     if (changed != null) {
-      return ToolExecutionResult.error(symlinkChangedError(path, changed));
+      return ToolExecutionResult.error(
+        PathNormalizer.symlinkChangedError(path, changed),
+      );
     }
-    final normalized = normalizePathForMatch(path);
-    if (isSensitivePath(normalized)) {
+    final normalized = PathNormalizer.normalizePathForMatch(path);
+    if (PathNormalizer.isSensitivePath(normalized)) {
       // 硬拦，与 protectedWritePathError 同一口径。原文案写的是
       // 「requires approval」，但这条在审批之后无条件返回——批准在这里不起作用，
       // 那样写会让模型以为换个说法或重试就能过。

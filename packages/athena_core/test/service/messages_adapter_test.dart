@@ -44,7 +44,7 @@ void main() {
 
   group('请求映射', () {
     test('system 消息上提为顶层 system，不进 messages', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [ChatMessage.system('你是 Athena'), ChatMessage.user('你好')],
         ),
@@ -57,11 +57,14 @@ void main() {
     });
 
     test('max_tokens 有默认值（Messages 里必填，Chat Completions 里 Athena 从不传）', () {
-      expect(toMessageRequest(chatRequest()).maxTokens, greaterThan(0));
+      expect(
+        MessagesAdapter.toMessageRequest(chatRequest()).maxTokens,
+        greaterThan(0),
+      );
     });
 
     test('连续同角色的消息合并成一条（Messages 要求 user / assistant 交替）', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             ChatMessage.user('第一句'),
@@ -83,7 +86,7 @@ void main() {
     });
 
     test('assistant 的 tool_calls 转成 tool_use，参数从 JSON 字符串变对象', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             ChatMessage.user('列出文件'),
@@ -113,7 +116,7 @@ void main() {
     });
 
     test('参数不是合法 JSON 时下发空对象，而不是打挂整轮', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             const AssistantMessage(
@@ -134,7 +137,7 @@ void main() {
     });
 
     test('tool 结果变成 user 消息里的 tool_result block', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             const ToolMessage(toolCallId: 'call_1', content: 'file_a'),
@@ -149,7 +152,7 @@ void main() {
     });
 
     test('工具定义的 JSON Schema 拆成 input_schema，其余关键字不丢', () {
-      final tool = toMessageRequest(
+      final tool = MessagesAdapter.toMessageRequest(
         chatRequest(
           tools: [
             Tool.function(
@@ -180,7 +183,7 @@ void main() {
     });
 
     test('data URL 图片拆成 base64 source，媒体类型一并带出', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             const UserMessage(
@@ -201,7 +204,7 @@ void main() {
     });
 
     test('空 text part 被丢弃，仅图片消息只剩 image block', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             const UserMessage(
@@ -221,7 +224,7 @@ void main() {
     });
 
     test('http(s) 图片用 url source', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [
             const UserMessage(
@@ -240,7 +243,7 @@ void main() {
 
     test('表达不了的内容显式失败', () {
       expect(
-        () => toMessageRequest(
+        () => MessagesAdapter.toMessageRequest(
           chatRequest(
             messages: [
               const UserMessage(
@@ -256,7 +259,7 @@ void main() {
 
       // json_schema 无法用提示词保证结构，继续显式失败，不假装支持
       expect(
-        () => toMessageRequest(
+        () => MessagesAdapter.toMessageRequest(
           chatRequest(
             responseFormat: const JsonSchemaResponseFormat(
               name: 'out',
@@ -272,7 +275,7 @@ void main() {
     // README 记录的 `/json` 模式与「生成角色名」这类功能对 Anthropic 用户必然
     // 失败。意图可以用提示词表达，那就该翻译过去。
     test('jsonObject 翻译成系统提示词，而不是拒绝', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(
           messages: [ChatMessage.system('你是元数据生成器'), ChatMessage.user('生成名称')],
           responseFormat: const JsonObjectResponseFormat(),
@@ -286,7 +289,7 @@ void main() {
     });
 
     test('jsonObject 在原本没有 system 消息时也补上约束', () {
-      final request = toMessageRequest(
+      final request = MessagesAdapter.toMessageRequest(
         chatRequest(responseFormat: const JsonObjectResponseFormat()),
       );
 
@@ -320,7 +323,7 @@ void main() {
     ];
 
     test('文本与推理增量分别进 content / reasoningContent', () async {
-      final chunks = await normalizeMessagesStream(
+      final chunks = await MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable([
           event({
             'type': 'content_block_delta',
@@ -340,7 +343,7 @@ void main() {
     });
 
     test('工具调用：content block 下标重编号后再呈现', () async {
-      final chunks = await normalizeMessagesStream(
+      final chunks = await MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable(toolCallEvents().map(event)),
       ).toList();
 
@@ -362,7 +365,7 @@ void main() {
 
     test('归一流可被 ChatStreamAccumulator 直接消费（上层零改动）', () async {
       final accumulator = ChatStreamAccumulator();
-      await for (final chunk in normalizeMessagesStream(
+      await for (final chunk in MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable([
           event(messageStart(cacheRead: 4)),
           event({
@@ -396,7 +399,7 @@ void main() {
 
     test('工具参数是半截 JSON 时不终止流，原样交还由执行器兜底', () async {
       final accumulator = ChatStreamAccumulator();
-      await for (final chunk in normalizeMessagesStream(
+      await for (final chunk in MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable([
           event(messageStart()),
           event({
@@ -436,7 +439,7 @@ void main() {
     });
 
     test('stop_reason 映射：max_tokens 归一成 length', () async {
-      final chunk = await normalizeMessagesStream(
+      final chunk = await MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable([
           event(messageStart()),
           event({
@@ -451,7 +454,7 @@ void main() {
     });
 
     test('end_turn 映射成 stop', () async {
-      final chunk = await normalizeMessagesStream(
+      final chunk = await MessagesAdapter.normalizeMessagesStream(
         Stream.fromIterable([
           event(messageStart()),
           event({
@@ -468,7 +471,7 @@ void main() {
 
     test('error 事件按错误类型抛出带状态码的 ApiException', () async {
       Future<void> expectStatus(String type, int status) => expectLater(
-        normalizeMessagesStream(
+        MessagesAdapter.normalizeMessagesStream(
           Stream.value(
             event({
               'type': 'error',
@@ -494,7 +497,7 @@ void main() {
 
   group('非流式路径', () {
     test('messageToChatCompletion 拼接文本并带出用量与 stopReason', () {
-      final completion = messageToChatCompletion(
+      final completion = MessagesAdapter.messageToChatCompletion(
         anthropic.Message.fromJson({
           'id': 'msg_1',
           'type': 'message',
@@ -522,7 +525,7 @@ void main() {
     });
 
     test('tool_use 结束时对应 tool_calls', () {
-      final completion = messageToChatCompletion(
+      final completion = MessagesAdapter.messageToChatCompletion(
         anthropic.Message.fromJson({
           'id': 'msg_1',
           'type': 'message',

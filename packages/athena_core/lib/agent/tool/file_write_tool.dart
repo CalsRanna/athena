@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/tool/tool_interface.dart';
-import 'package:athena_core/util/atomic_file_write.dart';
-import 'package:athena_core/util/path_normalizer.dart';
+import 'package:athena_core/storage/atomic_file_write.dart';
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 
 class FileWriteTool extends Tool {
   @override
@@ -43,21 +43,25 @@ class FileWriteTool extends Tool {
     // 路径上有不可穿越的目录时，审批与 deny 规则看到的都是词法路径，而真正
     // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
     // 能确定目标，否则拒绝。
-    final unresolved = unresolvablePathError(path);
+    final unresolved = PathNormalizer.unresolvablePathError(path);
     if (unresolved != null) return ToolExecutionResult.error(unresolved);
 
-    final changed = realPathChangedSinceApproval(path);
+    final changed = PathNormalizer.realPathChangedSinceApproval(path);
     if (changed != null) {
-      return ToolExecutionResult.error(symlinkChangedError(path, changed));
+      return ToolExecutionResult.error(
+        PathNormalizer.symlinkChangedError(path, changed),
+      );
     }
-    final normalized = normalizePathForMatch(path);
-    if (isProtectedWritePath(normalized)) {
-      return ToolExecutionResult.error(protectedWritePathError(path));
+    final normalized = PathNormalizer.normalizePathForMatch(path);
+    if (PathNormalizer.isProtectedWritePath(normalized)) {
+      return ToolExecutionResult.error(
+        PathNormalizer.protectedWritePathError(path),
+      );
     }
 
     // 原子替换，且不跟随最后一段符号链接：审批到这里之间目标若被换成链接，
     // 直接写会改坏链接指向的文件（见 replaceFileContent）
-    await replaceFileContent(File(normalized), content);
+    await AtomicFileWrite.replaceFileContent(File(normalized), content);
 
     return ToolExecutionResult.success(
       'Successfully wrote ${content.length} bytes to $path',

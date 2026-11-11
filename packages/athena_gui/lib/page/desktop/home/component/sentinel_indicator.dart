@@ -44,7 +44,8 @@ class DesktopSentinelIndicator extends StatelessWidget {
               padding: const EdgeInsets.all(6),
               onTap: onTap == null
                   ? null
-                  : () => onTap!(contextMenuAnchorOf(context)),
+                  : () =>
+                        onTap!(DesktopContextMenu.contextMenuAnchorOf(context)),
               child: Icon(
                 hasSentinel ? LucideIcons.userRound : LucideIcons.userRoundX,
                 color: colors.textPrimary,

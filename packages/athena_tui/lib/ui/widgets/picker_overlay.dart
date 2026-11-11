@@ -99,7 +99,7 @@ class _PickerOverlayState extends State<PickerOverlay> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 1),
                   child: Text(
-                    sanitizeAnsi(component.labels[i]),
+                    TextUtil.sanitizeAnsi(component.labels[i]),
                     style: i == component.selectedIndex
                         ? const TextStyle(
                             reverse: true,

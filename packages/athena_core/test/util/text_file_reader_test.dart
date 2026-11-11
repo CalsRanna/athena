@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_core/agent/cancel_token.dart';
-import 'package:athena_core/util/text_file_reader.dart';
+import 'package:athena_core/agent/tool/text_file_reader.dart';
 import 'package:test/test.dart';
 
 void main() {

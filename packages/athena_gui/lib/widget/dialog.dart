@@ -18,7 +18,7 @@ abstract final class AthenaDialog {
 
   /// 静态方法取色：通过全局导航 context 获取当前主题扩展。
   static AthenaColors get _colors =>
-      router.navigatorKey.currentContext!.athenaColors;
+      AthenaRouter.router.navigatorKey.currentContext!.athenaColors;
 
   /// 移动端判定走 `ThemeData.platform` 而不是 `PlatformUtil`。
   ///
@@ -34,7 +34,7 @@ abstract final class AthenaDialog {
   }
 
   static Future<bool?> confirm(String text, {bool dismissible = true}) async {
-    final context = router.navigatorKey.currentContext!;
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
     if (_isMobile(context)) {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
@@ -55,7 +55,7 @@ abstract final class AthenaDialog {
   }
 
   static Future<String?> input(String title, {String? initialValue}) async {
-    final context = router.navigatorKey.currentContext!;
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
     if (_isMobile(context)) {
       // 打开弹窗前释放焦点,防止关闭弹窗后焦点回落到输入框导致
       // 键盘自动弹出;弹窗内的输入框自身会重新申请焦点。
@@ -75,13 +75,13 @@ abstract final class AthenaDialog {
   }
 
   static void dismiss() {
-    Navigator.of(router.navigatorKey.currentContext!).pop();
+    Navigator.of(AthenaRouter.router.navigatorKey.currentContext!).pop();
   }
 
   static void loading() {
     showDialog<void>(
       barrierDismissible: false,
-      context: router.navigatorKey.currentContext!,
+      context: AthenaRouter.router.navigatorKey.currentContext!,
       builder: (context) => const _DesktopLoadingDialog(),
     );
   }
@@ -90,11 +90,11 @@ abstract final class AthenaDialog {
     String message, {
     AthenaMessageType type = AthenaMessageType.info,
   }) {
-    if (!_isMobile(router.navigatorKey.currentContext!)) {
+    if (!_isMobile(AthenaRouter.router.navigatorKey.currentContext!)) {
       _showDesktopMessage(message, type: type);
       return;
     }
-    final messenger = scaffoldMessengerKey.currentState;
+    final messenger = AthenaRouter.scaffoldMessengerKey.currentState;
     if (messenger == null) return;
     final style = _AthenaMessageVisualStyle.fromType(type, _colors);
     final textStyle = AthenaTextStyle.body.copyWith(color: _colors.textPrimary);
@@ -120,7 +120,7 @@ abstract final class AthenaDialog {
   }
 
   static void show(Widget child, {bool barrierDismissible = false}) {
-    final context = router.navigatorKey.currentContext!;
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
     if (_isMobile(context)) {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
@@ -166,7 +166,7 @@ abstract final class AthenaDialog {
     String message, {
     AthenaMessageType type = AthenaMessageType.info,
   }) {
-    final overlay = router.navigatorKey.currentState?.overlay;
+    final overlay = AthenaRouter.router.navigatorKey.currentState?.overlay;
     if (overlay == null) return;
     _dismissDesktopMessage();
     final entry = OverlayEntry(
@@ -325,13 +325,15 @@ class _ConfirmDialog extends StatelessWidget {
       const SizedBox(height: AthenaSpace.xxl),
       AthenaPrimaryButton(
         onTap: () =>
-            Navigator.of(router.navigatorKey.currentContext!).pop(true),
+            Navigator.of(AthenaRouter.router.navigatorKey.currentContext!)
+                .pop(true),
         child: const Center(child: Text('Confirm')),
       ),
       const SizedBox(height: AthenaSpace.sm),
       AthenaSecondaryButton(
         onTap: () =>
-            Navigator.of(router.navigatorKey.currentContext!).pop(false),
+            Navigator.of(AthenaRouter.router.navigatorKey.currentContext!)
+                .pop(false),
         child: const Center(child: Text('Cancel')),
       ),
       SizedBox(height: MediaQuery.paddingOf(context).bottom),

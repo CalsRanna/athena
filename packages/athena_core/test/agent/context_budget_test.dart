@@ -176,7 +176,7 @@ void main() {
       ];
       for (final message in messages) {
         expect(
-          isContextOverflowError(StateError(message)),
+          ContextBudget.isContextOverflowError(StateError(message)),
           isTrue,
           reason: message,
         );
@@ -192,7 +192,7 @@ void main() {
       ];
       for (final message in messages) {
         expect(
-          isContextOverflowError(StateError(message)),
+          ContextBudget.isContextOverflowError(StateError(message)),
           isFalse,
           reason: message,
         );

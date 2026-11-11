@@ -32,7 +32,7 @@ class DesktopContextSelector extends StatelessWidget {
           onTap: () => DesktopContextMenuManager.instance.show(
             context,
             _ContextMenu(
-              anchor: contextMenuAnchorOf(context),
+              anchor: DesktopContextMenu.contextMenuAnchorOf(context),
               enabled: enabled,
               onSelected: onSelected,
             ),

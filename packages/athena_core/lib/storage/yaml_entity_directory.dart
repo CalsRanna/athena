@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/yaml_scalar.dart';
+import 'package:athena_core/storage/yaml_scalar.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -88,7 +88,7 @@ class YamlEntityDirectory {
   Future<void> writeRaw(String id, Map<String, dynamic> raw) {
     _requireValidId(id);
     final file = fileFor(id);
-    return withFileLock(_locks.forTarget(file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
       if (await file.exists()) await _readFile(file, forWrite: true);
       await _writeFile(file, raw);
     });
@@ -105,7 +105,7 @@ class YamlEntityDirectory {
   ) {
     if (!_validId.hasMatch(id)) return Future.value(false);
     final file = fileFor(id);
-    return withFileLock(_locks.forTarget(file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
       if (!await file.exists()) return false;
       final current = await _readFile(file, forWrite: true);
       if (current == null) return false;
@@ -127,7 +127,7 @@ class YamlEntityDirectory {
   ) {
     _requireValidId(id);
     final file = fileFor(id);
-    return withFileLock(_locks.forTarget(file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
       final current = await file.exists()
           ? await _readFile(file, forWrite: true)
           : null;
@@ -139,7 +139,7 @@ class YamlEntityDirectory {
   Future<void> deleteRaw(String id) {
     if (!_validId.hasMatch(id)) return Future.value();
     final file = fileFor(id);
-    return withFileLock(_locks.forTarget(file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
       if (await file.exists()) await file.delete();
     });
   }
@@ -148,7 +148,7 @@ class YamlEntityDirectory {
   ///
   /// 逐个写入时各自取该文件的锁,与并发的单条编辑按「谁后写谁赢」排队。
   Future<void> replaceAllRaw(List<(String id, Map<String, dynamic> raw)> rows) {
-    return withFileLock(_directoryLock, () async {
+    return FileLocking.withFileLock(_directoryLock, () async {
       for (final (id, _) in rows) {
         _requireValidId(id);
       }
@@ -163,7 +163,10 @@ class YamlEntityDirectory {
       }
       for (final (id, raw) in rows) {
         final file = fileFor(id);
-        await withFileLock(_locks.forTarget(file), () => _writeFile(file, raw));
+        await FileLocking.withFileLock(
+          _locks.forTarget(file),
+          () => _writeFile(file, raw),
+        );
       }
     });
   }
@@ -201,7 +204,7 @@ class YamlEntityDirectory {
       return Map<String, dynamic>.from(raw);
     } catch (e) {
       if (forWrite) {
-        final backup = await preserveCorruptFile(file);
+        final backup = await FileLocking.preserveCorruptFile(file);
         LoggerUtil.w('${file.path} is corrupt ($e), backed up to $backup');
       } else {
         LoggerUtil.w('${file.path} is unreadable ($e), skipped');
@@ -211,49 +214,52 @@ class YamlEntityDirectory {
   }
 
   Future<void> _writeFile(File file, Map<String, dynamic> raw) =>
-      atomicWriteString(file, encodeYamlMap(raw));
-}
+      FileLocking.atomicWriteString(
+        file,
+        YamlEntityDirectory.encodeYamlMap(raw),
+      );
 
-/// 把一个映射写成 YAML 文本:键顺序即写入顺序,标量统一走 [YamlScalarCodec]。
-///
-/// 放在这里而不是各 Store 里,是因为 provider 与 sentinel 的顶层结构相同
-/// (都是「标量键 + 一个可选的实体列表」);列表元素的具体字段由各自的 Store
-/// 决定如何展开成 [YamlScalarCodec.encode] 可接受的标量。
-String encodeYamlMap(Map<String, dynamic> raw) {
-  final buf = StringBuffer();
-  for (final entry in raw.entries) {
-    final value = entry.value;
-    if (value is List) {
-      // 空列表也要写出(`models: []`):显式写出来,用户编辑时能看出这里
-      // 可以加条目;列表的「空」与「缺键」是否有区别由各自的 Store 决定。
-      buf.writeln('${entry.key}:${value.isEmpty ? ' []' : ''}');
-      for (final item in value) {
-        // Provider 的 models 是对象列表,Sentinel 的工具白名单是标量列表。
-        if (item is Map) {
-          buf.writeln('  - ${_encodeListEntry(item)}');
-        } else {
-          buf.writeln('  - ${YamlScalarCodec.encode(item)}');
+  /// 把一个映射写成 YAML 文本:键顺序即写入顺序,标量统一走 [YamlScalarCodec]。
+  ///
+  /// 放在这里而不是各 Store 里,是因为 provider 与 sentinel 的顶层结构相同
+  /// (都是「标量键 + 一个可选的实体列表」);列表元素的具体字段由各自的 Store
+  /// 决定如何展开成 [YamlScalarCodec.encode] 可接受的标量。
+  static String encodeYamlMap(Map<String, dynamic> raw) {
+    final buf = StringBuffer();
+    for (final entry in raw.entries) {
+      final value = entry.value;
+      if (value is List) {
+        // 空列表也要写出(`models: []`):显式写出来,用户编辑时能看出这里
+        // 可以加条目;列表的「空」与「缺键」是否有区别由各自的 Store 决定。
+        buf.writeln('${entry.key}:${value.isEmpty ? ' []' : ''}');
+        for (final item in value) {
+          // Provider 的 models 是对象列表,Sentinel 的工具白名单是标量列表。
+          if (item is Map) {
+            buf.writeln('  - ${YamlEntityDirectory._encodeListEntry(item)}');
+          } else {
+            buf.writeln('  - ${YamlScalarCodec.encode(item)}');
+          }
         }
+      } else {
+        buf.writeln('${entry.key}: ${YamlScalarCodec.encode(value)}');
       }
-    } else {
-      buf.writeln('${entry.key}: ${YamlScalarCodec.encode(value)}');
     }
+    return buf.toString();
   }
-  return buf.toString();
-}
 
-/// 列表元素:首行内联,其余键按两个空格缩进续写。
-String _encodeListEntry(Map item) {
-  final buf = StringBuffer();
-  var first = true;
-  for (final entry in item.entries) {
-    final line = '${entry.key}: ${YamlScalarCodec.encode(entry.value)}';
-    if (first) {
-      buf.write(line);
-      first = false;
-    } else {
-      buf.write('\n    $line');
+  /// 列表元素:首行内联,其余键按两个空格缩进续写。
+  static String _encodeListEntry(Map item) {
+    final buf = StringBuffer();
+    var first = true;
+    for (final entry in item.entries) {
+      final line = '${entry.key}: ${YamlScalarCodec.encode(entry.value)}';
+      if (first) {
+        buf.write(line);
+        first = false;
+      } else {
+        buf.write('\n    $line');
+      }
     }
+    return buf.toString();
   }
-  return buf.toString();
 }

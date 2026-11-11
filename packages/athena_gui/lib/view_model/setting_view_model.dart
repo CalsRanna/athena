@@ -10,7 +10,7 @@ import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
-import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/service/retry.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:signals/signals.dart';

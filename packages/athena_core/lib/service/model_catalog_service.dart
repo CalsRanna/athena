@@ -126,7 +126,7 @@ class ModelCatalogService {
 
   /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行),返回统计。
   ///
-  /// 对每个 [modelCatalogConfig] 配置:
+  /// 对每个 [ModelCatalogConfig.modelCatalogConfig] 配置:
   /// 1. 按名字查找 preset provider,不存在则创建；匹配预设端点且处于
   ///    自动模式时同步 API 格式元数据，未知 npm 保留原格式
   /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤 → 发布时间
@@ -141,7 +141,7 @@ class ModelCatalogService {
     var updatedModels = 0;
     var removedModels = 0;
 
-    for (var config in modelCatalogConfig) {
+    for (var config in ModelCatalogConfig.modelCatalogConfig) {
       final providerJson = catalog[config.sourceId];
       if (providerJson is! Map<String, dynamic>) continue;
       final modelsJson = providerJson['models'];
@@ -230,7 +230,7 @@ class ModelCatalogService {
   }
 
   Future<void> _syncProviderApiFormats(Map<String, dynamic> catalog) async {
-    for (final config in modelCatalogConfig) {
+    for (final config in ModelCatalogConfig.modelCatalogConfig) {
       final providerJson = catalog[config.sourceId];
       if (providerJson is! Map<String, dynamic>) continue;
       final format = config.resolveApiFormat(providerJson);

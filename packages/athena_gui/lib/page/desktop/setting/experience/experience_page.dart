@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/desktop_list_selection.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
@@ -17,6 +17,7 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/component/experience_format.dart';
 
 enum _Status implements SettingsListOption {
   all('All statuses'),
@@ -186,7 +187,7 @@ class _DesktopSettingExperiencePageState
     final archived = _isArchived(experience);
     final meta = <String>[
       viewModel.ownerLabel(experience),
-      _formatDate(experience.createdAt),
+      ExperienceFormat.date(experience.createdAt),
     ];
     return AthenaSettingsListRow(
       label: experience.lesson,
@@ -333,12 +334,18 @@ class _DesktopSettingExperiencePageState
             ),
             AthenaSettingsRow(
               label: 'Created',
-              control: _value(_formatDate(experience.createdAt), colors),
+              control: _value(
+                ExperienceFormat.date(experience.createdAt),
+                colors,
+              ),
             ),
             if (experience.updatedAt != null)
               AthenaSettingsRow(
                 label: 'Updated',
-                control: _value(_formatDate(experience.updatedAt!), colors),
+                control: _value(
+                  ExperienceFormat.date(experience.updatedAt!),
+                  colors,
+                ),
               ),
             if (experience.tags.isNotEmpty)
               AthenaSettingsRow(
@@ -422,9 +429,4 @@ class _DesktopSettingExperiencePageState
       if (targets.any((e) => _keyOf(e) == openKey)) openKey = null;
     });
   }
-}
-
-String _formatDate(DateTime dt) {
-  String pad(int n) => n.toString().padLeft(2, '0');
-  return '${dt.year}-${pad(dt.month)}-${pad(dt.day)}';
 }

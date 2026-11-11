@@ -7,8 +7,8 @@ import 'package:athena_gui/page/desktop/setting/provider/component/provider_name
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/desktop_list_selection.dart';
-import 'package:athena_gui/util/model_label_util.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/model_label.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -524,7 +524,7 @@ class _DesktopSettingProviderPageState
         AthenaSettingsRow(
           label: model.name,
           badge: model.isPreset ? null : 'Custom',
-          description: modelSubtitle(model),
+          description: ModelLabel.modelSubtitle(model),
           descriptionMaxLines: 1,
           control: Row(
             mainAxisSize: MainAxisSize.min,

@@ -76,7 +76,7 @@ class QuestionBar extends StatelessComponent {
 
   /// 当前问题的标题行 + 各选项 + 自填行（一次只展示一个问题）。
   ///
-  /// 问句与选项都来自模型,渲染前一律 [sanitizeAnsi] 清洗——
+  /// 问句与选项都来自模型,渲染前一律 [TextUtil.sanitizeAnsi] 清洗——
   /// 终端转义序列可由模型输出携带,不清洗等于把终端交给模型。
   List<Component> _buildQuestion(int index) {
     final question = questions[index];
@@ -85,17 +85,17 @@ class QuestionBar extends StatelessComponent {
 
     return [
       Text(
-        '${sanitizeAnsi(question.header)}'
+        '${TextUtil.sanitizeAnsi(question.header)}'
         '${question.multiSelect ? '（多选）' : ''}  '
-        '${sanitizeAnsi(question.question)}',
+        '${TextUtil.sanitizeAnsi(question.question)}',
         softWrap: true,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       for (var j = 0; j < question.options.length; j++)
         Text(
-          '    ${j + 1}) ${sanitizeAnsi(question.options[j].label)}'
+          '    ${j + 1}) ${TextUtil.sanitizeAnsi(question.options[j].label)}'
           '${chosen.contains(question.options[j].label) ? ' ✔' : ''}'
-          '  ${sanitizeAnsi(question.options[j].description)}',
+          '  ${TextUtil.sanitizeAnsi(question.options[j].description)}',
           softWrap: true,
           style: chosen.contains(question.options[j].label)
               ? AthenaTextStyles.teal
@@ -103,7 +103,7 @@ class QuestionBar extends StatelessComponent {
         ),
       if (custom.isNotEmpty)
         Text(
-          '    自填：${sanitizeAnsi(custom)} ✔',
+          '    自填：${TextUtil.sanitizeAnsi(custom)} ✔',
           softWrap: true,
           style: AthenaTextStyles.teal,
         ),

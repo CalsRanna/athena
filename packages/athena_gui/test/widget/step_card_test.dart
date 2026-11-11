@@ -4,7 +4,7 @@ import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +68,7 @@ void main() {
     bool live = true,
   }) => tester.pumpWidget(
     MaterialApp(
-      theme: buildAthenaThemeData(AthenaColorMode.light),
+      theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
       builder: (context, child) => AthenaTestScope(child: child!),
       home: Scaffold(
         body: StepCard(steps: steps, live: live),
@@ -492,7 +492,9 @@ void main() {
       // 今天三种步骤都有正文，这条契约在组件层验证：没有正文的头不该可点。
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(
+            AthenaColorMode.light,
+          ),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: const Scaffold(
             body: StepHeader(icon: LucideIcons.wrench, label: 'Used a tool'),
@@ -515,7 +517,9 @@ void main() {
       for (final size in AthenaTextSize.values) {
         await tester.pumpWidget(
           MaterialApp(
-            theme: buildAthenaThemeData(AthenaColorMode.light),
+            theme: AthenaMaterialTheme.buildAthenaThemeData(
+              AthenaColorMode.light,
+            ),
             builder: (context, child) => AthenaTestScope(child: child!),
             home: Scaffold(
               body: AthenaWorkspaceTextSize(
@@ -590,7 +594,9 @@ void main() {
     testWidgets('没有正文的头不给箭头（组件层契约）', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(
+            AthenaColorMode.light,
+          ),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: const Scaffold(
             body: StepHeader(icon: LucideIcons.wrench, label: 'Used a tool'),

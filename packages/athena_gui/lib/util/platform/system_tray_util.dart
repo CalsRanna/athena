@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_gui/util/window_util.dart';
+import 'package:athena_gui/util/platform/window_util.dart';
 import 'package:tray_manager/tray_manager.dart';
 
 class SystemTrayUtil {

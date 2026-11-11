@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/provider_store.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/yaml_scalar.dart';
+import 'package:athena_core/storage/yaml_scalar.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -46,7 +46,7 @@ class ProviderFilesMigration {
   File get _lockFile => _locks.named('provider-files-migration');
 
   Future<void> run() {
-    return withFileLock(_lockFile, () async {
+    return FileLocking.withFileLock(_lockFile, () async {
       if (await _marker.exists()) return;
       if (!await _settingFile.exists()) {
         await _writeMarker();
@@ -97,7 +97,7 @@ class ProviderFilesMigration {
     }
     for (final (id, value) in entries) {
       final file = File(p.join(_providersDir.path, '$id.yaml'));
-      await atomicWriteString(file, _encodeEntry(id, value));
+      await FileLocking.atomicWriteString(file, _encodeEntry(id, value));
     }
   }
 
@@ -131,7 +131,7 @@ class ProviderFilesMigration {
 
   /// 把整个 setting.yaml 复制成 `.pre-provider-files-{时间戳}` 的独立备份。
   ///
-  /// 用 [preserveCorruptFile] 那套 `.corrupt-` 命名会让读者以为文件损坏;
+  /// 用 [FileLocking.preserveCorruptFile] 那套 `.corrupt-` 命名会让读者以为文件损坏;
   /// 这里显式给一个说明迁移的标记。备份是整文件复制(不是解析后重建),
   /// 坏行与未知字段原样保留。
   Future<File> _backupSetting() async {
@@ -158,10 +158,10 @@ class ProviderFilesMigration {
         buf.writeln('${entry.key}: ${YamlScalarCodec.encode(value)}');
       }
     }
-    await atomicWriteString(_settingFile, buf.toString());
+    await FileLocking.atomicWriteString(_settingFile, buf.toString());
   }
 
   Future<void> _writeMarker() async {
-    await atomicWriteString(_marker, 'version: $version\n');
+    await FileLocking.atomicWriteString(_marker, 'version: $version\n');
   }
 }

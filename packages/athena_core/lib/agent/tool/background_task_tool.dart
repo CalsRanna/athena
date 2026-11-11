@@ -60,7 +60,7 @@ class BackgroundTaskTool extends Tool {
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
   }) async {
-    final chatId = args[toolChatIdKey];
+    final chatId = args[ToolArguments.toolChatIdKey];
     if (chatId is! String) {
       return const ToolExecutionResult.error(
         'Error: background tasks require a session context.',

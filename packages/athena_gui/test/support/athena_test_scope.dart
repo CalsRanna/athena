@@ -24,7 +24,7 @@ class AthenaTestScope extends StatelessWidget {
         ? AthenaColorMode.light
         : AthenaColorMode.dark;
     return AthenaTheme(
-      colors: colorsOf(mode),
+      colors: AthenaTheme.colorsOf(mode),
       colorMode: mode,
       platform: theme.platform,
       child: child,

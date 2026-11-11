@@ -54,7 +54,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light)
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
             .copyWith(platform: TargetPlatform.macOS),
         builder: (_, child) => AthenaTestScope(child: child!),
         home: Material(child: page),

@@ -53,11 +53,11 @@ class PowerShellShellTool extends Tool implements CancellableTool {
     'properties': {
       'command': {
         'type': 'string',
-        'description': shellCommandParamDescription('PowerShell'),
+        'description': ShellRunner.shellCommandParamDescription('PowerShell'),
       },
       'timeout': {
         'type': 'integer',
-        'description': shellTimeoutParamDescription(),
+        'description': ShellRunner.shellTimeoutParamDescription(),
         'minimum': ShellTimeoutPolicy.minSeconds,
         'maximum': ShellTimeoutPolicy.maxSeconds,
         'default': ShellTimeoutPolicy.defaultSeconds,
@@ -75,7 +75,9 @@ class PowerShellShellTool extends Tool implements CancellableTool {
       },
       'workdir': {
         'type': 'string',
-        'description': shellWorkdirParamDescription(_defaultWorkdir),
+        'description': ShellRunner.shellWorkdirParamDescription(
+          _defaultWorkdir,
+        ),
       },
     },
     'required': ['command'],
@@ -115,7 +117,7 @@ class PowerShellShellTool extends Tool implements CancellableTool {
           'Error: background tasks are not available in this host.',
         );
       }
-      return startBackgroundShellTask(
+      return ShellBackground.start(
         tasks: tasks,
         args: args,
         executable: 'powershell.exe',
@@ -125,7 +127,7 @@ class PowerShellShellTool extends Tool implements CancellableTool {
       );
     }
 
-    final result = await runShellProcessResult(
+    final result = await ShellRunner.runShellProcessResult(
       executable: 'powershell.exe',
       arguments: ['-Command', command],
       workdir: workdir,

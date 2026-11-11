@@ -54,11 +54,11 @@ class BashShellTool extends Tool implements CancellableTool {
     'properties': {
       'command': {
         'type': 'string',
-        'description': shellCommandParamDescription('bash'),
+        'description': ShellRunner.shellCommandParamDescription('bash'),
       },
       'timeout': {
         'type': 'integer',
-        'description': shellTimeoutParamDescription(),
+        'description': ShellRunner.shellTimeoutParamDescription(),
         'minimum': ShellTimeoutPolicy.minSeconds,
         'maximum': ShellTimeoutPolicy.maxSeconds,
         'default': ShellTimeoutPolicy.defaultSeconds,
@@ -76,7 +76,9 @@ class BashShellTool extends Tool implements CancellableTool {
       },
       'workdir': {
         'type': 'string',
-        'description': shellWorkdirParamDescription(_defaultWorkdir),
+        'description': ShellRunner.shellWorkdirParamDescription(
+          _defaultWorkdir,
+        ),
       },
     },
     'required': ['command'],
@@ -116,7 +118,7 @@ class BashShellTool extends Tool implements CancellableTool {
           'Error: background tasks are not available in this host.',
         );
       }
-      return startBackgroundShellTask(
+      return ShellBackground.start(
         tasks: tasks,
         args: args,
         executable: _resolveShellExecutable(),
@@ -126,7 +128,7 @@ class BashShellTool extends Tool implements CancellableTool {
       );
     }
 
-    final result = await runShellProcessResult(
+    final result = await ShellRunner.runShellProcessResult(
       executable: _resolveShellExecutable(),
       arguments: ['-c', command],
       workdir: workdir,

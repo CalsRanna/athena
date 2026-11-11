@@ -4,7 +4,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:test/test.dart';
 
 /// `Stream.timeout` 对「async* 生成器 + await for」不触发（AGENTS 硬约束 9），
-/// 流式请求的空闲超时全靠 [withIdleTimeout]。
+/// 流式请求的空闲超时全靠 [LlmClient.withIdleTimeout]。
 void main() {
   const timeout = Duration(milliseconds: 60);
 
@@ -15,7 +15,7 @@ void main() {
     );
 
     await expectLater(
-      withIdleTimeout(source.stream, timeout),
+      LlmClient.withIdleTimeout(source.stream, timeout),
       emitsError(isA<TimeoutException>()),
     );
     expect(sourceCancelled, isTrue, reason: '超时后不能继续挂着上游连接');
@@ -28,7 +28,7 @@ void main() {
     }
 
     await expectLater(
-      withIdleTimeout(stalled(), timeout),
+      LlmClient.withIdleTimeout(stalled(), timeout),
       emitsInOrder([1, emitsError(isA<TimeoutException>())]),
     );
   });
@@ -42,7 +42,7 @@ void main() {
     }
 
     expect(
-      await withIdleTimeout(steady(), timeout).toList(),
+      await LlmClient.withIdleTimeout(steady(), timeout).toList(),
       List.generate(8, (i) => i),
     );
   });
@@ -50,7 +50,7 @@ void main() {
   test('下游取消后不再报超时', () async {
     final source = StreamController<int>();
     final errors = <Object>[];
-    final sub = withIdleTimeout(
+    final sub = LlmClient.withIdleTimeout(
       source.stream,
       timeout,
     ).listen((_) {}, onError: errors.add);

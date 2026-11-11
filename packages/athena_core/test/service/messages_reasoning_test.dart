@@ -29,9 +29,12 @@ void main() {
     reasoningEffort: effort,
     temperature: 0.5,
   );
-  final native = toMessageRequest(request(), provider: provider);
+  final native = MessagesAdapter.toMessageRequest(
+    request(),
+    provider: provider,
+  );
   MessagesAssistantMessage assistant({Map<String, dynamic>? response}) =>
-      messageToChatCompletion(
+      MessagesAdapter.messageToChatCompletion(
             anthropic.Message.fromJson(response ?? thinkingMessage()),
             provider: provider,
             request: native,
@@ -61,7 +64,7 @@ void main() {
         ReasoningEffort.medium,
         ReasoningEffort.high,
       ]) {
-        final body = toMessageRequest(
+        final body = MessagesAdapter.toMessageRequest(
           request(modelId: model, effort: effort),
         ).toJson();
         expect(body['thinking'], {
@@ -73,13 +76,13 @@ void main() {
       }
     }
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request(effort: ReasoningEffort.xhigh),
       ).toJson()['output_config'],
       {'effort': 'max'},
     );
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request(modelId: 'claude-opus-4-7', effort: ReasoningEffort.xhigh),
       ).toJson()['output_config'],
       {'effort': 'xhigh'},
@@ -100,7 +103,7 @@ void main() {
         ReasoningEffort.medium,
         ReasoningEffort.high,
       ]) {
-        final body = toMessageRequest(
+        final body = MessagesAdapter.toMessageRequest(
           request(modelId: model, effort: effort),
           maxTokens: 16000,
         ).toJson();
@@ -111,14 +114,14 @@ void main() {
       }
       expect(budgets, [2048, 4096, 8192]);
     }
-    final capped = toMessageRequest(
+    final capped = MessagesAdapter.toMessageRequest(
       request(modelId: 'claude-sonnet-4-5'),
       maxTokens: 5000,
     ).toJson();
     expect(capped['thinking']['budget_tokens'], 3976);
     expect(capped['max_tokens'], 5000);
     expect(
-      () => toMessageRequest(
+      () => MessagesAdapter.toMessageRequest(
         request(modelId: 'claude-sonnet-4-5'),
         maxTokens: 1024,
       ),
@@ -128,22 +131,24 @@ void main() {
 
   test('none 显式关闭推理；普通请求不注入 thinking；常开模型不伪装关闭成功', () {
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request(effort: ReasoningEffort.none),
       ).toJson()['thinking'],
       {'type': 'disabled'},
     );
-    final plain = toMessageRequest(request(effort: null)).toJson();
+    final plain = MessagesAdapter.toMessageRequest(
+      request(effort: null),
+    ).toJson();
     expect(plain, isNot(contains('thinking')));
     expect(plain['temperature'], 0.5);
     expect(
-      toMessageRequest(
+      MessagesAdapter.toMessageRequest(
         request(modelId: 'claude-opus-4-7', effort: null),
       ).toJson(),
       isNot(contains('temperature')),
     );
     expect(
-      () => toMessageRequest(
+      () => MessagesAdapter.toMessageRequest(
         request(modelId: 'claude-opus-5-5', effort: ReasoningEffort.none),
       ),
       throwsUnsupportedError,
@@ -151,7 +156,7 @@ void main() {
   });
 
   test('流式展示不等签名；完整流保留初始文本、隐藏块、签名和块顺序', () async {
-    final early = await normalizeMessagesStream(
+    final early = await MessagesAdapter.normalizeMessagesStream(
       Stream.value(
         anthropic.ContentBlockDeltaEvent.fromJson({
           'type': 'content_block_delta',
@@ -161,7 +166,7 @@ void main() {
       ),
     ).single;
     expect(early.firstChoice!.delta.reasoningContent, '思考中');
-    final chunks = await normalizeMessagesStream(
+    final chunks = await MessagesAdapter.normalizeMessagesStream(
       Stream.fromIterable(
         thinkingEvents(
           thinkingMessage(),
@@ -195,7 +200,7 @@ void main() {
     expect(message.toolCalls, hasLength(2));
     expect(
       assistantBlocks(
-        toMessageRequest(
+        MessagesAdapter.toMessageRequest(
           request(messages: history(message)),
           provider: provider,
         ),
@@ -208,7 +213,7 @@ void main() {
 
   test('完整无签名推理在两条路径保留展示与工具，并显式标记不可回放', () async {
     final response = thinkingMessage(signed: false);
-    final chunks = await normalizeMessagesStream(
+    final chunks = await MessagesAdapter.normalizeMessagesStream(
       Stream.fromIterable(
         thinkingEvents(
           response,
@@ -232,7 +237,7 @@ void main() {
     );
 
     final completion =
-        messageToChatCompletion(
+        MessagesAdapter.messageToChatCompletion(
               anthropic.Message.fromJson(response),
               provider: provider,
               request: native,
@@ -253,7 +258,7 @@ void main() {
     );
     expect(message.messagesState, isNull);
     expect(completion.details, containsPair('thinking_replayable', false));
-    final next = toMessageRequest(
+    final next = MessagesAdapter.toMessageRequest(
       request(messages: history(message)),
       provider: provider,
     );
@@ -287,7 +292,7 @@ void main() {
         fragmented.add(event);
       }
     }
-    final chunks = await normalizeMessagesStream(
+    final chunks = await MessagesAdapter.normalizeMessagesStream(
       Stream.fromIterable(
         fragmented.map(anthropic.MessageStreamEvent.fromJson),
       ),
@@ -316,7 +321,7 @@ void main() {
         (content.first as Map).remove('signature');
       }
       await expectLater(
-        normalizeMessagesStream(
+        MessagesAdapter.normalizeMessagesStream(
           Stream.fromIterable(
             thinkingEvents(response).map(anthropic.MessageStreamEvent.fromJson),
           ),
@@ -326,7 +331,7 @@ void main() {
         throwsStateError,
       );
       expect(
-        () => messageToChatCompletion(
+        () => MessagesAdapter.messageToChatCompletion(
           anthropic.Message.fromJson(response),
           provider: provider,
           request: native,
@@ -343,7 +348,7 @@ void main() {
       String modelId = model,
       bool otherProvider = false,
     }) {
-      final body = toMessageRequest(
+      final body = MessagesAdapter.toMessageRequest(
         request(modelId: modelId, messages: messages),
         provider: otherProvider
             ? provider.copyWith(baseUrl: 'https://other.example')
@@ -387,13 +392,13 @@ void main() {
   });
 
   test('手动 thinking 在工具循环内保持预算，输出余量不足时明确失败', () {
-    final manual = toMessageRequest(
+    final manual = MessagesAdapter.toMessageRequest(
       request(modelId: 'claude-sonnet-4-5'),
       maxTokens: 16000,
       provider: provider,
     );
     final message =
-        messageToChatCompletion(
+        MessagesAdapter.messageToChatCompletion(
               anthropic.Message.fromJson(thinkingMessage()),
               provider: provider,
               request: manual,
@@ -404,14 +409,18 @@ void main() {
       effort: ReasoningEffort.low,
       messages: history(message),
     );
-    final body = toMessageRequest(
+    final body = MessagesAdapter.toMessageRequest(
       next,
       maxTokens: 12000,
       provider: provider,
     ).toJson();
     expect(body['thinking'], manual.thinking!.toJson());
     expect(
-      () => toMessageRequest(next, maxTokens: 8192, provider: provider),
+      () => MessagesAdapter.toMessageRequest(
+        next,
+        maxTokens: 8192,
+        provider: provider,
+      ),
       throwsStateError,
     );
   });
@@ -438,7 +447,7 @@ void main() {
     for (final events in cases) {
       final states = <MessagesStateChunk>[];
       try {
-        await for (final chunk in normalizeMessagesStream(
+        await for (final chunk in MessagesAdapter.normalizeMessagesStream(
           Stream.fromIterable(
             events.map(anthropic.MessageStreamEvent.fromJson),
           ),
@@ -530,7 +539,7 @@ void main() {
     );
     expect(
       assistantBlocks(
-        toMessageRequest(
+        MessagesAdapter.toMessageRequest(
           request(messages: [ChatMessage.user('hi'), ...converted]),
           provider: provider,
         ),

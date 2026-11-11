@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:athena_core/extension/json_map_extension.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/yaml_scalar.dart';
+import 'package:athena_core/storage/yaml_scalar.dart';
 import 'package:yaml/yaml.dart';
 
 /// 用户配置的持久化(`~/.athena/setting.yaml`)。GUI 与 TUI 共用这一个文件。
@@ -96,7 +96,7 @@ class UserSettingsStore {
     // null 等于「没有这个设置」:写进文件会经 YamlScalarCodec 变成空串,
     // 与「键不存在」的语义就分不开了
     if (value == null) return remove(key);
-    return withFileLock(_locks.forTarget(_file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       map[key] = value;
       await _writeMap(map);
@@ -112,7 +112,7 @@ class UserSettingsStore {
   Future<void> setDouble(String key, double value) => set(key, value);
 
   Future<void> remove(String key) {
-    return withFileLock(_locks.forTarget(_file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       if (map.remove(key) == null) return;
       await _writeMap(map);
@@ -121,7 +121,7 @@ class UserSettingsStore {
 
   /// 清空全部设置(「Reset Athena」用)。文件本身保留,只剩文件头注释。
   Future<void> clear() {
-    return withFileLock(_locks.forTarget(_file), () async {
+    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       if (map.isEmpty) return;
       await _writeMap({});
@@ -164,7 +164,7 @@ class UserSettingsStore {
     } catch (e) {
       // 损坏的 yaml 读时按空配置处理;写入前先留备份
       if (forWrite) {
-        final backup = await preserveCorruptFile(_file);
+        final backup = await FileLocking.preserveCorruptFile(_file);
         LoggerUtil.w('${_file.path} is corrupt ($e), backed up to $backup');
       }
     }
@@ -205,6 +205,6 @@ class UserSettingsStore {
       if (entry.value == null) continue;
       buf.writeln('${entry.key}: ${YamlScalarCodec.encode(entry.value)}');
     }
-    await atomicWriteString(_file, buf.toString());
+    await FileLocking.atomicWriteString(_file, buf.toString());
   }
 }

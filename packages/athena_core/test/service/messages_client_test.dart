@@ -4,7 +4,7 @@ import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/service/retry.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';

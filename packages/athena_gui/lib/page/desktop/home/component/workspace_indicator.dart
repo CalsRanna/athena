@@ -41,7 +41,7 @@ class DesktopWorkspaceIndicator extends StatelessWidget {
           onTap: () => DesktopContextMenuManager.instance.show(
             context,
             _WorkspaceMenu(
-              anchor: contextMenuAnchorOf(context),
+              anchor: DesktopContextMenu.contextMenuAnchorOf(context),
               hasFolder: set,
               onChoose: onTap,
               onClear: onClear,

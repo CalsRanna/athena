@@ -32,7 +32,7 @@ Widget _app(
   TargetPlatform platform = TargetPlatform.iOS,
 }) {
   return MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light)
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
         .copyWith(platform: platform),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: MediaQuery(
@@ -104,10 +104,10 @@ void main() {
   });
 
   testWidgets('mobile canvas uses the workspace surface', (tester) async {
-    final colors = colorsOf(AthenaColorMode.dark);
+    final colors = AthenaTheme.colorsOf(AthenaColorMode.dark);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.dark)
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.dark)
             .copyWith(platform: TargetPlatform.iOS),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const AthenaScaffold(body: SizedBox()),
@@ -127,7 +127,7 @@ void main() {
   testWidgets('grid tiles use neutral surfaces and normal text', (
     tester,
   ) async {
-    final colors = colorsOf(AthenaColorMode.light);
+    final colors = AthenaTheme.colorsOf(AthenaColorMode.light);
     await tester.pumpWidget(
       _app(
         SizedBox(
@@ -216,7 +216,7 @@ void main() {
     testWidgets('icon buttons use a neutral surface on ${platform.name}', (
       tester,
     ) async {
-      final colors = colorsOf(AthenaColorMode.light);
+      final colors = AthenaTheme.colorsOf(AthenaColorMode.light);
       await tester.pumpWidget(
         _app(
           AthenaIconButton(icon: Icons.more, onTap: () {}),

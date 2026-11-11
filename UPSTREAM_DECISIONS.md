@@ -50,7 +50,7 @@
 ### U2 「先读后改」由引擎强制，不只靠提示词
 
 - **状态**：待处理
-- **现状**：这条纪律只写在 Daedalus 预设（`seed/daedalus_preset_prompt.dart:13-19`）。`file_update` 有 mtime 校验（`agent/tool/file_update_tool.dart:96`、`:189-197`），但没有「本会话读过」的检查；`file_write` 不做存在性判断（`grep -c "exists(" file_write_tool.dart` 为 0），覆盖已有文件只靠受保护路径、符号链接复核与原子替换（`util/atomic_file_write.dart`）。
+- **现状**：这条纪律只写在 Daedalus 预设（`seed/daedalus_preset_prompt.dart:13-19`）。`file_update` 有 mtime 校验（`agent/tool/file_update_tool.dart:96`、`:189-197`），但没有「本会话读过」的检查；`file_write` 不做存在性判断（`grep -c "exists(" file_write_tool.dart` 为 0），覆盖已有文件只靠受保护路径、符号链接复核与原子替换（`storage/atomic_file_write.dart`）。
 - **证据**：E1。缺口只剩一种：模型凭记忆构造的 `old_string` 恰好唯一命中另一处，工具看到「匹配成功且文件未变」并静默改错位置。mtime 校验防不了它，两者不重复。
 - **代价**：引擎要记录「本会话读过哪些路径」，多一份按会话存活的状态；`file_write` 只对已存在文件生效，否则新建文件会被误拦。作用域（按 run 还是按 chat）须在实现前定下。
 - **落点**：CONVENTIONS §12.2 新增「写前必须读」；新增测试 `file_update_requires_prior_read`（未读 → 报错，读后 → 通过），并扩展 `file_write_tool_test.dart` 的「覆盖已有文件」用例。

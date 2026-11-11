@@ -14,7 +14,7 @@ void main() {
   tearDown(() => Directory(root).deleteSync(recursive: true));
 
   Future<String> run(String script, {int timeoutSeconds = 60}) {
-    return runShellProcess(
+    return ShellRunner.runShellProcess(
       executable: 'sh',
       arguments: ['-c', script],
       workdir: root,
@@ -43,7 +43,7 @@ void main() {
 
   group('未越界：输出逐字完整', () {
     test('nonzero exit codes produce structured execution errors', () async {
-      final result = await runShellProcessResult(
+      final result = await ShellRunner.runShellProcessResult(
         executable: 'sh',
         arguments: ['-c', 'printf failed; exit 7'],
         workdir: root,
@@ -67,7 +67,7 @@ void main() {
             } catch (_) {}
           }
         });
-        final result = await runShellProcess(
+        final result = await ShellRunner.runShellProcess(
           executable: '/bin/sh',
           arguments: [
             '-c',

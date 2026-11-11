@@ -6,56 +6,10 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/responses_adapter.dart';
-import 'package:athena_core/util/retry.dart';
+import 'package:athena_core/service/retry.dart';
 import 'package:athena_core/util/cancellable_stream.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
-
-/// 给 [source] 加「事件间隙空闲超时」：两次事件间隔超过 [timeout] 时
-/// 抛 [TimeoutException] 并终止流。
-///
-/// 注意：不能用 `Stream.timeout`——Dart 3.12 中它对「async* 生成器 +
-/// `await for` 订阅流」的组合不触发（SDK 行为差异），这里用 Timer 手动
-/// 实现，语义相同且与源流结构无关。
-Stream<T> withIdleTimeout<T>(Stream<T> source, Duration timeout) {
-  late StreamSubscription<T> sub;
-  final controller = StreamController<T>();
-  Timer? timer;
-
-  void resetTimer() {
-    timer?.cancel();
-    timer = Timer(timeout, () {
-      controller.addError(
-        TimeoutException('Stream idle timeout after $timeout'),
-      );
-      unawaited(sub.cancel());
-      unawaited(controller.close());
-    });
-  }
-
-  controller.onListen = () {
-    resetTimer();
-    sub = source.listen(
-      (event) {
-        resetTimer();
-        controller.add(event);
-      },
-      onError: (Object e, StackTrace st) {
-        timer?.cancel();
-        controller.addError(e, st);
-      },
-      onDone: () {
-        timer?.cancel();
-        unawaited(controller.close());
-      },
-    );
-  };
-  controller.onCancel = () {
-    timer?.cancel();
-    unawaited(sub.cancel());
-  };
-  return controller.stream;
-}
 
 /// 创建 [OpenAIClient] 的工厂签名。可通过构造参数注入，便于测试。
 typedef OpenAIClientFactory =
@@ -178,7 +132,7 @@ class LlmClient {
     int? outputRoom,
     int defaultOutputLimit = 0,
   }) {
-    return cancellableStream(switch (provider.apiFormat) {
+    return CancellableStream.cancellableStream(switch (provider.apiFormat) {
       ApiFormat.chatCompletions => _streamChatCompletions(
         provider: provider,
         request: request,
@@ -193,7 +147,7 @@ class LlmClient {
         provider: provider,
         request: request,
         cancelSignal: cancelSignal,
-        maxTokens: messagesMaxTokens(
+        maxTokens: MessagesAdapter.messagesMaxTokens(
           outputLimit: outputLimit,
           outputRoom: outputRoom,
           fallback: defaultOutputLimit,
@@ -209,11 +163,14 @@ class LlmClient {
   }) async* {
     final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      yield* retryStream(
-        () => withIdleTimeout(
-          normalizeChatCompletionsStream(
+      yield* Retry.retryStream(
+        () => LlmClient.withIdleTimeout(
+          ChatCompletionsState.normalizeChatCompletionsStream(
             client.chat.completions.createStream(
-              restoreChatCompletionsRequest(request, provider),
+              ChatCompletionsState.restoreChatCompletionsRequest(
+                request,
+                provider,
+              ),
               abortTrigger: cancelSignal,
             ),
             provider,
@@ -264,17 +221,24 @@ class LlmClient {
   }) async {
     final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      final response = await retry(
+      final response = await Retry.retry(
         () => client.chat.completions
             .create(
-              restoreChatCompletionsRequest(request, provider),
+              ChatCompletionsState.restoreChatCompletionsRequest(
+                request,
+                provider,
+              ),
               abortTrigger: cancelSignal,
             )
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
       );
-      return normalizeChatCompletion(response, provider, request.model);
+      return ChatCompletionsState.normalizeChatCompletion(
+        response,
+        provider,
+        request.model,
+      );
     } finally {
       client.close();
     }
@@ -287,11 +251,15 @@ class LlmClient {
   }) async* {
     final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      yield* retryStream(
-        () => withIdleTimeout(
-          normalizeResponsesStream(
+      yield* Retry.retryStream(
+        () => LlmClient.withIdleTimeout(
+          ResponsesAdapter.normalizeResponsesStream(
             client.responses.createStream(
-              toResponseRequest(request, stream: true, provider: provider),
+              ResponsesAdapter.toResponseRequest(
+                request,
+                stream: true,
+                provider: provider,
+              ),
               abortTrigger: cancelSignal,
             ),
             provider: provider,
@@ -314,11 +282,11 @@ class LlmClient {
   }) async {
     final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      return await retry(
-        () async => responseToChatCompletion(
+      return await Retry.retry(
+        () async => ResponsesAdapter.responseToChatCompletion(
           await client.responses
               .create(
-                toResponseRequest(request, provider: provider),
+                ResponsesAdapter.toResponseRequest(request, provider: provider),
                 abortTrigger: cancelSignal,
               )
               .timeout(fetchTimeout),
@@ -339,7 +307,7 @@ class LlmClient {
     Future<void>? cancelSignal,
     required int maxTokens,
   }) async* {
-    final nativeRequest = toMessageRequest(
+    final nativeRequest = MessagesAdapter.toMessageRequest(
       request,
       stream: true,
       maxTokens: maxTokens,
@@ -351,9 +319,9 @@ class LlmClient {
     // 在途请求随之失败，上层按「取消优先于底层错误」收尾（close 可重复调用）。
     unawaited(cancelSignal?.then((_) => client.close()));
     try {
-      yield* retryStream(
-        () => withIdleTimeout(
-          normalizeMessagesStream(
+      yield* Retry.retryStream(
+        () => LlmClient.withIdleTimeout(
+          MessagesAdapter.normalizeMessagesStream(
             client.messages.createStream(
               nativeRequest,
               abortTrigger: cancelSignal,
@@ -376,17 +344,20 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async {
-    final nativeRequest = toMessageRequest(request, provider: provider);
+    final nativeRequest = MessagesAdapter.toMessageRequest(
+      request,
+      provider: provider,
+    );
     final client = _createAnthropicClient(provider);
     try {
-      final message = await retry(
+      final message = await Retry.retry(
         () => client.messages
             .create(nativeRequest, abortTrigger: cancelSignal)
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
       );
-      return messageToChatCompletion(
+      return MessagesAdapter.messageToChatCompletion(
         message,
         provider: provider,
         request: nativeRequest,
@@ -394,5 +365,51 @@ class LlmClient {
     } finally {
       client.close();
     }
+  }
+
+  /// 给 [source] 加「事件间隙空闲超时」：两次事件间隔超过 [timeout] 时
+  /// 抛 [TimeoutException] 并终止流。
+  ///
+  /// 注意：不能用 `Stream.timeout`——Dart 3.12 中它对「async* 生成器 +
+  /// `await for` 订阅流」的组合不触发（SDK 行为差异），这里用 Timer 手动
+  /// 实现，语义相同且与源流结构无关。
+  static Stream<T> withIdleTimeout<T>(Stream<T> source, Duration timeout) {
+    late StreamSubscription<T> sub;
+    final controller = StreamController<T>();
+    Timer? timer;
+
+    void resetTimer() {
+      timer?.cancel();
+      timer = Timer(timeout, () {
+        controller.addError(
+          TimeoutException('Stream idle timeout after $timeout'),
+        );
+        unawaited(sub.cancel());
+        unawaited(controller.close());
+      });
+    }
+
+    controller.onListen = () {
+      resetTimer();
+      sub = source.listen(
+        (event) {
+          resetTimer();
+          controller.add(event);
+        },
+        onError: (Object e, StackTrace st) {
+          timer?.cancel();
+          controller.addError(e, st);
+        },
+        onDone: () {
+          timer?.cancel();
+          unawaited(controller.close());
+        },
+      );
+    };
+    controller.onCancel = () {
+      timer?.cancel();
+      unawaited(sub.cancel());
+    };
+    return controller.stream;
   }
 }

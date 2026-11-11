@@ -5,8 +5,8 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/desktop_list_selection.dart';
-import 'package:athena_gui/util/tool_config_util.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
+import 'package:athena_gui/component/tool_config.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -450,10 +450,11 @@ class _DesktopSettingSentinelPageState
   }
 
   /// 工具区按固定顺序展示；未登记的工具排在最后。
-  List<Tool> get _displayTools => orderedToolsForConfig(registeredTools);
+  List<Tool> get _displayTools =>
+      ToolConfig.orderedToolsForConfig(registeredTools);
 
   bool _isToolOn(String name) =>
-      kUndeactivatableToolNames.contains(name) ||
+      ToolSet.kUndeactivatableToolNames.contains(name) ||
       (enabledToolsDraft?.contains(name) ?? true);
 
   void _setToolEnabled(String name, bool enabled) {
@@ -463,8 +464,8 @@ class _DesktopSettingSentinelPageState
       // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
       // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
       if (enabledToolsDraft == null) ...all,
-      if (enabledToolsDraft == null) ...kToolConfigOrder,
-      ...kUndeactivatableToolNames,
+      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
+      ...ToolSet.kUndeactivatableToolNames,
     };
     if (enabled) {
       next.add(name);
@@ -487,16 +488,16 @@ class _DesktopSettingSentinelPageState
       children: [
         for (final tool in _displayTools)
           AthenaSettingsRow(
-            label: kToolConfigCopy[tool.name]?.$1 ?? tool.name,
+            label: ToolConfig.kToolConfigCopy[tool.name]?.$1 ?? tool.name,
             description:
-                kToolConfigCopy[tool.name]?.$2 ??
+                ToolConfig.kToolConfigCopy[tool.name]?.$2 ??
                 tool.description.split('\n').first,
-            badge: kUndeactivatableToolNames.contains(tool.name)
+            badge: ToolSet.kUndeactivatableToolNames.contains(tool.name)
                 ? 'Always on'
                 : null,
             control: AthenaSwitch(
               value: _isToolOn(tool.name),
-              onChanged: kUndeactivatableToolNames.contains(tool.name)
+              onChanged: ToolSet.kUndeactivatableToolNames.contains(tool.name)
                   ? null
                   : (enabled) => _setToolEnabled(tool.name, enabled),
             ),

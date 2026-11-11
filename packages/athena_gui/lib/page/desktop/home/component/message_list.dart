@@ -9,7 +9,7 @@ import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/chat_turn_util.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -110,12 +110,12 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             .where((r) => r.chatId == chatId)
             .toList();
 
-        final turns = buildChatTurns(messages);
+        final turns = ChatTurn.buildChatTurns(messages);
         // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
         // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
         // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
         final totalTurns = allTurnIds.length;
-        final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
+        final firstTurnIndex = ChatTurn.windowFirstTurnIndex(allTurnIds, turns);
         // 只给 hover 预览的回调现取用（见 [_turnAt]），**不进控件配置**——它每帧
         // 都在变，进配置就会让轮次条跟着每帧重建、重绘
         _windowTurns = turns;
@@ -136,13 +136,16 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         // LayoutBuilder 只做一件事：把约束换算成列宽留白与卡片最大高度。
         return LayoutBuilder(
           builder: (context, constraints) {
-            final columnPadding = chatColumnPadding(constraints.maxWidth);
+            final columnPadding = ChatColumnMetrics.chatColumnPadding(
+              constraints.maxWidth,
+            );
             final cardMaxHeight =
-                constraints.maxHeight * permissionCardMaxHeightFraction;
+                constraints.maxHeight *
+                PermissionApprovalCard.permissionCardMaxHeightFraction;
             final cardPadding = EdgeInsets.fromLTRB(
-              columnPadding + kChatColumnInnerPadding,
+              columnPadding + ChatColumnMetrics.kChatColumnInnerPadding,
               0,
-              columnPadding + kChatColumnInnerPadding,
+              columnPadding + ChatColumnMetrics.kChatColumnInnerPadding,
               12,
             );
             // 轮次指示器只占消息区左留白：条长上限随留白收缩，留白不够就不显示
@@ -179,7 +182,9 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                             onDecision: (approved) =>
                                 chatViewModel.respondApproval(
                                   request,
-                                  permissionDecisionOf(approved),
+                                  PermissionApprovalCard.permissionDecisionOf(
+                                    approved,
+                                  ),
                                 ),
                           ),
                         ),
@@ -296,10 +301,13 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   /// 历史）也停下，避免点到一个已不存在的轮次后一直翻。
   Future<void> _selectTurn(int absoluteTurnIndex) async {
     for (var attempt = 0; attempt <= _maxTurnJumpPages; attempt++) {
-      final windowTurns = buildChatTurns(chatViewModel.messages.value);
+      final windowTurns = ChatTurn.buildChatTurns(chatViewModel.messages.value);
       final windowIndex =
           absoluteTurnIndex -
-          windowFirstTurnIndex(chatViewModel.turnStartIds.value, windowTurns);
+          ChatTurn.windowFirstTurnIndex(
+            chatViewModel.turnStartIds.value,
+            windowTurns,
+          );
       if (windowIndex >= 0 && windowIndex < windowTurns.length) {
         turnNavigator.scrollToTurn(windowIndex);
         return;

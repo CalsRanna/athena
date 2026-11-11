@@ -224,7 +224,7 @@ void main() {
       expectInputScale(tester, DesktopMessageInput, 1.2);
 
       unawaited(
-        router.push(
+        AthenaRouter.router.push(
           const DesktopSettingRoute(
             children: [DesktopSettingAppearanceRoute()],
           ),
@@ -256,7 +256,7 @@ void main() {
         );
       }
 
-      await router.maybePop();
+      await AthenaRouter.router.maybePop();
       await settle(tester);
       DesktopContextMenuManager.instance.show(
         tester.element(find.byType(DesktopMessageInput)),
@@ -310,7 +310,7 @@ void main() {
         expect(tester.getSize(find.byType(DesktopMessageInput)), composerSize);
       }
 
-      unawaited(router.push(MobileChatRoute()));
+      unawaited(AthenaRouter.router.push(MobileChatRoute()));
       await settle(tester);
       for (final size in AthenaTextSize.values) {
         await tester.runAsync(() => settings.setTextSize(size));
@@ -359,7 +359,9 @@ void main() {
     for (final size in AthenaTextSize.values) {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(
+            AthenaColorMode.light,
+          ),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: MediaQuery(
             data: const MediaQueryData(textScaler: systemScaler),

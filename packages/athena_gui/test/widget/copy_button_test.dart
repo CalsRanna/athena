@@ -13,7 +13,7 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 /// 时不能再对已销毁的 State 调 setState。
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light)
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
         .copyWith(platform: TargetPlatform.macOS),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
@@ -96,7 +96,7 @@ void main() {
     testWidgets('复制反馈按主题平台 $platform 显示文案', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light)
+          theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
               .copyWith(platform: platform),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: const Scaffold(body: CopiedLabel(color: Colors.black)),

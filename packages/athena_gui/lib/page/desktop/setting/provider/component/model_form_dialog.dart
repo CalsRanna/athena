@@ -3,8 +3,8 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/context_window_util.dart';
-import 'package:athena_gui/util/model_form_util.dart';
+import 'package:athena_gui/util/format/context_window.dart';
+import 'package:athena_gui/util/format/model_form.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/checkbox.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -46,13 +46,19 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     super.initState();
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
-    releasedAtController.text = stripModelReleasedAt(
+    releasedAtController.text = ModelForm.stripModelReleasedAt(
       widget.model?.releasedAt ?? '',
     );
     final cw = widget.model?.contextWindow ?? 0;
-    contextController.text = cw > 0 ? formatContextWindow(cw) : '';
-    inputController.text = stripModelPrice(widget.model?.inputPrice ?? '');
-    outputController.text = stripModelPrice(widget.model?.outputPrice ?? '');
+    contextController.text = cw > 0
+        ? ContextWindow.formatContextWindow(cw)
+        : '';
+    inputController.text = ModelForm.stripModelPrice(
+      widget.model?.inputPrice ?? '',
+    );
+    outputController.text = ModelForm.stripModelPrice(
+      widget.model?.outputPrice ?? '',
+    );
     supportReasoning = widget.model?.reasoning ?? false;
     supportVisual = widget.model?.vision ?? false;
   }
@@ -212,9 +218,9 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
         modelId: modelId,
         name: name,
         providerId: widget.provider.id!,
-        contextWindow: parseContextWindow(contextController.text),
-        inputPrice: formatModelPrice(inputController.text),
-        outputPrice: formatModelPrice(outputController.text),
+        contextWindow: ContextWindow.parseContextWindow(contextController.text),
+        inputPrice: ModelForm.formatModelPrice(inputController.text),
+        outputPrice: ModelForm.formatModelPrice(outputController.text),
         releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,
@@ -226,9 +232,9 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       final copiedModel = widget.model!.copyWith(
         modelId: modelId,
         name: name,
-        contextWindow: parseContextWindow(contextController.text),
-        inputPrice: formatModelPrice(inputController.text),
-        outputPrice: formatModelPrice(outputController.text),
+        contextWindow: ContextWindow.parseContextWindow(contextController.text),
+        inputPrice: ModelForm.formatModelPrice(inputController.text),
+        outputPrice: ModelForm.formatModelPrice(outputController.text),
         releasedAt: releasedAt,
         reasoning: supportReasoning,
         vision: supportVisual,

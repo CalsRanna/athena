@@ -57,8 +57,8 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
-        navigatorKey: router.navigatorKey,
-        theme: buildAthenaThemeData(AthenaColorMode.light)
+        navigatorKey: AthenaRouter.router.navigatorKey,
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
             .copyWith(platform: TargetPlatform.macOS),
         builder: (_, child) => AthenaTestScope(child: child!),
         home: const Material(child: DesktopSettingSkillPage()),

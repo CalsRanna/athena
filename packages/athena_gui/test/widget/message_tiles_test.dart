@@ -41,7 +41,7 @@ void main() {
     bool streaming = true,
   }) => tester.pumpWidget(
     MaterialApp(
-      theme: buildAthenaThemeData(AthenaColorMode.light)
+      theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
           .copyWith(platform: TargetPlatform.macOS),
       builder: (context, child) => AthenaTestScope(child: child!),
       home: Scaffold(

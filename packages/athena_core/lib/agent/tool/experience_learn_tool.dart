@@ -166,9 +166,10 @@ class ExperienceLearnTool extends Tool {
     final action = args['action'] as String? ?? 'create';
     final experienceId = args['experience_id'] as String?;
     final sentinelId = args['_sentinel_id'] as String? ?? 'default';
-    final source = args[toolExperienceSourceKey] as String? ?? 'auto';
+    final source =
+        args[ToolArguments.toolExperienceSourceKey] as String? ?? 'auto';
     final workspace = ExperienceRepository.normalizeWorkspacePath(
-      args[toolExperienceWorkspaceKey] as String?,
+      args[ToolArguments.toolExperienceWorkspaceKey] as String?,
     );
     final tags = tagsStr
         .split(',')
@@ -246,8 +247,8 @@ class ExperienceLearnTool extends Tool {
           context: ExperienceWritePolicy.contextWithEvidence(context, args),
           tags: tags,
           source: source,
-          sourceChatId: args[toolChatIdKey] as String?,
-          sourceMessageId: args[toolMessageIdKey] as String?,
+          sourceChatId: args[ToolArguments.toolChatIdKey] as String?,
+          sourceMessageId: args[ToolArguments.toolMessageIdKey] as String?,
           workspacePath: targetWorkspace,
           scope: scope ?? 'self',
           sentinelId: sentinelId,
@@ -485,7 +486,7 @@ class ExperienceRecallTool extends Tool {
     final includeArchived = args['include_archived'] as bool? ?? false;
     final sourceExperienceId = args['source_experience_id'] as String?;
     final sentinelId = args['_sentinel_id'] as String? ?? 'default';
-    final workspace = args[toolExperienceWorkspaceKey] as String?;
+    final workspace = args[ToolArguments.toolExperienceWorkspaceKey] as String?;
 
     try {
       if (sourceExperienceId != null) {

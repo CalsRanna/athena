@@ -30,7 +30,7 @@ void main() {
     bool disableAnimations = false,
   }) => tester.pumpWidget(
     MaterialApp(
-      theme: buildAthenaThemeData(AthenaColorMode.light),
+      theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
       builder: (context, child) => AthenaTestScope(
         child: MediaQuery(
           data: MediaQuery.of(context)
@@ -115,7 +115,9 @@ void main() {
     Future<int> centerAlpha() async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light),
+          theme: AthenaMaterialTheme.buildAthenaThemeData(
+            AthenaColorMode.light,
+          ),
           builder: (context, child) => AthenaTestScope(
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(disableAnimations: true),

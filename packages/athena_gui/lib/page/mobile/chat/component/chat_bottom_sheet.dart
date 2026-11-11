@@ -137,7 +137,9 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
           leading: const Icon(LucideIcons.brainCircuit),
           onTap: openReasoningEffortDialog,
           title: 'Reasoning Effort',
-          trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
+          trailing: Text(
+            ReasoningEffort.reasoningEffortLabel(_reasoningEffort.value),
+          ),
         );
         final approvalModeSheetTile = AthenaBottomSheetTile(
           leading: const Icon(LucideIcons.shieldCheck),

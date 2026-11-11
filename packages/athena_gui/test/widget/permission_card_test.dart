@@ -17,8 +17,9 @@ void main() {
   for (final platform in [TargetPlatform.macOS, TargetPlatform.android]) {
     testWidgets('${platform.name} 审批卡共用工具图标且审批按钮可用', (tester) async {
       const toolName = 'experience_recall';
-      final theme = buildAthenaThemeData(AthenaColorMode.light)
-          .copyWith(platform: platform);
+      final theme = AthenaMaterialTheme.buildAthenaThemeData(
+        AthenaColorMode.light,
+      ).copyWith(platform: platform);
       bool? decision;
       await tester.pumpWidget(
         MaterialApp(
@@ -51,7 +52,10 @@ void main() {
       expect(iconFinder, findsOneWidget);
       final icon = tester.widget<Icon>(iconFinder);
       expect(icon.size, 16);
-      expect(icon.color, colorsOf(AthenaColorMode.light).textPrimary);
+      expect(
+        icon.color,
+        AthenaTheme.colorsOf(AthenaColorMode.light).textPrimary,
+      );
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);
       expect(find.textContaining('query: project rules'), findsOneWidget);
@@ -68,7 +72,7 @@ void main() {
   testWidgets('审批卡默认展开，点标题行收起为一行，再点恢复', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Center(
@@ -125,7 +129,7 @@ void main() {
   testWidgets('审批标题缺少描述时用审批占位，完整参数仍在详情中', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: PermissionApprovalCard(

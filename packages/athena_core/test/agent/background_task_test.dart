@@ -97,7 +97,7 @@ void main() {
       expect(task.exitCode, 0);
       await waitForTask(task, timeout: const Duration(seconds: 2));
       expect(task.output, contains('done'));
-      expect(shouldReportTaskCompletion(task), isTrue);
+      expect(task.shouldReportCompletion, isTrue);
     }, skip: isWindows);
 
     test('非零退出码记为 failed', () async {
@@ -108,7 +108,7 @@ void main() {
       expect(task.status, BackgroundTaskStatus.failed);
       expect(task.exitCode, 3);
       expect(task.output, contains('boom'));
-      expect(shouldReportTaskCompletion(task), isTrue);
+      expect(task.shouldReportCompletion, isTrue);
     }, skip: isWindows);
 
     test('停止任务：杀掉整棵进程树、保留已产生输出、状态为 cancelled', () async {
@@ -135,7 +135,7 @@ void main() {
       // 只杀 shell 会留下 sleep 孤儿，这里必须整棵树都停。
       expect(await isAlive(childPid), isFalse);
       // 用户按下的停止不该再触发一次自动汇报。
-      expect(shouldReportTaskCompletion(task), isFalse);
+      expect(task.shouldReportCompletion, isFalse);
     }, skip: isWindows);
 
     test('stopChatTasks 只影响本会话，其他会话的任务照常运行', () async {
@@ -204,20 +204,23 @@ void main() {
         command: 'echo hello; sleep 30',
       );
 
-      final list = await tool.execute({toolChatIdKey: '3', 'action': 'list'});
+      final list = await tool.execute({
+        ToolArguments.toolChatIdKey: '3',
+        'action': 'list',
+      });
       expect(list, contains(task.id));
       expect(list, contains('running'));
 
       await Future<void>.delayed(const Duration(milliseconds: 300));
       final read = await tool.execute({
-        toolChatIdKey: '3',
+        ToolArguments.toolChatIdKey: '3',
         'action': 'read',
         'task_id': task.id,
       });
       expect(read, contains('hello'));
 
       final stopped = await tool.execute({
-        toolChatIdKey: '3',
+        ToolArguments.toolChatIdKey: '3',
         'action': 'stop',
         'task_id': task.id,
       });
@@ -226,7 +229,7 @@ void main() {
 
       // 停止后输出仍可读，且状态不再显示 running。
       final after = await tool.execute({
-        toolChatIdKey: '3',
+        ToolArguments.toolChatIdKey: '3',
         'action': 'read',
         'task_id': task.id,
       });
@@ -243,26 +246,32 @@ void main() {
         contains('Error: background tasks require a session context'),
       );
       expect(
-        await tool.execute({toolChatIdKey: '1', 'action': 'read'}),
+        await tool.execute({
+          ToolArguments.toolChatIdKey: '1',
+          'action': 'read',
+        }),
         contains('requires task_id'),
       );
       expect(
         await tool.execute({
-          toolChatIdKey: '1',
+          ToolArguments.toolChatIdKey: '1',
           'action': 'read',
           'task_id': 'bg-404',
         }),
         contains('no background task'),
       );
       expect(
-        await tool.execute({toolChatIdKey: '1', 'action': 'explode'}),
+        await tool.execute({
+          ToolArguments.toolChatIdKey: '1',
+          'action': 'explode',
+        }),
         contains('unknown action'),
       );
       // 别的会话的任务查不到（会话隔离，不是全局任务表）。
       final other = await start(tasks, command: 'sleep 30', chatId: '99');
       expect(
         await tool.execute({
-          toolChatIdKey: '1',
+          ToolArguments.toolChatIdKey: '1',
           'action': 'read',
           'task_id': other.id,
         }),
@@ -278,7 +287,7 @@ void main() {
       final tool = BashShellTool(tasks: tasks);
 
       final result = await tool.execute({
-        toolChatIdKey: '5',
+        ToolArguments.toolChatIdKey: '5',
         'command': 'sleep 30',
         'background': true,
       });
@@ -295,8 +304,8 @@ void main() {
       final tool = BashShellTool(tasks: tasks);
 
       final result = await tool.execute({
-        toolChatIdKey: '5',
-        toolBackgroundDisabledKey: true,
+        ToolArguments.toolChatIdKey: '5',
+        ToolArguments.toolBackgroundDisabledKey: true,
         'command': 'sleep 30',
         'background': true,
       });

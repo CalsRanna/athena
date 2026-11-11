@@ -81,6 +81,12 @@ class DesktopContextMenu extends StatelessWidget {
       ),
     );
   }
+
+  /// [context] 对应控件的全局矩形，供弹出菜单锚定（模型名、Sentinel chip 等）。
+  static Rect contextMenuAnchorOf(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
 }
 
 /// 把菜单放到锚点处并收敛进窗口。
@@ -515,7 +521,7 @@ class DesktopContextMenuManager {
   /// 被下一个菜单顶掉——供触发它的控件复位"展开中"状态。
   ///
   /// 菜单一律插进**根 Overlay**：菜单的坐标是全局坐标（`globalPosition` /
-  /// [contextMenuAnchorOf]），而最近的 Overlay 可能属于嵌套 Navigator
+  /// [DesktopContextMenu.contextMenuAnchorOf]），而最近的 Overlay 可能属于嵌套 Navigator
   /// （设置面板的内容区就是一个），它的原点不在窗口左上角，插进去会整体偏移。
   void show(
     BuildContext context,
@@ -535,12 +541,6 @@ class DesktopContextMenuManager {
     _onDismissed = null;
     callback?.call();
   }
-}
-
-/// [context] 对应控件的全局矩形，供弹出菜单锚定（模型名、Sentinel chip 等）。
-Rect contextMenuAnchorOf(BuildContext context) {
-  final box = context.findRenderObject() as RenderBox;
-  return box.localToGlobal(Offset.zero) & box.size;
 }
 
 /// 菜单里可滚动的条目列表：超过 [maxHeight] 时在面板内滚，宽度取菜单配置。

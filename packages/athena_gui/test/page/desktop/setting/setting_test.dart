@@ -103,11 +103,11 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     // router 是全局单例：断言失败会跳过测试末尾的清理，把设置页漏给下一个测试。
-    addTearDown(() => router.maybePop());
+    addTearDown(() => AthenaRouter.router.maybePop());
     await tester.pumpWidget(const AthenaApp());
     await settle(tester);
     unawaited(
-      router.push(
+      AthenaRouter.router.push(
         const DesktopSettingRoute(children: [DesktopSettingAppearanceRoute()]),
       ),
     );
@@ -162,7 +162,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     }
-    await router.maybePop();
+    await AthenaRouter.router.maybePop();
     await settle(tester);
     await tester.pumpWidget(const SizedBox());
     await settle(tester);

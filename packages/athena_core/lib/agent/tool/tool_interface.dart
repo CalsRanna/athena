@@ -3,37 +3,6 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 export 'package:athena_core/agent/tool/tool_result.dart'
     show ToolExecutionResult;
 
-/// Reserved display metadata, removed before permission checks and execution.
-const toolCallDescriptionKey = 'call_description';
-
-/// 引擎注入的会话标识。后台任务按会话归属（不是按 run），因此工具必须
-/// 知道这次调用属于哪个会话。injection 发生在权限门之后，也不出现在
-/// 展示用的原始参数 JSON 里，模型既看不到也改不了。
-const toolChatIdKey = '_chat_id';
-
-/// 引擎注入：承载当前工具调用的持久化消息标识，用于关联经验来源。
-const toolMessageIdKey = '_message_id';
-
-/// 引擎注入：本轮 run 不允许启动后台任务。
-///
-/// 自动汇报回合用它守住边界——汇报回合由任务完成触发，用户并不在场，
-/// 让它再启动后台任务会形成「任务→汇报→任务」的无限链。
-const toolBackgroundDisabledKey = '_background_disabled';
-
-/// 引擎注入：这条经验是谁写进来的（`auto` / `reflection`）。
-///
-/// 来源是运行上下文而不是模型可填的字段：同一份 `experience_learn` 调用，
-/// 可能来自模型主动记录，也可能来自反思通道的程序化写入，只有引擎知道是
-/// 哪一种。与 [_sentinel_id] 同样在权限门之后注入，模型既看不到也改不了。
-const toolExperienceSourceKey = '_experience_source';
-
-/// 引擎注入的经验适用项目，来自会话选择的工作目录，模型不能改绑。
-const toolExperienceWorkspaceKey = '_experience_workspace';
-
-/// Remove model-authored metadata before rule matching or tool execution.
-Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
-    Map<String, dynamic>.of(args)..remove(toolCallDescriptionKey);
-
 /// 工具执行模式。
 enum ExecutionMode {
   /// 串行执行：每次只执行一个工具。
@@ -83,4 +52,40 @@ abstract interface class CancellableTool {
     void Function(String partialResult)? onUpdate,
     required Future<void> cancelSignal,
   });
+}
+
+abstract final class ToolArguments {
+  /// Reserved display metadata, removed before permission checks and execution.
+  static const toolCallDescriptionKey = 'call_description';
+
+  /// 引擎注入的会话标识。后台任务按会话归属（不是按 run），因此工具必须
+  /// 知道这次调用属于哪个会话。injection 发生在权限门之后，也不出现在
+  /// 展示用的原始参数 JSON 里，模型既看不到也改不了。
+  static const toolChatIdKey = '_chat_id';
+
+  /// 引擎注入：承载当前工具调用的持久化消息标识，用于关联经验来源。
+  static const toolMessageIdKey = '_message_id';
+
+  /// 引擎注入：本轮 run 不允许启动后台任务。
+  ///
+  /// 自动汇报回合用它守住边界——汇报回合由任务完成触发，用户并不在场，
+  /// 让它再启动后台任务会形成「任务→汇报→任务」的无限链。
+  static const toolBackgroundDisabledKey = '_background_disabled';
+
+  /// 引擎注入：这条经验是谁写进来的（`auto` / `reflection`）。
+  ///
+  /// 来源是运行上下文而不是模型可填的字段：同一份 `experience_learn` 调用，
+  /// 可能来自模型主动记录，也可能来自反思通道的程序化写入，只有引擎知道是
+  /// 哪一种。与 [_sentinel_id] 同样在权限门之后注入，模型既看不到也改不了。
+  static const toolExperienceSourceKey = '_experience_source';
+
+  /// 引擎注入的经验适用项目，来自会话选择的工作目录，模型不能改绑。
+  static const toolExperienceWorkspaceKey = '_experience_workspace';
+
+  /// Remove model-authored metadata before rule matching or tool execution.
+  static Map<String, dynamic> toolExecutionArguments(
+    Map<String, dynamic> args,
+  ) =>
+      Map<String, dynamic>.of(args)
+        ..remove(ToolArguments.toolCallDescriptionKey);
 }

@@ -45,21 +45,23 @@ class CacheUsage extends Usage {
   });
 }
 
-/// 适配器只能接受已映射的参数，新增 SDK 字段也不能静默丢弃。
-void checkRequestFields(
-  ChatCompletionCreateRequest request,
-  String protocol,
-  Set<String> supported,
-) {
-  final unsupported = request.toJson().keys.toSet().difference(supported);
-  if (unsupported.isNotEmpty) {
-    throw UnsupportedError(
-      '$protocol does not support: ${unsupported.join(', ')}',
-    );
-  }
-  if (request.maxTokens != null &&
-      request.maxCompletionTokens != null &&
-      request.maxTokens != request.maxCompletionTokens) {
-    throw ArgumentError('max_tokens and max_completion_tokens conflict');
+abstract final class CompletionDetails {
+  /// 适配器只能接受已映射的参数，新增 SDK 字段也不能静默丢弃。
+  static void checkRequestFields(
+    ChatCompletionCreateRequest request,
+    String protocol,
+    Set<String> supported,
+  ) {
+    final unsupported = request.toJson().keys.toSet().difference(supported);
+    if (unsupported.isNotEmpty) {
+      throw UnsupportedError(
+        '$protocol does not support: ${unsupported.join(', ')}',
+      );
+    }
+    if (request.maxTokens != null &&
+        request.maxCompletionTokens != null &&
+        request.maxTokens != request.maxCompletionTokens) {
+      throw ArgumentError('max_tokens and max_completion_tokens conflict');
+    }
   }
 }

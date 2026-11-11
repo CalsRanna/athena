@@ -21,7 +21,7 @@ void main() {
     addTearDown(retention.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(colorMode),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(colorMode),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: Scaffold(
           body: Align(

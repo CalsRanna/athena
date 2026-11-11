@@ -13,7 +13,7 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 /// 手搓版没有 hover 反馈，也不跟随全站按钮的尺度。
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light),
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );

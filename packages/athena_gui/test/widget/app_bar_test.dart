@@ -20,7 +20,8 @@ void main() {
         var added = 0;
         await tester.pumpWidget(
           MaterialApp(
-            theme: buildAthenaThemeData(mode).copyWith(platform: platform),
+            theme: AthenaMaterialTheme.buildAthenaThemeData(mode)
+                .copyWith(platform: platform),
             builder: (context, child) => AthenaTestScope(child: child!),
             home: Builder(
               builder: (context) => Scaffold(

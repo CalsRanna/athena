@@ -12,7 +12,7 @@ import 'package:athena_gui/theme/athena_material_theme.dart';
 /// 没传 `obscureText`，密钥明文显示在页面上（桌面端同一字段是遮住的）。
 void main() {
   Widget host(Widget child) => MaterialApp(
-    theme: buildAthenaThemeData(AthenaColorMode.light),
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
     builder: (context, child) => AthenaTestScope(child: child!),
     home: Scaffold(body: Center(child: child)),
   );

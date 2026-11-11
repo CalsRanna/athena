@@ -7,7 +7,7 @@ import 'package:athena_gui/component/run_statistics_label.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/hover.dart';
@@ -90,7 +90,7 @@ class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
 
   @override
   Widget build(BuildContext context) {
-    final layouts = buildAssistantMessageLayouts([
+    final layouts = MessageDisplay.buildAssistantMessageLayouts([
       widget.message,
     ], loading: widget.loading);
     if (layouts.isEmpty) return const SizedBox.shrink();
@@ -230,7 +230,9 @@ class _AssistantMessageSegment extends StatelessWidget {
                 leading: streaming ? const StreamingIndicator() : null,
                 onCopy: streaming
                     ? null
-                    : () => _copyAssistantMessages(cardMessages),
+                    : () => _MessageTileHelpers._copyAssistantMessages(
+                        cardMessages,
+                      ),
                 trailing: RunStatisticsLabel(
                   key: statisticsKey,
                   statistics: cardMessages.last.runStatistics,
@@ -285,26 +287,6 @@ class _AssistantMessageContent extends StatelessWidget {
       children: children,
     );
   }
-}
-
-/// 用户消息的发送时刻，24 小时制 `HH:mm`。
-String _formatSentTime(DateTime sentAt) {
-  final local = sentAt.toLocal();
-  String pad(int value) => value.toString().padLeft(2, '0');
-  return '${pad(local.hour)}:${pad(local.minute)}';
-}
-
-/// 写系统剪贴板。用户消息与助手消息共用这一个出口。
-void _copyMessageContent(String content) {
-  Clipboard.setData(ClipboardData(text: content));
-}
-
-void _copyAssistantMessages(List<MessageEntity> messages) {
-  final content = messages
-      .map((message) => message.content)
-      .where((content) => content.isNotEmpty)
-      .join('\n\n');
-  _copyMessageContent(content);
 }
 
 class StreamingIndicator extends StatelessWidget {
@@ -472,7 +454,9 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
               leading: Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Text(
-                  _formatSentTime(widget.message.reasoningStartedAt),
+                  _MessageTileHelpers._formatSentTime(
+                    widget.message.reasoningStartedAt,
+                  ),
                   // 与助手消息工具条上的 tokens 数值同一套等宽样式。
                   style: AthenaTextStyle.captionCode.copyWith(
                     color: colors.textSecondary,
@@ -480,7 +464,9 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
                 ),
               ),
               // Copy 始终可用；Rewind 只有调用方给了回调才出现。
-              onCopy: () => _copyMessageContent(widget.message.content),
+              onCopy: () => _MessageTileHelpers._copyMessageContent(
+                widget.message.content,
+              ),
               onRewind: widget.onRewind,
             ),
           ],
@@ -628,7 +614,10 @@ class MessageActionBar extends StatelessWidget {
                 _MessageActionButton(
                   tooltip: 'Rewind',
                   onTap: onRewind,
-                  child: _actionBarIcon(LucideIcons.history, colors),
+                  child: _MessageTileHelpers._actionBarIcon(
+                    LucideIcons.history,
+                    colors,
+                  ),
                 ),
               if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],
@@ -638,10 +627,6 @@ class MessageActionBar extends StatelessWidget {
     );
   }
 }
-
-/// 操作条上按钮的图标：整条工具条共用一档尺寸与配色。
-Widget _actionBarIcon(IconData icon, AthenaColors colors) =>
-    Icon(icon, size: AthenaIcon.regularSize, color: colors.iconSecondary);
 
 /// 操作条上的复制键。
 ///
@@ -673,7 +658,7 @@ class _CopyActionButton extends StatelessWidget {
                     textStyle: AthenaTextStyle.caption,
                   ),
                 )
-              : _actionBarIcon(LucideIcons.copy, colors),
+              : _MessageTileHelpers._actionBarIcon(LucideIcons.copy, colors),
         ),
       ),
     );
@@ -685,7 +670,7 @@ class _CopyActionButton extends StatelessWidget {
 /// 尺寸：控件用紧凑档（静止态是 [AthenaIconButtonSize.compact] 见方），圆角
 /// [AthenaRadius.row]，hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）；
 /// 图标由 [child] 按 [AthenaIcon.regularSize] 与 `iconSecondary` 自己建
-/// （见 [_actionBarIcon]），保证整条工具条同档。
+/// （见 [_MessageTileHelpers._actionBarIcon]），保证整条工具条同档。
 ///
 /// 内容由 [child] 决定（图标，或复制键的「已复制」反馈）。可点性也是：
 /// [onTap] 为空时这里只负责 hover 与指针形状，点击由外层收（复制键的
@@ -728,4 +713,30 @@ class _MessageActionButton extends StatelessWidget {
       ),
     );
   }
+}
+
+abstract final class _MessageTileHelpers {
+  /// 用户消息的发送时刻，24 小时制 `HH:mm`。
+  static String _formatSentTime(DateTime sentAt) {
+    final local = sentAt.toLocal();
+    String pad(int value) => value.toString().padLeft(2, '0');
+    return '${pad(local.hour)}:${pad(local.minute)}';
+  }
+
+  /// 写系统剪贴板。用户消息与助手消息共用这一个出口。
+  static void _copyMessageContent(String content) {
+    Clipboard.setData(ClipboardData(text: content));
+  }
+
+  static void _copyAssistantMessages(List<MessageEntity> messages) {
+    final content = messages
+        .map((message) => message.content)
+        .where((content) => content.isNotEmpty)
+        .join('\n\n');
+    _MessageTileHelpers._copyMessageContent(content);
+  }
+
+  /// 操作条上按钮的图标：整条工具条共用一档尺寸与配色。
+  static Widget _actionBarIcon(IconData icon, AthenaColors colors) =>
+      Icon(icon, size: AthenaIcon.regularSize, color: colors.iconSecondary);
 }

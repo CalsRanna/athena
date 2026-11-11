@@ -27,16 +27,6 @@ enum BackgroundTaskStatus {
   launchFailed,
 }
 
-/// 任务结束是否应当触发一次自动汇报。
-///
-/// 只汇报真正跑完的任务：[BackgroundTaskStatus.cancelled] 是用户刚按下的
-/// 停止（或被删除会话连带停止），再起一个回合只会让用户在按下停止后收到
-/// 「任务已取消」的报告；[BackgroundTaskStatus.launchFailed] 在工具调用
-/// 当场就已经回给模型了。
-bool shouldReportTaskCompletion(BackgroundTask task) =>
-    task.status == BackgroundTaskStatus.completed ||
-    task.status == BackgroundTaskStatus.failed;
-
 /// 一个后台任务：命令、进程、持续累积的输出与终态。
 ///
 /// 输出有界保留头尾、超额时显式标记丢弃；**停止任务不丢保留的输出**——
@@ -70,6 +60,16 @@ class BackgroundTask {
   final CappedTextBuffer _stderr = CappedTextBuffer();
 
   bool get isRunning => status == BackgroundTaskStatus.running;
+
+  /// 任务结束是否应当触发一次自动汇报。
+  ///
+  /// 只汇报真正跑完的任务：[BackgroundTaskStatus.cancelled] 是用户刚按下的
+  /// 停止（或被删除会话连带停止），再起一个回合只会让用户在按下停止后收到
+  /// 「任务已取消」的报告；[BackgroundTaskStatus.launchFailed] 在工具调用
+  /// 当场就已经回给模型了。
+  bool get shouldReportCompletion =>
+      status == BackgroundTaskStatus.completed ||
+      status == BackgroundTaskStatus.failed;
 
   int get outputLength =>
       _outputChunks.fold(0, (sum, chunk) => sum + chunk.characters);
@@ -208,7 +208,7 @@ class BackgroundTaskService {
 
     Process process;
     try {
-      process = await shell.startShellProcess(
+      process = await shell.ShellRunner.startShellProcess(
         executable: executable,
         arguments: arguments,
         workdir: workdir,
@@ -306,7 +306,7 @@ class BackgroundTaskService {
           LoggerUtil.w(
             'Killing orphaned background task process $pidValue ($command)',
           );
-          await shell.terminateShellProcessTreeByPid(pidValue);
+          await shell.ShellRunner.terminateShellProcessTreeByPid(pidValue);
           killed++;
         }
         return keep;
@@ -327,7 +327,9 @@ class BackgroundTaskService {
     final process = task._process;
     if (process != null) {
       try {
-        task.exitCode = await shell.terminateShellProcessTree(process);
+        task.exitCode = await shell.ShellRunner.terminateShellProcessTree(
+          process,
+        );
       } catch (e) {
         LoggerUtil.w('Failed to stop background task ${task.id}: $e');
       }
@@ -406,7 +408,7 @@ class BackgroundTaskService {
     if (dir == null || locks == null) return;
     final file = File(p.join(dir.path, _orphanFileName));
     try {
-      await withFileLock(locks.forTarget(file), () async {
+      await FileLocking.withFileLock(locks.forTarget(file), () async {
         final mine = <Map<String, Object?>>[];
         for (final task in runningTasks) {
           final taskPid = task._process?.pid;
@@ -439,7 +441,10 @@ class BackgroundTaskService {
                 entry,
           ]);
         }
-        await atomicWriteString(file, jsonEncode([...others, ...mine]));
+        await FileLocking.atomicWriteString(
+          file,
+          jsonEncode([...others, ...mine]),
+        );
       });
     } catch (e) {
       // 孤儿记录是尽力而为：写不进去不该影响任务的启动与停止。

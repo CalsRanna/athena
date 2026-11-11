@@ -19,7 +19,7 @@ void main() {
   const model = 'test-reasoner';
 
   ResponsesAssistantMessage assistant() =>
-      responseToChatCompletion(
+      ResponsesAdapter.responseToChatCompletion(
             Response.fromJson(reasoningResponse()),
             provider: provider,
             model: model,
@@ -36,12 +36,14 @@ void main() {
   );
 
   test('请求开启摘要与无状态推理密文；none/非推理请求不强行启用摘要', () {
-    final body = toResponseRequest(request([ChatMessage.user('hi')])).toJson();
+    final body = ResponsesAdapter.toResponseRequest(
+      request([ChatMessage.user('hi')]),
+    ).toJson();
     expect(body['reasoning'], {'effort': 'high', 'summary': 'auto'});
     expect(body['store'], isFalse);
     expect(body['include'], contains('reasoning.encrypted_content'));
     for (final effort in [null, ReasoningEffort.none]) {
-      final converted = toResponseRequest(
+      final converted = ResponsesAdapter.toResponseRequest(
         ChatCompletionCreateRequest(
           model: model,
           messages: [ChatMessage.user('hi')],
@@ -53,7 +55,7 @@ void main() {
   });
 
   test('摘要增量无需等待 done 或响应结束即可显示', () async {
-    final chunk = await normalizeResponsesStream(
+    final chunk = await ResponsesAdapter.normalizeResponsesStream(
       Stream.value(
         const ReasoningSummaryTextDeltaEvent(
           outputIndex: 0,
@@ -66,7 +68,7 @@ void main() {
   });
 
   test('摘要 delta/done/完整 item/终态只显示一次，统一累积到 reasoningContent', () async {
-    final chunks = await normalizeResponsesStream(
+    final chunks = await ResponsesAdapter.normalizeResponsesStream(
       Stream.fromIterable(
         reasoningEvents(reasoningResponse()).map(ResponseStreamEvent.fromJson),
       ),
@@ -93,7 +95,7 @@ void main() {
   test('只在终态返回摘要时仍显示；非流式也保留摘要、工具与原生输出', () async {
     final response = Response.fromJson(reasoningResponse());
     final accumulator = ChatStreamAccumulator();
-    await for (final chunk in normalizeResponsesStream(
+    await for (final chunk in ResponsesAdapter.normalizeResponsesStream(
       Stream.value(
         ResponseStreamEvent.fromJson({
           'type': 'response.completed',
@@ -116,7 +118,7 @@ void main() {
   test('同端点同模型原样回传完整 output，保留 id、密文、phase 和工具顺序', () {
     final message = assistant();
     final input =
-        toResponseRequest(
+        ResponsesAdapter.toResponseRequest(
               request([
                 ChatMessage.user('hi'),
                 message,
@@ -142,7 +144,7 @@ void main() {
       provider.copyWith(apiFormat: ApiFormat.chatCompletions),
     ]) {
       expect(state.matches(other, model, message), isFalse);
-      final body = toResponseRequest(
+      final body = ResponsesAdapter.toResponseRequest(
         request([message]),
         provider: other,
       ).toJson();
@@ -168,7 +170,7 @@ void main() {
         responsesState: state,
       ),
     ]) {
-      final input = toResponseRequest(
+      final input = ResponsesAdapter.toResponseRequest(
         request([changed]),
         provider: provider,
       ).input.toJson();
@@ -176,7 +178,7 @@ void main() {
     }
     expect(
       jsonEncode(
-        toResponseRequest(
+        ResponsesAdapter.toResponseRequest(
           request([message], modelId: 'other'),
           provider: provider,
         ).toJson(),
@@ -191,7 +193,7 @@ void main() {
   });
 
   test('截断、流提前结束与取消异常都不发布可复用状态', () async {
-    final incomplete = await normalizeResponsesStream(
+    final incomplete = await ResponsesAdapter.normalizeResponsesStream(
       Stream.fromIterable(
         reasoningEvents(
           reasoningResponse(status: 'incomplete'),
@@ -205,7 +207,7 @@ void main() {
     final events = reasoningEvents(reasoningResponse())..removeLast();
     final partial = <ChatStreamEvent>[];
     await expectLater(
-      normalizeResponsesStream(
+      ResponsesAdapter.normalizeResponsesStream(
         Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
         provider: provider,
         model: model,
@@ -220,7 +222,7 @@ void main() {
     }
 
     await expectLater(
-      normalizeResponsesStream(
+      ResponsesAdapter.normalizeResponsesStream(
         aborted(),
         provider: provider,
         model: model,
@@ -296,7 +298,10 @@ void main() {
       includeReasoning: false,
     );
     final input =
-        toResponseRequest(request(messages), provider: provider).input.toJson()
+        ResponsesAdapter.toResponseRequest(
+              request(messages),
+              provider: provider,
+            ).input.toJson()
             as List;
     expect(
       input.take(4).toList(),
@@ -312,7 +317,10 @@ void main() {
     );
     expect(
       jsonEncode(
-        toResponseRequest(request(filtered), provider: provider).input.toJson(),
+        ResponsesAdapter.toResponseRequest(
+          request(filtered),
+          provider: provider,
+        ).input.toJson(),
       ),
       isNot(contains('opaque-cipher')),
     );

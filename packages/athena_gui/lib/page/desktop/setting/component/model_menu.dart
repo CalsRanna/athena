@@ -70,7 +70,7 @@ class _DesktopSettingModelMenu extends StatelessWidget {
           DesktopContextMenuTile(
             text: model.name,
             // 能力图标排在名字后、勾选前，属标题行的一部分。
-            badge: _capabilityIcons(context, model),
+            badge: _ModelMenuHelpers._capabilityIcons(context, model),
             selected: model.id == selectedId,
             onTap: () => onSelected?.call(model),
           ),
@@ -89,29 +89,6 @@ class _DesktopSettingModelMenu extends StatelessWidget {
       ],
     );
   }
-}
-
-/// 模型能力小标：推理 / 视觉各一枚，都没有时返回 null（不占位）。
-Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
-  final icons = [
-    if (model.reasoning) LucideIcons.brainCircuit,
-    if (model.vision) LucideIcons.eye,
-  ];
-  if (icons.isEmpty) return null;
-  final colors = context.athenaColors;
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (var i = 0; i < icons.length; i++) ...[
-        if (i > 0) const SizedBox(width: 6),
-        Icon(
-          icons[i],
-          size: AthenaIcon.inlineSize,
-          color: colors.iconSecondary,
-        ),
-      ],
-    ],
-  );
 }
 
 /// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [_DesktopSettingModelMenu]。
@@ -157,5 +134,30 @@ class DesktopSettingModelSelector extends StatelessWidget {
     final model = all.where((m) => m.id == modelId).firstOrNull;
     if (model == null) return null;
     return '${model.name} · disabled provider';
+  }
+}
+
+abstract final class _ModelMenuHelpers {
+  /// 模型能力小标：推理 / 视觉各一枚，都没有时返回 null（不占位）。
+  static Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
+    final icons = [
+      if (model.reasoning) LucideIcons.brainCircuit,
+      if (model.vision) LucideIcons.eye,
+    ];
+    if (icons.isEmpty) return null;
+    final colors = context.athenaColors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < icons.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Icon(
+            icons[i],
+            size: AthenaIcon.inlineSize,
+            color: colors.iconSecondary,
+          ),
+        ],
+      ],
+    );
   }
 }

@@ -1,10 +1,10 @@
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/util/compaction_step_formatter.dart';
-import 'package:athena_core/util/tool_args_formatter.dart';
+import 'package:athena_core/entity/compaction_step_formatter.dart';
+import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_gui/component/step_primitives.dart';
-import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -52,7 +52,8 @@ class StepCard extends StatefulWidget {
   /// 工具」（file_read / file_write / file_update），而图标上 `tool_output_read`
   /// 也归文件一档——两个分组依据不同，硬套会漏掉它。
   static IconData toolIcon(String toolName) {
-    if (kShellToolNames.contains(toolName)) return LucideIcons.terminal;
+    if (PermissionRule.kShellToolNames.contains(toolName))
+      return LucideIcons.terminal;
     return switch (toolName) {
       'background_task' => LucideIcons.listTodo,
       'ask_user_question' => LucideIcons.messageCircleQuestion,
@@ -84,12 +85,12 @@ class StepCard extends StatefulWidget {
   /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则按
   /// [running] 选择运行中或完成态占位。
   static String toolLabel(String arguments, {required bool running}) =>
-      toolCallDescription(arguments) ??
+      ToolArgsFormatter.toolCallDescription(arguments) ??
       (running ? runningToolLabel : completedToolLabel);
 
   /// 审批卡标题：工具尚未执行，缺少描述时用审批占位。
   static String approvalLabel(String arguments) =>
-      toolCallDescription(arguments) ?? approvalFallbackLabel;
+      ToolArgsFormatter.toolCallDescription(arguments) ?? approvalFallbackLabel;
 
   /// 推理结束态标题：`Thought 2.0 seconds`。
   static String thoughtLabel(MessageEntity message) {
@@ -103,7 +104,7 @@ class StepCard extends StatefulWidget {
 
   /// 压缩头部文案：进行中 / 已中断 / 终态。
   static String compactionLabel(ContextCompactionStep step) =>
-      compactionStatus(step.step, isLive: step.isLive);
+      CompactionStepFormatter.compactionStatus(step.step, isLive: step.isLive);
 
   /// 组结束态折叠头文案：工具数、思考总耗时、压缩次数，按存在的部分拼接。
   static String summaryLabel(List<AssistantStep> steps) {
@@ -250,7 +251,7 @@ class _StepCardState extends State<StepCard> {
 
   /// 压缩详情：失败时以 `Error:` 前缀标红。
   static String _compactionDetails(ContextCompactionStep compaction) {
-    final details = compactionDetails(compaction.step);
+    final details = CompactionStepFormatter.compactionDetails(compaction.step);
     return compaction.step.phase == CompactionPhase.failed
         ? 'Error: $details'
         : details;

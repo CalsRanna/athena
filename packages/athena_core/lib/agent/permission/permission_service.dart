@@ -45,8 +45,10 @@ class PermissionService {
 
   Future<void> load() => _store.load();
 
-  String _sessionKey(String toolName, Map<String, dynamic> args) =>
-      jsonEncode([toolName, _sortedJson(toolExecutionArguments(args))]);
+  String _sessionKey(String toolName, Map<String, dynamic> args) => jsonEncode([
+    toolName,
+    _sortedJson(ToolArguments.toolExecutionArguments(args)),
+  ]);
 
   Object? _sortedJson(Object? value) {
     if (value is Map<String, dynamic>) {
@@ -60,8 +62,10 @@ class PermissionService {
   }
 
   String? _primaryArg(String toolName, Map<String, dynamic> args) {
-    if (kFileToolNames.contains(toolName)) return args['path'] as String?;
-    if (kShellToolNames.contains(toolName)) return args['command'] as String?;
+    if (PermissionRule.kFileToolNames.contains(toolName))
+      return args['path'] as String?;
+    if (PermissionRule.kShellToolNames.contains(toolName))
+      return args['command'] as String?;
     if (toolName != 'web_fetch') return null;
     final url = args['url'] as String?;
     final uri = url == null ? null : Uri.tryParse(url);

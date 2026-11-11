@@ -14,8 +14,8 @@ import 'package:athena_gui/theme/athena_theme.dart';
 void main() {
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode 文字按钮前景和底色在 150ms 内渐变，移开还原', (tester) async {
-      final theme = buildAthenaThemeData(mode);
-      final colors = colorsOf(mode);
+      final theme = AthenaMaterialTheme.buildAthenaThemeData(mode);
+      final colors = AthenaTheme.colorsOf(mode);
       await tester.pumpWidget(
         MaterialApp(
           theme: theme,
@@ -75,8 +75,8 @@ void main() {
   }
   for (final mode in AthenaColorMode.values) {
     testWidgets('$mode ghost 按钮 hover 填充前景色 5%，移开还原', (tester) async {
-      final theme = buildAthenaThemeData(mode);
-      final colors = colorsOf(mode);
+      final theme = AthenaMaterialTheme.buildAthenaThemeData(mode);
+      final colors = AthenaTheme.colorsOf(mode);
       var taps = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -136,7 +136,7 @@ void main() {
   testWidgets('不可点的 ghost 按钮不给 hover 填充与手型光标', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
+        theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light),
         builder: (context, child) => AthenaTestScope(child: child!),
         home: const Scaffold(
           body: Center(child: AthenaGhostButton(child: Text('Disabled'))),
@@ -172,7 +172,7 @@ void main() {
       var ghostTaps = 0;
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAthenaThemeData(AthenaColorMode.light)
+          theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
               .copyWith(platform: platform),
           builder: (context, child) => AthenaTestScope(child: child!),
           home: Scaffold(
