@@ -725,8 +725,9 @@ abstract final class ResponsesAdapter {
   static FinishReason _responseFinishReason(Response response) {
     switch (response.status) {
       case ResponseStatus.completed:
-        if (ResponsesAdapter._responseRefusal(response) != null)
+        if (ResponsesAdapter._responseRefusal(response) != null) {
           return FinishReason.contentFilter;
+        }
         return response.functionCalls.isEmpty
             ? FinishReason.stop
             : FinishReason.toolCalls;

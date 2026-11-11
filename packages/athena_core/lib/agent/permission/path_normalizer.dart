@@ -178,8 +178,9 @@ abstract final class PathNormalizer {
     for (var i = 0; i < segments.length; i++) {
       final lower = segments[i].toLowerCase();
       if (lower == '.ssh' || lower == '.aws') return true;
-      if (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i))
+      if (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) {
         return true;
+      }
     }
     return false;
   }

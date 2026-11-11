@@ -52,8 +52,9 @@ class StepCard extends StatefulWidget {
   /// 工具」（file_read / file_write / file_update），而图标上 `tool_output_read`
   /// 也归文件一档——两个分组依据不同，硬套会漏掉它。
   static IconData toolIcon(String toolName) {
-    if (PermissionRule.kShellToolNames.contains(toolName))
+    if (PermissionRule.kShellToolNames.contains(toolName)) {
       return LucideIcons.terminal;
+    }
     return switch (toolName) {
       'background_task' => LucideIcons.listTodo,
       'ask_user_question' => LucideIcons.messageCircleQuestion,

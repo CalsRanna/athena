@@ -211,5 +211,5 @@ lesson 不超过 ${ExperienceEntity.maxLessonLength} 个字符，支持性细节
   };
 
   static String _truncate(String value, int max) =>
-      value.length <= max ? value : '${value.substring(0, max)}';
+      value.length <= max ? value : value.substring(0, max);
 }

@@ -431,8 +431,9 @@ abstract final class ShellRunner {
     for (final target in targets) {
       ShellRunner._killPid(target.pid, ProcessSignal.sigterm);
     }
-    if (!before.containsKey(rootPid))
+    if (!before.containsKey(rootPid)) {
       ShellRunner._killPid(rootPid, ProcessSignal.sigterm);
+    }
     // 根 shell 先退出会让后代被收养，第二次沿根查树就找不到它们。保留首次
     // 快照，并在强杀前核对启动时间，既清理顽固后代也避免 PID 复用误杀。
     await Future<void>.delayed(const Duration(seconds: 1));

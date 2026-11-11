@@ -780,7 +780,7 @@ class ChatController {
   /// 出口统一清洗 ANSI(与消息内容渲染一致)。
   static String _titleFromText(String text) {
     final clean = TextUtil.sanitizeAnsi(text).trim();
-    return clean.length > 30 ? '${clean.substring(0, 30)}' : clean;
+    return clean.length > 30 ? clean.substring(0, 30) : clean;
   }
 
   /// 测试入口:暴露 [_titleFromText] 的纯函数语义。

@@ -32,8 +32,9 @@ class ChatTurn {
       final id = windowTurns[position].user.id;
       if (id == null) continue;
       final absolute = allTurnIds.indexOf(id);
-      if (absolute >= 0)
+      if (absolute >= 0) {
         return absolute - position < 0 ? 0 : absolute - position;
+      }
     }
     return 0;
   }

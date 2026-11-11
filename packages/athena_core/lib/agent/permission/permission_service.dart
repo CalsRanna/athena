@@ -62,10 +62,12 @@ class PermissionService {
   }
 
   String? _primaryArg(String toolName, Map<String, dynamic> args) {
-    if (PermissionRule.kFileToolNames.contains(toolName))
+    if (PermissionRule.kFileToolNames.contains(toolName)) {
       return args['path'] as String?;
-    if (PermissionRule.kShellToolNames.contains(toolName))
+    }
+    if (PermissionRule.kShellToolNames.contains(toolName)) {
       return args['command'] as String?;
+    }
     if (toolName != 'web_fetch') return null;
     final url = args['url'] as String?;
     final uri = url == null ? null : Uri.tryParse(url);

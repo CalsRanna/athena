@@ -32,8 +32,9 @@ abstract final class ToolArgsFormatter {
       _ => null,
     };
     final value = args[keyField];
-    if (value is String && value.trim().isNotEmpty)
+    if (value is String && value.trim().isNotEmpty) {
       return ToolArgsFormatter._preview(value);
+    }
     args.remove(ToolArguments.toolCallDescriptionKey);
     return ToolArgsFormatter._preview(jsonEncode(args));
   }
@@ -78,6 +79,6 @@ abstract final class ToolArgsFormatter {
     final text = value.replaceAll(RegExp(r'\s+'), ' ').trim();
     final characters = text.runes;
     if (characters.length <= 200) return text;
-    return '${String.fromCharCodes(characters.take(200))}';
+    return String.fromCharCodes(characters.take(200));
   }
 }
