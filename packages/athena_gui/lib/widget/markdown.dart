@@ -41,7 +41,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
         borderRadius: BorderRadius.circular(AthenaRadius.inline),
         color: colors.codeBackground,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
         element.textContent,
         style: AthenaWorkspaceTextSize.of(context).code
