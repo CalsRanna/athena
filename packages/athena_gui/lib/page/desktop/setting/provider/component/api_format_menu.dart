@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/component/api_format_label.dart';
@@ -67,16 +69,19 @@ class _DesktopSettingApiFormatMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 面板自带 4 内边距，条目宽 = 控件宽 − 8 才能让面板外沿与控件同宽
-    final width = anchor.width - 8;
+    // 触发控件按当前值收紧，菜单沿用统一的选择菜单宽度；触控件更宽时与它同宽。
+    final width = math.max(anchor.width - 8, AthenaSettingsSelect.menuWidth);
     final screenHeight = MediaQuery.sizeOf(context).height;
     final below = screenHeight - anchor.bottom - 16;
     final upward = below < 200 && anchor.top > below;
     final maxHeight = (upward ? anchor.top - 16 : below).clamp(120.0, 300.0);
+    // 菜单右边与触发控件右边对齐（同 AthenaSettingsMenuButton 的惯例）；
+    // 面板自带 4 内边距，条目宽 + 8 才是面板外宽。
+    final left = anchor.right - width - 8;
     return DesktopContextMenu(
       offset: upward
-          ? Offset(anchor.left, anchor.top - 4)
-          : Offset(anchor.left, anchor.bottom + 4),
+          ? Offset(left, anchor.top - 4)
+          : Offset(left, anchor.bottom + 4),
       upward: upward,
       width: width,
       children: [

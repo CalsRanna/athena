@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/skill/skill_page.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -67,6 +68,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Instructions 标题右侧的视图下拉：展开后从菜单里选 Preview / Code。
+  Future<void> chooseInstructionView(WidgetTester tester, String label) async {
+    await tester.tap(find.byType(AthenaSettingsSelect));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(DesktopContextMenu),
+        matching: find.text(label),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('search, source and sort use the visible skill groups', (
     tester,
   ) async {
@@ -99,8 +113,7 @@ void main() {
       tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
       '# Recall',
     );
-    await tester.tap(find.text('Code'));
-    await tester.pumpAndSettle();
+    await chooseInstructionView(tester, 'Code');
     expect(find.byType(TextField), findsNothing);
     await tester.tap(find.text('Skills'));
     await tester.pumpAndSettle();
@@ -166,8 +179,7 @@ void main() {
             .hasFocus,
         isTrue,
       );
-      await tester.tap(find.text('Preview'));
-      await tester.pumpAndSettle();
+      await chooseInstructionView(tester, 'Preview');
       expect(
         tester.widget<AthenaMarkdown>(find.byType(AthenaMarkdown)).content,
         '# Revised',
@@ -180,8 +192,7 @@ void main() {
         '# Steps',
       );
 
-      await tester.tap(find.text('Code'));
-      await tester.pumpAndSettle();
+      await chooseInstructionView(tester, 'Code');
       await tester.enterText(find.byType(TextField).last, '# Saved');
       await tester.pump();
       await tester.tap(find.text('Save'));

@@ -452,13 +452,10 @@ class _DesktopSettingProviderPageState
             AthenaSettingsRow(
               label: 'API format',
               description: _apiFormatDescription(provider),
-              control: SizedBox(
-                width: AthenaSettingsControlWidth.wide,
-                child: DesktopSettingApiFormatSelector(
-                  provider: provider,
-                  onSelected: ({required bool auto, ApiFormat? format}) =>
-                      _commitApiFormat(provider, auto: auto, format: format),
-                ),
+              control: DesktopSettingApiFormatSelector(
+                provider: provider,
+                onSelected: ({required bool auto, ApiFormat? format}) =>
+                    _commitApiFormat(provider, auto: auto, format: format),
               ),
             ),
           ],

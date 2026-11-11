@@ -20,6 +20,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
@@ -236,7 +237,15 @@ void main() {
         find.text('Conversation text size'),
       ).size;
       for (final size in AthenaTextSize.values) {
-        await tester.tap(find.text(size.label));
+        // 下拉：点开字号控件（主题下拉在前），再从菜单里选档位。
+        await tester.tap(find.byType(AthenaSettingsSelect).last);
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find.byType(DesktopContextMenu),
+            matching: find.text(size.label),
+          ),
+        );
         await settle(tester);
         expectTextScale(tester, find.byType(SentinelPlaceholder), 1.2);
         expectInputScale(tester, DesktopMessageInput, 1.2);

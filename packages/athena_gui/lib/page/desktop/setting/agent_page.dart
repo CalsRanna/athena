@@ -12,7 +12,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Agent 设置：请求设置与工具。
 ///
-/// 每一行**改了即存**，没有页面级 Save：分段控件点选即生效；
+/// 每一行**改了即存**，没有页面级 Save：下拉点选即生效；
 /// 数字与密钥输入在失焦或回车时提交，非法值就地报错并回退。
 ///
 /// 这里没有默认模型：新会话用上次在 composer 里选的模型，Sentinel 元数据
@@ -95,13 +95,16 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
                   'change it in the composer.',
               control: SignalBuilder(
                 builder: (context) {
-                  return AthenaSettingsSegmented<String>(
+                  return AthenaSettingsDropdown<String>(
                     selected: viewModel.defaultReasoningEffort.value,
                     onChanged: viewModel.updateDefaultReasoningEffort,
                     options: [
                       for (final option
                           in ReasoningEffort.reasoningEffortOptions)
-                        AthenaSegmentOption(value: option.$1, label: option.$2),
+                        AthenaSettingsDropdownOption(
+                          value: option.$1,
+                          label: option.$2,
+                        ),
                     ],
                   );
                 },

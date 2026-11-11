@@ -1,4 +1,4 @@
-/// 设置面板里的行内控件：分段控件、下拉、密集输入框、多行输入、徽标、
+/// 设置面板里的行内控件：下拉、密集输入框、多行输入、徽标、
 /// 行尾的 `⋯` 菜单键。
 ///
 /// 关闭 / 新增用的 ghost 图标按钮是全站通用的 `AthenaGhostIconButton`
@@ -6,6 +6,8 @@
 ///
 /// 外壳与分区见 `panel.dart`，行类组件见 `row.dart`。
 library;
+
+import 'dart:math' as math;
 
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
@@ -25,89 +27,18 @@ abstract final class AthenaSettingsControlWidth {
   static const wide = AthenaSettings.controlWideWidth;
 }
 
-/// 分段控件。
-///
-/// 轨道 neutralRule 无描边、高 36、圆角 8；选中块使用 neutralControlFill +
-/// 1px neutralBorder 并铺满轨道高；文字统一为 14 / 22，以字重区分选中状态。
-class AthenaSettingsSegmented<T> extends StatelessWidget {
-  final List<AthenaSegmentOption<T>> options;
-  final T selected;
-  final void Function(T value)? onChanged;
-  const AthenaSettingsSegmented({
-    super.key,
-    required this.options,
-    required this.selected,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final decoration = BoxDecoration(
-      color: colors.neutralRule,
-      borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
-    );
-    final children = [
-      for (final option in options) _buildSegment(context, option),
-    ];
-    return Container(
-      height: AthenaSettings.controlHeight,
-      decoration: decoration,
-      child: Row(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-
-  Widget _buildSegment(BuildContext context, AthenaSegmentOption<T> option) {
-    final colors = context.athenaColors;
-    // 未选中态不能用 `Colors.transparent`：它的 RGB 是黑，AnimatedContainer
-    // 切换档位时会先闪一下半透明深灰（同 menu.dart 的说明）。用目标色的 0
-    // 透明度版本，填充与边框全程同色只有 alpha 在动。
-    final isSelected = option.value == selected;
-    final decoration = BoxDecoration(
-      color: isSelected
-          ? colors.neutralControlFill
-          : colors.neutralControlFill.withValues(alpha: 0),
-      border: Border.all(
-        color: isSelected
-            ? colors.neutralBorder
-            : colors.neutralBorder.withValues(alpha: 0),
-      ),
-      borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
-    );
-    final textStyle = AthenaTextStyle.label.copyWith(
-      color: isSelected ? colors.textPrimary : colors.textWeak,
-      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-    );
-    final segment = AnimatedContainer(
-      alignment: Alignment.center,
-      decoration: decoration,
-      duration: AthenaMotion.hover,
-      height: AthenaSettings.controlHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(option.label, style: textStyle, maxLines: 1),
-    );
-    if (onChanged == null) return segment;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged?.call(option.value),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: segment),
-    );
-  }
-}
-
-/// 分段控件的一个选项。
-class AthenaSegmentOption<T> {
-  final T value;
-  final String label;
-  const AthenaSegmentOption({required this.value, required this.label});
-}
-
 /// 设置里的下拉选择。
 ///
-/// 语义表面色、1px 描边、高 36、圆角 8、文字 14 / 22，
-/// 右端一个 chevron。它只管外观，点开的是调用方给的弹层；
+/// 高 36、圆角 8、文字 14 / 22，右端一个 chevron。**没有描边**：默认是
+/// 语义表面色，hover 换成 neutralRule；宽度收紧到当前显示的文字
+/// （父级约束更窄时文字省略）。
+/// 它只管外观，点开的是调用方给的弹层；
 /// [onTap] 收到控件的全局矩形，供弹层锚定在控件下方。
 class AthenaSettingsSelect extends StatefulWidget {
+  /// 弹出菜单的宽度：与 composer 的模型 / 推理强度等选择菜单一致（264）。
+  /// 触发控件比它更宽时菜单与控件同宽。
+  static const menuWidth = 264.0;
+
   final String label;
 
   /// 没有值时显示的占位（灰字）。
@@ -141,29 +72,30 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       color: colors.textWeak,
       size: AthenaIcon.inlineSize,
     );
-    return AthenaHover(
-      onTap: _handleTap,
-      cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: colors.neutralControlFill,
-          border: Border.all(
-            color: hover ? colors.neutralBorderStrong : colors.neutralBorder,
+    return IntrinsicWidth(
+      child: AthenaHover(
+        onTap: _handleTap,
+        cursor: SystemMouseCursors.click,
+        builder: (context, hover) => AnimatedContainer(
+          alignment: Alignment.centerLeft,
+          // 无描边：静止态留语义表面色，hover 换 neutralRule 作反馈。
+          decoration: BoxDecoration(
+            color: hover ? colors.neutralRule : colors.neutralControlFill,
+            borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
           ),
-          borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
-        ),
-        duration: AthenaMotion.hover,
-        height: AthenaSettings.controlHeight,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthenaSettings.controlPaddingHorizontal,
-        ),
-        child: Row(
-          children: [
-            Expanded(child: label),
-            const SizedBox(width: 8),
-            chevron,
-          ],
+          duration: AthenaMotion.hover,
+          height: AthenaSettings.controlHeight,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AthenaSettings.controlPaddingHorizontal,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: label),
+              const SizedBox(width: 8),
+              chevron,
+            ],
+          ),
         ),
       ),
     );
@@ -175,7 +107,90 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
   }
 }
 
-/// 设置里的单行输入（与下拉、分段同一尺度：高 36、圆角 8、14 / 22 文字）。
+/// 下拉选择的一项。
+class AthenaSettingsDropdownOption<T> {
+  final T value;
+  final String label;
+  const AthenaSettingsDropdownOption({
+    required this.value,
+    required this.label,
+  });
+}
+
+/// 设置里的下拉选择：外壳同 [AthenaSettingsSelect]，点开一个锚在它下方、
+/// 与选择菜单同宽的菜单，当前值在行尾打钩（与设置里的其他选择器共用同一套菜单）。
+///
+/// 触发控件按当前值收紧；菜单沿用 [AthenaSettingsSelect.menuWidth]，
+/// 保证较长的选项也放得下。
+/// [selected] 不在 [options] 里时不显示值（存储里可能残留已去掉的档位）。
+class AthenaSettingsDropdown<T> extends StatelessWidget {
+  final List<AthenaSettingsDropdownOption<T>> options;
+  final T selected;
+  final void Function(T value)? onChanged;
+
+  const AthenaSettingsDropdown({
+    super.key,
+    required this.options,
+    required this.selected,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _labelOf(selected);
+    return AthenaSettingsSelect(
+      label: label ?? '',
+      placeholder: label == null,
+      onTap: onChanged == null ? null : (anchor) => _open(context, anchor),
+    );
+  }
+
+  String? _labelOf(T value) {
+    for (final option in options) {
+      if (option.value == value) return option.label;
+    }
+    return null;
+  }
+
+  void _open(BuildContext context, Rect anchor) {
+    // 触发控件按当前值收紧，菜单沿用统一的选择菜单宽度；触控件更宽时与它同宽。
+    final width = math.max(anchor.width - 8, AthenaSettingsSelect.menuWidth);
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final below = screenHeight - anchor.bottom - 16;
+    final upward = below < 200 && anchor.top > below;
+    final maxHeight = (upward ? anchor.top - 16 : below).clamp(120.0, 300.0);
+    // 菜单右边与触发控件右边对齐（同 AthenaSettingsMenuButton 的惯例）；
+    // 面板自带 4 内边距，条目宽 + 8 才是面板外宽。
+    final left = anchor.right - width - 8;
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopContextMenu(
+        offset: upward
+            ? Offset(left, anchor.top - 4)
+            : Offset(left, anchor.bottom + 4),
+        upward: upward,
+        width: width,
+        children: [
+          DesktopContextMenuList(
+            maxHeight: maxHeight,
+            children: [
+              for (final option in options)
+                DesktopContextMenuTile(
+                  text: option.label,
+                  selected: option.value == selected,
+                  onTap: () {
+                    if (option.value != selected) onChanged?.call(option.value);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 设置里的单行输入（与下拉同一尺度：高 36、圆角 8、14 / 22 文字）。
 ///
 /// 比全站的标准输入（[AthenaInput]，40 高）矮一档：设置行里的输入统一用它，
 /// 与同一行的其他控件齐平。

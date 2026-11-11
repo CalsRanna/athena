@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/nav.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -120,8 +122,14 @@ void main() {
       (AthenaThemeMode.dark, AthenaColors.dark),
       (AthenaThemeMode.light, AthenaColors.light),
     ]) {
+      // 下拉：点开控件，再从菜单里选档位。
+      await tester.tap(find.byType(AthenaSettingsSelect).first);
+      await tester.pumpAndSettle();
       await tester.tap(
-        find.text(mode == AthenaThemeMode.dark ? 'Dark' : 'Light'),
+        find.descendant(
+          of: find.byType(DesktopContextMenu),
+          matching: find.text(mode == AthenaThemeMode.dark ? 'Dark' : 'Light'),
+        ),
       );
       await settleUntil(
         tester,
@@ -150,10 +158,10 @@ void main() {
         mode == AthenaThemeMode.dark ? 'Dark' : 'Light',
         colors.textPrimary,
       );
-      expectTextColor(
-        tester,
-        mode == AthenaThemeMode.dark ? 'Light' : 'Dark',
-        colors.textWeak,
+      expect(
+        find.text(mode == AthenaThemeMode.dark ? 'Light' : 'Dark'),
+        findsNothing,
+        reason: '未选中的档位只在菜单里',
       );
       expect(
         tester.state(find.byType(DesktopSettingAppearancePage)),

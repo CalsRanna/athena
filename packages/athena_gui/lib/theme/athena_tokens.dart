@@ -213,7 +213,7 @@ enum AthenaTextSize {
   medium('Medium', AthenaFontSize.prose, 22.0),
   large('Large', 15.0, 24.0);
 
-  /// 分段控件上的显示名。
+  /// 设置里显示的档位名。
   final String label;
 
   /// 消息正文与代码的固定字号（逻辑像素）。
@@ -299,7 +299,7 @@ abstract final class AthenaMotion {
   /// 菜单 / 预览卡退场、按压缩放、预览卡弹出前的延迟，都用它。
   static const Duration fast = Duration(milliseconds: 100);
 
-  /// 标准档：150ms。**交互反馈一律用它**：hover 底色、描边变色、分段切换、
+  /// 标准档：150ms。**交互反馈一律用它**：hover 底色、描边变色、
   /// 行底变化、图标两态切换、浮层进场、聚焦变色。
   ///
   /// 全站同档不只是"好看"——指针划过一串不同控件时，同档才有统一手感。

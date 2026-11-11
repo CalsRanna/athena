@@ -3,6 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
+import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
@@ -32,31 +33,29 @@ class _DesktopSettingAppearancePageState
         AthenaSettingsSection(
           first: true,
           title: 'Theme',
-          description: 'System follows the appearance selected on this device.',
           children: [
-            AthenaSettingsInset(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SignalBuilder(
-                  builder: (context) =>
-                      AthenaSettingsSegmented<AthenaThemeMode>(
-                        selected: viewModel.themeMode.value,
-                        onChanged: viewModel.setThemeMode,
-                        options: const [
-                          AthenaSegmentOption(
-                            value: AthenaThemeMode.light,
-                            label: 'Light',
-                          ),
-                          AthenaSegmentOption(
-                            value: AthenaThemeMode.dark,
-                            label: 'Dark',
-                          ),
-                          AthenaSegmentOption(
-                            value: AthenaThemeMode.system,
-                            label: 'System',
-                          ),
-                        ],
-                      ),
+            AthenaSettingsRow(
+              label: 'Mode',
+              description:
+                  'System follows the appearance selected on this device.',
+              control: SignalBuilder(
+                builder: (context) => AthenaSettingsDropdown<AthenaThemeMode>(
+                  selected: viewModel.themeMode.value,
+                  onChanged: viewModel.setThemeMode,
+                  options: const [
+                    AthenaSettingsDropdownOption(
+                      value: AthenaThemeMode.light,
+                      label: 'Light',
+                    ),
+                    AthenaSettingsDropdownOption(
+                      value: AthenaThemeMode.dark,
+                      label: 'Dark',
+                    ),
+                    AthenaSettingsDropdownOption(
+                      value: AthenaThemeMode.system,
+                      label: 'System',
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -65,18 +64,19 @@ class _DesktopSettingAppearancePageState
         AthenaSettingsSection(
           title: 'Conversation text size',
           children: [
-            AthenaSettingsInset(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: SignalBuilder(
-                  builder: (context) => AthenaSettingsSegmented<AthenaTextSize>(
-                    selected: viewModel.textSize.value,
-                    onChanged: viewModel.setTextSize,
-                    options: [
-                      for (final option in AthenaTextSize.values)
-                        AthenaSegmentOption(value: option, label: option.label),
-                    ],
-                  ),
+            AthenaSettingsRow(
+              label: 'Size',
+              control: SignalBuilder(
+                builder: (context) => AthenaSettingsDropdown<AthenaTextSize>(
+                  selected: viewModel.textSize.value,
+                  onChanged: viewModel.setTextSize,
+                  options: [
+                    for (final option in AthenaTextSize.values)
+                      AthenaSettingsDropdownOption(
+                        value: option,
+                        label: option.label,
+                      ),
+                  ],
                 ),
               ),
             ),

@@ -95,10 +95,10 @@ abstract final class AthenaSettings {
   /// 控件圆角与全局输入框、按钮一致。
   static const controlRadius = AthenaRadius.control;
 
-  /// 控件左内边距。实测下拉框文字起于 356，框左缘 353（该框为整行宽）。
+  /// 控件左内边距。实测下拉框文字起于 356、框左缘 353。
   static const controlPaddingHorizontal = 12.0;
 
-  /// 右侧控件列宽。实测分段控件 820..1136 = 316。
+  /// 右侧控件列宽。实测控件列 820..1136 = 316。
   static const controlColumnWidth = 316.0;
 
   /// 窄控件列宽：数字输入这类短值用它，免得一个三位数撑满 316 的框。

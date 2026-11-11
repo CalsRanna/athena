@@ -581,8 +581,12 @@ class _DesktopSettingSentinelPageState
     DesktopContextMenuManager.instance.show(
       anchorContext,
       DesktopContextMenu(
-        offset: Offset(anchor.left, anchor.bottom + 4),
-        width: 240,
+        // 菜单右边与按钮右边对齐；宽度同其他选择菜单。
+        offset: Offset(
+          anchor.right - AthenaSettingsSelect.menuWidth - 8,
+          anchor.bottom + 4,
+        ),
+        width: AthenaSettingsSelect.menuWidth,
         children: [
           DesktopContextMenuList(
             maxHeight: 360,

@@ -46,11 +46,11 @@ class AthenaColors {
   // ---- 设置与输入容器 ----
   // 沿用 neutral 命名区分控件角色；选中面使用青瓷浅填充。
   final Color neutralHairline; // 顶栏发丝线
-  final Color neutralRule; // 设置分隔线 / 分段轨道 / 行 hover 底
+  final Color neutralRule; // 设置分隔线 / 行 hover 底
   final Color neutralBorder; // composer / 设置控件 / 搜索框描边
   final Color neutralBorderStrong; // composer / 设置控件聚焦描边
   final Color neutralSelected; // 设置导航 / 列表选中底
-  final Color neutralControlFill; // 分段选中块 / 下拉框底
+  final Color neutralControlFill; // 下拉框底
   final Color scrim; // 设置面板遮罩：画布压 40% 黑
 
   // ---- 输入 ----

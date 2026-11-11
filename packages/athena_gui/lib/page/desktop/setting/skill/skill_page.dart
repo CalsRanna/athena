@@ -357,11 +357,11 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
           AthenaSettingsParagraph(text: descriptionController.text),
         AthenaSettingsSection(
           title: 'Instructions',
-          trailing: AthenaSettingsSegmented<bool>(
+          trailing: AthenaSettingsDropdown<bool>(
             selected: showCode,
             options: const [
-              AthenaSegmentOption(value: false, label: 'Preview'),
-              AthenaSegmentOption(value: true, label: 'Code'),
+              AthenaSettingsDropdownOption(value: false, label: 'Preview'),
+              AthenaSettingsDropdownOption(value: true, label: 'Code'),
             ],
             onChanged: (code) => setState(() => showCode = code),
           ),
