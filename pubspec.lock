@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "103.0.0"
   analysis_server_lib:
-    dependency: "direct dev"
+    dependency: transitive
     description:
       name: analysis_server_lib
       sha256: b2376eed26c183d8c9790444384082ba637aa87cd9b28bb9a84801e7fe37ea40
@@ -1130,6 +1130,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  sort_members:
+    dependency: "direct dev"
+    description:
+      name: sort_members
+      sha256: "60552143e82bb9158e9809ff8434001fb2f1cad5017bb27c59cf73b0ecad78cf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   source_gen:
     dependency: transitive
     description:

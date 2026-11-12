@@ -9,8 +9,8 @@ name: _
 publish_to: none
 
 dev_dependencies:
-  # tool/sort_members.dart 通过它启动 analysis server 执行 edit.sortMembers。
-  analysis_server_lib: ^0.2.5
+  # 项目级 Sort Members（等价于编辑器的同名 action）：dart run sort_members
+  sort_members: ^0.1.0
 
 environment:
   # 与 athena_core / athena_tui 的下限一致；athena_gui 要求 >=3.13.0，
