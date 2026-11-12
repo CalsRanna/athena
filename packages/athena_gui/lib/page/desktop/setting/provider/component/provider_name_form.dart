@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
@@ -31,18 +31,6 @@ class _DesktopProviderNameFormState extends State<DesktopProviderNameForm> {
   late final viewModel = GetIt.instance<ProviderViewModel>();
 
   @override
-  void initState() {
-    super.initState();
-    nameController.text = widget.provider?.name ?? '';
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -68,6 +56,18 @@ class _DesktopProviderNameFormState extends State<DesktopProviderNameForm> {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.provider?.name ?? '';
   }
 
   Future<void> storeProvider() async {

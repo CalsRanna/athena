@@ -14,18 +14,6 @@ class LegacyIdMap {
 
   LegacyIdMap({this.generator = const IdGenerator()});
 
-  String id(String kind, Object? old) {
-    if (old is String && old.isNotEmpty) return old;
-    if (old == null) return generator.next();
-    if (old is! int) throw FormatException('Invalid $kind ID: $old');
-    return values
-        .putIfAbsent(kind, () => {})
-        .putIfAbsent('$old', generator.next);
-  }
-
-  String? sentinel(Object? old) =>
-      old == null || old == 0 ? null : id('sentinel', old);
-
   /// 磁盘升级把旧的整数身份转成 UUID，不能把旧数字直接转成字符串。
   Map<String, dynamic> convertCatalog(Map<String, dynamic> data) {
     final result = Map<String, dynamic>.from(data);
@@ -49,6 +37,18 @@ class LegacyIdMap {
     }
     return result;
   }
+
+  String id(String kind, Object? old) {
+    if (old is String && old.isNotEmpty) return old;
+    if (old == null) return generator.next();
+    if (old is! int) throw FormatException('Invalid $kind ID: $old');
+    return values
+        .putIfAbsent(kind, () => {})
+        .putIfAbsent('$old', generator.next);
+  }
+
+  String? sentinel(Object? old) =>
+      old == null || old == 0 ? null : id('sentinel', old);
 }
 
 /// 启动时的一次性格式升级。首次升级前须关闭所有旧版 GUI/TUI。
@@ -57,28 +57,30 @@ class LegacyIdMap {
 /// 执行。格式版本最后落盘，因此中断后不会把半迁移目录当作可用仓储。
 /// 两个新版进程同时启动时由同一把跨进程迁移锁串行。
 class StorageIdMigration {
+  static const version = 2;
+
+  final Directory root;
+  final File settingFile;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
+  final _ids = LegacyIdMap();
   StorageIdMigration({
     required this.root,
     required this.settingFile,
     required LockRegistry locks,
   }) : _locks = locks;
 
-  static const version = 2;
-  final Directory root;
-  final File settingFile;
-
-  /// 锁放哪由它决定,见 [LockRegistry]。
-  final LockRegistry _locks;
-  final _ids = LegacyIdMap();
-
   File get versionFile => File(p.join(root.path, '.storage_version'));
+
+  Directory get _backup => Directory(p.join(root.path, 'backups', 'ids-v1'));
+  File get _journal => File(p.join(_work.path, 'ready.json'));
 
   /// 迁移标记一度是非隐藏的 `storage_version.json`；见 [_readVersionState]。
   File get _legacyVersionFile =>
       File(p.join(root.path, 'storage_version.json'));
   Directory get _work => Directory(p.join(root.path, '.id-migration-v2'));
-  Directory get _backup => Directory(p.join(root.path, 'backups', 'ids-v1'));
-  File get _journal => File(p.join(_work.path, 'ready.json'));
 
   Future<Map<String, String>> run() => FileLocking.withFileLock(
     _locks.named('storage-migration'),
@@ -122,21 +124,21 @@ class StorageIdMigration {
     },
   );
 
-  /// 读已落盘的版本状态；没有标记返回 null（= 首次升级）。
-  ///
-  /// 旧版本把标记写成非隐藏的 `storage_version.json`，改成隐藏文件名后必须仍
-  /// 认得它：否则已迁移的老用户找不到标记，会在成品数据上重跑一遍 ID 迁移
-  /// （重写全部会话文件，且解析不了的行会被丢弃）。认下之后原地改名，两边就
-  /// 只剩一个名字。
-  Future<Map?> _readVersionState() async {
-    if (await versionFile.exists()) {
-      return jsonDecode(await versionFile.readAsString()) as Map;
+  void _checkUnique(Iterable<Map> rows, String source) {
+    final ids = <Object?>{};
+    for (final row in rows) {
+      if (!ids.add(row['id'])) throw FormatException('Duplicate ID in $source');
     }
-    final legacy = _legacyVersionFile;
-    if (!await legacy.exists()) return null;
-    final state = jsonDecode(await legacy.readAsString()) as Map;
-    await legacy.rename(versionFile.path);
-    return state;
+  }
+
+  Object? _decode(String text, {bool yaml = false}) {
+    try {
+      // yaml 的 Map/List 只读；经 JSON 往返得到可修改的普通集合。
+      return yaml ? jsonDecode(jsonEncode(loadYaml(text))) : jsonDecode(text);
+    } catch (error) {
+      LoggerUtil.w('ID migration preserved corrupt data in backup');
+      return null;
+    }
   }
 
   File _file(String key) {
@@ -350,20 +352,20 @@ class StorageIdMigration {
     );
   }
 
-  Object? _decode(String text, {bool yaml = false}) {
-    try {
-      // yaml 的 Map/List 只读；经 JSON 往返得到可修改的普通集合。
-      return yaml ? jsonDecode(jsonEncode(loadYaml(text))) : jsonDecode(text);
-    } catch (error) {
-      LoggerUtil.w('ID migration preserved corrupt data in backup');
-      return null;
+  /// 读已落盘的版本状态；没有标记返回 null（= 首次升级）。
+  ///
+  /// 旧版本把标记写成非隐藏的 `storage_version.json`，改成隐藏文件名后必须仍
+  /// 认得它：否则已迁移的老用户找不到标记，会在成品数据上重跑一遍 ID 迁移
+  /// （重写全部会话文件，且解析不了的行会被丢弃）。认下之后原地改名，两边就
+  /// 只剩一个名字。
+  Future<Map?> _readVersionState() async {
+    if (await versionFile.exists()) {
+      return jsonDecode(await versionFile.readAsString()) as Map;
     }
-  }
-
-  void _checkUnique(Iterable<Map> rows, String source) {
-    final ids = <Object?>{};
-    for (final row in rows) {
-      if (!ids.add(row['id'])) throw FormatException('Duplicate ID in $source');
-    }
+    final legacy = _legacyVersionFile;
+    if (!await legacy.exists()) return null;
+    final state = jsonDecode(await legacy.readAsString()) as Map;
+    await legacy.rename(versionFile.path);
+    return state;
   }
 }

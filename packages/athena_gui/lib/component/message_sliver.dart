@@ -2,51 +2,14 @@ import 'dart:math' as math;
 
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/component/message_list_scroll_controller.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/component/message_tiles.dart';
-import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/component/message_display.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/component/sliver_item_metrics.dart';
-import 'package:flutter/widgets.dart';
+import 'package:athena_gui/component/turn_navigator.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/rendering.dart';
-
-class _MessageListRenderItem {
-  final MessageEntity message;
-
-  /// 该消息在助手卡里的布局；非空表示这一项是助手卡内的一段。
-  final AssistantMessageLayout? layout;
-
-  /// 该段所属整卡的消息，用于底部工具条的复制与 run 统计。
-  final List<MessageEntity> cardMessages;
-
-  /// 是否为整卡的第一段 / 最后一段：卡片级上下内边距分别落在它们身上。
-  final bool isCardHeader;
-  final bool isCardTail;
-
-  /// 与上一张卡之间的间距，只加在整卡的第一段上。
-  final bool addCardSpacing;
-
-  final bool streaming;
-
-  const _MessageListRenderItem({
-    required this.message,
-    this.layout,
-    this.cardMessages = const [],
-    this.isCardHeader = false,
-    this.isCardTail = false,
-    required this.addCardSpacing,
-    this.streaming = false,
-  });
-
-  String get key {
-    final identity = message.id ?? identityHashCode(message);
-    return layout == null ? 'message-$identity' : 'assistant-card-$identity';
-  }
-
-  Object get cardId =>
-      cardMessages.first.id ?? identityHashCode(cardMessages.first);
-}
+import 'package:flutter/widgets.dart';
 
 /// 整个聊天共用的懒加载消息 Sliver。
 ///
@@ -111,37 +74,9 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
   List<int> _turnStarts = const [];
   bool _reportScheduled = false;
 
-  @override
-  void initState() {
-    super.initState();
-    widget.navigator?.bindScroller(_scrollToTurn);
-  }
-
-  @override
-  void didUpdateWidget(covariant MessageCardListSliver oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.navigator, widget.navigator)) {
-      oldWidget.navigator?.bindScroller(null);
-      widget.navigator?.bindScroller(_scrollToTurn);
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final position = _scrollPosition();
-    if (identical(position, _position)) return;
-    _position?.removeListener(_scheduleTurnReport);
-    _position = position;
-    _position?.addListener(_scheduleTurnReport);
-  }
-
-  @override
-  void dispose() {
-    _position?.removeListener(_scheduleTurnReport);
-    widget.navigator?.bindScroller(null);
-    hover.dispose();
-    super.dispose();
+  RenderSliverList? get _sliver {
+    final object = _sliverKey.currentContext?.findRenderObject();
+    return object is RenderSliverList ? object : null;
   }
 
   @override
@@ -221,42 +156,54 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
     );
   }
 
-  // ─── 轮次探测与跳转 ───────────────────────────────────────
-
-  ScrollPosition? _scrollPosition() {
-    // position 在 Scrollable 建好之前是不存在的；这里只在 didChangeDependencies
-    // 调用，此时祖先 Scrollable 已经挂上 position。
-    return Scrollable.maybeOf(context)?.position;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = _scrollPosition();
+    if (identical(position, _position)) return;
+    _position?.removeListener(_scheduleTurnReport);
+    _position = position;
+    _position?.addListener(_scheduleTurnReport);
   }
 
-  RenderSliverList? get _sliver {
-    final object = _sliverKey.currentContext?.findRenderObject();
-    return object is RenderSliverList ? object : null;
+  @override
+  void didUpdateWidget(covariant MessageCardListSliver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.navigator, widget.navigator)) {
+      oldWidget.navigator?.bindScroller(null);
+      widget.navigator?.bindScroller(_scrollToTurn);
+    }
   }
 
-  void _scheduleTurnReport() {
-    if (_reportScheduled) return;
-    _reportScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _reportScheduled = false;
-      _reportCurrentTurn();
-    });
+  @override
+  void dispose() {
+    _position?.removeListener(_scheduleTurnReport);
+    widget.navigator?.bindScroller(null);
+    hover.dispose();
+    super.dispose();
   }
 
-  /// 上报视口当前所在的那一轮：取视口里占得最多的那一项所属的轮次。
-  void _reportCurrentTurn() {
-    final navigator = widget.navigator;
-    if (navigator == null || !mounted) return;
-    final dominant = _dominantItemIndex();
-    navigator.currentTurnIndex.value = dominant == null
-        ? -1
-        : _turnIndexForItem(dominant) ?? -1;
+  @override
+  void initState() {
+    super.initState();
+    widget.navigator?.bindScroller(_scrollToTurn);
   }
 
   /// 视口里占得最多的那一项下标（懒加载列表里只有已构建的项能参与）。
   int? _dominantItemIndex() {
     final sliver = _sliver;
     return sliver == null ? null : SliverItemMetrics.dominantItemIndex(sliver);
+  }
+
+  /// 粗跳步长：用可见项的平均高度估算，上限 [(_maxJumpViewports)] 屏。
+  double _estimateStep(int deltaItems) {
+    final sliver = _sliver;
+    if (sliver == null || deltaItems == 0) return 0;
+    final average = SliverItemMetrics.averageChildExtent(sliver);
+    if (average <= 0) return 0;
+    final distance = deltaItems.abs() * average;
+    final cap = sliver.constraints.viewportMainAxisExtent * _maxJumpViewports;
+    return deltaItems > 0 ? math.min(distance, cap) : -math.min(distance, cap);
   }
 
   /// 视口内**可见**的第一项下标。
@@ -267,34 +214,6 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
   int? _firstVisibleItemIndex() {
     final sliver = _sliver;
     return sliver == null ? null : SliverItemMetrics.firstVisibleIndex(sliver);
-  }
-
-  int? _turnIndexForItem(int itemIndex) {
-    int? turn;
-    for (var index = 0; index < _turnStarts.length; index++) {
-      if (_turnStarts[index] > itemIndex) break;
-      turn = index;
-    }
-    return turn;
-  }
-
-  /// 把第 [turnIndex] 轮滚到视口顶部。
-  Future<void> _scrollToTurn(int turnIndex) async {
-    if (_position == null || turnIndex < 0 || turnIndex >= _turnStarts.length) {
-      return;
-    }
-    final targetItem = _turnStarts[turnIndex];
-    // 整段跳转挂起贴底跟随：列表刚打开（切会话、发消息）时处于跟随态，而跟随
-    // 会在每次内容尺寸变化时把偏移拉回底部——懒加载列表跳转时必然要建新项、
-    // 尺寸必然变，于是刚跳上去的视口被立刻拽回来（用户看到的是闪一下又停在
-    // 原处，粗跳永远到不了目标）。跟随由控制器上的状态决定，见
-    // [MessageListScrollController.jumpWithoutFollowing]。
-    final controller = MessageListScrollController.of(context);
-    if (controller == null) {
-      await _jumpToItem(targetItem);
-    } else {
-      await controller.jumpWithoutFollowing(() => _jumpToItem(targetItem));
-    }
   }
 
   /// 把第 [targetItem] 项顶到视口首边；该项未被构建时按索引差粗跳一段再复测。
@@ -326,6 +245,61 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
     }
   }
 
+  /// 上报视口当前所在的那一轮：取视口里占得最多的那一项所属的轮次。
+  void _reportCurrentTurn() {
+    final navigator = widget.navigator;
+    if (navigator == null || !mounted) return;
+    final dominant = _dominantItemIndex();
+    navigator.currentTurnIndex.value = dominant == null
+        ? -1
+        : _turnIndexForItem(dominant) ?? -1;
+  }
+
+  void _scheduleTurnReport() {
+    if (_reportScheduled) return;
+    _reportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reportScheduled = false;
+      _reportCurrentTurn();
+    });
+  }
+
+  // ─── 轮次探测与跳转 ───────────────────────────────────────
+
+  ScrollPosition? _scrollPosition() {
+    // position 在 Scrollable 建好之前是不存在的；这里只在 didChangeDependencies
+    // 调用，此时祖先 Scrollable 已经挂上 position。
+    return Scrollable.maybeOf(context)?.position;
+  }
+
+  /// 把第 [turnIndex] 轮滚到视口顶部。
+  Future<void> _scrollToTurn(int turnIndex) async {
+    if (_position == null || turnIndex < 0 || turnIndex >= _turnStarts.length) {
+      return;
+    }
+    final targetItem = _turnStarts[turnIndex];
+    // 整段跳转挂起贴底跟随：列表刚打开（切会话、发消息）时处于跟随态，而跟随
+    // 会在每次内容尺寸变化时把偏移拉回底部——懒加载列表跳转时必然要建新项、
+    // 尺寸必然变，于是刚跳上去的视口被立刻拽回来（用户看到的是闪一下又停在
+    // 原处，粗跳永远到不了目标）。跟随由控制器上的状态决定，见
+    // [MessageListScrollController.jumpWithoutFollowing]。
+    final controller = MessageListScrollController.of(context);
+    if (controller == null) {
+      await _jumpToItem(targetItem);
+    } else {
+      await controller.jumpWithoutFollowing(() => _jumpToItem(targetItem));
+    }
+  }
+
+  int? _turnIndexForItem(int itemIndex) {
+    int? turn;
+    for (var index = 0; index < _turnStarts.length; index++) {
+      if (_turnStarts[index] > itemIndex) break;
+      turn = index;
+    }
+    return turn;
+  }
+
   /// 把第 [itemIndex] 项移到视口顶所需的滚动偏移；该项未被构建时返回 null。
   double? _viewportOffsetOfItem(int itemIndex) {
     final sliver = _sliver;
@@ -333,16 +307,42 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
     if (sliver == null || position == null) return null;
     return SliverItemMetrics.viewportOffsetOf(sliver, position, itemIndex);
   }
+}
 
-  /// 粗跳步长：用可见项的平均高度估算，上限 [(_maxJumpViewports)] 屏。
-  double _estimateStep(int deltaItems) {
-    final sliver = _sliver;
-    if (sliver == null || deltaItems == 0) return 0;
-    final average = SliverItemMetrics.averageChildExtent(sliver);
-    if (average <= 0) return 0;
-    final distance = deltaItems.abs() * average;
-    final cap = sliver.constraints.viewportMainAxisExtent * _maxJumpViewports;
-    return deltaItems > 0 ? math.min(distance, cap) : -math.min(distance, cap);
+class _MessageListRenderItem {
+  final MessageEntity message;
+
+  /// 该消息在助手卡里的布局；非空表示这一项是助手卡内的一段。
+  final AssistantMessageLayout? layout;
+
+  /// 该段所属整卡的消息，用于底部工具条的复制与 run 统计。
+  final List<MessageEntity> cardMessages;
+
+  /// 是否为整卡的第一段 / 最后一段：卡片级上下内边距分别落在它们身上。
+  final bool isCardHeader;
+  final bool isCardTail;
+
+  /// 与上一张卡之间的间距，只加在整卡的第一段上。
+  final bool addCardSpacing;
+
+  final bool streaming;
+
+  const _MessageListRenderItem({
+    required this.message,
+    this.layout,
+    this.cardMessages = const [],
+    this.isCardHeader = false,
+    this.isCardTail = false,
+    required this.addCardSpacing,
+    this.streaming = false,
+  });
+
+  Object get cardId =>
+      cardMessages.first.id ?? identityHashCode(cardMessages.first);
+
+  String get key {
+    final identity = message.id ?? identityHashCode(message);
+    return layout == null ? 'message-$identity' : 'assistant-card-$identity';
   }
 }
 

@@ -15,6 +15,21 @@ import 'package:signals/signals.dart';
 ///   那时只写缓存、不动信号，避免把 A 对话的轮次画到 B 上；
 /// - **删消息时按 id 集合移除**，不能比较 UUID 大小。
 class TurnStartCache {
+  final String? Function() _currentChatId;
+
+  final int Function() _currentGeneration;
+  final Future<List<String>> Function(String chatId) _scan;
+
+  /// 当前对话的轮次起点，供指示器直接读。非当前对话的那些存在 [_byChat] 里。
+  final turnStartIds = listSignal<String>([]);
+
+  final Map<String, List<String>> _byChat = {};
+
+  final Map<String, int> _revisions = {};
+
+  /// 扫描还没回来时新落库的 user 消息，扫完并入（见类注释）。
+  final Map<String, List<String>> _pending = {};
+
   TurnStartCache({
     required String? Function() currentChatId,
     required int Function() currentGeneration,
@@ -23,35 +38,9 @@ class TurnStartCache {
        _currentGeneration = currentGeneration,
        _scan = scan;
 
-  final String? Function() _currentChatId;
-  final int Function() _currentGeneration;
-  final Future<List<String>> Function(String chatId) _scan;
-
-  /// 当前对话的轮次起点，供指示器直接读。非当前对话的那些存在 [_byChat] 里。
-  final turnStartIds = listSignal<String>([]);
-
-  final Map<String, List<String>> _byChat = {};
-  final Map<String, int> _revisions = {};
-
-  /// 回退提交后的完整轮次清单，覆盖旧缓存并使正在读取的旧扫描失效。
-  void replace(String chatId, List<String> ids) {
-    _revisions[chatId] = (_revisions[chatId] ?? 0) + 1;
-    _pending.remove(chatId);
-    _byChat[chatId] = List.of(ids);
-    if (_currentChatId() == chatId) turnStartIds.value = ids;
-  }
-
-  /// 扫描还没回来时新落库的 user 消息，扫完并入（见类注释）。
-  final Map<String, List<String>> _pending = {};
-
-  /// 命中缓存就给缓存，否则先空着等扫描。
-  void selectChat(String chatId) {
-    turnStartIds.value = _byChat[chatId] ?? const [];
-  }
-
-  /// 新会话：轮次数已知是 0，不必等扫描，指示器从第二轮起就能画。
-  void seedEmpty(String chatId) {
-    _byChat[chatId] = [];
+  void clear() {
+    _byChat.clear();
+    _pending.clear();
     turnStartIds.value = const [];
   }
 
@@ -65,39 +54,6 @@ class TurnStartCache {
     for (final chatId in chatIds) {
       drop(chatId);
     }
-  }
-
-  void clear() {
-    _byChat.clear();
-    _pending.clear();
-    turnStartIds.value = const [];
-  }
-
-  /// 删消息已持有被删的 id 集合，按身份移除轮次（不能比较 UUID 大小）。
-  void prune(String chatId, Set<String> deletedIds) {
-    final cached = _byChat[chatId];
-    if (cached == null) return;
-    final kept = cached.where((id) => !deletedIds.contains(id)).toList();
-    _byChat[chatId] = kept;
-    if (_currentChatId() == chatId) turnStartIds.value = kept;
-  }
-
-  /// 新落库一条 user 消息 = 会话多了一轮。
-  ///
-  /// 计数只认文件：扫描结果已到手就地追加，还没到手先记进 [_pending]。**不**从消息
-  /// 列表里推——列表是窗口，轮次数跟加载到哪无关。
-  void record(String chatId, String? messageId) {
-    if (messageId == null) return;
-    final cached = _byChat[chatId];
-    if (cached == null) {
-      final pending = _pending.putIfAbsent(chatId, () => []);
-      if (!pending.contains(messageId)) pending.add(messageId);
-      return;
-    }
-    if (cached.contains(messageId)) return;
-    final updated = [...cached, messageId];
-    _byChat[chatId] = updated;
-    if (_currentChatId() == chatId) turnStartIds.value = updated;
   }
 
   /// 读一次整段会话的轮次起点并缓存。
@@ -127,5 +83,51 @@ class TurnStartCache {
     } catch (e) {
       LoggerUtil.w('轮次起点扫描失败,指示器本次不显示', error: e);
     }
+  }
+
+  /// 删消息已持有被删的 id 集合，按身份移除轮次（不能比较 UUID 大小）。
+  void prune(String chatId, Set<String> deletedIds) {
+    final cached = _byChat[chatId];
+    if (cached == null) return;
+    final kept = cached.where((id) => !deletedIds.contains(id)).toList();
+    _byChat[chatId] = kept;
+    if (_currentChatId() == chatId) turnStartIds.value = kept;
+  }
+
+  /// 新落库一条 user 消息 = 会话多了一轮。
+  ///
+  /// 计数只认文件：扫描结果已到手就地追加，还没到手先记进 [_pending]。**不**从消息
+  /// 列表里推——列表是窗口，轮次数跟加载到哪无关。
+  void record(String chatId, String? messageId) {
+    if (messageId == null) return;
+    final cached = _byChat[chatId];
+    if (cached == null) {
+      final pending = _pending.putIfAbsent(chatId, () => []);
+      if (!pending.contains(messageId)) pending.add(messageId);
+      return;
+    }
+    if (cached.contains(messageId)) return;
+    final updated = [...cached, messageId];
+    _byChat[chatId] = updated;
+    if (_currentChatId() == chatId) turnStartIds.value = updated;
+  }
+
+  /// 回退提交后的完整轮次清单，覆盖旧缓存并使正在读取的旧扫描失效。
+  void replace(String chatId, List<String> ids) {
+    _revisions[chatId] = (_revisions[chatId] ?? 0) + 1;
+    _pending.remove(chatId);
+    _byChat[chatId] = List.of(ids);
+    if (_currentChatId() == chatId) turnStartIds.value = ids;
+  }
+
+  /// 新会话：轮次数已知是 0，不必等扫描，指示器从第二轮起就能画。
+  void seedEmpty(String chatId) {
+    _byChat[chatId] = [];
+    turnStartIds.value = const [];
+  }
+
+  /// 命中缓存就给缓存，否则先空着等扫描。
+  void selectChat(String chatId) {
+    turnStartIds.value = _byChat[chatId] ?? const [];
   }
 }

@@ -6,12 +6,23 @@ import 'package:athena_core/repository/session_rewind_repository.dart';
 /// 另一前端在回退后继续追加旧 run 的结果。POSIX 锁按进程记账，因此另加
 /// 进程内占用表。锁文件永不删除，沿用 file_lock.dart 的 inode 约定。
 class FileSessionActivityLease implements SessionActivityLease {
-  FileSessionActivityLease._(this._file, this._handle);
+  static final Set<String> _owned = {};
 
   final File _file;
   final RandomAccessFile _handle;
   bool _released = false;
-  static final Set<String> _owned = {};
+  FileSessionActivityLease._(this._file, this._handle);
+
+  @override
+  Future<void> release() async {
+    if (_released) return;
+    _released = true;
+    try {
+      await _handle.close();
+    } finally {
+      _owned.remove(_file.path);
+    }
+  }
 
   static Future<FileSessionActivityLease> acquire(File file) async {
     if (!_owned.add(file.path)) {
@@ -36,17 +47,6 @@ class FileSessionActivityLease implements SessionActivityLease {
         _owned.remove(file.path);
       }
       rethrow;
-    }
-  }
-
-  @override
-  Future<void> release() async {
-    if (_released) return;
-    _released = true;
-    try {
-      await _handle.close();
-    } finally {
-      _owned.remove(_file.path);
     }
   }
 }

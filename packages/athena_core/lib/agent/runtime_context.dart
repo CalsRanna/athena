@@ -1,13 +1,5 @@
 import 'package:athena_core/util/platform_util.dart';
 
-/// Agent 运行环境：由前端装配层注入的运行时事实。
-///
-/// GUI（桌面/移动应用）与 TUI（终端）共享同一套工具集和同一份默认
-/// 系统提示词，Agent 无法从提示或工具清单推断自己运行在哪个客户端，
-/// 而两端的交互方式（弹窗审批 vs 终端审批、能否展示图片等）不同。
-/// 装配层把该事实注入系统提示。
-enum RuntimeEnvironment { gui, tui }
-
 abstract final class RuntimeContext {
   /// Local calendar date only; appended to the runtime context, stable within a day.
   static String currentDatePrompt(DateTime date) {
@@ -54,3 +46,11 @@ abstract final class RuntimeContext {
     return '未知平台';
   }
 }
+
+/// Agent 运行环境：由前端装配层注入的运行时事实。
+///
+/// GUI（桌面/移动应用）与 TUI（终端）共享同一套工具集和同一份默认
+/// 系统提示词，Agent 无法从提示或工具清单推断自己运行在哪个客户端，
+/// 而两端的交互方式（弹窗审批 vs 终端审批、能否展示图片等）不同。
+/// 装配层把该事实注入系统提示。
+enum RuntimeEnvironment { gui, tui }

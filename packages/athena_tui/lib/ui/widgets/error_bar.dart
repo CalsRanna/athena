@@ -7,9 +7,9 @@ import 'package:nocterm/nocterm.dart';
 /// 常驻于主 Column(children 数量恒定),[message] 为 null 时不渲染内容,
 /// 与 PickerOverlay / PermissionBar 的模式一致。
 class ErrorBar extends StatelessComponent {
-  const ErrorBar({super.key, required this.message});
-
   final String? message;
+
+  const ErrorBar({super.key, required this.message});
 
   @override
   Component build(BuildContext context) {

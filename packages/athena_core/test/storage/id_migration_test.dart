@@ -12,12 +12,6 @@ import 'package:athena_core/storage/storage_id_migration.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-class _ReversedIds extends IdGenerator {
-  int _next = 100;
-  @override
-  String next() => 'id-${_next--}';
-}
-
 void main() {
   late Directory temp;
   late FileStorage storage;
@@ -450,4 +444,10 @@ providers:
     expect(migrated['models'][0]['model_id'], 'api-model');
     expect(migrated['sentinels'][0]['id'], 'existing-sentinel');
   });
+}
+
+class _ReversedIds extends IdGenerator {
+  int _next = 100;
+  @override
+  String next() => 'id-${_next--}';
 }

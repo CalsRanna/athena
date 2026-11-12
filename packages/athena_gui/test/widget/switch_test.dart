@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/switch.dart';
@@ -6,8 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 开关的视觉口径：胶囊轨道、滑块抬一层阴影、关闭态是中性的浅轨道。
 ///

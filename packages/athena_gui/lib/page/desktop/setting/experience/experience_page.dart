@@ -1,43 +1,23 @@
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
-import 'package:athena_gui/view_model/experience_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/component/experience_format.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/experience_view_model.dart';
+import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-import 'package:athena_gui/component/experience_format.dart';
-
-enum _Status implements SettingsListOption {
-  all('All statuses'),
-  active('Active'),
-  archived('Archived');
-
-  const _Status(this.label);
-  @override
-  final String label;
-}
-
-enum _Sort implements SettingsListOption {
-  created('Newest first'),
-  edited('Last edited'),
-  lesson('Lesson');
-
-  const _Sort(this.label);
-  @override
-  final String label;
-}
 
 /// 桌面端 Experiences：单列列表（活跃 / 已归档两个分区）→ 点进只读详情。
 ///
@@ -63,16 +43,22 @@ class _DesktopSettingExperiencePageState
   _Sort sort = _Sort.created;
   final _selection = DesktopListSelection<(String, String)>();
 
-  @override
-  void initState() {
-    super.initState();
-    viewModel.load();
-  }
+  // ---------------------------------------------------------------------------
+  // 动作
+  // ---------------------------------------------------------------------------
 
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
+  Future<void> archiveExperiences(List<ExperienceEntity> targets) async {
+    for (final experience in targets) {
+      if (_isArchived(experience)) continue;
+      final ok = await viewModel.archiveExperience(experience);
+      if (!ok) {
+        if (mounted) {
+          AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
+        }
+        break;
+      }
+    }
+    if (mounted) setState(_selection.clear);
   }
 
   @override
@@ -87,186 +73,56 @@ class _DesktopSettingExperiencePageState
     );
   }
 
-  static (String, String) _keyOf(ExperienceEntity experience) =>
-      (experience.sentinelId, experience.id);
-
-  static bool _isArchived(ExperienceEntity experience) =>
-      experience.status == ExperienceEntity.statusArchived;
-
-  // ---------------------------------------------------------------------------
-  // 列表
-  // ---------------------------------------------------------------------------
-
-  Widget _buildList(List<ExperienceEntity> experiences) {
-    final query = searchController.text.trim().toLowerCase();
-    final matches = experiences.where((e) {
-      if (status == _Status.active && _isArchived(e) ||
-          status == _Status.archived && !_isArchived(e)) {
-        return false;
+  Future<void> destroyExperiences(List<ExperienceEntity> targets) async {
+    if (targets.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      targets.length == 1
+          ? 'Delete this experience? This cannot be undone.'
+          : 'Delete ${targets.length} experiences? This cannot be undone.',
+    );
+    if (confirmed != true) return;
+    for (final experience in targets) {
+      final ok = await viewModel.deleteExperience(experience);
+      if (!ok) {
+        if (mounted) {
+          AthenaDialog.error(
+            viewModel.error.value ?? 'Failed to delete experience',
+          );
+        }
+        break;
       }
-      return e.lesson.toLowerCase().contains(query) ||
-          e.context.toLowerCase().contains(query) ||
-          e.tags.any((tag) => tag.toLowerCase().contains(query)) ||
-          viewModel.ownerLabel(e).toLowerCase().contains(query);
-    }).toList();
-    matches.sort(_compare);
-    final active = matches.where((e) => !_isArchived(e)).toList();
-    final archived = matches.where(_isArchived).toList();
-    final visibleKeys = [...active, ...archived].map(_keyOf).toList();
-    return AthenaSettingsListPane(
-      title: 'Experiences',
-      searchController: searchController,
-      onSearchChanged: (_) => setState(_selection.clear),
-      filterBy: 'status',
-      filter: status,
-      filters: _Status.values,
-      onFilterChanged: (option) => setState(() {
-        status = option;
-        _selection.clear();
-      }),
-      sort: sort,
-      sorts: _Sort.values,
-      onSortChanged: (option) => setState(() {
-        sort = option;
-        _selection.clear();
-      }),
-      children: [
-        if (experiences.isEmpty)
-          const AthenaSettingsEmptyState(
-            icon: LucideIcons.brain,
-            title: 'Nothing learned yet',
-            hint:
-                'As the agent works it records lessons here and recalls them '
-                'in later sessions. Archive the ones you disagree with.',
-          )
-        else if (matches.isEmpty)
-          const AthenaSettingsEmptyState(
-            icon: LucideIcons.search,
-            title: 'No matching experiences',
-            hint: 'Try another search or change the status filter.',
-          ),
-        if (active.isNotEmpty)
-          AthenaSettingsSection(
-            first: true,
-            title: 'Active · ${active.length}',
-            children: [
-              for (final e in active) _buildExperienceRow(e, visibleKeys),
-            ],
-          ),
-        if (archived.isNotEmpty)
-          AthenaSettingsSection(
-            first: active.isEmpty,
-            title: 'Archived · ${archived.length}',
-            children: [
-              for (final e in archived) _buildExperienceRow(e, visibleKeys),
-            ],
-          ),
-      ],
-    );
-  }
-
-  int _compare(ExperienceEntity a, ExperienceEntity b) {
-    final byDate = switch (sort) {
-      _Sort.created => b.createdAt.compareTo(a.createdAt),
-      _Sort.edited => (b.updatedAt ?? b.createdAt).compareTo(
-        a.updatedAt ?? a.createdAt,
-      ),
-      _Sort.lesson => 0,
-    };
-    if (byDate != 0) return byDate;
-    final byLesson = a.lesson.toLowerCase().compareTo(b.lesson.toLowerCase());
-    if (byLesson != 0) return byLesson;
-    final byOwner = a.sentinelId.compareTo(b.sentinelId);
-    return byOwner != 0 ? byOwner : a.id.compareTo(b.id);
-  }
-
-  Widget _buildExperienceRow(
-    ExperienceEntity experience,
-    List<(String, String)> visibleKeys,
-  ) {
-    final archived = _isArchived(experience);
-    final meta = <String>[
-      viewModel.ownerLabel(experience),
-      ExperienceFormat.date(experience.createdAt),
-    ];
-    return AthenaSettingsListRow(
-      label: experience.lesson,
-      labelMaxLines: 1,
-      metadata: experience.tags.firstOrNull,
-      description: meta.join(' · '),
-      descriptionMaxLines: 1,
-      dimmed: archived,
-      selected: _selection.selectedIds.contains(_keyOf(experience)),
-      onTap: () => _handleTap(experience, visibleKeys),
-      onSecondaryTap: (details) => _openContextMenu(details, experience),
-    );
-  }
-
-  void _handleTap(
-    ExperienceEntity experience,
-    List<(String, String)> visibleKeys,
-  ) {
-    final activate = _selection.handleTap(_keyOf(experience), ids: visibleKeys);
-    if (activate) {
-      _openExperience(experience);
-    } else {
-      setState(() {});
     }
+    if (!mounted) return;
+    setState(() {
+      _selection.clear();
+      if (targets.any((e) => _keyOf(e) == openKey)) openKey = null;
+    });
   }
 
-  void _openExperience(ExperienceEntity experience) {
-    _selection.clear();
-    setState(() => openKey = _keyOf(experience));
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
-  void _closeDetail() {
-    setState(() => openKey = null);
+  @override
+  void initState() {
+    super.initState();
+    viewModel.load();
   }
 
-  List<Widget> _menuItems(ExperienceEntity experience, {bool open = true}) {
-    final selected = viewModel.experiences.value
-        .where((item) => _selection.selectedIds.contains(_keyOf(item)))
-        .toList();
-    final multiSelect = selected.length > 1 && selected.contains(experience);
-    final targets = multiSelect ? selected : [experience];
-    final archivable = targets.where((e) => !_isArchived(e)).toList();
-    final restorable = targets.where(_isArchived).toList();
-    return [
-      if (!multiSelect && open)
-        DesktopContextMenuTile(
-          text: 'View',
-          onTap: () => _openExperience(experience),
-        ),
-      if (archivable.isNotEmpty)
-        DesktopContextMenuTile(
-          text: archivable.length > 1
-              ? 'Archive ${archivable.length}'
-              : 'Archive',
-          onTap: () => archiveExperiences(archivable),
-        ),
-      if (restorable.isNotEmpty)
-        DesktopContextMenuTile(
-          text: restorable.length > 1
-              ? 'Restore ${restorable.length}'
-              : 'Restore',
-          onTap: () => restoreExperiences(restorable),
-        ),
-      const DesktopContextMenuSeparator(),
-      DesktopContextMenuTile(
-        text: targets.length > 1 ? 'Delete ${targets.length}' : 'Delete',
-        danger: true,
-        onTap: () => destroyExperiences(targets),
-      ),
-    ];
-  }
-
-  void _openContextMenu(TapUpDetails details, ExperienceEntity experience) {
-    final menu = DesktopContextMenu(
-      offset: details.globalPosition,
-      width: 160,
-      children: _menuItems(experience),
-    );
-    DesktopContextMenuManager.instance.show(context, menu);
+  Future<void> restoreExperiences(List<ExperienceEntity> targets) async {
+    for (final experience in targets) {
+      if (!_isArchived(experience)) continue;
+      final ok = await viewModel.restoreExperience(experience);
+      if (!ok) {
+        if (mounted) {
+          AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
+        }
+        break;
+      }
+    }
+    if (mounted) setState(_selection.clear);
   }
 
   // ---------------------------------------------------------------------------
@@ -365,6 +221,182 @@ class _DesktopSettingExperiencePageState
     );
   }
 
+  Widget _buildExperienceRow(
+    ExperienceEntity experience,
+    List<(String, String)> visibleKeys,
+  ) {
+    final archived = _isArchived(experience);
+    final meta = <String>[
+      viewModel.ownerLabel(experience),
+      ExperienceFormat.date(experience.createdAt),
+    ];
+    return AthenaSettingsListRow(
+      label: experience.lesson,
+      labelMaxLines: 1,
+      metadata: experience.tags.firstOrNull,
+      description: meta.join(' · '),
+      descriptionMaxLines: 1,
+      dimmed: archived,
+      selected: _selection.selectedIds.contains(_keyOf(experience)),
+      onTap: () => _handleTap(experience, visibleKeys),
+      onSecondaryTap: (details) => _openContextMenu(details, experience),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 列表
+  // ---------------------------------------------------------------------------
+
+  Widget _buildList(List<ExperienceEntity> experiences) {
+    final query = searchController.text.trim().toLowerCase();
+    final matches = experiences.where((e) {
+      if (status == _Status.active && _isArchived(e) ||
+          status == _Status.archived && !_isArchived(e)) {
+        return false;
+      }
+      return e.lesson.toLowerCase().contains(query) ||
+          e.context.toLowerCase().contains(query) ||
+          e.tags.any((tag) => tag.toLowerCase().contains(query)) ||
+          viewModel.ownerLabel(e).toLowerCase().contains(query);
+    }).toList();
+    matches.sort(_compare);
+    final active = matches.where((e) => !_isArchived(e)).toList();
+    final archived = matches.where(_isArchived).toList();
+    final visibleKeys = [...active, ...archived].map(_keyOf).toList();
+    return AthenaSettingsListPane(
+      title: 'Experiences',
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'status',
+      filter: status,
+      filters: _Status.values,
+      onFilterChanged: (option) => setState(() {
+        status = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      children: [
+        if (experiences.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.brain,
+            title: 'Nothing learned yet',
+            hint:
+                'As the agent works it records lessons here and recalls them '
+                'in later sessions. Archive the ones you disagree with.',
+          )
+        else if (matches.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.search,
+            title: 'No matching experiences',
+            hint: 'Try another search or change the status filter.',
+          ),
+        if (active.isNotEmpty)
+          AthenaSettingsSection(
+            first: true,
+            title: 'Active · ${active.length}',
+            children: [
+              for (final e in active) _buildExperienceRow(e, visibleKeys),
+            ],
+          ),
+        if (archived.isNotEmpty)
+          AthenaSettingsSection(
+            first: active.isEmpty,
+            title: 'Archived · ${archived.length}',
+            children: [
+              for (final e in archived) _buildExperienceRow(e, visibleKeys),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _closeDetail() {
+    setState(() => openKey = null);
+  }
+
+  int _compare(ExperienceEntity a, ExperienceEntity b) {
+    final byDate = switch (sort) {
+      _Sort.created => b.createdAt.compareTo(a.createdAt),
+      _Sort.edited => (b.updatedAt ?? b.createdAt).compareTo(
+        a.updatedAt ?? a.createdAt,
+      ),
+      _Sort.lesson => 0,
+    };
+    if (byDate != 0) return byDate;
+    final byLesson = a.lesson.toLowerCase().compareTo(b.lesson.toLowerCase());
+    if (byLesson != 0) return byLesson;
+    final byOwner = a.sentinelId.compareTo(b.sentinelId);
+    return byOwner != 0 ? byOwner : a.id.compareTo(b.id);
+  }
+
+  void _handleTap(
+    ExperienceEntity experience,
+    List<(String, String)> visibleKeys,
+  ) {
+    final activate = _selection.handleTap(_keyOf(experience), ids: visibleKeys);
+    if (activate) {
+      _openExperience(experience);
+    } else {
+      setState(() {});
+    }
+  }
+
+  List<Widget> _menuItems(ExperienceEntity experience, {bool open = true}) {
+    final selected = viewModel.experiences.value
+        .where((item) => _selection.selectedIds.contains(_keyOf(item)))
+        .toList();
+    final multiSelect = selected.length > 1 && selected.contains(experience);
+    final targets = multiSelect ? selected : [experience];
+    final archivable = targets.where((e) => !_isArchived(e)).toList();
+    final restorable = targets.where(_isArchived).toList();
+    return [
+      if (!multiSelect && open)
+        DesktopContextMenuTile(
+          text: 'View',
+          onTap: () => _openExperience(experience),
+        ),
+      if (archivable.isNotEmpty)
+        DesktopContextMenuTile(
+          text: archivable.length > 1
+              ? 'Archive ${archivable.length}'
+              : 'Archive',
+          onTap: () => archiveExperiences(archivable),
+        ),
+      if (restorable.isNotEmpty)
+        DesktopContextMenuTile(
+          text: restorable.length > 1
+              ? 'Restore ${restorable.length}'
+              : 'Restore',
+          onTap: () => restoreExperiences(restorable),
+        ),
+      const DesktopContextMenuSeparator(),
+      DesktopContextMenuTile(
+        text: targets.length > 1 ? 'Delete ${targets.length}' : 'Delete',
+        danger: true,
+        onTap: () => destroyExperiences(targets),
+      ),
+    ];
+  }
+
+  void _openContextMenu(TapUpDetails details, ExperienceEntity experience) {
+    final menu = DesktopContextMenu(
+      offset: details.globalPosition,
+      width: 160,
+      children: _menuItems(experience),
+    );
+    DesktopContextMenuManager.instance.show(context, menu);
+  }
+
+  void _openExperience(ExperienceEntity experience) {
+    _selection.clear();
+    setState(() => openKey = _keyOf(experience));
+  }
+
   Widget _value(String text, AthenaColors colors) {
     return Text(
       text,
@@ -372,61 +404,29 @@ class _DesktopSettingExperiencePageState
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 动作
-  // ---------------------------------------------------------------------------
+  static bool _isArchived(ExperienceEntity experience) =>
+      experience.status == ExperienceEntity.statusArchived;
 
-  Future<void> archiveExperiences(List<ExperienceEntity> targets) async {
-    for (final experience in targets) {
-      if (_isArchived(experience)) continue;
-      final ok = await viewModel.archiveExperience(experience);
-      if (!ok) {
-        if (mounted) {
-          AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
-        }
-        break;
-      }
-    }
-    if (mounted) setState(_selection.clear);
-  }
+  static (String, String) _keyOf(ExperienceEntity experience) =>
+      (experience.sentinelId, experience.id);
+}
 
-  Future<void> restoreExperiences(List<ExperienceEntity> targets) async {
-    for (final experience in targets) {
-      if (!_isArchived(experience)) continue;
-      final ok = await viewModel.restoreExperience(experience);
-      if (!ok) {
-        if (mounted) {
-          AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
-        }
-        break;
-      }
-    }
-    if (mounted) setState(_selection.clear);
-  }
+enum _Sort implements SettingsListOption {
+  created('Newest first'),
+  edited('Last edited'),
+  lesson('Lesson');
 
-  Future<void> destroyExperiences(List<ExperienceEntity> targets) async {
-    if (targets.isEmpty) return;
-    final confirmed = await AthenaDialog.confirm(
-      targets.length == 1
-          ? 'Delete this experience? This cannot be undone.'
-          : 'Delete ${targets.length} experiences? This cannot be undone.',
-    );
-    if (confirmed != true) return;
-    for (final experience in targets) {
-      final ok = await viewModel.deleteExperience(experience);
-      if (!ok) {
-        if (mounted) {
-          AthenaDialog.error(
-            viewModel.error.value ?? 'Failed to delete experience',
-          );
-        }
-        break;
-      }
-    }
-    if (!mounted) return;
-    setState(() {
-      _selection.clear();
-      if (targets.any((e) => _keyOf(e) == openKey)) openKey = null;
-    });
-  }
+  @override
+  final String label;
+  const _Sort(this.label);
+}
+
+enum _Status implements SettingsListOption {
+  all('All statuses'),
+  active('Active'),
+  archived('Archived');
+
+  @override
+  final String label;
+  const _Status(this.label);
 }

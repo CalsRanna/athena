@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileChatConfigurationDialog extends StatefulWidget {
   final ChatEntity? chat;
@@ -49,14 +49,6 @@ class _MobileConfigurationDialogState
     );
   }
 
-  void _storeRetention(bool value) {
-    widget.onRetentionChanged?.call(value ? 0 : -1);
-  }
-
-  void _storeTemperature(double value) {
-    widget.onTemperatureChanged?.call(value);
-  }
-
   Widget _buildRetentionSwitch() {
     return SignalBuilder(
       builder: (_) {
@@ -88,5 +80,13 @@ class _MobileConfigurationDialogState
         );
       },
     );
+  }
+
+  void _storeRetention(bool value) {
+    widget.onRetentionChanged?.call(value ? 0 : -1);
+  }
+
+  void _storeTemperature(double value) {
+    widget.onTemperatureChanged?.call(value);
   }
 }

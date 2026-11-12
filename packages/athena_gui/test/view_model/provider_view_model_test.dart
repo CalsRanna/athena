@@ -105,27 +105,19 @@ void main() {
   });
 }
 
-class _Providers extends Fake implements ProviderRepository {
-  final items = [
-    ProviderEntity(
-      id: 'provider',
-      name: 'Test',
-      baseUrl: 'https://example.com/v1',
-      apiKey: '',
-      createdAt: DateTime(2026),
-    ),
-  ];
-  final deleted = <String>[];
-  bool fail = false;
+class _Catalog extends Fake implements ModelCatalogService {
+  Completer<CatalogSyncResult> pending = Completer<CatalogSyncResult>();
+  DateTime? syncedAt = DateTime(2026, 1, 1);
+  final forces = <bool>[];
 
   @override
-  Future<List<ProviderEntity>> getAllProviders() async {
-    if (fail) throw StateError('providers failed');
-    return items;
+  Future<DateTime?> lastSyncedAt() async => syncedAt;
+
+  @override
+  Future<CatalogSyncResult> syncIfNeeded({bool force = false}) {
+    forces.add(force);
+    return pending.future;
   }
-
-  @override
-  Future<void> deleteProvider(String id) async => deleted.add(id);
 }
 
 class _Models extends Fake implements ModelViewModel {
@@ -143,23 +135,31 @@ class _Models extends Fake implements ModelViewModel {
   }
 
   @override
-  void removeModelsOfProvider(String providerId) => removed.add(providerId);
+  Future<void> loadEnabledModels() async => enabledReloads++;
 
   @override
-  Future<void> loadEnabledModels() async => enabledReloads++;
+  void removeModelsOfProvider(String providerId) => removed.add(providerId);
 }
 
-class _Catalog extends Fake implements ModelCatalogService {
-  Completer<CatalogSyncResult> pending = Completer<CatalogSyncResult>();
-  DateTime? syncedAt = DateTime(2026, 1, 1);
-  final forces = <bool>[];
+class _Providers extends Fake implements ProviderRepository {
+  final items = [
+    ProviderEntity(
+      id: 'provider',
+      name: 'Test',
+      baseUrl: 'https://example.com/v1',
+      apiKey: '',
+      createdAt: DateTime(2026),
+    ),
+  ];
+  final deleted = <String>[];
+  bool fail = false;
 
   @override
-  Future<CatalogSyncResult> syncIfNeeded({bool force = false}) {
-    forces.add(force);
-    return pending.future;
+  Future<void> deleteProvider(String id) async => deleted.add(id);
+
+  @override
+  Future<List<ProviderEntity>> getAllProviders() async {
+    if (fail) throw StateError('providers failed');
+    return items;
   }
-
-  @override
-  Future<DateTime?> lastSyncedAt() async => syncedAt;
 }

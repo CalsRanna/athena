@@ -7,20 +7,14 @@ import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:http/http.dart' as http;
 
 class WebSearchTool extends Tool implements CancellableTool {
-  /// API key 存在两个前端共用的 `~/.athena/setting.yaml` 里。
-  WebSearchTool({UserSettingsStore? settings}) : _settings = settings;
+  static const _defaultTimeout = Duration(seconds: 15);
+
+  static const _maxResults = 10;
 
   final UserSettingsStore? _settings;
 
-  @override
-  ExecutionMode get executionMode => ExecutionMode.parallel;
-
-  static const _defaultTimeout = Duration(seconds: 15);
-  static const _maxResults = 10;
-
-  @override
-  String get name => 'web_search';
-
+  /// API key 存在两个前端共用的 `~/.athena/setting.yaml` 里。
+  WebSearchTool({UserSettingsStore? settings}) : _settings = settings;
   @override
   String get description =>
       'Search the web using Brave Search. '
@@ -28,6 +22,12 @@ class WebSearchTool extends Tool implements CancellableTool {
       'Use when you need up-to-date information beyond your knowledge cutoff. '
       'For reading full page content, use web_fetch on the result URLs. '
       'Requires a Brave Search API key in settings.';
+
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
+
+  @override
+  String get name => 'web_search';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -39,17 +39,17 @@ class WebSearchTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args, onUpdate: onUpdate);
-
-  @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args, onUpdate: onUpdate);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {

@@ -16,6 +16,23 @@ class RunStatistics {
     this.outputTokensPerSecond,
   });
 
+  factory RunStatistics.fromJson(Map<String, dynamic> json) {
+    final startedAt = DateTime.parse(json['started_at'] as String);
+    final finishedAt = json['finished_at'] == null
+        ? null
+        : DateTime.parse(json['finished_at'] as String);
+    final outputTokens = json['output_tokens'] as int?;
+    return RunStatistics(
+      id: json['id'] as String,
+      startedAt: startedAt,
+      finishedAt: finishedAt,
+      outputTokens: outputTokens,
+      // 旧字段是整个 run 的平均速率，不能作为单次 LLM 生成速度展示。
+      outputTokensPerSecond: (json['response_output_tokens_per_second'] as num?)
+          ?.toDouble(),
+    );
+  }
+
   RunStatistics copyWith({DateTime? finishedAt}) => RunStatistics(
     id: id,
     startedAt: startedAt,
@@ -25,6 +42,14 @@ class RunStatistics {
   );
 
   Duration elapsedAt(DateTime now) => (finishedAt ?? now).difference(startedAt);
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'started_at': startedAt.toIso8601String(),
+    if (finishedAt != null) 'finished_at': finishedAt!.toIso8601String(),
+    'output_tokens': outputTokens,
+    'response_output_tokens_per_second': outputTokensPerSecond,
+  };
 
   /// Accumulates output usage and samples the latest response's output rate.
   RunStatistics withUsage(TokenUsage usage) {
@@ -51,29 +76,4 @@ class RunStatistics {
         : elapsed.inMicroseconds;
     return tokens * Duration.microsecondsPerSecond / microseconds;
   }
-
-  factory RunStatistics.fromJson(Map<String, dynamic> json) {
-    final startedAt = DateTime.parse(json['started_at'] as String);
-    final finishedAt = json['finished_at'] == null
-        ? null
-        : DateTime.parse(json['finished_at'] as String);
-    final outputTokens = json['output_tokens'] as int?;
-    return RunStatistics(
-      id: json['id'] as String,
-      startedAt: startedAt,
-      finishedAt: finishedAt,
-      outputTokens: outputTokens,
-      // 旧字段是整个 run 的平均速率，不能作为单次 LLM 生成速度展示。
-      outputTokensPerSecond: (json['response_output_tokens_per_second'] as num?)
-          ?.toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'started_at': startedAt.toIso8601String(),
-    if (finishedAt != null) 'finished_at': finishedAt!.toIso8601String(),
-    'output_tokens': outputTokens,
-    'response_output_tokens_per_second': outputTokensPerSecond,
-  };
 }

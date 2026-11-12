@@ -1,9 +1,10 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/mobile/component/empty_state.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -16,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileProviderListPage extends StatefulWidget {
@@ -29,23 +29,6 @@ class MobileProviderListPage extends StatefulWidget {
 class _MobileProviderListPageState extends State<MobileProviderListPage> {
   final viewModel = GetIt.instance<ProviderViewModel>();
   final modelViewModel = GetIt.instance<ModelViewModel>();
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeViewModels();
-  }
-
-  Future<void> _initializeViewModels() async {
-    try {
-      await viewModel.initSignals();
-      await modelViewModel.initSignals();
-    } catch (e) {
-      if (mounted) {
-        AthenaDialog.error('Failed to load providers. Please try again.');
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +56,12 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
         );
       },
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeViewModels();
   }
 
   void navigateProviderNamePage(BuildContext context) {
@@ -192,6 +181,17 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
       ),
       child: divider,
     );
+  }
+
+  Future<void> _initializeViewModels() async {
+    try {
+      await viewModel.initSignals();
+      await modelViewModel.initSignals();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load providers. Please try again.');
+      }
+    }
   }
 }
 

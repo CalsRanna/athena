@@ -1,6 +1,7 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_gui/page/mobile/setting/component/section.dart';
+import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/format/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -8,10 +9,9 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
-import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -29,11 +29,11 @@ class _MobileDataPageState extends State<MobileDataPage> {
   StorageUsage? _usage;
   var _loadingUsage = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUsage();
-  }
+  bool get _hasRewindSnapshots =>
+      !_loadingUsage && (_usage?.rewindSnapshotCount ?? 0) > 0;
+
+  bool get _hasToolOutputs =>
+      !_loadingUsage && (_usage?.toolOutputCount ?? 0) > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -115,32 +115,10 @@ class _MobileDataPageState extends State<MobileDataPage> {
     );
   }
 
-  Future<void> _copyPath(String path) async {
-    await Clipboard.setData(ClipboardData(text: path));
-    if (mounted) AthenaDialog.success('Data folder copied');
-  }
-
-  bool get _hasRewindSnapshots =>
-      !_loadingUsage && (_usage?.rewindSnapshotCount ?? 0) > 0;
-
-  bool get _hasToolOutputs =>
-      !_loadingUsage && (_usage?.toolOutputCount ?? 0) > 0;
-
-  String _sizeSummary(int count, int bytes) =>
-      '$count ${count == 1 ? 'file' : 'files'} · ${ByteSize.formatByteSize(bytes)}';
-
-  Future<void> _loadUsage() async {
-    StorageUsage usage;
-    try {
-      usage = await GetIt.instance<StorageMaintenance>().measure();
-    } catch (_) {
-      usage = const StorageUsage();
-    }
-    if (!mounted) return;
-    setState(() {
-      _usage = usage;
-      _loadingUsage = false;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadUsage();
   }
 
   Future<void> _clearRewindSnapshots() async {
@@ -178,28 +156,9 @@ class _MobileDataPageState extends State<MobileDataPage> {
     );
   }
 
-  Future<void> _runCleanup({
-    required Future<int> Function() action,
-    required String Function(int count) successMessage,
-    required String failureMessage,
-  }) async {
-    int? deleted;
-    var failed = false;
-    AthenaDialog.loading();
-    try {
-      deleted = await action();
-    } catch (_) {
-      failed = true;
-    } finally {
-      AthenaDialog.dismiss();
-    }
-    await _loadUsage();
-    if (!mounted) return;
-    if (failed) {
-      AthenaDialog.error(failureMessage);
-    } else {
-      AthenaDialog.success(successMessage(deleted!));
-    }
+  Future<void> _copyPath(String path) async {
+    await Clipboard.setData(ClipboardData(text: path));
+    if (mounted) AthenaDialog.success('Data folder copied');
   }
 
   Future<void> _handleReset() async {
@@ -225,4 +184,45 @@ class _MobileDataPageState extends State<MobileDataPage> {
       AthenaDialog.dismiss();
     }
   }
+
+  Future<void> _loadUsage() async {
+    StorageUsage usage;
+    try {
+      usage = await GetIt.instance<StorageMaintenance>().measure();
+    } catch (_) {
+      usage = const StorageUsage();
+    }
+    if (!mounted) return;
+    setState(() {
+      _usage = usage;
+      _loadingUsage = false;
+    });
+  }
+
+  Future<void> _runCleanup({
+    required Future<int> Function() action,
+    required String Function(int count) successMessage,
+    required String failureMessage,
+  }) async {
+    int? deleted;
+    var failed = false;
+    AthenaDialog.loading();
+    try {
+      deleted = await action();
+    } catch (_) {
+      failed = true;
+    } finally {
+      AthenaDialog.dismiss();
+    }
+    await _loadUsage();
+    if (!mounted) return;
+    if (failed) {
+      AthenaDialog.error(failureMessage);
+    } else {
+      AthenaDialog.success(successMessage(deleted!));
+    }
+  }
+
+  String _sizeSummary(int count, int bytes) =>
+      '$count ${count == 1 ? 'file' : 'files'} · ${ByteSize.formatByteSize(bytes)}';
 }

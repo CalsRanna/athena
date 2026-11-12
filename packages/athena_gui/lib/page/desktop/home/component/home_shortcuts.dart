@@ -1,6 +1,6 @@
-import 'package:flutter/widgets.dart';
-import 'package:flutter/services.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 /// 桌面首页的页级快捷键，目前只有"新建对话"一条。
 ///
@@ -29,6 +29,14 @@ class DesktopHomeShortcuts extends StatelessWidget {
     required this.child,
   });
 
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {newChatActivator(context): onNewChat},
+      child: FocusScope(autofocus: true, child: child),
+    );
+  }
+
   /// 新建对话的激活键（按平台只有一个）。按住不放不重复触发。
   static SingleActivator newChatActivator(BuildContext context) {
     final isMac = context.athenaPlatform == TargetPlatform.macOS;
@@ -46,12 +54,4 @@ class DesktopHomeShortcuts extends StatelessWidget {
   /// 真正注册的那套，否则 Windows 上会提示一个按不出来的 ⌘N。
   static String newChatLabel(BuildContext context) =>
       context.athenaPlatform == TargetPlatform.macOS ? '⌘N' : 'Ctrl+N';
-
-  @override
-  Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {newChatActivator(context): onNewChat},
-      child: FocusScope(autofocus: true, child: child),
-    );
-  }
 }

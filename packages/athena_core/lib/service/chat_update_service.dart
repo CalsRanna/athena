@@ -20,6 +20,12 @@ class ChatUpdateService {
        _providerRepository = providerRepository,
        _chatService = chatService;
 
+  // ─── Provider 解析 ──────────────────────────────────────
+
+  Future<ProviderEntity?> getProviderForModel(String providerId) async {
+    return _providerRepository.getProviderById(providerId);
+  }
+
   // ─── 重命名 ─────────────────────────────────────────────
 
   Stream<String> renameChat(
@@ -41,35 +47,6 @@ class ChatUpdateService {
     return _applyField(chat, (c) => c.copyWith(title: title));
   }
 
-  // ─── 配置更新 ───────────────────────────────────────────
-
-  Future<ChatEntity> updateModel(ChatEntity chat, String modelId) {
-    return _applyField(chat, (c) => c.copyWith(modelId: modelId));
-  }
-
-  Future<ChatEntity> updateSentinel(ChatEntity chat, String? sentinelId) {
-    return _applyField(chat, (c) => c.copyWith(sentinelId: sentinelId));
-  }
-
-  Future<ChatEntity> updateRetention(ChatEntity chat, int retention) {
-    return _applyField(chat, (c) => c.copyWith(retention: retention));
-  }
-
-  Future<ChatEntity> updateTemperature(ChatEntity chat, double temperature) {
-    return _applyField(chat, (c) => c.copyWith(temperature: temperature));
-  }
-
-  Future<ChatEntity> updateReasoningEffort(ChatEntity chat, String effort) {
-    return _applyField(chat, (c) => c.copyWith(reasoningEffort: effort));
-  }
-
-  /// 设置/清除本会话的工作文件夹（null = 不指定）。
-  ///
-  /// 只影响后续 run：运行中的 run 已在开始时解析并持有自己的基准。
-  Future<ChatEntity> updateWorkspacePath(ChatEntity chat, String? path) {
-    return _applyField(chat, (c) => c.copyWith(workspacePath: path));
-  }
-
   /// 设置本会话的工具审批档位。
   ///
   /// 运行中的 run 也会立即改用新档位（协调层在每次工具调用前读取）。
@@ -77,10 +54,33 @@ class ChatUpdateService {
     return _applyField(chat, (c) => c.copyWith(approvalMode: mode));
   }
 
-  // ─── Provider 解析 ──────────────────────────────────────
+  // ─── 配置更新 ───────────────────────────────────────────
 
-  Future<ProviderEntity?> getProviderForModel(String providerId) async {
-    return _providerRepository.getProviderById(providerId);
+  Future<ChatEntity> updateModel(ChatEntity chat, String modelId) {
+    return _applyField(chat, (c) => c.copyWith(modelId: modelId));
+  }
+
+  Future<ChatEntity> updateReasoningEffort(ChatEntity chat, String effort) {
+    return _applyField(chat, (c) => c.copyWith(reasoningEffort: effort));
+  }
+
+  Future<ChatEntity> updateRetention(ChatEntity chat, int retention) {
+    return _applyField(chat, (c) => c.copyWith(retention: retention));
+  }
+
+  Future<ChatEntity> updateSentinel(ChatEntity chat, String? sentinelId) {
+    return _applyField(chat, (c) => c.copyWith(sentinelId: sentinelId));
+  }
+
+  Future<ChatEntity> updateTemperature(ChatEntity chat, double temperature) {
+    return _applyField(chat, (c) => c.copyWith(temperature: temperature));
+  }
+
+  /// 设置/清除本会话的工作文件夹（null = 不指定）。
+  ///
+  /// 只影响后续 run：运行中的 run 已在开始时解析并持有自己的基准。
+  Future<ChatEntity> updateWorkspacePath(ChatEntity chat, String? path) {
+    return _applyField(chat, (c) => c.copyWith(workspacePath: path));
   }
 
   // ─── 内部 ───────────────────────────────────────────────

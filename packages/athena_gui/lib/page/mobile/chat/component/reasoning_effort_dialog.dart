@@ -1,7 +1,7 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 推理强度选择对话框——移动端,行样式与 [AthenaBottomSheetTile]
 /// 一致,当前档位文字加粗区分。

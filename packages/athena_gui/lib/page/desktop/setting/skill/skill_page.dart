@@ -1,43 +1,24 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
-import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
-import 'package:athena_gui/view_model/skill_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/markdown.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
+import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
+import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/markdown.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-
-enum _Source implements SettingsListOption {
-  all('All sources'),
-  user('Your skills'),
-  builtin('Built-in');
-
-  const _Source(this.label);
-  @override
-  final String label;
-}
-
-enum _Sort implements SettingsListOption {
-  edited('Last edited'),
-  name('Name');
-
-  const _Sort(this.label);
-  @override
-  final String label;
-}
 
 /// 桌面端 Skills：按来源浏览，点进技能预览或编辑 Markdown。
 ///
@@ -67,22 +48,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   String? descriptionError;
 
   @override
-  void initState() {
-    super.initState();
-    descriptionController.addListener(_recomputeDirty);
-    bodyController.addListener(_recomputeDirty);
-    viewModel.load();
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    descriptionController.dispose();
-    bodyController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return SignalBuilder(
       builder: (context) {
@@ -96,219 +61,92 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 列表
-  // ---------------------------------------------------------------------------
-
-  Widget _buildList(List<Skill> skills) {
-    final query = searchController.text.trim().toLowerCase();
-    final matches = skills.where(
-      (skill) =>
-          skill.name.toLowerCase().contains(query) ||
-          skill.description.toLowerCase().contains(query),
-    );
-    final user = matches.where((s) => !s.isBuiltin).toList()..sort(_compare);
-    final builtin = matches.where((s) => s.isBuiltin).toList()..sort(_compare);
-    final userIds = user.map((s) => s.name).toList();
-    final groups = <Widget>[
-      if (source != _Source.builtin && user.isNotEmpty)
-        _buildGroup(_Source.user, user, userIds),
-      if (source != _Source.user && builtin.isNotEmpty)
-        _buildGroup(_Source.builtin, builtin, userIds),
-    ];
-    return AthenaSettingsListPane(
-      title: 'Skills',
-      searchController: searchController,
-      onSearchChanged: (_) => setState(_selection.clear),
-      filterBy: 'source',
-      filter: source,
-      filters: _Source.values,
-      onFilterChanged: (option) => setState(() {
-        source = option;
-        _selection.clear();
-      }),
-      sort: sort,
-      sorts: _Sort.values,
-      onSortChanged: (option) => setState(() {
-        sort = option;
-        _selection.clear();
-      }),
-      onAdd: createSkill,
-      children: [
-        if (groups.isEmpty)
-          AthenaSettingsEmptyState(
-            icon: skills.isEmpty ? LucideIcons.scrollText : LucideIcons.search,
-            title: skills.isEmpty ? 'No skills yet' : 'No matching skills',
-            hint: skills.isEmpty
-                ? 'Add a skill to give the agent reusable instructions.'
-                : 'Try another search or change the source filter.',
-          ),
-        for (final group in groups) ...[
-          if (group != groups.first)
-            const SizedBox(height: AthenaSettings.sectionGap),
-          group,
-        ],
-      ],
-    );
-  }
-
-  int _compare(Skill a, Skill b) {
-    if (sort == _Sort.edited) {
-      final byDate = (b.modifiedAt?.microsecondsSinceEpoch ?? 0).compareTo(
-        a.modifiedAt?.microsecondsSinceEpoch ?? 0,
-      );
-      if (byDate != 0) return byDate;
-    }
-    return a.name.compareTo(b.name);
-  }
-
-  Widget _buildGroup(_Source group, List<Skill> skills, List<String> userIds) {
-    final colors = context.athenaColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AthenaSettingsInset(
-          child: Row(
-            children: [
-              Text(
-                group.label,
-                style: AthenaTextStyle.title.copyWith(
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: AthenaSpace.sm),
-              AthenaSettingsBadge(text: '${skills.length}'),
-            ],
-          ),
-        ),
-        const SizedBox(height: AthenaSpace.sm),
-        AthenaSettingsGroup(
-          children: [
-            for (final skill in skills) _buildSkillRow(skill, userIds),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSkillRow(Skill skill, List<String> userIds) {
-    final colors = context.athenaColors;
-    final date = skill.modifiedAt;
-    final origin = skill.isBuiltin ? 'Athena' : 'Local skill';
-    final items = _menuItems(skill);
-    return AthenaSettingsListRow(
-      label: skill.name,
-      labelMaxLines: 1,
-      leading: Container(
-        width: AthenaSettings.controlHeight,
-        height: AthenaSettings.controlHeight,
-        decoration: BoxDecoration(
-          color: colors.neutralControlFill,
-          border: Border.all(color: colors.neutralBorder),
-          borderRadius: BorderRadius.circular(AthenaRadius.control),
-        ),
-        child: Icon(
-          LucideIcons.scrollText,
-          size: AthenaIcon.regularSize,
-          color: colors.iconSecondary,
-        ),
+  void createSkill() {
+    AthenaDialog.show(
+      DesktopSkillFormDialog(
+        onStored: (name) {
+          if (!mounted) return;
+          final skill = viewModel.skills.value
+              .where((s) => s.name == name)
+              .firstOrNull;
+          if (skill != null) _openSkill(skill, code: true);
+        },
       ),
-      description: '$origin  ·  ${skill.description}',
-      descriptionMaxLines: 1,
-      metadata: date == null
-          ? null
-          : MaterialLocalizations.of(context).formatShortMonthDay(date),
-      trailing: skill.isBuiltin
-          ? const SizedBox(width: AthenaIconButtonSize.compact)
-          : Tooltip(
-              message: 'More actions for ${skill.name}',
-              child: AthenaSettingsMenuButton(items: items, menuWidth: 180),
-            ),
-      selected: !skill.isBuiltin && _selection.selectedIds.contains(skill.name),
-      onTap: () => _handleSkillTap(skill, userIds),
-      onSecondaryTap: (details) {
-        DesktopContextMenuManager.instance.show(
-          context,
-          DesktopContextMenu(
-            offset: details.globalPosition,
-            width: 180,
-            children: items,
-          ),
-        );
-      },
     );
   }
 
-  void _handleSkillTap(Skill skill, List<String> userIds) {
-    final activate = _selection.handleTap(
-      skill.isBuiltin ? null : skill.name,
-      ids: userIds,
+  Future<void> destroySkills(List<Skill> targets) async {
+    final deletable = targets.where((item) => !item.isBuiltin).toList();
+    if (deletable.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      deletable.length == 1
+          ? 'Delete ${deletable.single.name} and its folder?'
+          : 'Delete ${deletable.length} skills and their folders?',
     );
-    if (activate) {
-      _openSkill(skill);
-    } else {
-      setState(() {});
+    if (confirmed != true) return;
+    for (final skill in deletable) {
+      final ok = await viewModel.deleteSkill(skill);
+      if (!ok) {
+        if (mounted) {
+          AthenaDialog.error(viewModel.error.value ?? 'Failed to delete skill');
+        }
+        break;
+      }
     }
-  }
-
-  void _openSkill(Skill skill, {bool code = false}) {
-    _selection.clear();
-    descriptionController.text = skill.description;
-    bodyController.text = skill.body;
+    if (!mounted) return;
     setState(() {
-      openId = (skill.name, skill.isBuiltin);
-      showCode = code;
-      dirty = false;
-      descriptionError = null;
+      _selection.clear();
+      if (deletable.any((item) => (item.name, item.isBuiltin) == openId)) {
+        openId = null;
+        dirty = false;
+      }
     });
   }
 
-  Future<void> _closeEditor() async {
-    if (dirty) {
-      final leave = await AthenaDialog.confirm(
-        'Discard unsaved changes to this skill?',
-      );
-      if (leave != true || !mounted) return;
-    }
-    setState(() {
-      openId = null;
-      dirty = false;
-    });
+  @override
+  void dispose() {
+    searchController.dispose();
+    descriptionController.dispose();
+    bodyController.dispose();
+    super.dispose();
   }
 
-  List<Widget> _menuItems(Skill skill) {
-    final selectedIds = _selection.selectedIds;
-    final multiSelect =
-        !skill.isBuiltin &&
-        selectedIds.length > 1 &&
-        selectedIds.contains(skill.name);
-    final targets = multiSelect
-        ? viewModel.skills.value
-              .where(
-                (item) => !item.isBuiltin && selectedIds.contains(item.name),
-              )
-              .toList()
-        : [skill];
-    return [
-      if (!multiSelect && openId == null)
-        DesktopContextMenuTile(
-          text: skill.isBuiltin ? 'View' : 'Edit',
-          onTap: () => _openSkill(skill, code: !skill.isBuiltin),
-        ),
-      if (!multiSelect && !skill.isBuiltin)
-        DesktopContextMenuTile(
-          text: 'Show in Finder',
-          onTap: () => _reveal(skill),
-        ),
-      if (!skill.isBuiltin) ...[
-        const DesktopContextMenuSeparator(),
-        DesktopContextMenuTile(
-          text: multiSelect ? 'Delete ${targets.length} skills' : 'Delete',
-          danger: true,
-          onTap: () => destroySkills(targets),
-        ),
-      ],
-    ];
+  @override
+  void initState() {
+    super.initState();
+    descriptionController.addListener(_recomputeDirty);
+    bodyController.addListener(_recomputeDirty);
+    viewModel.load();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 动作
+  // ---------------------------------------------------------------------------
+
+  Future<void> storeSkill(Skill skill) async {
+    final description = descriptionController.text.trim();
+    setState(() {
+      descriptionError = description.isEmpty
+          ? 'Description is required.'
+          : null;
+      if (descriptionError != null) showCode = true;
+    });
+    if (descriptionError != null) return;
+    final ok = await viewModel.updateSkill(
+      skill,
+      description: description,
+      body: bodyController.text,
+    );
+    if (!mounted) return;
+    if (!ok) {
+      AthenaDialog.error(viewModel.error.value ?? 'Failed to save skill');
+      return;
+    }
+    final saved = viewModel.skills.value.firstWhere(
+      (item) => !item.isBuiltin && item.name == skill.name,
+    );
+    _openSkill(saved, code: showCode);
+    AthenaDialog.success('Skill saved');
   }
 
   // ---------------------------------------------------------------------------
@@ -371,6 +209,35 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     );
   }
 
+  Widget _buildGroup(_Source group, List<Skill> skills, List<String> userIds) {
+    final colors = context.athenaColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AthenaSettingsInset(
+          child: Row(
+            children: [
+              Text(
+                group.label,
+                style: AthenaTextStyle.title.copyWith(
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: AthenaSpace.sm),
+              AthenaSettingsBadge(text: '${skills.length}'),
+            ],
+          ),
+        ),
+        const SizedBox(height: AthenaSpace.sm),
+        AthenaSettingsGroup(
+          children: [
+            for (final skill in skills) _buildSkillRow(skill, userIds),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildInstructions(bool readOnly) {
     if (showCode) {
       if (readOnly) {
@@ -398,6 +265,192 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     return SelectionArea(child: AthenaMarkdown(content: bodyController.text));
   }
 
+  // ---------------------------------------------------------------------------
+  // 列表
+  // ---------------------------------------------------------------------------
+
+  Widget _buildList(List<Skill> skills) {
+    final query = searchController.text.trim().toLowerCase();
+    final matches = skills.where(
+      (skill) =>
+          skill.name.toLowerCase().contains(query) ||
+          skill.description.toLowerCase().contains(query),
+    );
+    final user = matches.where((s) => !s.isBuiltin).toList()..sort(_compare);
+    final builtin = matches.where((s) => s.isBuiltin).toList()..sort(_compare);
+    final userIds = user.map((s) => s.name).toList();
+    final groups = <Widget>[
+      if (source != _Source.builtin && user.isNotEmpty)
+        _buildGroup(_Source.user, user, userIds),
+      if (source != _Source.user && builtin.isNotEmpty)
+        _buildGroup(_Source.builtin, builtin, userIds),
+    ];
+    return AthenaSettingsListPane(
+      title: 'Skills',
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'source',
+      filter: source,
+      filters: _Source.values,
+      onFilterChanged: (option) => setState(() {
+        source = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      onAdd: createSkill,
+      children: [
+        if (groups.isEmpty)
+          AthenaSettingsEmptyState(
+            icon: skills.isEmpty ? LucideIcons.scrollText : LucideIcons.search,
+            title: skills.isEmpty ? 'No skills yet' : 'No matching skills',
+            hint: skills.isEmpty
+                ? 'Add a skill to give the agent reusable instructions.'
+                : 'Try another search or change the source filter.',
+          ),
+        for (final group in groups) ...[
+          if (group != groups.first)
+            const SizedBox(height: AthenaSettings.sectionGap),
+          group,
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSkillRow(Skill skill, List<String> userIds) {
+    final colors = context.athenaColors;
+    final date = skill.modifiedAt;
+    final origin = skill.isBuiltin ? 'Athena' : 'Local skill';
+    final items = _menuItems(skill);
+    return AthenaSettingsListRow(
+      label: skill.name,
+      labelMaxLines: 1,
+      leading: Container(
+        width: AthenaSettings.controlHeight,
+        height: AthenaSettings.controlHeight,
+        decoration: BoxDecoration(
+          color: colors.neutralControlFill,
+          border: Border.all(color: colors.neutralBorder),
+          borderRadius: BorderRadius.circular(AthenaRadius.control),
+        ),
+        child: Icon(
+          LucideIcons.scrollText,
+          size: AthenaIcon.regularSize,
+          color: colors.iconSecondary,
+        ),
+      ),
+      description: '$origin  ·  ${skill.description}',
+      descriptionMaxLines: 1,
+      metadata: date == null
+          ? null
+          : MaterialLocalizations.of(context).formatShortMonthDay(date),
+      trailing: skill.isBuiltin
+          ? const SizedBox(width: AthenaIconButtonSize.compact)
+          : Tooltip(
+              message: 'More actions for ${skill.name}',
+              child: AthenaSettingsMenuButton(items: items, menuWidth: 180),
+            ),
+      selected: !skill.isBuiltin && _selection.selectedIds.contains(skill.name),
+      onTap: () => _handleSkillTap(skill, userIds),
+      onSecondaryTap: (details) {
+        DesktopContextMenuManager.instance.show(
+          context,
+          DesktopContextMenu(
+            offset: details.globalPosition,
+            width: 180,
+            children: items,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _closeEditor() async {
+    if (dirty) {
+      final leave = await AthenaDialog.confirm(
+        'Discard unsaved changes to this skill?',
+      );
+      if (leave != true || !mounted) return;
+    }
+    setState(() {
+      openId = null;
+      dirty = false;
+    });
+  }
+
+  int _compare(Skill a, Skill b) {
+    if (sort == _Sort.edited) {
+      final byDate = (b.modifiedAt?.microsecondsSinceEpoch ?? 0).compareTo(
+        a.modifiedAt?.microsecondsSinceEpoch ?? 0,
+      );
+      if (byDate != 0) return byDate;
+    }
+    return a.name.compareTo(b.name);
+  }
+
+  void _handleSkillTap(Skill skill, List<String> userIds) {
+    final activate = _selection.handleTap(
+      skill.isBuiltin ? null : skill.name,
+      ids: userIds,
+    );
+    if (activate) {
+      _openSkill(skill);
+    } else {
+      setState(() {});
+    }
+  }
+
+  List<Widget> _menuItems(Skill skill) {
+    final selectedIds = _selection.selectedIds;
+    final multiSelect =
+        !skill.isBuiltin &&
+        selectedIds.length > 1 &&
+        selectedIds.contains(skill.name);
+    final targets = multiSelect
+        ? viewModel.skills.value
+              .where(
+                (item) => !item.isBuiltin && selectedIds.contains(item.name),
+              )
+              .toList()
+        : [skill];
+    return [
+      if (!multiSelect && openId == null)
+        DesktopContextMenuTile(
+          text: skill.isBuiltin ? 'View' : 'Edit',
+          onTap: () => _openSkill(skill, code: !skill.isBuiltin),
+        ),
+      if (!multiSelect && !skill.isBuiltin)
+        DesktopContextMenuTile(
+          text: 'Show in Finder',
+          onTap: () => _reveal(skill),
+        ),
+      if (!skill.isBuiltin) ...[
+        const DesktopContextMenuSeparator(),
+        DesktopContextMenuTile(
+          text: multiSelect ? 'Delete ${targets.length} skills' : 'Delete',
+          danger: true,
+          onTap: () => destroySkills(targets),
+        ),
+      ],
+    ];
+  }
+
+  void _openSkill(Skill skill, {bool code = false}) {
+    _selection.clear();
+    descriptionController.text = skill.description;
+    bodyController.text = skill.body;
+    setState(() {
+      openId = (skill.name, skill.isBuiltin);
+      showCode = code;
+      dirty = false;
+      descriptionError = null;
+    });
+  }
+
   void _recomputeDirty() {
     final skill = viewModel.skills.value
         .where((s) => (s.name, s.isBuiltin) == openId)
@@ -409,82 +462,29 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     if (next != dirty && mounted) setState(() => dirty = next);
   }
 
-  // ---------------------------------------------------------------------------
-  // 动作
-  // ---------------------------------------------------------------------------
-
-  Future<void> storeSkill(Skill skill) async {
-    final description = descriptionController.text.trim();
-    setState(() {
-      descriptionError = description.isEmpty
-          ? 'Description is required.'
-          : null;
-      if (descriptionError != null) showCode = true;
-    });
-    if (descriptionError != null) return;
-    final ok = await viewModel.updateSkill(
-      skill,
-      description: description,
-      body: bodyController.text,
-    );
-    if (!mounted) return;
-    if (!ok) {
-      AthenaDialog.error(viewModel.error.value ?? 'Failed to save skill');
-      return;
-    }
-    final saved = viewModel.skills.value.firstWhere(
-      (item) => !item.isBuiltin && item.name == skill.name,
-    );
-    _openSkill(saved, code: showCode);
-    AthenaDialog.success('Skill saved');
-  }
-
-  void createSkill() {
-    AthenaDialog.show(
-      DesktopSkillFormDialog(
-        onStored: (name) {
-          if (!mounted) return;
-          final skill = viewModel.skills.value
-              .where((s) => s.name == name)
-              .firstOrNull;
-          if (skill != null) _openSkill(skill, code: true);
-        },
-      ),
-    );
-  }
-
   Future<void> _reveal(Skill skill) async {
     final ok = await launchUrl(Uri.directory(skill.sourcePath));
     if (!ok && mounted) {
       AthenaDialog.error('Unable to open ${skill.sourcePath}');
     }
   }
+}
 
-  Future<void> destroySkills(List<Skill> targets) async {
-    final deletable = targets.where((item) => !item.isBuiltin).toList();
-    if (deletable.isEmpty) return;
-    final confirmed = await AthenaDialog.confirm(
-      deletable.length == 1
-          ? 'Delete ${deletable.single.name} and its folder?'
-          : 'Delete ${deletable.length} skills and their folders?',
-    );
-    if (confirmed != true) return;
-    for (final skill in deletable) {
-      final ok = await viewModel.deleteSkill(skill);
-      if (!ok) {
-        if (mounted) {
-          AthenaDialog.error(viewModel.error.value ?? 'Failed to delete skill');
-        }
-        break;
-      }
-    }
-    if (!mounted) return;
-    setState(() {
-      _selection.clear();
-      if (deletable.any((item) => (item.name, item.isBuiltin) == openId)) {
-        openId = null;
-        dirty = false;
-      }
-    });
-  }
+enum _Sort implements SettingsListOption {
+  edited('Last edited'),
+  name('Name');
+
+  @override
+  final String label;
+  const _Sort(this.label);
+}
+
+enum _Source implements SettingsListOption {
+  all('All sources'),
+  user('Your skills'),
+  builtin('Built-in');
+
+  @override
+  final String label;
+  const _Source(this.label);
 }

@@ -5,21 +5,6 @@ import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
 
-/// 数据目录里可回收文件的分项统计。
-class StorageUsage {
-  const StorageUsage({
-    this.rewindSnapshotBytes = 0,
-    this.rewindSnapshotCount = 0,
-    this.toolOutputBytes = 0,
-    this.toolOutputCount = 0,
-  });
-
-  final int rewindSnapshotBytes;
-  final int rewindSnapshotCount;
-  final int toolOutputBytes;
-  final int toolOutputCount;
-}
-
 /// 数据目录的统计与清理。
 ///
 /// 只处理派生文件：回退快照与内容寻址的工具输出。会话正文、provider、
@@ -28,28 +13,11 @@ class StorageUsage {
 /// 工具输出按内容寻址，可能仍被历史消息引用；这里不做自动淘汰，只提供显式
 /// 清理入口（前端负责提示清理后旧引用不可读）。
 class StorageMaintenance {
-  StorageMaintenance(this._storage);
+  static final _toolOutputName = RegExp(r'^[a-f0-9]{64}\.txt$');
 
   final FileStorage _storage;
 
-  static final _toolOutputName = RegExp(r'^[a-f0-9]{64}\.txt$');
-
-  Future<StorageUsage> measure() async {
-    final (rewindSnapshotBytes, rewindSnapshotCount) = await _measure(
-      _storage.sessionsDir,
-      (file) => p.basename(file.path).contains('.jsonl.rewind-'),
-    );
-    final (toolOutputBytes, toolOutputCount) = await _measure(
-      _storage.toolOutputsDir,
-      (file) => _toolOutputName.hasMatch(p.basename(file.path)),
-    );
-    return StorageUsage(
-      rewindSnapshotBytes: rewindSnapshotBytes,
-      rewindSnapshotCount: rewindSnapshotCount,
-      toolOutputBytes: toolOutputBytes,
-      toolOutputCount: toolOutputCount,
-    );
-  }
+  StorageMaintenance(this._storage);
 
   /// 删除全部回退快照。删除前按会话文件取锁，避免与正在创建快照的回退交错。
   Future<int> clearRewindSnapshots() async {
@@ -99,6 +67,23 @@ class StorageMaintenance {
     return deleted;
   }
 
+  Future<StorageUsage> measure() async {
+    final (rewindSnapshotBytes, rewindSnapshotCount) = await _measure(
+      _storage.sessionsDir,
+      (file) => p.basename(file.path).contains('.jsonl.rewind-'),
+    );
+    final (toolOutputBytes, toolOutputCount) = await _measure(
+      _storage.toolOutputsDir,
+      (file) => _toolOutputName.hasMatch(p.basename(file.path)),
+    );
+    return StorageUsage(
+      rewindSnapshotBytes: rewindSnapshotBytes,
+      rewindSnapshotCount: rewindSnapshotCount,
+      toolOutputBytes: toolOutputBytes,
+      toolOutputCount: toolOutputCount,
+    );
+  }
+
   Future<(int, int)> _measure(
     Directory directory,
     bool Function(File file) include,
@@ -117,4 +102,19 @@ class StorageMaintenance {
     }
     return (bytes, count);
   }
+}
+
+/// 数据目录里可回收文件的分项统计。
+class StorageUsage {
+  final int rewindSnapshotBytes;
+
+  final int rewindSnapshotCount;
+  final int toolOutputBytes;
+  final int toolOutputCount;
+  const StorageUsage({
+    this.rewindSnapshotBytes = 0,
+    this.rewindSnapshotCount = 0,
+    this.toolOutputBytes = 0,
+    this.toolOutputCount = 0,
+  });
 }

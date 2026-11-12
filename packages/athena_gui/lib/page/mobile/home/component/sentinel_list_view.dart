@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/home/component/sentinel_tile.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class SentinelListView extends StatelessWidget {
   final SentinelViewModel sentinelViewModel;

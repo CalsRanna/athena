@@ -4,57 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/athena_test_scope.dart';
 
-/// 渲染一棵可滚动的树并返回其 [ScrollPosition]。
-///
-/// 平台用 `ThemeData.platform` 指定（而不是 `debugDefaultTargetPlatformOverride`），
-/// 这正是 [AthenaScrollBehavior] 判定所用的信号——换个平台取值必须不同，断言也就不
-/// 依赖宿主操作系统（CI 在 Linux 上跑同样成立）。
-///
-/// 每个平台都必须起一棵新树：physics 由 `ScrollableState.didChangeDependencies`
-/// 解析一次，在同一棵元素树上换 `ThemeData.platform` 不会重新解析（实测第二次
-/// pump 仍报上一个平台的 physics），复用同一棵树会得到假结果。
-Future<ScrollPosition> _pumpScrollable(
-  WidgetTester tester,
-  TargetPlatform platform,
-) async {
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: ThemeData(platform: platform),
-      builder: (context, child) => AthenaTestScope(child: child!),
-      scrollBehavior: const AthenaScrollBehavior(),
-      home: Scaffold(
-        body: ListView(
-          children: [
-            for (var i = 0; i < 40; i++)
-              SizedBox(height: 80, child: Text('row $i')),
-          ],
-        ),
-      ),
-    ),
-  );
-  return tester.state<ScrollableState>(find.byType(Scrollable)).position;
-}
-
-/// 展开 physics 链。[ScrollView] 会在链头套一层 [AlwaysScrollableScrollPhysics]，
-/// 所以不能只比较最外层类型，要看整条链上有没有目标 physics。
-List<ScrollPhysics> _physicsChain(ScrollPhysics physics) {
-  final chain = <ScrollPhysics>[];
-  for (
-    ScrollPhysics? current = physics;
-    current != null;
-    current = current.parent
-  ) {
-    chain.add(current);
-  }
-  return chain;
-}
-
-const _desktopPlatforms = [
-  TargetPlatform.macOS,
-  TargetPlatform.windows,
-  TargetPlatform.linux,
-];
-
 void main() {
   for (final platform in _desktopPlatforms) {
     testWidgets('$platform 桌面端滚动不带 iOS 回弹的 physics', (tester) async {
@@ -131,4 +80,55 @@ void main() {
     await tester.pump();
     await dragBeyondBoundary(const Offset(0, 120));
   });
+}
+
+const _desktopPlatforms = [
+  TargetPlatform.macOS,
+  TargetPlatform.windows,
+  TargetPlatform.linux,
+];
+
+/// 展开 physics 链。[ScrollView] 会在链头套一层 [AlwaysScrollableScrollPhysics]，
+/// 所以不能只比较最外层类型，要看整条链上有没有目标 physics。
+List<ScrollPhysics> _physicsChain(ScrollPhysics physics) {
+  final chain = <ScrollPhysics>[];
+  for (
+    ScrollPhysics? current = physics;
+    current != null;
+    current = current.parent
+  ) {
+    chain.add(current);
+  }
+  return chain;
+}
+
+/// 渲染一棵可滚动的树并返回其 [ScrollPosition]。
+///
+/// 平台用 `ThemeData.platform` 指定（而不是 `debugDefaultTargetPlatformOverride`），
+/// 这正是 [AthenaScrollBehavior] 判定所用的信号——换个平台取值必须不同，断言也就不
+/// 依赖宿主操作系统（CI 在 Linux 上跑同样成立）。
+///
+/// 每个平台都必须起一棵新树：physics 由 `ScrollableState.didChangeDependencies`
+/// 解析一次，在同一棵元素树上换 `ThemeData.platform` 不会重新解析（实测第二次
+/// pump 仍报上一个平台的 physics），复用同一棵树会得到假结果。
+Future<ScrollPosition> _pumpScrollable(
+  WidgetTester tester,
+  TargetPlatform platform,
+) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(platform: platform),
+      builder: (context, child) => AthenaTestScope(child: child!),
+      scrollBehavior: const AthenaScrollBehavior(),
+      home: Scaffold(
+        body: ListView(
+          children: [
+            for (var i = 0; i < 40; i++)
+              SizedBox(height: 80, child: Text('row $i')),
+          ],
+        ),
+      ),
+    ),
+  );
+  return tester.state<ScrollableState>(find.byType(Scrollable)).position;
 }

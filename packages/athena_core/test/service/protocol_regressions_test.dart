@@ -17,13 +17,6 @@ import 'package:test/test.dart';
 
 import '../support/responses_fixture.dart';
 
-ChatStreamEvent chunk(Map<String, dynamic> delta, [String? stop]) =>
-    ChatStreamEvent.fromJson({
-      'choices': [
-        {'index': 0, 'delta': delta, 'finish_reason': ?stop},
-      ],
-    });
-
 void main() {
   final provider = responsesProvider().copyWith(
     apiFormat: ApiFormat.chatCompletions,
@@ -371,3 +364,10 @@ void main() {
     });
   }
 }
+
+ChatStreamEvent chunk(Map<String, dynamic> delta, [String? stop]) =>
+    ChatStreamEvent.fromJson({
+      'choices': [
+        {'index': 0, 'delta': delta, 'finish_reason': ?stop},
+      ],
+    });

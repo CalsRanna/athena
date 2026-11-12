@@ -1,14 +1,11 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/storage/atomic_file_write.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
 
 class FileUpdateTool extends Tool {
   FileUpdateTool();
-
-  @override
-  String get name => 'file_update';
 
   @override
   String get description =>
@@ -17,6 +14,9 @@ class FileUpdateTool extends Tool {
       'When replace_all is false (default), old_string must appear exactly once. '
       'Use for targeted edits without rewriting the entire file. '
       'For creating or overwriting a whole file, use file_write.';
+
+  @override
+  String get name => 'file_update';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -144,22 +144,6 @@ class FileUpdateTool extends Tool {
     return _writeSafely(file, mtimeBefore, buffer.toString());
   }
 
-  String _preprocess(String text) => _normalizeQuotes(
-    text
-        .replaceAll('\r\n', '\n')
-        .replaceAll(RegExp(r'^[ \t]*\d+\t', multiLine: true), ''),
-  );
-
-  String _normalizeQuotes(String text) {
-    return text
-        .replaceAll('\u201c', '"')
-        .replaceAll('\u201d', '"')
-        .replaceAll('\u2018', "'")
-        .replaceAll('\u2019', "'")
-        .replaceAll('\u00ab', '"')
-        .replaceAll('\u00bb', '"');
-  }
-
   int _countMatches(String content, String search) {
     var count = 0;
     var index = 0;
@@ -188,6 +172,22 @@ class FileUpdateTool extends Tool {
     return content;
   }
 
+  String _normalizeQuotes(String text) {
+    return text
+        .replaceAll('\u201c', '"')
+        .replaceAll('\u201d', '"')
+        .replaceAll('\u2018', "'")
+        .replaceAll('\u2019', "'")
+        .replaceAll('\u00ab', '"')
+        .replaceAll('\u00bb', '"');
+  }
+
+  String _preprocess(String text) => _normalizeQuotes(
+    text
+        .replaceAll('\r\n', '\n')
+        .replaceAll(RegExp(r'^[ \t]*\d+\t', multiLine: true), ''),
+  );
+
   Future<ToolExecutionResult> _writeSafely(
     File file,
     DateTime mtimeBefore,
@@ -208,14 +208,14 @@ class FileUpdateTool extends Tool {
 }
 
 class _NormalizedText {
+  final String text;
+
+  final List<int> _removedAt = [];
   _NormalizedText(String original) : text = original.replaceAll('\r\n', '\n') {
     for (final match in RegExp(r'\r\n').allMatches(original)) {
       _removedAt.add(match.start - _removedAt.length);
     }
   }
-
-  final String text;
-  final List<int> _removedAt = [];
 
   int originalOffset(int offset) {
     var low = 0;

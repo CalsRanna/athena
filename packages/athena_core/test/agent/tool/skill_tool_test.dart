@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
@@ -7,7 +8,6 @@ import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 

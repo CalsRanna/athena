@@ -26,14 +26,6 @@ class _AthenaPressScaleState extends State<AthenaPressScale> {
   bool _pressed = false;
 
   @override
-  void didUpdateWidget(covariant AthenaPressScale oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 按住期间被禁用（例如点了就进入 loading）时已经收不到抬起事件；
-    // 不在这里清掉，重新启用后会带着旧的按下态出现。
-    if (_pressed && !widget.enabled) _pressed = false;
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Listener(
       // 子树可能只是透明图标或留白：不设 opaque 的话命中测试落不到这里。
@@ -52,6 +44,14 @@ class _AthenaPressScaleState extends State<AthenaPressScale> {
         child: widget.child,
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant AthenaPressScale oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 按住期间被禁用（例如点了就进入 loading）时已经收不到抬起事件；
+    // 不在这里清掉，重新启用后会带着旧的按下态出现。
+    if (_pressed && !widget.enabled) _pressed = false;
   }
 
   void _release() {

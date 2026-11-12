@@ -11,6 +11,7 @@ import 'package:athena_gui/page/mobile/setting/component/section.dart';
 import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -22,28 +23,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
-
-Widget _app(
-  Widget child, {
-  double width = 320,
-  double scale = 2,
-  TargetPlatform platform = TargetPlatform.iOS,
-}) {
-  return MaterialApp(
-    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
-        .copyWith(platform: platform),
-    builder: (context, child) => AthenaTestScope(child: child!),
-    home: MediaQuery(
-      data: MediaQueryData(
-        size: Size(width, 700),
-        textScaler: TextScaler.linear(scale),
-      ),
-      child: Scaffold(body: Center(child: child)),
-    ),
-  );
-}
 
 void main() {
   testWidgets('bottom sheet tile ellipsizes long title and trailing at 2x', (
@@ -324,4 +303,24 @@ void main() {
     );
     expect(tester.widget<AnimatedOpacity>(opacity).opacity, 1);
   });
+}
+
+Widget _app(
+  Widget child, {
+  double width = 320,
+  double scale = 2,
+  TargetPlatform platform = TargetPlatform.iOS,
+}) {
+  return MaterialApp(
+    theme: AthenaMaterialTheme.buildAthenaThemeData(AthenaColorMode.light)
+        .copyWith(platform: platform),
+    builder: (context, child) => AthenaTestScope(child: child!),
+    home: MediaQuery(
+      data: MediaQueryData(
+        size: Size(width, 700),
+        textScaler: TextScaler.linear(scale),
+      ),
+      child: Scaffold(body: Center(child: child)),
+    ),
+  );
 }

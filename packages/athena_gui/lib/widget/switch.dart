@@ -1,6 +1,6 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 开关：胶囊轨道（34×18）+ 实心圆滑块，尺寸紧凑。
 ///
@@ -8,14 +8,14 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 /// 「色相 + 明度」：关闭态是中性的浅轨道，不是一条深色实心条（深色轨道会让
 /// 关闭态在视觉重量上追平开启态，状态只靠色相区分，扫视时读不出来）。
 class AthenaSwitch extends StatelessWidget {
-  final void Function(bool)? onChanged;
-  final bool value;
-  const AthenaSwitch({super.key, required this.onChanged, required this.value});
-
   static const _trackWidth = 34.0;
   static const _trackHeight = 18.0;
   static const _pad = 2.0;
+
   static const _knob = _trackHeight - _pad * 2;
+  final void Function(bool)? onChanged;
+  final bool value;
+  const AthenaSwitch({super.key, required this.onChanged, required this.value});
 
   @override
   Widget build(BuildContext context) {

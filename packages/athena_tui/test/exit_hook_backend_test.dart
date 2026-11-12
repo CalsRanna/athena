@@ -63,11 +63,11 @@ class _RecordingBackend implements TerminalBackend {
   void Function(int code)? onExit;
 
   @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
   void requestExit([int exitCode = 0]) {
     onExit?.call(exitCode);
     if (!exited.isCompleted) exited.complete(exitCode);
   }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

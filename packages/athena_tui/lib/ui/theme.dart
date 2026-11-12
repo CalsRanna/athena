@@ -1,25 +1,5 @@
 import 'package:nocterm/nocterm.dart';
 
-/// Athena 设计语言在终端的映射(色板见 DESIGN.md §2 的 TUI 映射)。
-///
-/// 终端是深色底,背景不设色(用终端默认),主要用文字色与边框表达层级。
-abstract final class AthenaColors {
-  /// 青瓷强调(#65C7BC)，与 GUI 深色主题一致:用户消息前缀、状态高亮。
-  static const Color teal = Color.fromRGB(101, 199, 188);
-
-  /// 次级文字(对应 Gray 600 #9E9E9E)。
-  static const Color dim = Colors.gray;
-
-  /// 错误红、警告黄、信息蓝、成功绿。
-  static const Color error = Colors.red;
-  static const Color warning = Colors.yellow;
-  static const Color info = Colors.blue;
-  static const Color success = Colors.green;
-
-  /// 工具卡片边框。
-  static const Color toolBorder = Color.fromRGB(109, 135, 120);
-}
-
 /// 消息卡片左侧竖线色:按消息类型分色,替代文字前缀标记。
 abstract final class AthenaCardColors {
   /// 用户消息:品牌 teal。
@@ -45,6 +25,26 @@ abstract final class AthenaCardColors {
 
   /// 已取消消息。
   static const Color cancelled = Colors.gray;
+}
+
+/// Athena 设计语言在终端的映射(色板见 DESIGN.md §2 的 TUI 映射)。
+///
+/// 终端是深色底,背景不设色(用终端默认),主要用文字色与边框表达层级。
+abstract final class AthenaColors {
+  /// 青瓷强调(#65C7BC)，与 GUI 深色主题一致:用户消息前缀、状态高亮。
+  static const Color teal = Color.fromRGB(101, 199, 188);
+
+  /// 次级文字(对应 Gray 600 #9E9E9E)。
+  static const Color dim = Colors.gray;
+
+  /// 错误红、警告黄、信息蓝、成功绿。
+  static const Color error = Colors.red;
+  static const Color warning = Colors.yellow;
+  static const Color info = Colors.blue;
+  static const Color success = Colors.green;
+
+  /// 工具卡片边框。
+  static const Color toolBorder = Color.fromRGB(109, 135, 120);
 }
 
 /// 常见文本样式。

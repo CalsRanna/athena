@@ -1,4 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/gestures.dart';
@@ -7,9 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 
 void main() {
   for (final mode in AthenaColorMode.values) {

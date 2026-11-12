@@ -11,49 +11,6 @@ import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 前 [errorCalls] 次请求抛 [error]，之后正常流式返回 'ok'。
-///
-/// 只替换模型调用：Agent 循环、压缩回调、上下文组装都是真的。
-class _FakeChatService implements ChatCompletionsService {
-  _FakeChatService({this.error, this.errorCalls = 1});
-
-  final Object? error;
-  final int errorCalls;
-  final requests = <List<ChatMessage>>[];
-  var calls = 0;
-
-  @override
-  Stream<ChatStreamEvent> getCompletion({
-    required ChatEntity chat,
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    List<Tool>? tools,
-    ResponseFormat? responseFormat,
-    Future<void>? cancelSignal,
-    int? outputRoom,
-  }) async* {
-    calls++;
-    requests.add(List.of(messages));
-    if (error != null && calls <= errorCalls) throw error!;
-    yield const ChatStreamEvent(
-      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
-    );
-    yield const ChatStreamEvent(
-      choices: [
-        ChatStreamChoice(
-          index: 0,
-          delta: ChatDelta(),
-          finishReason: FinishReason.stop,
-        ),
-      ],
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 void main() {
   final now = DateTime.now();
 
@@ -178,4 +135,47 @@ void main() {
     await expectLater(run(chatService), throwsA(isA<StateError>()));
     expect(chatService.calls, 2, reason: '兜底只重试一次');
   });
+}
+
+/// 前 [errorCalls] 次请求抛 [error]，之后正常流式返回 'ok'。
+///
+/// 只替换模型调用：Agent 循环、压缩回调、上下文组装都是真的。
+class _FakeChatService implements ChatCompletionsService {
+  final Object? error;
+
+  final int errorCalls;
+  final requests = <List<ChatMessage>>[];
+  var calls = 0;
+  _FakeChatService({this.error, this.errorCalls = 1});
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
+    int? outputRoom,
+  }) async* {
+    calls++;
+    requests.add(List.of(messages));
+    if (error != null && calls <= errorCalls) throw error!;
+    yield const ChatStreamEvent(
+      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
+    );
+    yield const ChatStreamEvent(
+      choices: [
+        ChatStreamChoice(
+          index: 0,
+          delta: ChatDelta(),
+          finishReason: FinishReason.stop,
+        ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

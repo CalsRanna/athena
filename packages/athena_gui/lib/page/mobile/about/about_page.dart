@@ -1,3 +1,4 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -10,7 +11,6 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileAboutPage extends StatefulWidget {
@@ -91,11 +91,6 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
     );
   }
 
-  Future<void> _open(String url) async {
-    final ok = await launchUrl(Uri.parse(url));
-    if (!ok && mounted) AthenaDialog.error('Unable to open $url');
-  }
-
   @override
   void initState() {
     super.initState();
@@ -110,5 +105,10 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
     setState(() {
       this.version = '$version ($buildNumber)';
     });
+  }
+
+  Future<void> _open(String url) async {
+    final ok = await launchUrl(Uri.parse(url));
+    if (!ok && mounted) AthenaDialog.error('Unable to open $url');
   }
 }

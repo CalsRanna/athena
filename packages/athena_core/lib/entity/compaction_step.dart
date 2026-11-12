@@ -14,6 +14,21 @@ enum CompactionPhase {
 /// One durable execution step. Every phase updates the same message ID.
 /// Completed content is also the summary; display metadata never enters the LLM.
 class CompactionStep {
+  final String messageId;
+
+  final int seq;
+  final String chatId;
+  final int runId;
+  final CompactionPhase phase;
+  final DateTime startedAt;
+  final DateTime? finishedAt;
+  final int beforeTokens;
+  final int? afterTokens;
+  final int messageCount;
+  final List<String> coveredMessageIds;
+  final int? throughSeq;
+  final String summary;
+  final String? error;
   const CompactionStep({
     required this.messageId,
     required this.seq,
@@ -31,22 +46,30 @@ class CompactionStep {
     this.error,
   });
 
-  final String messageId;
-  final int seq;
-  final String chatId;
-  final int runId;
-  final CompactionPhase phase;
-  final DateTime startedAt;
-  final DateTime? finishedAt;
-  final int beforeTokens;
-  final int? afterTokens;
-  final int messageCount;
-  final List<String> coveredMessageIds;
-  final int? throughSeq;
-  final String summary;
-  final String? error;
-
+  factory CompactionStep.fromMessage(MessageEntity message) {
+    final data = jsonDecode(message.reference) as Map<String, dynamic>;
+    return CompactionStep(
+      messageId: message.id!,
+      seq: message.seq,
+      chatId: message.chatId,
+      runId: data['runId'] as int,
+      phase: CompactionPhase.values.byName(data['phase'] as String),
+      startedAt: DateTime.parse(data['startedAt'] as String),
+      finishedAt: data['finishedAt'] == null
+          ? null
+          : DateTime.parse(data['finishedAt'] as String),
+      beforeTokens: data['beforeTokens'] as int,
+      afterTokens: data['afterTokens'] as int?,
+      messageCount: data['messageCount'] as int,
+      coveredMessageIds: (data['coveredMessageIds'] as List<dynamic>)
+          .cast<String>(),
+      throughSeq: data['throughSeq'] as int?,
+      summary: message.content,
+      error: data['error'] as String?,
+    );
+  }
   String get compactionId => '$chatId:$messageId';
+
   bool get isTerminal => switch (phase) {
     CompactionPhase.completed ||
     CompactionPhase.failed ||
@@ -100,27 +123,4 @@ class CompactionStep {
       if (error != null) 'error': error,
     }),
   );
-
-  factory CompactionStep.fromMessage(MessageEntity message) {
-    final data = jsonDecode(message.reference) as Map<String, dynamic>;
-    return CompactionStep(
-      messageId: message.id!,
-      seq: message.seq,
-      chatId: message.chatId,
-      runId: data['runId'] as int,
-      phase: CompactionPhase.values.byName(data['phase'] as String),
-      startedAt: DateTime.parse(data['startedAt'] as String),
-      finishedAt: data['finishedAt'] == null
-          ? null
-          : DateTime.parse(data['finishedAt'] as String),
-      beforeTokens: data['beforeTokens'] as int,
-      afterTokens: data['afterTokens'] as int?,
-      messageCount: data['messageCount'] as int,
-      coveredMessageIds: (data['coveredMessageIds'] as List<dynamic>)
-          .cast<String>(),
-      throughSeq: data['throughSeq'] as int?,
-      summary: message.content,
-      error: data['error'] as String?,
-    );
-  }
 }

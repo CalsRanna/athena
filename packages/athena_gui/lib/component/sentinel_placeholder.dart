@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话空态：当前角色的名称、说明与标签，桌面与移动共用同一版式。
 class SentinelPlaceholder extends StatelessWidget {

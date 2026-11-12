@@ -7,15 +7,26 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-abstract interface class SettingsListOption {
-  String get label;
-}
-
 class AthenaSettingsListPane<
   F extends SettingsListOption,
   S extends SettingsListOption
 >
     extends StatelessWidget {
+  final String title;
+
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final String filterBy;
+  final F filter;
+  final List<F> filters;
+  final ValueChanged<F> onFilterChanged;
+  final S sort;
+  final List<S> sorts;
+  final ValueChanged<S> onSortChanged;
+  final List<Widget> children;
+  final VoidCallback? onAdd;
+  final ScrollController? controller;
+  final List<Widget>? menus;
   const AthenaSettingsListPane({
     super.key,
     required this.title,
@@ -33,21 +44,6 @@ class AthenaSettingsListPane<
     this.controller,
     this.menus,
   });
-
-  final String title;
-  final TextEditingController searchController;
-  final ValueChanged<String> onSearchChanged;
-  final String filterBy;
-  final F filter;
-  final List<F> filters;
-  final ValueChanged<F> onFilterChanged;
-  final S sort;
-  final List<S> sorts;
-  final ValueChanged<S> onSortChanged;
-  final List<Widget> children;
-  final VoidCallback? onAdd;
-  final ScrollController? controller;
-  final List<Widget>? menus;
 
   @override
   Widget build(BuildContext context) {
@@ -135,4 +131,8 @@ class AthenaSettingsListPane<
       ],
     ),
   );
+}
+
+abstract interface class SettingsListOption {
+  String get label;
 }

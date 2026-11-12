@@ -1,31 +1,7 @@
 import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
-/// 遍历上下文：跟踪列表编号和嵌套深度。
-class _Context {
-  _Context(this.baseUrl);
-  final Uri? baseUrl;
-  int olCounter = 0;
-  int indentLevel = 0;
-}
-
 abstract final class HtmlToMarkdown {
-  /// 将 HTML 转换为适合 LLM 消费的 Markdown 文本。
-  ///
-  /// 保留标题、链接、列表、代码块等结构信息，同时剥离无意义的
-  /// 样式/脚本标签和冗余空白，大幅减少 token 消耗。
-  static String htmlToMarkdown(String html, {Uri? pageUrl}) {
-    final document = html_parser.parse(html);
-    final buffer = StringBuffer();
-    final baseHref = document.querySelector('base[href]')?.attributes['href'];
-    final declaredBase = baseHref == null ? null : Uri.tryParse(baseHref);
-    final baseUrl = declaredBase == null
-        ? pageUrl
-        : pageUrl?.resolveUri(declaredBase) ?? declaredBase;
-    HtmlToMarkdown._walk(document.body ?? document, buffer, _Context(baseUrl));
-    return HtmlToMarkdown._collapseBlankLines(buffer.toString());
-  }
-
   /// 不产生可视内容的标签——跳过其本体但遍历其子节点。
   static const _transparentTags = {
     'html',
@@ -104,6 +80,75 @@ abstract final class HtmlToMarkdown {
     'dd',
     'fieldset',
   };
+
+  /// 将 HTML 转换为适合 LLM 消费的 Markdown 文本。
+  ///
+  /// 保留标题、链接、列表、代码块等结构信息，同时剥离无意义的
+  /// 样式/脚本标签和冗余空白，大幅减少 token 消耗。
+  static String htmlToMarkdown(String html, {Uri? pageUrl}) {
+    final document = html_parser.parse(html);
+    final buffer = StringBuffer();
+    final baseHref = document.querySelector('base[href]')?.attributes['href'];
+    final declaredBase = baseHref == null ? null : Uri.tryParse(baseHref);
+    final baseUrl = declaredBase == null
+        ? pageUrl
+        : pageUrl?.resolveUri(declaredBase) ?? declaredBase;
+    HtmlToMarkdown._walk(document.body ?? document, buffer, _Context(baseUrl));
+    return HtmlToMarkdown._collapseBlankLines(buffer.toString());
+  }
+
+  /// 提取属性值（不区分大小写）。
+  static String? _attr(Element element, String name) {
+    final v = element.attributes[name];
+    if (v != null) return v;
+    // 不区分大小写匹配
+    for (final key in element.attributes.keys) {
+      if (key is String && key.toLowerCase() == name) {
+        return element.attributes[key];
+      }
+    }
+    return null;
+  }
+
+  /// 合并连续空行，最多保留一个空行。
+  static String _collapseBlankLines(String text) {
+    final lines = <String>[];
+    String? fence;
+    var blankLines = 0;
+    for (final line in text.split('\n')) {
+      final marker = RegExp(r'^`{3,}$').hasMatch(line) ? line : null;
+      if (fence != null) {
+        lines.add(line);
+        if (marker == fence) fence = null;
+        continue;
+      }
+      if (marker != null) fence = marker;
+      if (line.trim().isEmpty) {
+        if (++blankLines <= 1) lines.add('');
+      } else {
+        blankLines = 0;
+        lines.add(line);
+      }
+    }
+    return lines.join('\n').trim();
+  }
+
+  /// 判断 [node] 是否在 <pre> 内部。
+  static bool _isInsidePre(Node node) {
+    Element? parent = node.parent;
+    while (parent != null) {
+      if (parent.localName?.toLowerCase() == 'pre') return true;
+      parent = parent.parent;
+    }
+    return false;
+  }
+
+  /// 相对链接与图片使用文档的 base 或最终页面 URL。
+  static String _resolveUrl(String value, _Context ctx) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || ctx.baseUrl == null) return value;
+    return ctx.baseUrl!.resolveUri(uri).toString();
+  }
 
   static void _walk(Node node, StringBuffer buffer, _Context ctx) {
     if (node is Text) {
@@ -320,57 +365,12 @@ abstract final class HtmlToMarkdown {
   static void _writeText(StringBuffer buffer, String text) {
     buffer.write(text.replaceAll('\u200B', '').replaceAll(RegExp(r'\s+'), ' '));
   }
+}
 
-  /// 判断 [node] 是否在 <pre> 内部。
-  static bool _isInsidePre(Node node) {
-    Element? parent = node.parent;
-    while (parent != null) {
-      if (parent.localName?.toLowerCase() == 'pre') return true;
-      parent = parent.parent;
-    }
-    return false;
-  }
-
-  /// 合并连续空行，最多保留一个空行。
-  static String _collapseBlankLines(String text) {
-    final lines = <String>[];
-    String? fence;
-    var blankLines = 0;
-    for (final line in text.split('\n')) {
-      final marker = RegExp(r'^`{3,}$').hasMatch(line) ? line : null;
-      if (fence != null) {
-        lines.add(line);
-        if (marker == fence) fence = null;
-        continue;
-      }
-      if (marker != null) fence = marker;
-      if (line.trim().isEmpty) {
-        if (++blankLines <= 1) lines.add('');
-      } else {
-        blankLines = 0;
-        lines.add(line);
-      }
-    }
-    return lines.join('\n').trim();
-  }
-
-  /// 提取属性值（不区分大小写）。
-  static String? _attr(Element element, String name) {
-    final v = element.attributes[name];
-    if (v != null) return v;
-    // 不区分大小写匹配
-    for (final key in element.attributes.keys) {
-      if (key is String && key.toLowerCase() == name) {
-        return element.attributes[key];
-      }
-    }
-    return null;
-  }
-
-  /// 相对链接与图片使用文档的 base 或最终页面 URL。
-  static String _resolveUrl(String value, _Context ctx) {
-    final uri = Uri.tryParse(value);
-    if (uri == null || ctx.baseUrl == null) return value;
-    return ctx.baseUrl!.resolveUri(uri).toString();
-  }
+/// 遍历上下文：跟踪列表编号和嵌套深度。
+class _Context {
+  final Uri? baseUrl;
+  int olCounter = 0;
+  int indentLevel = 0;
+  _Context(this.baseUrl);
 }

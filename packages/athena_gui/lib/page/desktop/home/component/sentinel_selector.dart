@@ -1,12 +1,12 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// composer 上下文条里的 Sentinel 选择菜单：与模型选择菜单同一套 UI。
 ///

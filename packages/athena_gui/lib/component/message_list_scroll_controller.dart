@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 
 /// 消息列表的正向滚动控制器。
 ///
@@ -33,25 +33,15 @@ class MessageListScrollController extends ScrollController {
   bool _rescheduleRequested = false;
   bool _disposed = false;
 
-  MessageListScrollController({this.atBottomEpsilon = defaultAtBottomEpsilon}) {
-    addListener(_updateFollowState);
-  }
-
-  /// 从滚动视图上取到本控制器；不是本控制器（如移动端默认的
-  /// [ScrollController]）时返回 null。
-  ///
-  /// 消息 sliver 要挂起贴底跟随时用（见 [jumpWithoutFollowing]）：它只拿得到
-  /// 祖先 [Scrollable]，而贴底状态在控制器上。
-  static MessageListScrollController? of(BuildContext context) {
-    final controller = Scrollable.maybeOf(context)?.widget.controller;
-    return controller is MessageListScrollController ? controller : null;
-  }
-
   /// agent 是否正在工作中（当前会话流式生成）。
   ///
   /// 由消息列表在每次构建时写入。只有工作中（或 [followBottom] 显式跟随
   /// 期间）内容增长才会自动贴底，避免 agent 空闲时列表在用户眼前自己滚动。
   bool isWorking = false;
+
+  MessageListScrollController({this.atBottomEpsilon = defaultAtBottomEpsilon}) {
+    addListener(_updateFollowState);
+  }
 
   /// 当前是否应当对内容增长保持贴底。
   ///
@@ -60,6 +50,43 @@ class MessageListScrollController extends ScrollController {
   /// [followBottom] 改变。
   bool get shouldStickToBottom =>
       !_followSuspended && _followBottom && (isWorking || _followExplicitly);
+
+  @override
+  ScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) {
+    return _MessageListScrollPosition(
+      physics: physics,
+      context: context,
+      oldPosition: oldPosition,
+      controller: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    removeListener(_updateFollowState);
+    super.dispose();
+  }
+
+  /// 强制在下一帧跳到底部，并重新启用后续内容的底部跟随。
+  ///
+  /// 用于发送消息、切换会话等显式要求停留在底部的场景。显式跟随不受
+  /// [isWorking] 限制，直到用户主动向上滚动才解除。
+  void followBottom() {
+    _followBottom = true;
+    _followExplicitly = true;
+    _scheduleScrollToBottom();
+  }
+
+  /// 视口高度或内容尺寸变化时，在仍跟随底部的前提下重新对齐。
+  bool handleMetricsNotification(ScrollMetricsNotification notification) {
+    if (notification.depth == 0) maintainBottom();
+    return false;
+  }
 
   /// 执行一次「用户要求跳到别处」的滚动（点轮次条跳到某一轮），期间挂起贴底跟随。
   ///
@@ -83,41 +110,11 @@ class MessageListScrollController extends ScrollController {
     }
   }
 
-  @override
-  ScrollPosition createScrollPosition(
-    ScrollPhysics physics,
-    ScrollContext context,
-    ScrollPosition? oldPosition,
-  ) {
-    return _MessageListScrollPosition(
-      physics: physics,
-      context: context,
-      oldPosition: oldPosition,
-      controller: this,
-    );
-  }
-
   /// 在下一帧布局完成后保持列表位于底部。
   ///
   /// 仅在仍满足 [shouldStickToBottom] 时移动列表：用户已经向上滚动，或
   /// agent 空闲且非显式跟随时都不干预。
   void maintainBottom() => _scheduleScrollToBottom();
-
-  /// 强制在下一帧跳到底部，并重新启用后续内容的底部跟随。
-  ///
-  /// 用于发送消息、切换会话等显式要求停留在底部的场景。显式跟随不受
-  /// [isWorking] 限制，直到用户主动向上滚动才解除。
-  void followBottom() {
-    _followBottom = true;
-    _followExplicitly = true;
-    _scheduleScrollToBottom();
-  }
-
-  /// 视口高度或内容尺寸变化时，在仍跟随底部的前提下重新对齐。
-  bool handleMetricsNotification(ScrollMetricsNotification notification) {
-    if (notification.depth == 0) maintainBottom();
-    return false;
-  }
 
   /// 在列表头部插入旧消息，并保持插入前正在查看的内容位置。
   Future<int> preservePositionWhilePrepending(
@@ -221,11 +218,14 @@ class MessageListScrollController extends ScrollController {
     _followBottom = distanceFromBottom <= atBottomEpsilon;
   }
 
-  @override
-  void dispose() {
-    _disposed = true;
-    removeListener(_updateFollowState);
-    super.dispose();
+  /// 从滚动视图上取到本控制器；不是本控制器（如移动端默认的
+  /// [ScrollController]）时返回 null。
+  ///
+  /// 消息 sliver 要挂起贴底跟随时用（见 [jumpWithoutFollowing]）：它只拿得到
+  /// 祖先 [Scrollable]，而贴底状态在控制器上。
+  static MessageListScrollController? of(BuildContext context) {
+    final controller = Scrollable.maybeOf(context)?.widget.controller;
+    return controller is MessageListScrollController ? controller : null;
   }
 }
 
@@ -237,14 +237,14 @@ class MessageListScrollController extends ScrollController {
 /// 持续闪烁。这里在 [correctForNewDimensions] 中直接对齐并返回 false，
 /// 视口会在同一帧内重新布局，该帧绘制时就已经贴底。
 class _MessageListScrollPosition extends ScrollPositionWithSingleContext {
+  final MessageListScrollController controller;
+
   _MessageListScrollPosition({
     required super.physics,
     required super.context,
     super.oldPosition,
     required this.controller,
   });
-
-  final MessageListScrollController controller;
 
   @override
   bool correctForNewDimensions(

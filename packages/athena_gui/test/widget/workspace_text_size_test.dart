@@ -9,18 +9,19 @@ import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/main.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
@@ -33,8 +34,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -435,8 +434,8 @@ class _NonlinearTextScaler extends TextScaler {
   const _NonlinearTextScaler();
 
   @override
-  double scale(double fontSize) => fontSize + (fontSize < 14 ? 3 : 4);
+  double get textScaleFactor => 1.2;
 
   @override
-  double get textScaleFactor => 1.2;
+  double scale(double fontSize) => fontSize + (fontSize < 14 ? 3 : 4);
 }

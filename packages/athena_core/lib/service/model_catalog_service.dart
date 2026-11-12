@@ -3,13 +3,28 @@ import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/model_catalog_config.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/service/model_catalog_config.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
+
+/// 一次目录同步的统计结果,供 UI 展示摘要(如"新增 X provider、更新 Y 模型")。
+class CatalogSyncResult {
+  final int createdProviders;
+  final int createdModels;
+  final int updatedModels;
+  final int removedModels;
+
+  const CatalogSyncResult({
+    this.createdProviders = 0,
+    this.createdModels = 0,
+    this.updatedModels = 0,
+    this.removedModels = 0,
+  });
+}
 
 /// 从 https://models.dev/api.json 同步预设 provider 的模型元数据。
 ///
@@ -30,6 +45,29 @@ import 'package:http/http.dart' as http;
 /// "每家族只留最新"的家族去重——它依赖 id 命名猜新旧,对同日期发布的
 /// 别名 id 与版本号 id(deepseek-flash 与 deepseek-v4-flash)会误删其一。
 class ModelCatalogService {
+  static const _cacheFileName = 'models_dev_cache.json';
+
+  static const _catalogUrl = 'https://models.dev/api.json';
+
+  /// 发布时间滚动窗口:只同步 release_date 在此窗口内(距今不超过该时长)
+  /// 的模型。默认一年;构造时可覆盖(releaseWindow),测试用短窗口。
+  @visibleForTesting
+  static const kReleaseWindow = Duration(days: 365);
+
+  /// 推理模型开关:true 时仅同步 reasoning = true 的模型。
+  @visibleForTesting
+  static const kReasoningOnly = true;
+
+  final ModelRepository _modelRepository;
+
+  final ProviderRepository _providerRepository;
+  final ChatRepository _chatRepository;
+  final http.Client? _httpClient;
+  final String? _cacheFilePath;
+  final Directory? _cacheDir;
+  final Duration _cacheTtl;
+  final Duration _fetchTimeout;
+  final Duration _releaseWindow;
   ModelCatalogService({
     required ModelRepository modelRepository,
     required ProviderRepository providerRepository,
@@ -49,80 +87,6 @@ class ModelCatalogService {
        _cacheTtl = cacheTtl,
        _fetchTimeout = fetchTimeout,
        _releaseWindow = releaseWindow;
-
-  static const _cacheFileName = 'models_dev_cache.json';
-  static const _catalogUrl = 'https://models.dev/api.json';
-
-  /// 发布时间滚动窗口:只同步 release_date 在此窗口内(距今不超过该时长)
-  /// 的模型。默认一年;构造时可覆盖(releaseWindow),测试用短窗口。
-  @visibleForTesting
-  static const kReleaseWindow = Duration(days: 365);
-
-  /// 推理模型开关:true 时仅同步 reasoning = true 的模型。
-  @visibleForTesting
-  static const kReasoningOnly = true;
-
-  final ModelRepository _modelRepository;
-  final ProviderRepository _providerRepository;
-  final ChatRepository _chatRepository;
-  final http.Client? _httpClient;
-  final String? _cacheFilePath;
-  final Directory? _cacheDir;
-  final Duration _cacheTtl;
-  final Duration _fetchTimeout;
-  final Duration _releaseWindow;
-
-  /// 同步模型目录并返回统计。TTL 内仅同步缓存中的 Provider 格式元数据，
-  /// 返回空模型统计(除非 [force]);过期则拉取 → 缓存 → 同步,失败降级缓存。
-  ///
-  /// [force] 用于用户手动触发(设置页"同步"按钮):忽略 TTL 强制拉取。
-  Future<CatalogSyncResult> syncIfNeeded({bool force = false}) async {
-    try {
-      final cachePath = await _resolveCachePath();
-      final cached = await _readCache(cachePath);
-      final needFetch =
-          force ||
-          cached == null ||
-          !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
-      if (!needFetch) {
-        // 新版本增加的格式元数据可直接由缓存补齐，不必等待七天 TTL。
-        await _syncProviderApiFormats(cached.data);
-        LoggerUtil.d('Model catalog: cache fresh, skip model sync');
-        return const CatalogSyncResult();
-      }
-
-      final data = await _fetchCatalog();
-      await _writeCache(cachePath, data, DateTime.now());
-      final result = await applyCatalog(data);
-      LoggerUtil.i('Model catalog: synced from models.dev');
-      return result;
-    } catch (e) {
-      LoggerUtil.w('Model catalog sync failed: $e, falling back to cache');
-      try {
-        final cachePath = await _resolveCachePath();
-        final cached = await _readCache(cachePath);
-        if (cached != null) {
-          final result = await applyCatalog(cached.data);
-          LoggerUtil.i('Model catalog: synced from cached data');
-          return result;
-        }
-        LoggerUtil.w('Model catalog: no cache available, skipped');
-      } catch (e2) {
-        LoggerUtil.w('Model catalog fallback sync failed: $e2');
-      }
-      return const CatalogSyncResult();
-    }
-  }
-
-  /// 本地缓存的抓取时间(设置页显示"上次同步");没有缓存时为 null。
-  Future<DateTime?> lastSyncedAt() async {
-    try {
-      final cached = await _readCache(await _resolveCachePath());
-      return cached?.fetchedAt;
-    } catch (_) {
-      return null;
-    }
-  }
 
   /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行),返回统计。
   ///
@@ -229,32 +193,56 @@ class ModelCatalogService {
     );
   }
 
-  Future<void> _syncProviderApiFormats(Map<String, dynamic> catalog) async {
-    for (final config in ModelCatalogConfig.modelCatalogConfig) {
-      final providerJson = catalog[config.sourceId];
-      if (providerJson is! Map<String, dynamic>) continue;
-      final format = config.resolveApiFormat(providerJson);
-      if (format == null) continue;
-      final provider = await _providerRepository.getPresetProviderByName(
-        config.localName,
-      );
-      if (provider?.id == null) continue;
-      await _providerRepository.syncApiFormat(
-        id: provider!.id!,
-        baseUrl: config.localBaseUrl,
-        apiFormat: format,
-      );
+  /// 本地缓存的抓取时间(设置页显示"上次同步");没有缓存时为 null。
+  Future<DateTime?> lastSyncedAt() async {
+    try {
+      final cached = await _readCache(await _resolveCachePath());
+      return cached?.fetchedAt;
+    } catch (_) {
+      return null;
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // 缓存与拉取
-  // ---------------------------------------------------------------------------
+  /// 同步模型目录并返回统计。TTL 内仅同步缓存中的 Provider 格式元数据，
+  /// 返回空模型统计(除非 [force]);过期则拉取 → 缓存 → 同步,失败降级缓存。
+  ///
+  /// [force] 用于用户手动触发(设置页"同步"按钮):忽略 TTL 强制拉取。
+  Future<CatalogSyncResult> syncIfNeeded({bool force = false}) async {
+    try {
+      final cachePath = await _resolveCachePath();
+      final cached = await _readCache(cachePath);
+      final needFetch =
+          force ||
+          cached == null ||
+          !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
+      if (!needFetch) {
+        // 新版本增加的格式元数据可直接由缓存补齐，不必等待七天 TTL。
+        await _syncProviderApiFormats(cached.data);
+        LoggerUtil.d('Model catalog: cache fresh, skip model sync');
+        return const CatalogSyncResult();
+      }
 
-  Future<String> _resolveCachePath() async {
-    if (_cacheFilePath != null) return _cacheFilePath;
-    final dir = _cacheDir ?? Directory.systemTemp;
-    return '${dir.path}/$_cacheFileName';
+      final data = await _fetchCatalog();
+      await _writeCache(cachePath, data, DateTime.now());
+      final result = await applyCatalog(data);
+      LoggerUtil.i('Model catalog: synced from models.dev');
+      return result;
+    } catch (e) {
+      LoggerUtil.w('Model catalog sync failed: $e, falling back to cache');
+      try {
+        final cachePath = await _resolveCachePath();
+        final cached = await _readCache(cachePath);
+        if (cached != null) {
+          final result = await applyCatalog(cached.data);
+          LoggerUtil.i('Model catalog: synced from cached data');
+          return result;
+        }
+        LoggerUtil.w('Model catalog: no cache available, skipped');
+      } catch (e2) {
+        LoggerUtil.w('Model catalog fallback sync failed: $e2');
+      }
+      return const CatalogSyncResult();
+    }
   }
 
   Future<Map<String, dynamic>> _fetchCatalog() async {
@@ -295,6 +283,34 @@ class ModelCatalogService {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // 缓存与拉取
+  // ---------------------------------------------------------------------------
+
+  Future<String> _resolveCachePath() async {
+    if (_cacheFilePath != null) return _cacheFilePath;
+    final dir = _cacheDir ?? Directory.systemTemp;
+    return '${dir.path}/$_cacheFileName';
+  }
+
+  Future<void> _syncProviderApiFormats(Map<String, dynamic> catalog) async {
+    for (final config in ModelCatalogConfig.modelCatalogConfig) {
+      final providerJson = catalog[config.sourceId];
+      if (providerJson is! Map<String, dynamic>) continue;
+      final format = config.resolveApiFormat(providerJson);
+      if (format == null) continue;
+      final provider = await _providerRepository.getPresetProviderByName(
+        config.localName,
+      );
+      if (provider?.id == null) continue;
+      await _providerRepository.syncApiFormat(
+        id: provider!.id!,
+        baseUrl: config.localBaseUrl,
+        apiFormat: format,
+      );
+    }
+  }
+
   Future<void> _writeCache(
     String path,
     Map<String, dynamic> data,
@@ -311,72 +327,6 @@ class ModelCatalogService {
   // ---------------------------------------------------------------------------
   // 纯函数:字段映射与筛选(便于单测)
   // ---------------------------------------------------------------------------
-
-  /// 缓存是否仍新鲜(未超过 TTL)。
-  @visibleForTesting
-  static bool isCacheFresh(
-    DateTime fetchedAt, {
-    Duration ttl = const Duration(days: 7),
-    DateTime? now,
-  }) {
-    final reference = now ?? DateTime.now();
-    return reference.difference(fetchedAt) < ttl;
-  }
-
-  /// 把每百万 token 的价格格式化为 '$X/M',去除多余尾零:
-  /// 2 → '$2/M',0.14 → '$0.14/M'。
-  ///
-  /// 不带 "input / output tokens" 字样:同一个函数既格式化输入价也格式化
-  /// 输出价,方向由字段本身(`inputPrice` / `outputPrice`)表达,界面再按需
-  /// 标注。旧缓存里的 '$X/M input tokens' 由界面解析数字后兼容显示。
-  @visibleForTesting
-  static String formatPrice(Object? value) {
-    if (value is! num) return '';
-    var s = value.toStringAsFixed(4);
-    s = s.replaceAll(RegExp(r'0+$'), '');
-    s = s.replaceAll(RegExp(r'\.$'), '');
-    return '\$$s/M';
-  }
-
-  /// glob 通配符匹配(仅支持 `*`,可匹配任意字符)。
-  @visibleForTesting
-  static bool globMatch(String pattern, String value) {
-    final rx = '^${pattern.split('*').map(RegExp.escape).join('.*')}\$';
-    return RegExp(rx).hasMatch(value);
-  }
-
-  /// 按 include(空 = 全部)/exclude 白名单筛选模型,exclude 优先级更高。
-  @visibleForTesting
-  static Map<String, dynamic> selectModels(
-    Map<String, dynamic> models, {
-    List<String> include = const [],
-    List<String> exclude = const [],
-  }) {
-    return {
-      for (final entry in models.entries)
-        if ((include.isEmpty || include.any((p) => globMatch(p, entry.key))) &&
-            !exclude.any((p) => globMatch(p, entry.key)))
-          entry.key: entry.value,
-    };
-  }
-
-  /// 推理模型过滤:仅保留 `reasoning == true` 的模型。
-  ///
-  /// 必须在家族去重之前执行:reasoning 是"能力"维度,先按能力过滤再
-  /// 按家族取最新,保证家族里留下的是最新的推理版。
-  @visibleForTesting
-  static Map<String, dynamic> filterReasoning(
-    Map<String, dynamic> models, {
-    bool reasoningOnly = kReasoningOnly,
-  }) {
-    if (!reasoningOnly) return models;
-    return {
-      for (final entry in models.entries)
-        if (entry.value is Map<String, dynamic> &&
-            entry.value['reasoning'] == true)
-          entry.key: entry.value,
-    };
-  }
 
   /// 发布时间窗口过滤:仅保留 release_date 距今不超过 [window] 的模型。
   ///
@@ -402,17 +352,55 @@ class ModelCatalogService {
     return kept;
   }
 
-  /// 解析 release_date('2026-09-10' 或月粒度 '2026-09')。
-  /// 缺失、非字符串或无法解析返回 null。
-  static DateTime? _parseReleaseDate(Object? value) {
-    if (value is! String) return null;
-    final full = DateTime.tryParse(value);
-    if (full != null) return full;
-    final month = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value);
-    if (month != null) {
-      return DateTime(int.parse(month.group(1)!), int.parse(month.group(2)!));
-    }
-    return null;
+  /// 推理模型过滤:仅保留 `reasoning == true` 的模型。
+  ///
+  /// 必须在家族去重之前执行:reasoning 是"能力"维度,先按能力过滤再
+  /// 按家族取最新,保证家族里留下的是最新的推理版。
+  @visibleForTesting
+  static Map<String, dynamic> filterReasoning(
+    Map<String, dynamic> models, {
+    bool reasoningOnly = kReasoningOnly,
+  }) {
+    if (!reasoningOnly) return models;
+    return {
+      for (final entry in models.entries)
+        if (entry.value is Map<String, dynamic> &&
+            entry.value['reasoning'] == true)
+          entry.key: entry.value,
+    };
+  }
+
+  /// 把每百万 token 的价格格式化为 '$X/M',去除多余尾零:
+  /// 2 → '$2/M',0.14 → '$0.14/M'。
+  ///
+  /// 不带 "input / output tokens" 字样:同一个函数既格式化输入价也格式化
+  /// 输出价,方向由字段本身(`inputPrice` / `outputPrice`)表达,界面再按需
+  /// 标注。旧缓存里的 '$X/M input tokens' 由界面解析数字后兼容显示。
+  @visibleForTesting
+  static String formatPrice(Object? value) {
+    if (value is! num) return '';
+    var s = value.toStringAsFixed(4);
+    s = s.replaceAll(RegExp(r'0+$'), '');
+    s = s.replaceAll(RegExp(r'\.$'), '');
+    return '\$$s/M';
+  }
+
+  /// glob 通配符匹配(仅支持 `*`,可匹配任意字符)。
+  @visibleForTesting
+  static bool globMatch(String pattern, String value) {
+    final rx = '^${pattern.split('*').map(RegExp.escape).join('.*')}\$';
+    return RegExp(rx).hasMatch(value);
+  }
+
+  /// 缓存是否仍新鲜(未超过 TTL)。
+  @visibleForTesting
+  static bool isCacheFresh(
+    DateTime fetchedAt, {
+    Duration ttl = const Duration(days: 7),
+    DateTime? now,
+  }) {
+    final reference = now ?? DateTime.now();
+    return reference.difference(fetchedAt) < ttl;
   }
 
   /// models.dev 模型 JSON → [ModelEntity](models 表字段映射)。
@@ -462,6 +450,34 @@ class ModelCatalogService {
       updatedAt: timestamp,
     );
   }
+
+  /// 按 include(空 = 全部)/exclude 白名单筛选模型,exclude 优先级更高。
+  @visibleForTesting
+  static Map<String, dynamic> selectModels(
+    Map<String, dynamic> models, {
+    List<String> include = const [],
+    List<String> exclude = const [],
+  }) {
+    return {
+      for (final entry in models.entries)
+        if ((include.isEmpty || include.any((p) => globMatch(p, entry.key))) &&
+            !exclude.any((p) => globMatch(p, entry.key)))
+          entry.key: entry.value,
+    };
+  }
+
+  /// 解析 release_date('2026-09-10' 或月粒度 '2026-09')。
+  /// 缺失、非字符串或无法解析返回 null。
+  static DateTime? _parseReleaseDate(Object? value) {
+    if (value is! String) return null;
+    final full = DateTime.tryParse(value);
+    if (full != null) return full;
+    final month = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value);
+    if (month != null) {
+      return DateTime(int.parse(month.group(1)!), int.parse(month.group(2)!));
+    }
+    return null;
+  }
 }
 
 class _CachedCatalog {
@@ -469,19 +485,4 @@ class _CachedCatalog {
   final Map<String, dynamic> data;
 
   _CachedCatalog({required this.fetchedAt, required this.data});
-}
-
-/// 一次目录同步的统计结果,供 UI 展示摘要(如"新增 X provider、更新 Y 模型")。
-class CatalogSyncResult {
-  final int createdProviders;
-  final int createdModels;
-  final int updatedModels;
-  final int removedModels;
-
-  const CatalogSyncResult({
-    this.createdProviders = 0,
-    this.createdModels = 0,
-    this.updatedModels = 0,
-    this.removedModels = 0,
-  });
 }

@@ -1,11 +1,11 @@
-import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:athena_gui/page/desktop/home/component/composer_selection_menu.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 工具栏上的推理强度文字（如 `High`）。只负责显示：点击由外层
 /// `AthenaGhostButton` 接管，弹出 [DesktopReasoningEffortMenu]。
@@ -37,22 +37,6 @@ class DesktopReasoningEffortMenu extends StatelessWidget {
     this.onSelected,
   });
 
-  static void show(
-    BuildContext context,
-    Rect anchor, {
-    required String current,
-    void Function(String)? onSelected,
-  }) {
-    DesktopContextMenuManager.instance.show(
-      context,
-      DesktopReasoningEffortMenu(
-        anchor: anchor,
-        current: current,
-        onSelected: onSelected,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final defaultEffort =
@@ -73,6 +57,22 @@ class DesktopReasoningEffortMenu extends StatelessWidget {
             },
           ),
       ],
+    );
+  }
+
+  static void show(
+    BuildContext context,
+    Rect anchor, {
+    required String current,
+    void Function(String)? onSelected,
+  }) {
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopReasoningEffortMenu(
+        anchor: anchor,
+        current: current,
+        onSelected: onSelected,
+      ),
     );
   }
 }

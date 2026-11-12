@@ -10,6 +10,22 @@ import 'package:nocterm/nocterm.dart';
 /// 一次只展示一个问题,多问时标题标出 `1 / 3`,与 GUI 提问卡片同一套规则。
 /// 显示期间 app 层接管全局按键,输入区只在自填模式下接收输入。
 class QuestionBar extends StatelessComponent {
+  /// 标题前缀(默认「提问」);问题不属于当前会话时由 app 层带上会话标题。
+  final String label;
+
+  final List<ElicitQuestion> questions;
+
+  final int currentIndex;
+
+  /// 问题下标 → 已选 label 集合。
+  final Map<int, Set<String>> selected;
+
+  /// 问题下标 → 用户自填的文本(与选项互斥)。
+  final Map<int, String> freeText;
+
+  final String hint;
+
+  final ScrollController? scrollController;
   const QuestionBar({
     super.key,
     required this.questions,
@@ -20,21 +36,6 @@ class QuestionBar extends StatelessComponent {
     this.scrollController,
     this.label = '提问',
   });
-
-  /// 标题前缀(默认「提问」);问题不属于当前会话时由 app 层带上会话标题。
-  final String label;
-
-  final List<ElicitQuestion> questions;
-  final int currentIndex;
-
-  /// 问题下标 → 已选 label 集合。
-  final Map<int, Set<String>> selected;
-
-  /// 问题下标 → 用户自填的文本(与选项互斥)。
-  final Map<int, String> freeText;
-
-  final String hint;
-  final ScrollController? scrollController;
 
   @override
   Component build(BuildContext context) {

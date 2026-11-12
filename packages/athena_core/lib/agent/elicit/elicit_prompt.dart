@@ -1,45 +1,6 @@
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 
-/// 一个选项：标签 + 一句话说明。
-///
-/// 选项由模型生成、宿主渲染
-/// （每问 2-4 个选项）。`preview` 一类需要宿主额外开启的字段不在此列——
-/// 没有渲染方支持时生成它只会白烧 token。
-class ElicitOption {
-  const ElicitOption({required this.label, required this.description});
-
-  final String label;
-  final String description;
-
-  Map<String, dynamic> toJson() => {'label': label, 'description': description};
-}
-
-/// 一个问题：完整问句 + 短标签 + 选项 + 是否多选。
-class ElicitQuestion {
-  const ElicitQuestion({
-    required this.question,
-    required this.header,
-    required this.options,
-    this.multiSelect = false,
-  });
-
-  final String question;
-
-  /// 短标签（≤12 字符），供宿主在窄卡片/终端行内显示。
-  final String header;
-
-  final List<ElicitOption> options;
-  final bool multiSelect;
-
-  Map<String, dynamic> toJson() => {
-    'question': question,
-    'header': header,
-    'options': options.map((o) => o.toJson()).toList(),
-    'multiSelect': multiSelect,
-  };
-}
-
 /// 提问回调：由各 App 注入（GUI=会话内提问卡片，TUI=终端提示）。
 ///
 /// 返回「问题文本 → 用户所选 label」；多选按 `", "` 连接，
@@ -59,20 +20,20 @@ typedef ElicitPrompt =
 /// `PermissionPrompt`，本次允许或拒绝）；这里问的是「你要哪个」，
 /// 需要携带选项与答案，两者不可混用。
 class ElicitChannel {
-  ElicitChannel({
-    required this.chatId,
-    required this.prompt,
-    required this.cancelToken,
-    this.onAnswered,
-  });
-
   final String chatId;
 
   /// null = 本会话没有提问 UI（移动端 / 未注入 onElicit / headless）。
   final ElicitPrompt? prompt;
 
   final CancelToken cancelToken;
+
   final void Function(List<ElicitQuestion>, Map<String, String>)? onAnswered;
+  ElicitChannel({
+    required this.chatId,
+    required this.prompt,
+    required this.cancelToken,
+    this.onAnswered,
+  });
 
   /// 本会话是否真的能问到人。false 时工具应降级而非等待。
   bool get available => prompt != null;
@@ -109,4 +70,43 @@ abstract interface class ElicitChannelAware {
     required ElicitChannel channel,
     void Function(String partialResult)? onUpdate,
   });
+}
+
+/// 一个选项：标签 + 一句话说明。
+///
+/// 选项由模型生成、宿主渲染
+/// （每问 2-4 个选项）。`preview` 一类需要宿主额外开启的字段不在此列——
+/// 没有渲染方支持时生成它只会白烧 token。
+class ElicitOption {
+  final String label;
+
+  final String description;
+  const ElicitOption({required this.label, required this.description});
+
+  Map<String, dynamic> toJson() => {'label': label, 'description': description};
+}
+
+/// 一个问题：完整问句 + 短标签 + 选项 + 是否多选。
+class ElicitQuestion {
+  final String question;
+
+  /// 短标签（≤12 字符），供宿主在窄卡片/终端行内显示。
+  final String header;
+
+  final List<ElicitOption> options;
+
+  final bool multiSelect;
+  const ElicitQuestion({
+    required this.question,
+    required this.header,
+    required this.options,
+    this.multiSelect = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'question': question,
+    'header': header,
+    'options': options.map((o) => o.toJson()).toList(),
+    'multiSelect': multiSelect,
+  };
 }

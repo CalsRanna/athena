@@ -2,10 +2,9 @@ import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/rewind_result.dart';
-import 'package:athena_core/repository/session_rewind_repository.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -13,6 +12,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/repository/session_rewind_repository.dart';
 
 /// 会话与消息的持久化编排。
 ///
@@ -37,10 +37,18 @@ class ChatStore {
        _providerRepository = providerRepository,
        _sentinelRepository = sentinelRepository;
 
-  Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async {
-    final chats = await _chatRepository.getAllChats();
-    final histories = await _chatRepository.getAllChatsWithLastMessage();
-    return (chats, histories);
+  /// 创建并落库一条空的 assistant 占位消息，返回带 id 与 seq 的 entity
+  Future<MessageEntity> appendAssistantPlaceholder(
+    String chatId, {
+    RunStatistics? runStatistics,
+  }) async {
+    final placeholder = MessageEntity(
+      chatId: chatId,
+      role: 'assistant',
+      content: '',
+      runStatistics: runStatistics,
+    );
+    return _messageRepository.storeMessage(placeholder);
   }
 
   /// 落库一个新会话。[reasoningEffort] / [workspacePath] / [approvalMode]
@@ -82,62 +90,6 @@ class ChatStore {
     }
   }
 
-  Future<
-    ({
-      List<MessageEntity> messages,
-      ModelEntity? model,
-      ProviderEntity? provider,
-      SentinelEntity? sentinel,
-    })
-  >
-  selectChat(ChatEntity chat, {List<MessageEntity>? preloadedMessages}) async {
-    final messages =
-        preloadedMessages ??
-        await _messageRepository.getMessagesByChatId(chat.id!);
-    final model = await _modelRepository.getModelById(chat.modelId);
-    final provider = model != null
-        ? await _providerRepository.getProviderById(model.providerId)
-        : null;
-    final sentinel = chat.sentinelId == null
-        ? null
-        : await _sentinelRepository.getSentinelById(chat.sentinelId!);
-    return (
-      messages: messages,
-      model: model,
-      provider: provider,
-      sentinel: sentinel,
-    );
-  }
-
-  /// 切换置顶，返回更新后的会话；会话已被删除时返回 null。
-  ///
-  /// 返回实体是为了让调用方能**就地**更新列表：置顶只改一条会话，调用方若为此
-  /// 重读整个 `sessions/` 目录，代价会随会话数线性增长。
-  Future<ChatEntity?> togglePin(ChatEntity chat) async {
-    // 先读最新行再改 pinned，避免整行覆盖写回旧快照
-    final latest = await _chatRepository.getChatById(chat.id!);
-    if (latest == null) return null;
-    final updated = latest.copyWith(
-      pinned: !latest.pinned,
-      updatedAt: DateTime.now(),
-    );
-    await _chatRepository.updateChat(updated);
-    return updated;
-  }
-
-  /// 设置会话的未读标记，返回更新后的会话；会话已被删除时返回 null。
-  ///
-  /// 与 [togglePin] 同样先读最新行再改，避免整行覆盖写回旧快照。不改
-  /// updatedAt：未读只是提示，不该让会话在列表里重新排序。
-  Future<ChatEntity?> setUnread(String chatId, {required bool unread}) async {
-    final latest = await _chatRepository.getChatById(chatId);
-    if (latest == null) return null;
-    if (latest.unread == unread) return latest;
-    final updated = latest.copyWith(unread: unread);
-    await _chatRepository.updateChat(updated);
-    return updated;
-  }
-
   /// 从 [fromIndex] 起删掉 [messages] 里的全部消息。
   ///
   /// 一次性收集 id 交给仓储按会话删除：一次读-改-写，而不是逐条删
@@ -154,43 +106,15 @@ class ChatStore {
     await _messageRepository.deleteMessages(chatId, ids);
   }
 
-  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) {
-    final repository = _messageRepository;
-    if (repository is! SessionRewindRepository) {
-      throw UnsupportedError('Session repository does not support rewind.');
-    }
-    return (repository as SessionRewindRepository).rewindToUserMessage(
-      chatId,
-      messageId,
-    );
-  }
-
-  Future<void> updateChatTimestamp(ChatEntity chat) async {
-    final latest = await _chatRepository.getChatById(chat.id!);
-    if (latest != null) {
-      await _chatRepository.updateChat(
-        latest.copyWith(updatedAt: DateTime.now()),
-      );
-    }
-  }
-
-  /// 创建并落库一条空的 assistant 占位消息，返回带 id 与 seq 的 entity
-  Future<MessageEntity> appendAssistantPlaceholder(
-    String chatId, {
-    RunStatistics? runStatistics,
-  }) async {
-    final placeholder = MessageEntity(
-      chatId: chatId,
-      role: 'assistant',
-      content: '',
-      runStatistics: runStatistics,
-    );
-    return _messageRepository.storeMessage(placeholder);
-  }
-
   /// 持久化 assistant 消息最终内容（含 toolCalls/toolResults/reasoning）
   Future<void> finalizeAssistantMessage(MessageEntity message) async {
     await _messageRepository.updateMessage(message);
+  }
+
+  Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async {
+    final chats = await _chatRepository.getAllChats();
+    final histories = await _chatRepository.getAllChatsWithLastMessage();
+    return (chats, histories);
   }
 
   /// 取消现场：保留所有累积内容，content 末尾追加 [Cancelled]
@@ -221,5 +145,81 @@ class ChatStore {
     );
     await _messageRepository.updateMessage(updated);
     return updated;
+  }
+
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) {
+    final repository = _messageRepository;
+    if (repository is! SessionRewindRepository) {
+      throw UnsupportedError('Session repository does not support rewind.');
+    }
+    return (repository as SessionRewindRepository).rewindToUserMessage(
+      chatId,
+      messageId,
+    );
+  }
+
+  Future<
+    ({
+      List<MessageEntity> messages,
+      ModelEntity? model,
+      ProviderEntity? provider,
+      SentinelEntity? sentinel,
+    })
+  >
+  selectChat(ChatEntity chat, {List<MessageEntity>? preloadedMessages}) async {
+    final messages =
+        preloadedMessages ??
+        await _messageRepository.getMessagesByChatId(chat.id!);
+    final model = await _modelRepository.getModelById(chat.modelId);
+    final provider = model != null
+        ? await _providerRepository.getProviderById(model.providerId)
+        : null;
+    final sentinel = chat.sentinelId == null
+        ? null
+        : await _sentinelRepository.getSentinelById(chat.sentinelId!);
+    return (
+      messages: messages,
+      model: model,
+      provider: provider,
+      sentinel: sentinel,
+    );
+  }
+
+  /// 设置会话的未读标记，返回更新后的会话；会话已被删除时返回 null。
+  ///
+  /// 与 [togglePin] 同样先读最新行再改，避免整行覆盖写回旧快照。不改
+  /// updatedAt：未读只是提示，不该让会话在列表里重新排序。
+  Future<ChatEntity?> setUnread(String chatId, {required bool unread}) async {
+    final latest = await _chatRepository.getChatById(chatId);
+    if (latest == null) return null;
+    if (latest.unread == unread) return latest;
+    final updated = latest.copyWith(unread: unread);
+    await _chatRepository.updateChat(updated);
+    return updated;
+  }
+
+  /// 切换置顶，返回更新后的会话；会话已被删除时返回 null。
+  ///
+  /// 返回实体是为了让调用方能**就地**更新列表：置顶只改一条会话，调用方若为此
+  /// 重读整个 `sessions/` 目录，代价会随会话数线性增长。
+  Future<ChatEntity?> togglePin(ChatEntity chat) async {
+    // 先读最新行再改 pinned，避免整行覆盖写回旧快照
+    final latest = await _chatRepository.getChatById(chat.id!);
+    if (latest == null) return null;
+    final updated = latest.copyWith(
+      pinned: !latest.pinned,
+      updatedAt: DateTime.now(),
+    );
+    await _chatRepository.updateChat(updated);
+    return updated;
+  }
+
+  Future<void> updateChatTimestamp(ChatEntity chat) async {
+    final latest = await _chatRepository.getChatById(chat.id!);
+    if (latest != null) {
+      await _chatRepository.updateChat(
+        latest.copyWith(updatedAt: DateTime.now()),
+      );
+    }
   }
 }

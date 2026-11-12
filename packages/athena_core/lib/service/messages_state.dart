@@ -6,6 +6,18 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:crypto/crypto.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+/// 公共 toJson 不包含签名，避免送进其他协议、摘要或普通日志。
+class MessagesAssistantMessage extends AssistantMessage {
+  final MessagesState? messagesState;
+  const MessagesAssistantMessage({
+    super.content,
+    super.toolCalls,
+    super.reasoningContent,
+    super.refusal,
+    this.messagesState,
+  });
+}
+
 /// thinking 的签名与原始 content 顺序一起保存，不能从展示文字重建。
 class MessagesState {
   final String? providerId;
@@ -44,31 +56,6 @@ class MessagesState {
       outputConfig = (json['output_config'] as Map?)?.cast<String, dynamic>(),
       _messageHash = json['message_hash'] as String;
 
-  static MessagesState? decode(String value) {
-    if (value.isEmpty) return null;
-    try {
-      final json = jsonDecode(value) as Map<String, dynamic>;
-      if (json['version'] != 1) return null;
-      final state = MessagesState._(json);
-      if (state.reasoningTokens < 0 || !hasCompleteThinking(state.content)) {
-        return null;
-      }
-      for (final block in state.content) {
-        anthropic.InputContentBlock.fromJson(block);
-      }
-      if (state.thinking != null) {
-        anthropic.ThinkingConfig.fromJson(state.thinking!);
-      }
-      if (state.outputConfig != null) {
-        anthropic.OutputConfig.fromJson(state.outputConfig!);
-      }
-      return state;
-    } catch (_) {
-      // 旧记录和损坏的可选状态仍可使用正文与工具历史。
-      return null;
-    }
-  }
-
   String encode() => jsonEncode({
     'version': 1,
     'provider_id': providerId,
@@ -98,12 +85,30 @@ class MessagesState {
   bool matchesMessage(AssistantMessage message) =>
       _hashMessage(message) == _messageHash;
 
-  /// 新版 Claude 校验 system/tools/先前消息；压缩或编辑后不回传旧签名。
-  static String hashPrefix(anthropic.MessageCreateRequest request) => hashJson({
-    'system': request.system?.toJson(),
-    'tools': request.tools?.map((tool) => tool.toJson()).toList(),
-    'messages': request.messages.map((message) => message.toJson()).toList(),
-  });
+  static MessagesState? decode(String value) {
+    if (value.isEmpty) return null;
+    try {
+      final json = jsonDecode(value) as Map<String, dynamic>;
+      if (json['version'] != 1) return null;
+      final state = MessagesState._(json);
+      if (state.reasoningTokens < 0 || !hasCompleteThinking(state.content)) {
+        return null;
+      }
+      for (final block in state.content) {
+        anthropic.InputContentBlock.fromJson(block);
+      }
+      if (state.thinking != null) {
+        anthropic.ThinkingConfig.fromJson(state.thinking!);
+      }
+      if (state.outputConfig != null) {
+        anthropic.OutputConfig.fromJson(state.outputConfig!);
+      }
+      return state;
+    } catch (_) {
+      // 旧记录和损坏的可选状态仍可使用正文与工具历史。
+      return null;
+    }
+  }
 
   static bool hasCompleteThinking(List<Map<String, dynamic>> content) {
     var found = false;
@@ -125,10 +130,33 @@ class MessagesState {
     return found;
   }
 
-  static String _normalizeUrl(String url) => url
-      .trim()
-      .replaceFirst(RegExp(r'/+$'), '')
-      .replaceFirst(RegExp(r'/v1$'), '');
+  static String hashJson(Object? value) =>
+      sha256.convert(utf8.encode(jsonEncode(_canonical(value)))).toString();
+
+  /// 新版 Claude 校验 system/tools/先前消息；压缩或编辑后不回传旧签名。
+  static String hashPrefix(anthropic.MessageCreateRequest request) => hashJson({
+    'system': request.system?.toJson(),
+    'tools': request.tools?.map((tool) => tool.toJson()).toList(),
+    'messages': request.messages.map((message) => message.toJson()).toList(),
+  });
+
+  static Object? _arguments(String value) {
+    if (value.trim().isEmpty) return const <String, dynamic>{};
+    try {
+      return jsonDecode(value);
+    } catch (_) {
+      return value;
+    }
+  }
+
+  static Object? _canonical(Object? value) {
+    if (value is Map) {
+      final keys = value.keys.cast<String>().toList()..sort();
+      return {for (final key in keys) key: _canonical(value[key])};
+    }
+    if (value is List) return value.map(_canonical).toList();
+    return value;
+  }
 
   static String _hashMessage(AssistantMessage message) => hashJson({
     'content': message.content ?? '',
@@ -143,38 +171,10 @@ class MessagesState {
     ],
   });
 
-  static Object? _arguments(String value) {
-    if (value.trim().isEmpty) return const <String, dynamic>{};
-    try {
-      return jsonDecode(value);
-    } catch (_) {
-      return value;
-    }
-  }
-
-  static String hashJson(Object? value) =>
-      sha256.convert(utf8.encode(jsonEncode(_canonical(value)))).toString();
-
-  static Object? _canonical(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.cast<String>().toList()..sort();
-      return {for (final key in keys) key: _canonical(value[key])};
-    }
-    if (value is List) return value.map(_canonical).toList();
-    return value;
-  }
-}
-
-/// 公共 toJson 不包含签名，避免送进其他协议、摘要或普通日志。
-class MessagesAssistantMessage extends AssistantMessage {
-  final MessagesState? messagesState;
-  const MessagesAssistantMessage({
-    super.content,
-    super.toolCalls,
-    super.reasoningContent,
-    super.refusal,
-    this.messagesState,
-  });
+  static String _normalizeUrl(String url) => url
+      .trim()
+      .replaceFirst(RegExp(r'/+$'), '')
+      .replaceFirst(RegExp(r'/v1$'), '');
 }
 
 /// 只在完整 message_stop 后发布可回传状态。

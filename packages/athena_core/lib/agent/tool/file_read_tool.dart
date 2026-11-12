@@ -1,16 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_core/agent/tool/tool_interface.dart';
-import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/agent/tool/text_file_reader.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 
 class FileReadTool extends Tool implements CancellableTool {
-  final TextFileReader _reader = TextFileReader();
-  @override
-  ExecutionMode get executionMode => ExecutionMode.parallel;
-
   /// Maximum lines returned per call, to avoid blowing up the LLM context.
   static const _maxReturnLines = TextFileReader.maxReturnLines;
 
@@ -18,8 +14,7 @@ class FileReadTool extends Tool implements CancellableTool {
   /// 1/3，超过这个值的图连请求都发不出去，不如在这里就明确拒绝。
   static const _maxImageBytes = 3500 * 1024;
 
-  @override
-  String get name => 'file_read';
+  final TextFileReader _reader = TextFileReader();
 
   @override
   String get description =>
@@ -31,6 +26,12 @@ class FileReadTool extends Tool implements CancellableTool {
       'Images larger than 3.5MB are rejected — ask the user to downscale. '
       'Use offset/limit to paginate text: start with offset=0,limit=100, '
       'then offset=100,limit=100, etc.';
+
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
+
+  @override
+  String get name => 'file_read';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -58,17 +59,17 @@ class FileReadTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args);
-
-  @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {
@@ -127,6 +128,43 @@ class FileReadTool extends Tool implements CancellableTool {
     );
   }
 
+  /// 按魔数识别图片格式；识别不出返回 null（按文本处理）。
+  ///
+  /// 以内容而不是扩展名为准：`.txt` 里放一张 PNG 也能被看见，误判成本
+  /// 只是把非图片当图片。
+  String? _imageMediaType(List<int> head) {
+    bool startsWith(List<int> signature, [int offset = 0]) {
+      if (head.length < offset + signature.length) return false;
+      for (var i = 0; i < signature.length; i++) {
+        if (head[offset + i] != signature[i]) return false;
+      }
+      return true;
+    }
+
+    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+      return 'image/png';
+    }
+    if (startsWith(const [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
+    if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+    if (startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
+        startsWith(const [0x57, 0x45, 0x42, 0x50], 8)) {
+      return 'image/webp';
+    }
+    return null;
+  }
+
+  Future<List<int>?> _readHead(File file) async {
+    RandomAccessFile? handle;
+    try {
+      handle = await file.open();
+      return await handle.read(12);
+    } on FileSystemException {
+      return null;
+    } finally {
+      await handle?.close();
+    }
+  }
+
   /// 按文件头判断是否为图片并读出；不是图片时返回 null，交给文本路径。
   Future<ToolExecutionResult?> _readImage(File file, String displayPath) async {
     final head = await _readHead(file);
@@ -151,42 +189,5 @@ class FileReadTool extends Tool implements CancellableTool {
         ToolResultImage(data: base64Encode(bytes), mediaType: mediaType),
       ],
     );
-  }
-
-  Future<List<int>?> _readHead(File file) async {
-    RandomAccessFile? handle;
-    try {
-      handle = await file.open();
-      return await handle.read(12);
-    } on FileSystemException {
-      return null;
-    } finally {
-      await handle?.close();
-    }
-  }
-
-  /// 按魔数识别图片格式；识别不出返回 null（按文本处理）。
-  ///
-  /// 以内容而不是扩展名为准：`.txt` 里放一张 PNG 也能被看见，误判成本
-  /// 只是把非图片当图片。
-  String? _imageMediaType(List<int> head) {
-    bool startsWith(List<int> signature, [int offset = 0]) {
-      if (head.length < offset + signature.length) return false;
-      for (var i = 0; i < signature.length; i++) {
-        if (head[offset + i] != signature[i]) return false;
-      }
-      return true;
-    }
-
-    if (startsWith(const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
-      return 'image/png';
-    }
-    if (startsWith(const [0xFF, 0xD8, 0xFF])) return 'image/jpeg';
-    if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
-    if (startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
-        startsWith(const [0x57, 0x45, 0x42, 0x50], 8)) {
-      return 'image/webp';
-    }
-    return null;
   }
 }

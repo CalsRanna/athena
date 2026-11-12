@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/extension/json_map_extension.dart';
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/storage/yaml_scalar.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:yaml/yaml.dart';
 
 /// 用户配置的持久化(`~/.athena/setting.yaml`)。GUI 与 TUI 共用这一个文件。
@@ -31,18 +31,6 @@ import 'package:yaml/yaml.dart';
 /// 跨进程文件锁并**重新读盘**,不做内存缓存——GUI 与 TUI 可能同时运行,各自
 /// 缓存会在对方的写入之上整文件覆盖。
 class UserSettingsStore {
-  UserSettingsStore({required File file, required LockRegistry locks})
-    : _file = file,
-      _locks = locks;
-
-  final File _file;
-
-  /// 锁放哪由它决定,见 [LockRegistry]。
-  final LockRegistry _locks;
-
-  /// 配置文件(供仓储层对其加跨进程锁)。
-  File get file => _file;
-
   /// TUI 的默认模型(modelId)。
   static const modelKey = 'model';
 
@@ -54,24 +42,35 @@ class UserSettingsStore {
   /// 旧版 GUI 写进 setting.yaml 的段,早已不用;读时丢弃,免得下次写回又带出来。
   static const _obsoleteKeys = {'currentModel', 'models', 'providers'};
 
+  final File _file;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
+  UserSettingsStore({required File file, required LockRegistry locks})
+    : _file = file,
+      _locks = locks;
+
+  /// 配置文件(供仓储层对其加跨进程锁)。
+  File get file => _file;
+
   // ---------------------------------------------------------------------------
   // 通用标量接口(各前端存自己的偏好)
   // ---------------------------------------------------------------------------
+
+  /// 清空全部设置(「Reset Athena」用)。文件本身保留,只剩文件头注释。
+  Future<void> clear() {
+    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
+      final map = await _readMap(forWrite: true);
+      if (map.isEmpty) return;
+      await _writeMap({});
+    });
+  }
 
   /// 原始值,不做任何类型转换。**只给需要判断原始类型的调用方用**:GUI 的旧
   /// 整数模型 ID 迁移要认出 `is int` 才能换成 UUID,一次性迁移也要靠它把
   /// prefs 里的值原样搬过来。其余场景用下面的带类型 getter。
   Future<Object?> get(String key) async => (await _readMap())[key];
-
-  Future<String?> getString(String key) async {
-    final map = await _readMap();
-    return map.getStringOrNull(key);
-  }
-
-  Future<int?> getInt(String key) async {
-    final map = await _readMap();
-    return map.getIntOrNull(key);
-  }
 
   /// 布尔值。不用 `JsonMapExtension.getBool`:它要求传默认值,于是「键不存在」
   /// 与「键是 false」不可区分,而 `background_task_reports` 的默认是 true。
@@ -92,6 +91,35 @@ class UserSettingsStore {
     return null;
   }
 
+  Future<int?> getInt(String key) async {
+    final map = await _readMap();
+    return map.getIntOrNull(key);
+  }
+
+  Future<String?> getString(String key) async {
+    final map = await _readMap();
+    return map.getStringOrNull(key);
+  }
+
+  Future<String?> loadBraveApiKey() => getString(braveApiKeyKey);
+
+  /// 读取持久化的默认模型(modelId 字符串,可能为 null)。
+  Future<String?> loadModelId() => getString(modelKey);
+
+  Future<void> remove(String key) {
+    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
+      final map = await _readMap(forWrite: true);
+      if (map.remove(key) == null) return;
+      await _writeMap(map);
+    });
+  }
+
+  Future<void> saveBraveApiKey(String apiKey) =>
+      setString(braveApiKeyKey, apiKey);
+
+  /// 保存默认模型(modelId 字符串)。
+  Future<void> saveModelId(String modelId) => setString(modelKey, modelId);
+
   Future<void> set(String key, Object? value) {
     // null 等于「没有这个设置」:写进文件会经 YamlScalarCodec 变成空串,
     // 与「键不存在」的语义就分不开了
@@ -103,45 +131,17 @@ class UserSettingsStore {
     });
   }
 
-  Future<void> setString(String key, String value) => set(key, value);
-
-  Future<void> setInt(String key, int value) => set(key, value);
+  // ---------------------------------------------------------------------------
+  // core 自己消费的键
+  // ---------------------------------------------------------------------------
 
   Future<void> setBool(String key, bool value) => set(key, value);
 
   Future<void> setDouble(String key, double value) => set(key, value);
 
-  Future<void> remove(String key) {
-    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
-      final map = await _readMap(forWrite: true);
-      if (map.remove(key) == null) return;
-      await _writeMap(map);
-    });
-  }
+  Future<void> setInt(String key, int value) => set(key, value);
 
-  /// 清空全部设置(「Reset Athena」用)。文件本身保留,只剩文件头注释。
-  Future<void> clear() {
-    return FileLocking.withFileLock(_locks.forTarget(_file), () async {
-      final map = await _readMap(forWrite: true);
-      if (map.isEmpty) return;
-      await _writeMap({});
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // core 自己消费的键
-  // ---------------------------------------------------------------------------
-
-  /// 读取持久化的默认模型(modelId 字符串,可能为 null)。
-  Future<String?> loadModelId() => getString(modelKey);
-
-  /// 保存默认模型(modelId 字符串)。
-  Future<void> saveModelId(String modelId) => setString(modelKey, modelId);
-
-  Future<String?> loadBraveApiKey() => getString(braveApiKeyKey);
-
-  Future<void> saveBraveApiKey(String apiKey) =>
-      setString(braveApiKeyKey, apiKey);
+  Future<void> setString(String key, String value) => set(key, value);
 
   // ---------------------------------------------------------------------------
   // 内部

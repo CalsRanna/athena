@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
@@ -8,176 +9,6 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-
-enum AthenaMessageType { info, success, warning, error }
-
-abstract final class AthenaDialog {
-  static OverlayEntry? _messageOverlay;
-  static Timer? _messageTimer;
-
-  /// 静态方法取色：通过全局导航 context 获取当前主题扩展。
-  static AthenaColors get _colors =>
-      AthenaRouter.router.navigatorKey.currentContext!.athenaColors;
-
-  /// 移动端判定走 `ThemeData.platform` 而不是 `PlatformUtil`。
-  ///
-  /// 理由与 [AthenaScrollBehavior] 相同、也与 [PermissionApprovalCard] /
-  /// [ElicitCard] 现在的做法一致：`PlatformUtil` 读 `dart:io` 的 `Platform`，
-  /// 在 widget 测试里恒为宿主平台，**移动端的分支根本进不去**；而
-  /// `ThemeData.platform` 可以在测试里用 `theme.copyWith(platform:)` 指定，
-  /// 两端才都能断言。生产环境不显式设置 `ThemeData.platform`，
-  /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
-  static bool _isMobile(BuildContext context) {
-    final platform = context.athenaPlatform;
-    return platform == TargetPlatform.android || platform == TargetPlatform.iOS;
-  }
-
-  static Future<bool?> confirm(String text, {bool dismissible = true}) async {
-    final context = AthenaRouter.router.navigatorKey.currentContext!;
-    if (_isMobile(context)) {
-      // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
-      // 输入框,导致键盘自动弹出。
-      FocusManager.instance.primaryFocus?.unfocus();
-      return showModalBottomSheet<bool>(
-        backgroundColor: _colors.surfaceMobile,
-        isDismissible: dismissible,
-        enableDrag: dismissible,
-        builder: (_) => _ConfirmDialog(text: text),
-        context: context,
-      );
-    }
-    return showDialog<bool>(
-      barrierDismissible: dismissible,
-      builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
-      context: context,
-    );
-  }
-
-  static Future<String?> input(String title, {String? initialValue}) async {
-    final context = AthenaRouter.router.navigatorKey.currentContext!;
-    if (_isMobile(context)) {
-      // 打开弹窗前释放焦点,防止关闭弹窗后焦点回落到输入框导致
-      // 键盘自动弹出;弹窗内的输入框自身会重新申请焦点。
-      FocusManager.instance.primaryFocus?.unfocus();
-      return showModalBottomSheet<String>(
-        backgroundColor: _colors.surfaceMobile,
-        isScrollControlled: true,
-        builder: (_) => _InputDialog(title: title, initialValue: initialValue),
-        context: context,
-      );
-    }
-    return showDialog<String>(
-      builder: (_) =>
-          _DesktopInputDialog(title: title, initialValue: initialValue),
-      context: context,
-    );
-  }
-
-  static void dismiss() {
-    Navigator.of(AthenaRouter.router.navigatorKey.currentContext!).pop();
-  }
-
-  static void loading() {
-    showDialog<void>(
-      barrierDismissible: false,
-      context: AthenaRouter.router.navigatorKey.currentContext!,
-      builder: (context) => const _DesktopLoadingDialog(),
-    );
-  }
-
-  static void message(
-    String message, {
-    AthenaMessageType type = AthenaMessageType.info,
-  }) {
-    if (!_isMobile(AthenaRouter.router.navigatorKey.currentContext!)) {
-      _showDesktopMessage(message, type: type);
-      return;
-    }
-    final messenger = AthenaRouter.scaffoldMessengerKey.currentState;
-    if (messenger == null) return;
-    final style = _AthenaMessageVisualStyle.fromType(type, _colors);
-    final textStyle = AthenaTextStyle.body.copyWith(color: _colors.textPrimary);
-    final content = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          style.icon,
-          color: style.accentColor,
-          size: AthenaIcon.regularSize,
-        ),
-        const SizedBox(width: 8),
-        Flexible(child: Text(message, style: textStyle)),
-      ],
-    );
-    final snackBar = SnackBar(
-      backgroundColor: _colors.surfaceMobile,
-      behavior: SnackBarBehavior.floating,
-      content: content,
-    );
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(snackBar);
-  }
-
-  static void show(Widget child, {bool barrierDismissible = false}) {
-    final context = AthenaRouter.router.navigatorKey.currentContext!;
-    if (_isMobile(context)) {
-      // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
-      // 输入框,导致键盘自动弹出。
-      FocusManager.instance.primaryFocus?.unfocus();
-      showModalBottomSheet<void>(
-        backgroundColor: _colors.surfaceMobile,
-        builder: (_) => child,
-        context: context,
-      );
-      return;
-    }
-    showDialog<void>(
-      barrierDismissible: barrierDismissible,
-      builder: (_) => child,
-      context: context,
-    );
-  }
-
-  static void info(String message) {
-    AthenaDialog.message(message, type: AthenaMessageType.info);
-  }
-
-  static void success(String message) {
-    AthenaDialog.message(message, type: AthenaMessageType.success);
-  }
-
-  static void warning(String message) {
-    AthenaDialog.message(message, type: AthenaMessageType.warning);
-  }
-
-  static void error(String message) {
-    AthenaDialog.message(message, type: AthenaMessageType.error);
-  }
-
-  static void _dismissDesktopMessage() {
-    _messageTimer?.cancel();
-    _messageTimer = null;
-    _messageOverlay?.remove();
-    _messageOverlay = null;
-  }
-
-  static void _showDesktopMessage(
-    String message, {
-    AthenaMessageType type = AthenaMessageType.info,
-  }) {
-    final overlay = AthenaRouter.router.navigatorKey.currentState?.overlay;
-    if (overlay == null) return;
-    _dismissDesktopMessage();
-    final entry = OverlayEntry(
-      builder: (context) =>
-          _DesktopMessageOverlay(message: message, type: type),
-    );
-    overlay.insert(entry);
-    _messageOverlay = entry;
-    _messageTimer = Timer(AthenaMotion.linger, _dismissDesktopMessage);
-  }
-}
 
 /// 桌面对话框外壳（WIDGETS.md §2 Desktop Dialog）。
 ///
@@ -249,6 +80,173 @@ class AthenaDesktopDialog extends StatelessWidget {
   }
 }
 
+abstract final class AthenaDialog {
+  static OverlayEntry? _messageOverlay;
+  static Timer? _messageTimer;
+
+  /// 静态方法取色：通过全局导航 context 获取当前主题扩展。
+  static AthenaColors get _colors =>
+      AthenaRouter.router.navigatorKey.currentContext!.athenaColors;
+
+  static Future<bool?> confirm(String text, {bool dismissible = true}) async {
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
+      // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
+      // 输入框,导致键盘自动弹出。
+      FocusManager.instance.primaryFocus?.unfocus();
+      return showModalBottomSheet<bool>(
+        backgroundColor: _colors.surfaceMobile,
+        isDismissible: dismissible,
+        enableDrag: dismissible,
+        builder: (_) => _ConfirmDialog(text: text),
+        context: context,
+      );
+    }
+    return showDialog<bool>(
+      barrierDismissible: dismissible,
+      builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
+      context: context,
+    );
+  }
+
+  static void dismiss() {
+    Navigator.of(AthenaRouter.router.navigatorKey.currentContext!).pop();
+  }
+
+  static void error(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.error);
+  }
+
+  static void info(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.info);
+  }
+
+  static Future<String?> input(String title, {String? initialValue}) async {
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
+      // 打开弹窗前释放焦点,防止关闭弹窗后焦点回落到输入框导致
+      // 键盘自动弹出;弹窗内的输入框自身会重新申请焦点。
+      FocusManager.instance.primaryFocus?.unfocus();
+      return showModalBottomSheet<String>(
+        backgroundColor: _colors.surfaceMobile,
+        isScrollControlled: true,
+        builder: (_) => _InputDialog(title: title, initialValue: initialValue),
+        context: context,
+      );
+    }
+    return showDialog<String>(
+      builder: (_) =>
+          _DesktopInputDialog(title: title, initialValue: initialValue),
+      context: context,
+    );
+  }
+
+  static void loading() {
+    showDialog<void>(
+      barrierDismissible: false,
+      context: AthenaRouter.router.navigatorKey.currentContext!,
+      builder: (context) => const _DesktopLoadingDialog(),
+    );
+  }
+
+  static void message(
+    String message, {
+    AthenaMessageType type = AthenaMessageType.info,
+  }) {
+    if (!_isMobile(AthenaRouter.router.navigatorKey.currentContext!)) {
+      _showDesktopMessage(message, type: type);
+      return;
+    }
+    final messenger = AthenaRouter.scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
+    final style = _AthenaMessageVisualStyle.fromType(type, _colors);
+    final textStyle = AthenaTextStyle.body.copyWith(color: _colors.textPrimary);
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          style.icon,
+          color: style.accentColor,
+          size: AthenaIcon.regularSize,
+        ),
+        const SizedBox(width: 8),
+        Flexible(child: Text(message, style: textStyle)),
+      ],
+    );
+    final snackBar = SnackBar(
+      backgroundColor: _colors.surfaceMobile,
+      behavior: SnackBarBehavior.floating,
+      content: content,
+    );
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(snackBar);
+  }
+
+  static void show(Widget child, {bool barrierDismissible = false}) {
+    final context = AthenaRouter.router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
+      // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
+      // 输入框,导致键盘自动弹出。
+      FocusManager.instance.primaryFocus?.unfocus();
+      showModalBottomSheet<void>(
+        backgroundColor: _colors.surfaceMobile,
+        builder: (_) => child,
+        context: context,
+      );
+      return;
+    }
+    showDialog<void>(
+      barrierDismissible: barrierDismissible,
+      builder: (_) => child,
+      context: context,
+    );
+  }
+
+  static void success(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.success);
+  }
+
+  static void warning(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.warning);
+  }
+
+  static void _dismissDesktopMessage() {
+    _messageTimer?.cancel();
+    _messageTimer = null;
+    _messageOverlay?.remove();
+    _messageOverlay = null;
+  }
+
+  /// 移动端判定走 `ThemeData.platform` 而不是 `PlatformUtil`。
+  ///
+  /// 理由与 [AthenaScrollBehavior] 相同、也与 [PermissionApprovalCard] /
+  /// [ElicitCard] 现在的做法一致：`PlatformUtil` 读 `dart:io` 的 `Platform`，
+  /// 在 widget 测试里恒为宿主平台，**移动端的分支根本进不去**；而
+  /// `ThemeData.platform` 可以在测试里用 `theme.copyWith(platform:)` 指定，
+  /// 两端才都能断言。生产环境不显式设置 `ThemeData.platform`，
+  /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
+  static bool _isMobile(BuildContext context) {
+    final platform = context.athenaPlatform;
+    return platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+  }
+
+  static void _showDesktopMessage(
+    String message, {
+    AthenaMessageType type = AthenaMessageType.info,
+  }) {
+    final overlay = AthenaRouter.router.navigatorKey.currentState?.overlay;
+    if (overlay == null) return;
+    _dismissDesktopMessage();
+    final entry = OverlayEntry(
+      builder: (context) =>
+          _DesktopMessageOverlay(message: message, type: type),
+    );
+    overlay.insert(entry);
+    _messageOverlay = entry;
+    _messageTimer = Timer(AthenaMotion.linger, _dismissDesktopMessage);
+  }
+}
+
 /// 桌面对话框底部的按钮行：次要在左、主操作在最右，右对齐、间距 8。
 ///
 /// 确认、输入与各设置表单的模态共用这一行，不要再各自拼 `Row`。
@@ -276,6 +274,8 @@ class AthenaDialogActions extends StatelessWidget {
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 }
+
+enum AthenaMessageType { info, success, warning, error }
 
 class _AthenaMessageVisualStyle {
   final Color accentColor;
@@ -394,18 +394,6 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
   late final TextEditingController controller;
 
   @override
-  void initState() {
-    super.initState();
-    controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final children = [
       AthenaInput(controller: controller, autoFocus: true),
@@ -424,26 +412,6 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
       ),
     );
   }
-}
-
-class _InputDialog extends StatefulWidget {
-  final String title;
-  final String? initialValue;
-
-  const _InputDialog({required this.title, this.initialValue});
-
-  @override
-  State<_InputDialog> createState() => _InputDialogState();
-}
-
-class _InputDialogState extends State<_InputDialog> {
-  late final TextEditingController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = TextEditingController(text: widget.initialValue);
-  }
 
   @override
   void dispose() {
@@ -452,36 +420,9 @@ class _InputDialogState extends State<_InputDialog> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final titleStyle = AthenaTextStyle.title.copyWith(
-      color: colors.textPrimary,
-    );
-    final input = AthenaInput(controller: controller, autoFocus: true);
-    final children = [
-      Text(widget.title, style: titleStyle),
-      const SizedBox(height: AthenaSpace.lg),
-      input,
-      const SizedBox(height: AthenaSpace.xxl),
-      AthenaPrimaryButton(
-        onTap: () => Navigator.of(context).maybePop(controller.text.trim()),
-        child: const Center(child: Text('Confirm')),
-      ),
-      const SizedBox(height: AthenaSpace.sm),
-      AthenaSecondaryButton(
-        onTap: () => Navigator.of(context).maybePop(null),
-        child: const Center(child: Text('Cancel')),
-      ),
-      SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      ),
-    );
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.initialValue);
   }
 }
 
@@ -578,5 +519,64 @@ class _DesktopMessageOverlay extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _InputDialog extends StatefulWidget {
+  final String title;
+  final String? initialValue;
+
+  const _InputDialog({required this.title, this.initialValue});
+
+  @override
+  State<_InputDialog> createState() => _InputDialogState();
+}
+
+class _InputDialogState extends State<_InputDialog> {
+  late final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final titleStyle = AthenaTextStyle.title.copyWith(
+      color: colors.textPrimary,
+    );
+    final input = AthenaInput(controller: controller, autoFocus: true);
+    final children = [
+      Text(widget.title, style: titleStyle),
+      const SizedBox(height: AthenaSpace.lg),
+      input,
+      const SizedBox(height: AthenaSpace.xxl),
+      AthenaPrimaryButton(
+        onTap: () => Navigator.of(context).maybePop(controller.text.trim()),
+        child: const Center(child: Text('Confirm')),
+      ),
+      const SizedBox(height: AthenaSpace.sm),
+      AthenaSecondaryButton(
+        onTap: () => Navigator.of(context).maybePop(null),
+        child: const Center(child: Text('Cancel')),
+      ),
+      SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    controller = TextEditingController(text: widget.initialValue);
   }
 }

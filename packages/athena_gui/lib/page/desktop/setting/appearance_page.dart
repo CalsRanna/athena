@@ -1,10 +1,10 @@
-import 'package:athena_gui/theme/athena_theme.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';

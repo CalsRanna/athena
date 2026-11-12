@@ -13,9 +13,6 @@ import 'package:signals/signals.dart';
 /// 相干。唯一的对外依赖是「当前是哪条对话」——槽位切换要读它——所以由构造参数注入
 /// 一个读取器，而不是把整个 ViewModel 递进来。
 class PendingImageStore {
-  PendingImageStore({required String? Function() currentChatId})
-    : _currentChatId = currentChatId;
-
   final String? Function() _currentChatId;
 
   /// 当前对话的待发图片。
@@ -28,6 +25,9 @@ class PendingImageStore {
   /// 非当前对话的待发图片。当前槽的真相在 [pendingImages] 里，所以这张表里不会
   /// 出现当前槽。
   final Map<String?, List<PendingImage>> _byChat = {};
+
+  PendingImageStore({required String? Function() currentChatId})
+    : _currentChatId = currentChatId;
 
   Future<void> addPath(String path) => addPaths([path]);
 
@@ -42,6 +42,32 @@ class PendingImageStore {
     for (final image in images) {
       await _prepare(image);
     }
+  }
+
+  /// 草稿落盘成对话：当前这批图片改归 [chatId]，**列表内容原地不动**。
+  ///
+  /// 与 [retargetToCurrentChat] 的区别是实质性的：那个是「切到别的对话」，要把
+  /// 当前槽存回去再取新槽；这个是「这批图就是这条新对话的」，只改归属。用错会让
+  /// 草稿里刚贴好的图当场从输入框消失——存进了 null 槽，取回来的是新对话的空槽。
+  ///
+  /// 新对话的 id 是刚生成的，[_byChat] 里不可能有它的旧条目。
+  void claimFor(String chatId) {
+    _key = chatId;
+  }
+
+  void clear() {
+    pendingImages.value = [];
+  }
+
+  /// 清掉除当前槽以外的全部图片槽（重置数据时用）。当前槽由 [clear] 负责。
+  void discardAllSlots() {
+    _byChat.clear();
+  }
+
+  /// 丢掉某条对话的图片槽（对话被删掉了）。chat id 不复用，那个槽再也回不去，
+  /// 留着只会在内存里越堆越多。
+  void dropSlot(String chatId) {
+    _byChat.remove(chatId);
   }
 
   /// 先占位再读取；按附件标识回填，切换或删除对话后不会写进当前输入框。
@@ -73,6 +99,48 @@ class PendingImageStore {
       ]);
       return true;
     }
+  }
+
+  void removeAt(int index) {
+    final images = List<PendingImage>.from(pendingImages.value);
+    if (index >= 0 && index < images.length) {
+      images.removeAt(index);
+      pendingImages.value = images;
+    }
+  }
+
+  /// 历史附件已有字节，不再依赖原文件路径；非当前会话只写自己的槽。
+  void restoreFor(String chatId, List<PendingImage> images) {
+    if (_currentChatId() == chatId) {
+      _key = chatId;
+      pendingImages.value = images;
+    } else {
+      _byChat[chatId] = images;
+    }
+  }
+
+  /// 把 [pendingImages] 切到当前对话那一槽：旧槽存回 [_byChat]、新槽取出。
+  /// 必须在 `currentChat` 已更新之后调用，否则会把图片存到错的对话上。
+  ///
+  /// 进入一条对话时也要调一次：槽键初值是 null（"还没落盘的草稿"），不先对齐
+  /// 的话，之后第一次切槽会把当前这批图存进 null 槽、再取回目标对话的空槽。
+  ///
+  /// 取出时把表里的那份删掉：取出来之后它的真相就在 [pendingImages] 里了，
+  /// 留着会在"取回后编辑、再切走"之间产生一份过期的副本（切回旧对话时冒出一张
+  /// 早就删掉的图）。
+  void retargetToCurrentChat() {
+    final next = _currentChatId();
+    if (next == _key) return;
+    final leaving = pendingImages.value;
+    if (leaving.isEmpty) {
+      _byChat.remove(_key);
+    } else {
+      _byChat[_key] = List<PendingImage>.of(leaving);
+    }
+    _key = next;
+    pendingImages.value = List<PendingImage>.of(
+      _byChat.remove(next) ?? const [],
+    );
   }
 
   Future<void> _prepare(PendingImage image) async {
@@ -125,73 +193,5 @@ class PendingImageStore {
       return true;
     }
     return false;
-  }
-
-  /// 历史附件已有字节，不再依赖原文件路径；非当前会话只写自己的槽。
-  void restoreFor(String chatId, List<PendingImage> images) {
-    if (_currentChatId() == chatId) {
-      _key = chatId;
-      pendingImages.value = images;
-    } else {
-      _byChat[chatId] = images;
-    }
-  }
-
-  void clear() {
-    pendingImages.value = [];
-  }
-
-  /// 清掉除当前槽以外的全部图片槽（重置数据时用）。当前槽由 [clear] 负责。
-  void discardAllSlots() {
-    _byChat.clear();
-  }
-
-  /// 丢掉某条对话的图片槽（对话被删掉了）。chat id 不复用，那个槽再也回不去，
-  /// 留着只会在内存里越堆越多。
-  void dropSlot(String chatId) {
-    _byChat.remove(chatId);
-  }
-
-  void removeAt(int index) {
-    final images = List<PendingImage>.from(pendingImages.value);
-    if (index >= 0 && index < images.length) {
-      images.removeAt(index);
-      pendingImages.value = images;
-    }
-  }
-
-  /// 把 [pendingImages] 切到当前对话那一槽：旧槽存回 [_byChat]、新槽取出。
-  /// 必须在 `currentChat` 已更新之后调用，否则会把图片存到错的对话上。
-  ///
-  /// 进入一条对话时也要调一次：槽键初值是 null（"还没落盘的草稿"），不先对齐
-  /// 的话，之后第一次切槽会把当前这批图存进 null 槽、再取回目标对话的空槽。
-  ///
-  /// 取出时把表里的那份删掉：取出来之后它的真相就在 [pendingImages] 里了，
-  /// 留着会在"取回后编辑、再切走"之间产生一份过期的副本（切回旧对话时冒出一张
-  /// 早就删掉的图）。
-  void retargetToCurrentChat() {
-    final next = _currentChatId();
-    if (next == _key) return;
-    final leaving = pendingImages.value;
-    if (leaving.isEmpty) {
-      _byChat.remove(_key);
-    } else {
-      _byChat[_key] = List<PendingImage>.of(leaving);
-    }
-    _key = next;
-    pendingImages.value = List<PendingImage>.of(
-      _byChat.remove(next) ?? const [],
-    );
-  }
-
-  /// 草稿落盘成对话：当前这批图片改归 [chatId]，**列表内容原地不动**。
-  ///
-  /// 与 [retargetToCurrentChat] 的区别是实质性的：那个是「切到别的对话」，要把
-  /// 当前槽存回去再取新槽；这个是「这批图就是这条新对话的」，只改归属。用错会让
-  /// 草稿里刚贴好的图当场从输入框消失——存进了 null 槽，取回来的是新对话的空槽。
-  ///
-  /// 新对话的 id 是刚生成的，[_byChat] 里不可能有它的旧条目。
-  void claimFor(String chatId) {
-    _key = chatId;
   }
 }

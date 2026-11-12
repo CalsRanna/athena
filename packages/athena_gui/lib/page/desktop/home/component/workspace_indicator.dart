@@ -1,9 +1,9 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 上下文条上的「本会话工作文件夹」入口，紧跟在 Sentinel 图标之后。
 ///

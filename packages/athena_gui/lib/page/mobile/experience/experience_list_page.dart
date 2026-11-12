@@ -1,5 +1,8 @@
 import 'package:athena_core/entity/experience_entity.dart';
+import 'package:athena_gui/component/experience_format.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/component/empty_state.dart';
+import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
@@ -8,7 +11,6 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/tag.dart';
-import 'package:athena_gui/page/mobile/component/grid_tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,8 +18,6 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-import 'package:athena_gui/component/experience_format.dart';
 
 /// 经验管理列表：All / Shared / Private 过滤；活跃与归档分区展示。
 /// 长按归档/恢复或删除，点击进入详情。
@@ -33,12 +33,6 @@ class MobileExperienceListPage extends StatefulWidget {
 class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   late final viewModel = GetIt.instance<ExperienceViewModel>();
   String? scopeFilter; // null = all, 'shared', 'self'
-
-  @override
-  void initState() {
-    super.initState();
-    viewModel.load();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,29 +55,43 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
   }
 
-  Widget _buildFilterBar(BuildContext context) {
-    final children = [
-      AthenaTagButton.small(
-        selected: scopeFilter == null,
-        onTap: () => setState(() => scopeFilter = null),
-        child: const Text('All'),
-      ),
-      AthenaTagButton.small(
-        selected: scopeFilter == 'shared',
-        onTap: () => setState(() => scopeFilter = 'shared'),
-        child: const Text('Shared'),
-      ),
-      AthenaTagButton.small(
-        selected: scopeFilter == 'self',
-        onTap: () => setState(() => scopeFilter = 'self'),
-        child: const Text('Private'),
-      ),
-    ];
-    // 系统字号放大后三个 chip 会超出屏宽，用 Wrap 换行而不是让 Row 溢出。
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(spacing: 8, runSpacing: 8, children: children),
+  @override
+  void initState() {
+    super.initState();
+    viewModel.load();
+  }
+
+  void openBottomSheet(BuildContext context, ExperienceEntity experience) {
+    HapticFeedback.heavyImpact();
+    final isArchived = experience.status == ExperienceEntity.statusArchived;
+    final statusTile = AthenaBottomSheetTile(
+      title: isArchived ? 'Restore' : 'Archive',
+      onTap: () {
+        AthenaDialog.dismiss();
+        if (isArchived) {
+          viewModel.restoreExperience(experience);
+        } else {
+          viewModel.archiveExperience(experience);
+        }
+      },
     );
+    final deleteTile = AthenaBottomSheetTile(
+      leading: const Icon(LucideIcons.trash2),
+      title: 'Delete',
+      onTap: () async {
+        AthenaDialog.dismiss();
+        final result = await AthenaDialog.confirm('Delete this experience?');
+        if (result != true) return;
+        await viewModel.deleteExperience(experience);
+      },
+    );
+    final children = [statusTile, deleteTile];
+    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    AthenaDialog.show(SafeArea(child: padding));
   }
 
   Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
@@ -125,30 +133,28 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String title) {
-    final colors = context.athenaColors;
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-        child: Text(
-          title,
-          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
-        ),
+  Widget _buildFilterBar(BuildContext context) {
+    final children = [
+      AthenaTagButton.small(
+        selected: scopeFilter == null,
+        onTap: () => setState(() => scopeFilter = null),
+        child: const Text('All'),
       ),
-    );
-  }
-
-  Widget _grid(BuildContext context, List<ExperienceEntity> experiences) {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      sliver: SliverMasonryGrid.count(
-        crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childCount: experiences.length,
-        itemBuilder: (context, index) =>
-            _buildTile(context, experiences[index]),
+      AthenaTagButton.small(
+        selected: scopeFilter == 'shared',
+        onTap: () => setState(() => scopeFilter = 'shared'),
+        child: const Text('Shared'),
       ),
+      AthenaTagButton.small(
+        selected: scopeFilter == 'self',
+        onTap: () => setState(() => scopeFilter = 'self'),
+        child: const Text('Private'),
+      ),
+    ];
+    // 系统字号放大后三个 chip 会超出屏宽，用 Wrap 换行而不是让 Row 溢出。
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(spacing: 8, runSpacing: 8, children: children),
     );
   }
 
@@ -166,40 +172,34 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
   }
 
+  Widget _grid(BuildContext context, List<ExperienceEntity> experiences) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverMasonryGrid.count(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childCount: experiences.length,
+        itemBuilder: (context, index) =>
+            _buildTile(context, experiences[index]),
+      ),
+    );
+  }
+
   void _navigateDetailPage(BuildContext context, ExperienceEntity experience) {
     MobileExperienceDetailRoute(experience: experience).push<void>(context);
   }
 
-  void openBottomSheet(BuildContext context, ExperienceEntity experience) {
-    HapticFeedback.heavyImpact();
-    final isArchived = experience.status == ExperienceEntity.statusArchived;
-    final statusTile = AthenaBottomSheetTile(
-      title: isArchived ? 'Restore' : 'Archive',
-      onTap: () {
-        AthenaDialog.dismiss();
-        if (isArchived) {
-          viewModel.restoreExperience(experience);
-        } else {
-          viewModel.archiveExperience(experience);
-        }
-      },
+  Widget _sectionTitle(BuildContext context, String title) {
+    final colors = context.athenaColors;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Text(
+          title,
+          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
+        ),
+      ),
     );
-    final deleteTile = AthenaBottomSheetTile(
-      leading: const Icon(LucideIcons.trash2),
-      title: 'Delete',
-      onTap: () async {
-        AthenaDialog.dismiss();
-        final result = await AthenaDialog.confirm('Delete this experience?');
-        if (result != true) return;
-        await viewModel.deleteExperience(experience);
-      },
-    );
-    final children = [statusTile, deleteTile];
-    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    final padding = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: column,
-    );
-    AthenaDialog.show(SafeArea(child: padding));
   }
 }

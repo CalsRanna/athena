@@ -20,8 +20,8 @@ class TurnNavigator {
     _scrollToTurn = scrollToTurn;
   }
 
+  void dispose() => currentTurnIndex.dispose();
+
   /// 把第 [turnIndex] 轮滚到视口顶部。
   void scrollToTurn(int turnIndex) => _scrollToTurn?.call(turnIndex);
-
-  void dispose() => currentTurnIndex.dispose();
 }

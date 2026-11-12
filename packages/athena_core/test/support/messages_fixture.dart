@@ -12,52 +12,9 @@ ProviderEntity messagesProvider() => ProviderEntity(
   createdAt: DateTime(2026),
 );
 
-Map<String, dynamic> thinkingMessage({
-  bool tools = true,
-  String stop = 'tool_use',
-  String suffix = '1',
-  bool signed = true,
-}) => {
-  'id': 'msg_$suffix',
-  'type': 'message',
-  'role': 'assistant',
-  'model': 'claude-sonnet-4-6',
-  'stop_reason': tools ? stop : 'end_turn',
-  'stop_sequence': null,
-  'usage': {
-    'input_tokens': 100,
-    'output_tokens': 80,
-    'output_tokens_details': {'thinking_tokens': 25},
-  },
-  'content': [
-    {
-      'type': 'thinking',
-      'thinking': '先读取配置。',
-      if (signed) 'signature': 'signature_${suffix}_0',
-    },
-    {'type': 'text', 'text': '准备执行。'},
-    if (signed) {'type': 'redacted_thinking', 'data': 'redacted_$suffix'},
-    {
-      'type': 'thinking',
-      'thinking': '',
-      if (signed) 'signature': 'signature_${suffix}_hidden',
-    },
-    if (tools) _tool(0, suffix),
-    {
-      'type': 'thinking',
-      'thinking': '再验证结果。',
-      if (signed) 'signature': 'signature_${suffix}_1',
-    },
-    if (tools) _tool(1, suffix),
-  ],
-};
-
-Map<String, dynamic> _tool(int index, String suffix) => {
-  'type': 'tool_use',
-  'id': 'toolu_${suffix}_$index',
-  'name': 'echo',
-  'input': {'value': '$index', 'call_description': 'Echo test value'},
-};
+String messagesSse(List<Map<String, dynamic>> events) => events
+    .map((event) => 'event: ${event['type']}\ndata: ${jsonEncode(event)}\n\n')
+    .join();
 
 List<Map<String, dynamic>> thinkingEvents(
   Map<String, dynamic> message, {
@@ -132,6 +89,49 @@ List<Map<String, dynamic>> thinkingEvents(
   return events;
 }
 
-String messagesSse(List<Map<String, dynamic>> events) => events
-    .map((event) => 'event: ${event['type']}\ndata: ${jsonEncode(event)}\n\n')
-    .join();
+Map<String, dynamic> thinkingMessage({
+  bool tools = true,
+  String stop = 'tool_use',
+  String suffix = '1',
+  bool signed = true,
+}) => {
+  'id': 'msg_$suffix',
+  'type': 'message',
+  'role': 'assistant',
+  'model': 'claude-sonnet-4-6',
+  'stop_reason': tools ? stop : 'end_turn',
+  'stop_sequence': null,
+  'usage': {
+    'input_tokens': 100,
+    'output_tokens': 80,
+    'output_tokens_details': {'thinking_tokens': 25},
+  },
+  'content': [
+    {
+      'type': 'thinking',
+      'thinking': '先读取配置。',
+      if (signed) 'signature': 'signature_${suffix}_0',
+    },
+    {'type': 'text', 'text': '准备执行。'},
+    if (signed) {'type': 'redacted_thinking', 'data': 'redacted_$suffix'},
+    {
+      'type': 'thinking',
+      'thinking': '',
+      if (signed) 'signature': 'signature_${suffix}_hidden',
+    },
+    if (tools) _tool(0, suffix),
+    {
+      'type': 'thinking',
+      'thinking': '再验证结果。',
+      if (signed) 'signature': 'signature_${suffix}_1',
+    },
+    if (tools) _tool(1, suffix),
+  ],
+};
+
+Map<String, dynamic> _tool(int index, String suffix) => {
+  'type': 'tool_use',
+  'id': 'toolu_${suffix}_$index',
+  'name': 'echo',
+  'input': {'value': '$index', 'call_description': 'Echo test value'},
+};

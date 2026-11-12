@@ -1,8 +1,9 @@
 import 'dart:convert';
 
-import 'package:athena_gui/widget/copy_button.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaMarkdown extends StatelessWidget {
   final String content;
@@ -23,37 +23,6 @@ class AthenaMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       _FlutterMarkdown(content: content, reference: reference);
-}
-
-class _InlineCodeBuilder extends MarkdownElementBuilder {
-  _InlineCodeBuilder();
-
-  @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    final colors = context.athenaColors;
-    final container = Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AthenaRadius.inline),
-        color: colors.codeBackground,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Text(
-        element.textContent,
-        style: AthenaWorkspaceTextSize.of(context).code
-            .copyWith(color: colors.textOnCode),
-      ),
-    );
-    final widgetSpan = WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: container,
-    );
-    return RichText(text: TextSpan(children: [widgetSpan]));
-  }
 }
 
 class _CodeBlockBuilder extends MarkdownElementBuilder {
@@ -171,6 +140,141 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
   }
 }
 
+class _FlutterMarkdown extends StatelessWidget {
+  final String content;
+  final String reference;
+
+  const _FlutterMarkdown({required this.content, required this.reference});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = context.athenaColors;
+    final base = MarkdownStyleSheet.fromTheme(theme);
+    final body = base.p
+        ?.merge(AthenaWorkspaceTextSize.of(context).prose)
+        .copyWith(color: colors.textPrimary);
+    final Map<String, MarkdownElementBuilder> builders = {};
+    builders['pre'] = _CodeBlockBuilder();
+    builders['code'] = _InlineCodeBuilder();
+    builders['a'] = _FootnoteBackrefBuilder(onTap: openLink);
+    builders['latex'] = LatexElementBuilder(
+      textStyle: body?.copyWith(color: colors.markdownMath),
+    );
+    builders['sup'] = _SupBuilder();
+    if (reference.isNotEmpty) {
+      builders['reference'] = _ReferenceBuilder(onTap: openReference);
+    }
+    final List<md.BlockSyntax> blockSyntaxes = [];
+    blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
+    blockSyntaxes.add(LatexBlockSyntax());
+    final List<md.InlineSyntax> inlineSyntaxes = [];
+    inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
+    inlineSyntaxes.add(LatexInlineSyntax());
+    if (reference.isNotEmpty) inlineSyntaxes.add(_ReferenceSyntax());
+    final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
+    final hasFootnotes = _hasFootnoteSection(content, extensions);
+    final borderSide = BorderSide(color: colors.border, width: 1);
+    // h4–h6 为次要标题，与正文同号同行高同字族，只以加粗区分（见 DESIGN.md §3）
+    final heading = body?.copyWith(fontWeight: FontWeight.w500);
+    // h1–h3 在当前档位正文基础上放大一号（+1），行盒随字号等比放大
+    final largeHeading = heading?.copyWith(
+      fontSize: (heading.fontSize ?? 0) + 1,
+    );
+    // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
+    // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
+    final markdownStyleSheet = base.copyWith(
+      a: base.a?.copyWith(
+        color: colors.markdownLink,
+        fontWeight: FontWeight.w500,
+      ),
+      del: base.del?.copyWith(
+        color: colors.markdownStrikethrough,
+        decoration: TextDecoration.lineThrough,
+        decorationColor: colors.markdownStrikethrough,
+      ),
+      p: body,
+      code: AthenaWorkspaceTextSize.of(context).code
+          .copyWith(color: colors.textOnCode),
+      h1: largeHeading,
+      h2: largeHeading,
+      h3: largeHeading,
+      h4: heading,
+      h5: heading,
+      h6: heading,
+      blockquote: body,
+      img: base.img?.copyWith(color: colors.textPrimary),
+      listBullet: body,
+      // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
+      // 默认取主题的 textTheme.bodyMedium，不会跟随会话正文的固定档位。
+      // 表头只保留字重差异（w500），与 h4–h6 次要标题「同号不同重」的处理一致。
+      tableHead: body?.copyWith(
+        color: colors.textPrimary,
+        fontWeight: FontWeight.w500,
+      ),
+      tableBody: body?.copyWith(color: colors.textPrimary),
+      blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
+      horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
+      tableBorder: TableBorder.all(color: colors.border),
+      // 多行代码块（fenced code block）背景：覆盖 flutter_markdown 默认的
+      // cardColor，保持代码块为局部浅底（自带深色文字，自成对比）
+      codeblockDecoration: BoxDecoration(
+        color: colors.codeBackground,
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
+      ),
+      codeblockPadding: const EdgeInsets.all(8),
+      // 块间距取 6：相邻段落行距 ≈ 28
+      // = 行盒 22 + 段距 6。flutter_markdown 默认 8 会偏松。
+      blockSpacing: 6,
+    );
+    return _FootnotesMarkdownBody(
+      builders: builders,
+      colors: colors,
+      data: content,
+      extensionSet: extensions,
+      hasFootnotes: hasFootnotes,
+      onTapLink: (text, href, title) => openLink(href),
+      styleSheet: markdownStyleSheet,
+    );
+  }
+
+  Future<void> openLink(String? url) async {
+    final uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      AthenaDialog.warning('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
+  }
+
+  void openReference(int index) {
+    try {
+      final references = jsonDecode(reference);
+      final entry = references[index - 1];
+      final url = entry['url'];
+      openLink(url as String?);
+    } catch (error) {
+      AthenaDialog.error(error.toString());
+    }
+  }
+
+  bool _hasFootnoteSection(String data, md.ExtensionSet extensions) {
+    final hasDefinition = RegExp(
+      r'^[ ]{0,3}\[\^[^\] \r\n\t]+\]:',
+      multiLine: true,
+    ).hasMatch(data);
+    if (!hasDefinition) return false;
+
+    final document = md.Document(extensionSet: extensions, encodeHtml: false);
+    final nodes = document.parseLines(const LineSplitter().convert(data));
+    if (nodes.isEmpty) return false;
+    final last = nodes.last;
+    return last is md.Element &&
+        last.tag == 'section' &&
+        _MarkdownHelpers._hasClass(last, 'footnotes');
+  }
+}
+
 class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
   final void Function(String?)? onTap;
 
@@ -276,138 +380,41 @@ class _FootnotesMarkdownBody extends MarkdownBody {
   }
 }
 
-class _FlutterMarkdown extends StatelessWidget {
-  final String content;
-  final String reference;
-
-  const _FlutterMarkdown({required this.content, required this.reference});
+class _InlineCodeBuilder extends MarkdownElementBuilder {
+  _InlineCodeBuilder();
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
     final colors = context.athenaColors;
-    final base = MarkdownStyleSheet.fromTheme(theme);
-    final body = base.p
-        ?.merge(AthenaWorkspaceTextSize.of(context).prose)
-        .copyWith(color: colors.textPrimary);
-    final Map<String, MarkdownElementBuilder> builders = {};
-    builders['pre'] = _CodeBlockBuilder();
-    builders['code'] = _InlineCodeBuilder();
-    builders['a'] = _FootnoteBackrefBuilder(onTap: openLink);
-    builders['latex'] = LatexElementBuilder(
-      textStyle: body?.copyWith(color: colors.markdownMath),
-    );
-    builders['sup'] = _SupBuilder();
-    if (reference.isNotEmpty) {
-      builders['reference'] = _ReferenceBuilder(onTap: openReference);
-    }
-    final List<md.BlockSyntax> blockSyntaxes = [];
-    blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
-    blockSyntaxes.add(LatexBlockSyntax());
-    final List<md.InlineSyntax> inlineSyntaxes = [];
-    inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
-    inlineSyntaxes.add(LatexInlineSyntax());
-    if (reference.isNotEmpty) inlineSyntaxes.add(_ReferenceSyntax());
-    final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    final hasFootnotes = _hasFootnoteSection(content, extensions);
-    final borderSide = BorderSide(color: colors.border, width: 1);
-    // h4–h6 为次要标题，与正文同号同行高同字族，只以加粗区分（见 DESIGN.md §3）
-    final heading = body?.copyWith(fontWeight: FontWeight.w500);
-    // h1–h3 在当前档位正文基础上放大一号（+1），行盒随字号等比放大
-    final largeHeading = heading?.copyWith(
-      fontSize: (heading.fontSize ?? 0) + 1,
-    );
-    // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
-    // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
-    final markdownStyleSheet = base.copyWith(
-      a: base.a?.copyWith(
-        color: colors.markdownLink,
-        fontWeight: FontWeight.w500,
-      ),
-      del: base.del?.copyWith(
-        color: colors.markdownStrikethrough,
-        decoration: TextDecoration.lineThrough,
-        decorationColor: colors.markdownStrikethrough,
-      ),
-      p: body,
-      code: AthenaWorkspaceTextSize.of(context).code
-          .copyWith(color: colors.textOnCode),
-      h1: largeHeading,
-      h2: largeHeading,
-      h3: largeHeading,
-      h4: heading,
-      h5: heading,
-      h6: heading,
-      blockquote: body,
-      img: base.img?.copyWith(color: colors.textPrimary),
-      listBullet: body,
-      // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
-      // 默认取主题的 textTheme.bodyMedium，不会跟随会话正文的固定档位。
-      // 表头只保留字重差异（w500），与 h4–h6 次要标题「同号不同重」的处理一致。
-      tableHead: body?.copyWith(
-        color: colors.textPrimary,
-        fontWeight: FontWeight.w500,
-      ),
-      tableBody: body?.copyWith(color: colors.textPrimary),
-      blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
-      horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
-      tableBorder: TableBorder.all(color: colors.border),
-      // 多行代码块（fenced code block）背景：覆盖 flutter_markdown 默认的
-      // cardColor，保持代码块为局部浅底（自带深色文字，自成对比）
-      codeblockDecoration: BoxDecoration(
+    final container = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AthenaRadius.inline),
         color: colors.codeBackground,
-        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
-      codeblockPadding: const EdgeInsets.all(8),
-      // 块间距取 6：相邻段落行距 ≈ 28
-      // = 行盒 22 + 段距 6。flutter_markdown 默认 8 会偏松。
-      blockSpacing: 6,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        element.textContent,
+        style: AthenaWorkspaceTextSize.of(context).code
+            .copyWith(color: colors.textOnCode),
+      ),
     );
-    return _FootnotesMarkdownBody(
-      builders: builders,
-      colors: colors,
-      data: content,
-      extensionSet: extensions,
-      hasFootnotes: hasFootnotes,
-      onTapLink: (text, href, title) => openLink(href),
-      styleSheet: markdownStyleSheet,
+    final widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: container,
     );
+    return RichText(text: TextSpan(children: [widgetSpan]));
   }
+}
 
-  bool _hasFootnoteSection(String data, md.ExtensionSet extensions) {
-    final hasDefinition = RegExp(
-      r'^[ ]{0,3}\[\^[^\] \r\n\t]+\]:',
-      multiLine: true,
-    ).hasMatch(data);
-    if (!hasDefinition) return false;
-
-    final document = md.Document(extensionSet: extensions, encodeHtml: false);
-    final nodes = document.parseLines(const LineSplitter().convert(data));
-    if (nodes.isEmpty) return false;
-    final last = nodes.last;
-    return last is md.Element &&
-        last.tag == 'section' &&
-        _MarkdownHelpers._hasClass(last, 'footnotes');
-  }
-
-  Future<void> openLink(String? url) async {
-    final uri = Uri.parse(url ?? '');
-    if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.warning('The link is invalid');
-      return;
-    }
-    launchUrl(uri);
-  }
-
-  void openReference(int index) {
-    try {
-      final references = jsonDecode(reference);
-      final entry = references[index - 1];
-      final url = entry['url'];
-      openLink(url as String?);
-    } catch (error) {
-      AthenaDialog.error(error.toString());
-    }
+abstract final class _MarkdownHelpers {
+  static bool _hasClass(md.Element element, String className) {
+    final classes = element.attributes['class']?.split(RegExp(r'\s+'));
+    return classes?.contains(className) ?? false;
   }
 }
 
@@ -498,12 +505,5 @@ class _SupBuilder extends MarkdownElementBuilder {
       child: container,
     );
     return RichText(text: TextSpan(children: [widgetSpan]));
-  }
-}
-
-abstract final class _MarkdownHelpers {
-  static bool _hasClass(md.Element element, String className) {
-    final classes = element.attributes['class']?.split(RegExp(r'\s+'));
-    return classes?.contains(className) ?? false;
   }
 }

@@ -8,18 +8,6 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:http/http.dart' as http;
 import 'package:openai_dart/openai_dart.dart';
 
-class RetryConfig {
-  final int maxAttempts;
-  final Duration baseDelay;
-  final Duration maxDelay;
-
-  const RetryConfig({
-    this.maxAttempts = 10,
-    this.baseDelay = const Duration(seconds: 1),
-    this.maxDelay = const Duration(seconds: 30),
-  });
-}
-
 abstract final class Retry {
   /// Retry a future-returning operation with exponential backoff + jitter.
   ///
@@ -57,21 +45,6 @@ abstract final class Retry {
         await Retry._waitBackoff(delayMs, abort);
       }
     }
-  }
-
-  /// 等待退避；[abort] 提前完成则抛 [CancelledException] 中断重试。
-  static Future<void> _waitBackoff(int delayMs, Future<void>? abort) async {
-    if (abort == null) {
-      await Future<void>.delayed(Duration(milliseconds: delayMs));
-      return;
-    }
-    var aborted = false;
-    final abortFlag = abort.then((_) => aborted = true, onError: (_) {});
-    await Future.any([
-      Future<void>.delayed(Duration(milliseconds: delayMs)),
-      abortFlag,
-    ]);
-    if (aborted) throw const CancelledException();
   }
 
   /// Retry a stream-returning operation.
@@ -143,4 +116,31 @@ abstract final class Retry {
     if (e is anthropic.TimeoutException) return true;
     return false;
   }
+
+  /// 等待退避；[abort] 提前完成则抛 [CancelledException] 中断重试。
+  static Future<void> _waitBackoff(int delayMs, Future<void>? abort) async {
+    if (abort == null) {
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
+      return;
+    }
+    var aborted = false;
+    final abortFlag = abort.then((_) => aborted = true, onError: (_) {});
+    await Future.any([
+      Future<void>.delayed(Duration(milliseconds: delayMs)),
+      abortFlag,
+    ]);
+    if (aborted) throw const CancelledException();
+  }
+}
+
+class RetryConfig {
+  final int maxAttempts;
+  final Duration baseDelay;
+  final Duration maxDelay;
+
+  const RetryConfig({
+    this.maxAttempts = 10,
+    this.baseDelay = const Duration(seconds: 1),
+    this.maxDelay = const Duration(seconds: 30),
+  });
 }

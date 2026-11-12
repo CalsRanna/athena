@@ -43,20 +43,6 @@ class ProviderEntity {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      'name': name,
-      'base_url': baseUrl,
-      'api_key': apiKey,
-      'api_format': apiFormat.value,
-      'api_format_auto': apiFormatAuto,
-      'enabled': enabled ? 1 : 0,
-      'is_preset': isPreset ? 1 : 0,
-      'created_at': createdAt.millisecondsSinceEpoch,
-    };
-  }
-
   ProviderEntity copyWith({
     String? id,
     String? name,
@@ -80,5 +66,19 @@ class ProviderEntity {
       isPreset: isPreset ?? this.isPreset,
       createdAt: createdAt ?? this.createdAt,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'name': name,
+      'base_url': baseUrl,
+      'api_key': apiKey,
+      'api_format': apiFormat.value,
+      'api_format_auto': apiFormatAuto,
+      'enabled': enabled ? 1 : 0,
+      'is_preset': isPreset ? 1 : 0,
+      'created_at': createdAt.millisecondsSinceEpoch,
+    };
   }
 }

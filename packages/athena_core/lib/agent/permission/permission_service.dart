@@ -4,16 +4,13 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/logger_util.dart';
 
-/// Permission gate result before applying the run's approval mode.
-enum PermissionVerdict { prompt, deny }
-
 /// 持久禁令与本轮用户拒绝优先于三种审批模式。
 /// 批准仅用于当次调用，不缓存，不生成持久 allow 规则。
 class PermissionService {
-  PermissionService({required PermissionStore store}) : _store = store;
-
   final PermissionStore _store;
+
   final Map<int, Set<String>> _sessionDenials = {};
+  PermissionService({required PermissionStore store}) : _store = store;
 
   PermissionVerdict check(
     int runId,
@@ -41,9 +38,24 @@ class PermissionService {
     (_sessionDenials[runId] ??= {}).add(_sessionKey(toolName, args));
   }
 
+  Future<void> load() => _store.load();
+
   void resetSession(int runId) => _sessionDenials.remove(runId);
 
-  Future<void> load() => _store.load();
+  String? _primaryArg(String toolName, Map<String, dynamic> args) {
+    if (PermissionRule.kFileToolNames.contains(toolName)) {
+      return args['path'] as String?;
+    }
+    if (PermissionRule.kShellToolNames.contains(toolName)) {
+      return args['command'] as String?;
+    }
+    if (toolName != 'web_fetch') return null;
+    final url = args['url'] as String?;
+    final uri = url == null ? null : Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+    return uri.origin;
+  }
 
   String _sessionKey(String toolName, Map<String, dynamic> args) => jsonEncode([
     toolName,
@@ -60,19 +72,7 @@ class PermissionService {
     if (value is List) return value.map(_sortedJson).toList();
     return value;
   }
-
-  String? _primaryArg(String toolName, Map<String, dynamic> args) {
-    if (PermissionRule.kFileToolNames.contains(toolName)) {
-      return args['path'] as String?;
-    }
-    if (PermissionRule.kShellToolNames.contains(toolName)) {
-      return args['command'] as String?;
-    }
-    if (toolName != 'web_fetch') return null;
-    final url = args['url'] as String?;
-    final uri = url == null ? null : Uri.tryParse(url);
-    if (uri == null || uri.host.isEmpty) return null;
-    if (uri.scheme != 'http' && uri.scheme != 'https') return null;
-    return uri.origin;
-  }
 }
+
+/// Permission gate result before applying the run's approval mode.
+enum PermissionVerdict { prompt, deny }

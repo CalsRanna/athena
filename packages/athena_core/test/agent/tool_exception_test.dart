@@ -86,15 +86,15 @@ void main() {
 }
 
 class _ThrowingFileReadTool extends FileReadTool {
+  Object? error = StateError('unset');
+
+  ToolExecutionResult output = const ToolExecutionResult.success('content');
   @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => executeResult(args, onUpdate: onUpdate);
-
-  Object? error = StateError('unset');
-  ToolExecutionResult output = const ToolExecutionResult.success('content');
 
   @override
   Future<ToolExecutionResult> executeResult(

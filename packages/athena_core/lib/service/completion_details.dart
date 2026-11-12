@@ -1,37 +1,5 @@
 import 'package:openai_dart/openai_dart.dart';
 
-/// 原生停止原因和用量独立落库，避免公共 finishReason 压平协议语义。
-class CompletionDetailsChunk extends ChatStreamEvent {
-  final Map<String, dynamic> details;
-  const CompletionDetailsChunk(this.details);
-}
-
-class DetailedChatCompletion extends ChatCompletion {
-  final Map<String, dynamic> details;
-  const DetailedChatCompletion({
-    required this.details,
-    super.id,
-    required super.object,
-    super.created,
-    required super.model,
-    required super.choices,
-    super.usage,
-    super.systemFingerprint,
-    super.serviceTier,
-    super.moderation,
-    super.provider,
-  });
-
-  @override
-  String? get text {
-    final message = choices.firstOrNull?.message;
-    final content = message?.content;
-    return content == null || content.isEmpty
-        ? message?.refusal ?? content
-        : content;
-  }
-}
-
 /// OpenAI 的用量类型没有缓存写入字段；保留明细供协调层消费。
 class CacheUsage extends Usage {
   final int cacheCreationTokens;
@@ -63,5 +31,37 @@ abstract final class CompletionDetails {
         request.maxTokens != request.maxCompletionTokens) {
       throw ArgumentError('max_tokens and max_completion_tokens conflict');
     }
+  }
+}
+
+/// 原生停止原因和用量独立落库，避免公共 finishReason 压平协议语义。
+class CompletionDetailsChunk extends ChatStreamEvent {
+  final Map<String, dynamic> details;
+  const CompletionDetailsChunk(this.details);
+}
+
+class DetailedChatCompletion extends ChatCompletion {
+  final Map<String, dynamic> details;
+  const DetailedChatCompletion({
+    required this.details,
+    super.id,
+    required super.object,
+    super.created,
+    required super.model,
+    required super.choices,
+    super.usage,
+    super.systemFingerprint,
+    super.serviceTier,
+    super.moderation,
+    super.provider,
+  });
+
+  @override
+  String? get text {
+    final message = choices.firstOrNull?.message;
+    final content = message?.content;
+    return content == null || content.isEmpty
+        ? message?.refusal ?? content
+        : content;
   }
 }

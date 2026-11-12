@@ -12,74 +12,6 @@ import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 按调用序号返回脚本化的响应：第 0 次发起一个工具调用（让 run 进入第二个迭代），
-/// 之后正常结束。
-class _ScriptedChatService implements ChatCompletionsService {
-  final requests = <List<ChatMessage>>[];
-  var calls = 0;
-
-  @override
-  Stream<ChatStreamEvent> getCompletion({
-    required ChatEntity chat,
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    List<Tool>? tools,
-    ResponseFormat? responseFormat,
-    Future<void>? cancelSignal,
-    int? outputRoom,
-  }) async* {
-    calls++;
-    requests.add(List.of(messages));
-    if (calls == 1) {
-      yield const ChatStreamEvent(
-        choices: [
-          ChatStreamChoice(
-            index: 0,
-            delta: ChatDelta(
-              toolCalls: [
-                ToolCallDelta(
-                  index: 0,
-                  id: 'call_1',
-                  function: FunctionCallDelta(
-                    name: 'no_such_tool',
-                    arguments: '{}',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-      yield const ChatStreamEvent(
-        choices: [
-          ChatStreamChoice(
-            index: 0,
-            delta: ChatDelta(),
-            finishReason: FinishReason.toolCalls,
-          ),
-        ],
-      );
-      return;
-    }
-    yield const ChatStreamEvent(
-      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
-    );
-    yield const ChatStreamEvent(
-      choices: [
-        ChatStreamChoice(
-          index: 0,
-          delta: ChatDelta(),
-          finishReason: FinishReason.stop,
-        ),
-      ],
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 void main() {
   final now = DateTime.now();
   late ToolRegistry registry;
@@ -161,4 +93,72 @@ void main() {
     );
     expect(events.whereType<AgentTextEvent>().map((e) => e.delta).join(), 'ok');
   });
+}
+
+/// 按调用序号返回脚本化的响应：第 0 次发起一个工具调用（让 run 进入第二个迭代），
+/// 之后正常结束。
+class _ScriptedChatService implements ChatCompletionsService {
+  final requests = <List<ChatMessage>>[];
+  var calls = 0;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
+    int? outputRoom,
+  }) async* {
+    calls++;
+    requests.add(List.of(messages));
+    if (calls == 1) {
+      yield const ChatStreamEvent(
+        choices: [
+          ChatStreamChoice(
+            index: 0,
+            delta: ChatDelta(
+              toolCalls: [
+                ToolCallDelta(
+                  index: 0,
+                  id: 'call_1',
+                  function: FunctionCallDelta(
+                    name: 'no_such_tool',
+                    arguments: '{}',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+      yield const ChatStreamEvent(
+        choices: [
+          ChatStreamChoice(
+            index: 0,
+            delta: ChatDelta(),
+            finishReason: FinishReason.toolCalls,
+          ),
+        ],
+      );
+      return;
+    }
+    yield const ChatStreamEvent(
+      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
+    );
+    yield const ChatStreamEvent(
+      choices: [
+        ChatStreamChoice(
+          index: 0,
+          delta: ChatDelta(),
+          finishReason: FinishReason.stop,
+        ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -7,9 +7,9 @@ import 'package:athena_tui/ui/widgets/streaming_progress_bar.dart';
 import 'package:nocterm/nocterm.dart';
 
 class CompactionCard extends StatefulComponent {
-  const CompactionCard({super.key, required this.step, required this.isLive});
   final CompactionStep step;
   final bool isLive;
+  const CompactionCard({super.key, required this.step, required this.isLive});
 
   @override
   State<CompactionCard> createState() => _CompactionCardState();
@@ -17,15 +17,6 @@ class CompactionCard extends StatefulComponent {
 
 class _CompactionCardState extends State<CompactionCard> {
   bool _expanded = false;
-
-  @override
-  void didUpdateComponent(CompactionCard oldComponent) {
-    super.didUpdateComponent(oldComponent);
-    if (oldComponent.step.compactionId != component.step.compactionId ||
-        (!oldComponent.step.isTerminal && component.step.isTerminal)) {
-      _expanded = false;
-    }
-  }
 
   @override
   Component build(BuildContext context) {
@@ -67,5 +58,14 @@ class _CompactionCardState extends State<CompactionCard> {
         ],
       ),
     );
+  }
+
+  @override
+  void didUpdateComponent(CompactionCard oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    if (oldComponent.step.compactionId != component.step.compactionId ||
+        (!oldComponent.step.isTerminal && component.step.isTerminal)) {
+      _expanded = false;
+    }
   }
 }

@@ -9,19 +9,13 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:meta/meta.dart';
 
 class WebFetchTool extends Tool implements CancellableTool {
-  WebFetchTool({Duration timeout = _defaultTimeout}) : _timeout = timeout;
-
-  final Duration _timeout;
-  @override
-  ExecutionMode get executionMode => ExecutionMode.parallel;
-
   static const _maxResponseBytes = 200 * 1024; // 200KB
+
   static const _defaultTimeout = Duration(seconds: 30);
   static const _maxRedirects = 5;
 
-  @override
-  String get name => 'web_fetch';
-
+  final Duration _timeout;
+  WebFetchTool({Duration timeout = _defaultTimeout}) : _timeout = timeout;
   @override
   String get description =>
       'Fetch content from a URL and return it as '
@@ -31,6 +25,12 @@ class WebFetchTool extends Tool implements CancellableTool {
       'HTML mode preserves the original markup for structural analysis. '
       'Response is capped at 200KB.\n'
       'Referer and X-Title headers may be added automatically by the client.';
+
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
+
+  @override
+  String get name => 'web_fetch';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -67,17 +67,17 @@ class WebFetchTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args, onUpdate: onUpdate);
-
-  @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args, onUpdate: onUpdate);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {
@@ -219,6 +219,49 @@ class WebFetchTool extends Tool implements CancellableTool {
     return ToolExecutionResult.success(result.toString());
   }
 
+  /// SSRF 字面量地址检查。返回拒绝原因；null = 放行。
+  ///
+  /// 刻意**不做 DNS 解析**：fake-ip 代理环境（Clash/Surge 等）下域名由
+  /// 代理层解析为假 IP，按解析结果拦截会误伤所有正常访问。因此只检查：
+  /// - 主机名是 `localhost` / `.local` 结尾
+  /// - 主机名是字面 IP（[InternetAddress.tryParse]，不触发 lookup）且
+  ///   命中私网/保留网段
+  /// - 纯数字 / 十六进制主机名（整数 IP 与 0x 形式，如 `2130706433`，
+  ///   解析器会当作 IP 而非域名）
+  ///
+  /// 已知局限：恶意域名解析到内网（DNS rebinding）在直连模式下仍可
+  /// 绕过——fake-ip 代理下由代理层缓解；直连场景由 POST / body / 自定义
+  /// 跨 origin 跳转不跟随
+  /// 兜底。
+  @visibleForTesting
+  static String? blockedReason(Uri uri) {
+    // 末尾的点是合法的 FQDN 写法（`localhost.` 同样解析到本机）
+    var host = uri.host.toLowerCase();
+    while (host.endsWith('.')) {
+      host = host.substring(0, host.length - 1);
+    }
+    if (host.isEmpty) return 'empty host';
+    if (host == 'localhost' ||
+        host.endsWith('.localhost') ||
+        host.endsWith('.local')) {
+      return 'localhost / .local hosts are not allowed';
+    }
+    // 整数 / 十六进制 / 八进制（`0177.0.0.1`）/ 省略段（`127.1`）等非规范
+    // IPv4 写法：系统解析器（inet_aton）当作 IP，而 tryParse 要么不认、要么
+    // 按十进制读成另一个地址。只接受规范的点分十进制，其余一律拒绝。
+    final labels = host.split('.');
+    if (labels.every(RegExp(r'^(0x[0-9a-f]*|\d+)$').hasMatch) &&
+        (labels.length != 4 ||
+            !labels.every(RegExp(r'^(0|[1-9]\d{0,2})$').hasMatch))) {
+      return 'non-canonical numeric IP address $host is not allowed';
+    }
+    final addr = InternetAddress.tryParse(host);
+    if (addr != null && _isPrivateOrReserved(addr)) {
+      return 'private/internal address $host is not allowed';
+    }
+    return null;
+  }
+
   static String _decodeBody(
     List<int> bytes,
     String contentType, {
@@ -268,49 +311,6 @@ class WebFetchTool extends Tool implements CancellableTool {
       r'<\s*(html|head|body|div|p|h[1-6]|span|a\s|table)',
       caseSensitive: false,
     ).hasMatch(upper);
-  }
-
-  /// SSRF 字面量地址检查。返回拒绝原因；null = 放行。
-  ///
-  /// 刻意**不做 DNS 解析**：fake-ip 代理环境（Clash/Surge 等）下域名由
-  /// 代理层解析为假 IP，按解析结果拦截会误伤所有正常访问。因此只检查：
-  /// - 主机名是 `localhost` / `.local` 结尾
-  /// - 主机名是字面 IP（[InternetAddress.tryParse]，不触发 lookup）且
-  ///   命中私网/保留网段
-  /// - 纯数字 / 十六进制主机名（整数 IP 与 0x 形式，如 `2130706433`，
-  ///   解析器会当作 IP 而非域名）
-  ///
-  /// 已知局限：恶意域名解析到内网（DNS rebinding）在直连模式下仍可
-  /// 绕过——fake-ip 代理下由代理层缓解；直连场景由 POST / body / 自定义
-  /// 跨 origin 跳转不跟随
-  /// 兜底。
-  @visibleForTesting
-  static String? blockedReason(Uri uri) {
-    // 末尾的点是合法的 FQDN 写法（`localhost.` 同样解析到本机）
-    var host = uri.host.toLowerCase();
-    while (host.endsWith('.')) {
-      host = host.substring(0, host.length - 1);
-    }
-    if (host.isEmpty) return 'empty host';
-    if (host == 'localhost' ||
-        host.endsWith('.localhost') ||
-        host.endsWith('.local')) {
-      return 'localhost / .local hosts are not allowed';
-    }
-    // 整数 / 十六进制 / 八进制（`0177.0.0.1`）/ 省略段（`127.1`）等非规范
-    // IPv4 写法：系统解析器（inet_aton）当作 IP，而 tryParse 要么不认、要么
-    // 按十进制读成另一个地址。只接受规范的点分十进制，其余一律拒绝。
-    final labels = host.split('.');
-    if (labels.every(RegExp(r'^(0x[0-9a-f]*|\d+)$').hasMatch) &&
-        (labels.length != 4 ||
-            !labels.every(RegExp(r'^(0|[1-9]\d{0,2})$').hasMatch))) {
-      return 'non-canonical numeric IP address $host is not allowed';
-    }
-    final addr = InternetAddress.tryParse(host);
-    if (addr != null && _isPrivateOrReserved(addr)) {
-      return 'private/internal address $host is not allowed';
-    }
-    return null;
   }
 
   /// 判断字面 IP 是否属于私网/保留网段。

@@ -1,10 +1,12 @@
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/component/step_primitives.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -12,9 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 工具步骤头部的两条口径：
 /// 1. **文案只认 call_description**：解析得出就用模型自述，解析不出（缺该字段，

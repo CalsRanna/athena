@@ -1,13 +1,13 @@
-import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/util/format/context_window.dart';
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/util/format/context_window.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileModelListView extends StatelessWidget {
   final void Function(ModelEntity)? onLongPress;

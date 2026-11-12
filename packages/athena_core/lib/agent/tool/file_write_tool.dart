@@ -1,18 +1,18 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/storage/atomic_file_write.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
 
 class FileWriteTool extends Tool {
-  @override
-  String get name => 'file_write';
-
   @override
   String get description =>
       'Write content to a file. Creates the file if it '
       'does not exist, overwrites it if it does. '
       'Use when you need to create or update a file.';
+
+  @override
+  String get name => 'file_write';
 
   @override
   Map<String, dynamic> get parameters => {

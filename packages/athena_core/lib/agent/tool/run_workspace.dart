@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/path_normalizer.dart';
+import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:path/path.dart' as p;
 
 abstract final class RunWorkspace {

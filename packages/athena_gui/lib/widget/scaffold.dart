@@ -1,6 +1,6 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 页面骨架。桌面端是"侧栏面板 + 画布工作区"，移动端是单列。
 ///

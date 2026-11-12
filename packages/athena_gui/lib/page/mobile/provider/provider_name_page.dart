@@ -22,12 +22,6 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
   final controller = TextEditingController();
 
   @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final button = AthenaIconButton(icon: LucideIcons.check, onTap: handleTap);
     final input = AthenaInput(
@@ -42,6 +36,12 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
       appBar: AthenaAppBar(action: button, title: const Text('New Provider')),
       body: Padding(padding: const EdgeInsets.all(16), child: input),
     );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   Future<void> handleTap() async {

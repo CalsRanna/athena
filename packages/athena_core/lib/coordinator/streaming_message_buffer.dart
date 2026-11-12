@@ -15,13 +15,6 @@ import 'package:athena_core/entity/message_entity.dart';
 /// [snapshot] 决定，「提交到哪里」由 [commit] 决定——GUI 写信号、TUI 写裁过窗口的
 /// 信号，那是前端的选择。
 class StreamingMessageBuffer {
-  StreamingMessageBuffer({
-    required List<MessageEntity> Function() snapshot,
-    required void Function(List<MessageEntity> messages) commit,
-    this.interval = defaultInterval,
-  }) : _snapshot = snapshot,
-       _commit = commit;
-
   /// 合并窗口。
   ///
   /// 100ms 与 token 速率无关，取决于一次提交的成本：全树 build + 流式长文本
@@ -30,6 +23,7 @@ class StreamingMessageBuffer {
   static const defaultInterval = Duration(milliseconds: 100);
 
   final Duration interval;
+
   final List<MessageEntity> Function() _snapshot;
   final void Function(List<MessageEntity> messages) _commit;
 
@@ -41,9 +35,12 @@ class StreamingMessageBuffer {
 
   Timer? _timer;
 
-  /// 是否有属于 [scope] 的挂起增量。调用方据此决定「要不要在这里刷新」——
-  /// 无条件刷新会把别的对话的缓冲也提交掉。
-  bool hasPendingFor(String? scope) => _pending != null && _scope == scope;
+  StreamingMessageBuffer({
+    required List<MessageEntity> Function() snapshot,
+    required void Function(List<MessageEntity> messages) commit,
+    this.interval = defaultInterval,
+  }) : _snapshot = snapshot,
+       _commit = commit;
 
   /// 追加或按 id 替换一条消息，并安排一次窗口末的提交。
   ///
@@ -66,6 +63,17 @@ class StreamingMessageBuffer {
     _schedule();
   }
 
+  /// 丢弃挂起增量且不提交。
+  ///
+  /// 整表即将被替换（切换对话、新建草稿、释放）时使用：冲刷旧缓冲会把上一个
+  /// 对话的消息写进新列表。
+  void discard() {
+    _timer?.cancel();
+    _timer = null;
+    _pending = null;
+    _scope = null;
+  }
+
   /// 立即把挂起增量交给 [commit]（同步）。收尾、以及任何需要读到最新列表的
   /// 用户操作之前必须调用，否则会读到过期的列表。
   ///
@@ -80,16 +88,9 @@ class StreamingMessageBuffer {
     _commit(pending);
   }
 
-  /// 丢弃挂起增量且不提交。
-  ///
-  /// 整表即将被替换（切换对话、新建草稿、释放）时使用：冲刷旧缓冲会把上一个
-  /// 对话的消息写进新列表。
-  void discard() {
-    _timer?.cancel();
-    _timer = null;
-    _pending = null;
-    _scope = null;
-  }
+  /// 是否有属于 [scope] 的挂起增量。调用方据此决定「要不要在这里刷新」——
+  /// 无条件刷新会把别的对话的缓冲也提交掉。
+  bool hasPendingFor(String? scope) => _pending != null && _scope == scope;
 
   /// 首次从当前列表复制一份，之后原地变异——省掉每个事件一次的整表复制。
   ///

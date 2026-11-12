@@ -1,3 +1,4 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/setting/component/section.dart';
 import 'package:athena_gui/page/mobile/setting/component/setting_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
@@ -15,7 +16,6 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileSettingPage extends StatelessWidget {
@@ -135,12 +135,29 @@ class MobileSettingPage extends StatelessWidget {
     );
   }
 
-  String _themeModeLabel(AthenaThemeMode mode) {
-    return switch (mode) {
-      AthenaThemeMode.dark => 'Dark',
-      AthenaThemeMode.light => 'Light',
-      AthenaThemeMode.system => 'System',
-    };
+  Widget _appearanceTile(
+    SettingViewModel viewModel,
+    AthenaThemeMode mode,
+    String label,
+  ) {
+    return AthenaBottomSheetTile(
+      selected: viewModel.themeMode.value == mode,
+      onTap: () {
+        viewModel.setThemeMode(mode);
+        AthenaDialog.dismiss();
+      },
+      title: label,
+    );
+  }
+
+  Widget _sheetLabel(String text, AthenaColors colors) {
+    final textStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.textSecondary,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Text(text, style: textStyle),
+    );
   }
 
   /// 外观选择：bottom sheet 内使用行列表，主题与字号各一组，
@@ -166,16 +183,6 @@ class MobileSettingPage extends StatelessWidget {
     );
   }
 
-  Widget _sheetLabel(String text, AthenaColors colors) {
-    final textStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.textSecondary,
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: Text(text, style: textStyle),
-    );
-  }
-
   Widget _textSizeTile(SettingViewModel viewModel, AthenaTextSize size) {
     return AthenaBottomSheetTile(
       selected: viewModel.textSize.value == size,
@@ -187,18 +194,11 @@ class MobileSettingPage extends StatelessWidget {
     );
   }
 
-  Widget _appearanceTile(
-    SettingViewModel viewModel,
-    AthenaThemeMode mode,
-    String label,
-  ) {
-    return AthenaBottomSheetTile(
-      selected: viewModel.themeMode.value == mode,
-      onTap: () {
-        viewModel.setThemeMode(mode);
-        AthenaDialog.dismiss();
-      },
-      title: label,
-    );
+  String _themeModeLabel(AthenaThemeMode mode) {
+    return switch (mode) {
+      AthenaThemeMode.dark => 'Dark',
+      AthenaThemeMode.light => 'Light',
+      AthenaThemeMode.system => 'System',
+    };
   }
 }

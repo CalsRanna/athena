@@ -2,26 +2,37 @@ import 'dart:collection';
 
 /// Bounded output with Unicode-safe head/tail retention and paged reads.
 class CappedTextBuffer {
-  CappedTextBuffer({this.headChars = 1 << 20, this.tailChars = 1 << 20}) {
-    if (headChars < 1 || tailChars < 1) {
-      throw ArgumentError('headChars and tailChars must be positive');
-    }
-  }
-
   final int headChars;
+
   final int tailChars;
   final List<TextChunk> _head = [];
   final Queue<TextChunk> _tail = Queue();
   int _headLength = 0;
   int _tailLength = 0;
   int totalCharacters = 0;
+  CappedTextBuffer({this.headChars = 1 << 20, this.tailChars = 1 << 20}) {
+    if (headChars < 1 || tailChars < 1) {
+      throw ArgumentError('headChars and tailChars must be positive');
+    }
+  }
 
-  bool get isEmpty => totalCharacters == 0;
+  Iterable<TextChunk> get chunks sync* {
+    yield* _head;
+    if (droppedCharacters > 0) {
+      final notice =
+          '\n[output truncated: $droppedCharacters characters dropped from the middle; showing head and tail]\n';
+      yield TextChunk(notice, notice.length);
+    }
+    yield* _tail;
+  }
+
+  int get droppedCharacters => totalCharacters - retainedCharacters;
   bool get endsWithNewline =>
       !isEmpty &&
       (_tail.isNotEmpty ? _tail.last : _head.last).text.endsWith('\n');
+  bool get isEmpty => totalCharacters == 0;
+
   int get retainedCharacters => _headLength + _tailLength;
-  int get droppedCharacters => totalCharacters - retainedCharacters;
 
   void add(String text) {
     final runes = text.runes.toList();
@@ -63,16 +74,6 @@ class CappedTextBuffer {
     }
   }
 
-  Iterable<TextChunk> get chunks sync* {
-    yield* _head;
-    if (droppedCharacters > 0) {
-      final notice =
-          '\n[output truncated: $droppedCharacters characters dropped from the middle; showing head and tail]\n';
-      yield TextChunk(notice, notice.length);
-    }
-    yield* _tail;
-  }
-
   static ({String text, int nextOffset, bool hasMore}) readChunks(
     Iterable<TextChunk> chunks, {
     required int offset,
@@ -109,7 +110,7 @@ class CappedTextBuffer {
 }
 
 class TextChunk {
-  const TextChunk(this.text, this.characters);
   final String text;
   final int characters;
+  const TextChunk(this.text, this.characters);
 }

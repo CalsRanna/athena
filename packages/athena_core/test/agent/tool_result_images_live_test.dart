@@ -11,79 +11,6 @@ import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 第一轮发起 file_read，第二轮正常结束；保留每轮实际发送的消息。
-class _ScriptedChatService implements ChatCompletionsService {
-  _ScriptedChatService(this.path);
-
-  final String path;
-  final requests = <List<ChatMessage>>[];
-  var calls = 0;
-
-  @override
-  Stream<ChatStreamEvent> getCompletion({
-    required ChatEntity chat,
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    List<Tool>? tools,
-    ResponseFormat? responseFormat,
-    Future<void>? cancelSignal,
-    int? outputRoom,
-  }) async* {
-    calls++;
-    requests.add(List.of(messages));
-    if (calls == 1) {
-      yield ChatStreamEvent(
-        choices: [
-          ChatStreamChoice(
-            index: 0,
-            delta: ChatDelta(
-              toolCalls: [
-                ToolCallDelta(
-                  index: 0,
-                  id: 'call_1',
-                  function: FunctionCallDelta(
-                    name: 'file_read',
-                    arguments: jsonEncode({
-                      'path': path,
-                      'call_description': 'read a screenshot',
-                    }),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-      yield const ChatStreamEvent(
-        choices: [
-          ChatStreamChoice(
-            index: 0,
-            delta: ChatDelta(),
-            finishReason: FinishReason.toolCalls,
-          ),
-        ],
-      );
-      return;
-    }
-    yield const ChatStreamEvent(
-      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
-    );
-    yield const ChatStreamEvent(
-      choices: [
-        ChatStreamChoice(
-          index: 0,
-          delta: ChatDelta(),
-          finishReason: FinishReason.stop,
-        ),
-      ],
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 void main() {
   final now = DateTime(2026);
 
@@ -193,4 +120,77 @@ void main() {
       contains('does not support image input'),
     );
   });
+}
+
+/// 第一轮发起 file_read，第二轮正常结束；保留每轮实际发送的消息。
+class _ScriptedChatService implements ChatCompletionsService {
+  final String path;
+
+  final requests = <List<ChatMessage>>[];
+  var calls = 0;
+  _ScriptedChatService(this.path);
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
+    int? outputRoom,
+  }) async* {
+    calls++;
+    requests.add(List.of(messages));
+    if (calls == 1) {
+      yield ChatStreamEvent(
+        choices: [
+          ChatStreamChoice(
+            index: 0,
+            delta: ChatDelta(
+              toolCalls: [
+                ToolCallDelta(
+                  index: 0,
+                  id: 'call_1',
+                  function: FunctionCallDelta(
+                    name: 'file_read',
+                    arguments: jsonEncode({
+                      'path': path,
+                      'call_description': 'read a screenshot',
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+      yield const ChatStreamEvent(
+        choices: [
+          ChatStreamChoice(
+            index: 0,
+            delta: ChatDelta(),
+            finishReason: FinishReason.toolCalls,
+          ),
+        ],
+      );
+      return;
+    }
+    yield const ChatStreamEvent(
+      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
+    );
+    yield const ChatStreamEvent(
+      choices: [
+        ChatStreamChoice(
+          index: 0,
+          delta: ChatDelta(),
+          finishReason: FinishReason.stop,
+        ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -10,14 +10,14 @@ import 'package:nocterm/nocterm.dart';
 /// 会触发元素复用断言,只要 separator 每次返回**新实例**(而非 const)
 /// 即可规避(见下方 separatorBuilder 注释)。
 class MessageList extends StatelessComponent {
+  final ChatController controller;
+
+  final ScrollController scrollController;
   const MessageList({
     super.key,
     required this.controller,
     required this.scrollController,
   });
-
-  final ChatController controller;
-  final ScrollController scrollController;
 
   @override
   Component build(BuildContext context) {

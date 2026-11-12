@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/base64_image.dart';
+import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/component/run_statistics_label.dart';
 import 'package:athena_gui/component/step_card.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/component/message_display.dart';
 import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/hover.dart';
@@ -19,90 +20,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 会话内单条消息的渲染，以及消息底部的操作条。
+/// 助手卡的 hover 归属。
 ///
-/// 按角色分派：[MessageListTile] 只做分派，正文分别由助手 / 用户两支私有实现
-/// 渲染（压缩消息归入助手卡内的步骤序列）。列表侧的懒加载与项切分在
-/// `message_sliver.dart`。
+/// 消息操作条挂在**整条消息行**上（`.group\/message-row:hover`
+/// 时 `[data-cds=MessageActions]` 显形），指针落在卡内任意一段都算 hover。
+/// 本仓每段消息各占一个独立列表项、各自持有 MouseRegion，因此用一个卡级的
+/// 共享 notifier 把各段的上报汇总起来：任意段进入即记为该卡，离开即清空。
+///
+/// 只有操作条订阅它，正文不参与重建，流式追加时的重建成本不变。
+class AssistantCardHover {
+  /// 当前被 hover 的卡片标识；`null` 表示没有任何卡片被 hover。
+  final ValueNotifier<Object?> hoveredCard = ValueNotifier<Object?>(null);
 
-class MessageListTile extends StatelessWidget {
-  final bool loading;
-  final MessageEntity message;
-  final void Function()? onLongPress;
-  final void Function(TapUpDetails)? onSecondaryTapUp;
-  final void Function()? onRewind;
-  final SentinelEntity sentinel;
+  void dispose() => hoveredCard.dispose();
 
-  const MessageListTile({
-    super.key,
-    this.loading = false,
-    required this.message,
-    this.onLongPress,
-    this.onRewind,
-    this.onSecondaryTapUp,
-    required this.sentinel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (message.role == 'user') {
-      return _UserMessageListTile(
-        message: message,
-        onLongPress: onLongPress,
-        onRewind: onRewind,
-        onSecondaryTapUp: onSecondaryTapUp,
-      );
-    }
-    return _AssistantMessageListTile(
-      loading: loading,
-      message: message,
-      sentinel: sentinel,
-    );
-  }
-}
-
-class _AssistantMessageListTile extends StatefulWidget {
-  final bool loading;
-  final MessageEntity message;
-  final SentinelEntity sentinel;
-
-  const _AssistantMessageListTile({
-    this.loading = false,
-    required this.message,
-    required this.sentinel,
-  });
-
-  @override
-  State<_AssistantMessageListTile> createState() =>
-      _AssistantMessageListTileState();
-}
-
-class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
-  final hover = AssistantCardHover();
-
-  @override
-  void dispose() {
-    hover.dispose();
-    super.dispose();
+  void enter(Object cardId) {
+    if (hoveredCard.value != cardId) hoveredCard.value = cardId;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final layouts = MessageDisplay.buildAssistantMessageLayouts([
-      widget.message,
-    ], loading: widget.loading);
-    if (layouts.isEmpty) return const SizedBox.shrink();
-    return AssistantMessageItem(
-      layout: layouts.first,
-      cardMessages: [widget.message],
-      isCardHeader: true,
-      isCardTail: true,
-      sentinel: widget.sentinel,
-      hover: hover,
-      streaming: widget.loading,
-    );
+  void leave(Object cardId) {
+    if (hoveredCard.value == cardId) hoveredCard.value = null;
   }
 }
 
@@ -162,6 +100,307 @@ class AssistantMessageItem extends StatelessWidget {
         cardId: cardMessages.first.id ?? identityHashCode(cardMessages.first),
       ),
     );
+  }
+}
+
+/// 消息底部的操作条，默认全透明、hover 才淡入。
+///
+/// 操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
+/// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
+/// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
+///
+/// [visible] 由调用方决定：助手运行中常显，完成后与用户消息一样 hover 显形。
+///
+/// 时序：
+/// - **只动透明度**，不做缩放；
+/// - 进入 120ms 且**延迟** 100ms；
+/// - 退出 60ms 且无延迟。
+/// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。
+class MessageActionBar extends StatelessWidget {
+  // 操作条的显隐时序，**刻意不取 [AthenaMotion] 的档位**：
+  // 这三个值是一个动画的参数组（延迟 + 时长要配套算 Interval），
+  // 本仓没有 60 / 120 两档，硬映射到 AthenaMotion 会破坏时序。
+  static const _inDelayMs = 100.0;
+  static const _inDurMs = 120.0;
+  static const _outDurMs = 60.0;
+  final bool visible;
+  final VoidCallback? onCopy;
+
+  final VoidCallback? onRewind;
+
+  final Widget? leading;
+  final Widget? trailing;
+  const MessageActionBar({
+    super.key,
+    required this.visible,
+    this.onCopy,
+    this.onRewind,
+    this.leading,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    return Padding(
+      // 与正文之间的呼吸位。这块高度常驻，hover 前后不变。
+      padding: const EdgeInsets.only(top: 4),
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: Duration(
+            milliseconds: (visible ? _inDelayMs + _inDurMs : _outDurMs).round(),
+          ),
+          curve: visible
+              ? const Interval(
+                  _inDelayMs / (_inDelayMs + _inDurMs),
+                  1,
+                  curve: Curves.easeOut,
+                )
+              : Curves.linear,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ?leading,
+              if (onCopy != null) _CopyActionButton(onTap: onCopy!),
+              if (onRewind != null)
+                _MessageActionButton(
+                  tooltip: 'Rewind',
+                  onTap: onRewind,
+                  child: _MessageTileHelpers._actionBarIcon(
+                    LucideIcons.history,
+                    colors,
+                  ),
+                ),
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 会话内单条消息的渲染，以及消息底部的操作条。
+///
+/// 按角色分派：[MessageListTile] 只做分派，正文分别由助手 / 用户两支私有实现
+/// 渲染（压缩消息归入助手卡内的步骤序列）。列表侧的懒加载与项切分在
+/// `message_sliver.dart`。
+
+class MessageListTile extends StatelessWidget {
+  final bool loading;
+  final MessageEntity message;
+  final void Function()? onLongPress;
+  final void Function(TapUpDetails)? onSecondaryTapUp;
+  final void Function()? onRewind;
+  final SentinelEntity sentinel;
+
+  const MessageListTile({
+    super.key,
+    this.loading = false,
+    required this.message,
+    this.onLongPress,
+    this.onRewind,
+    this.onSecondaryTapUp,
+    required this.sentinel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.role == 'user') {
+      return _UserMessageListTile(
+        message: message,
+        onLongPress: onLongPress,
+        onRewind: onRewind,
+        onSecondaryTapUp: onSecondaryTapUp,
+      );
+    }
+    return _AssistantMessageListTile(
+      loading: loading,
+      message: message,
+      sentinel: sentinel,
+    );
+  }
+}
+
+class StreamingIndicator extends StatelessWidget {
+  const StreamingIndicator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    return SizedBox(
+      width: AthenaIcon.regularSize,
+      height: AthenaIconButtonSize.compact,
+      child: Center(
+        child: CircularProgressIndicator(
+          constraints: const BoxConstraints.tightFor(
+            width: AthenaIcon.regularSize,
+            height: AthenaIcon.regularSize,
+          ),
+          padding: EdgeInsets.zero,
+          strokeWidth: AthenaIcon.compactStroke,
+          strokeAlign: CircularProgressIndicator.strokeAlignInside,
+          strokeCap: StrokeCap.round,
+          color: colors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _AssistantMessageContent extends StatelessWidget {
+  final AssistantMessageLayout layout;
+
+  const _AssistantMessageContent({required this.layout});
+
+  @override
+  Widget build(BuildContext context) {
+    final message = layout.message;
+    final children = <Widget>[];
+    for (final (index, part) in layout.parts.indexed) {
+      switch (part) {
+        case StepsPart():
+          children.add(
+            StepCard(
+              key: ValueKey(
+                'steps-${message.id ?? identityHashCode(message)}-$index',
+              ),
+              steps: part.steps,
+              live: part.live,
+            ),
+          );
+        case ContentPart():
+          children.add(const SizedBox(height: 8));
+          children.add(
+            AthenaMarkdown(
+              content: message.content,
+              reference: message.reference,
+            ),
+          );
+        case ReferencePart():
+          children.add(
+            _AssistantMessageListTileReferencePart(message: message),
+          );
+      }
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+}
+
+class _AssistantMessageListTile extends StatefulWidget {
+  final bool loading;
+  final MessageEntity message;
+  final SentinelEntity sentinel;
+
+  const _AssistantMessageListTile({
+    this.loading = false,
+    required this.message,
+    required this.sentinel,
+  });
+
+  @override
+  State<_AssistantMessageListTile> createState() =>
+      _AssistantMessageListTileState();
+}
+
+class _AssistantMessageListTileReferencePart extends StatelessWidget {
+  final MessageEntity message;
+  const _AssistantMessageListTileReferencePart({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.reference.isEmpty) return const SizedBox();
+    try {
+      final decoded = jsonDecode(message.reference);
+      final references = decoded is List ? decoded : const <dynamic>[];
+      final List<Widget> referenceWidgets = [];
+      for (var i = 0; i < references.length; i++) {
+        final reference = references[i];
+        if (reference is! Map<String, dynamic>) continue;
+        referenceWidgets.add(_buildReference(context, reference, index: i));
+      }
+      final children = [const Text('References:'), ...referenceWidgets];
+      final column = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: children,
+      );
+      final colors = context.athenaColors;
+      final boxDecoration = BoxDecoration(
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
+        color: colors.codeBackground,
+      );
+      final textStyle = AthenaTextStyle.section.copyWith(
+        color: colors.textOnCode,
+      );
+      return Container(
+        decoration: boxDecoration,
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        child: DefaultTextStyle.merge(style: textStyle, child: column),
+      );
+    } catch (e) {
+      return const SizedBox();
+    }
+  }
+
+  Future<void> openLink(String? url) async {
+    final uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      AthenaDialog.warning('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
+  }
+
+  Widget _buildReference(
+    BuildContext context,
+    Map<String, dynamic> reference, {
+    required int index,
+  }) {
+    final colors = context.athenaColors;
+    final url = reference['url'] as String?;
+    final title = reference['title'] as String?;
+    final textSpan = TextSpan(
+      text: title,
+      style: AthenaTextStyle.section.copyWith(color: colors.markdownLink),
+      recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
+    );
+    final children = [TextSpan(text: '${index + 1}. '), textSpan];
+    return Text.rich(TextSpan(children: children));
+  }
+}
+
+class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
+  final hover = AssistantCardHover();
+
+  @override
+  Widget build(BuildContext context) {
+    final layouts = MessageDisplay.buildAssistantMessageLayouts([
+      widget.message,
+    ], loading: widget.loading);
+    if (layouts.isEmpty) return const SizedBox.shrink();
+    return AssistantMessageItem(
+      layout: layouts.first,
+      cardMessages: [widget.message],
+      isCardHeader: true,
+      isCardTail: true,
+      sentinel: widget.sentinel,
+      hover: hover,
+      streaming: widget.loading,
+    );
+  }
+
+  @override
+  void dispose() {
+    hover.dispose();
+    super.dispose();
   }
 }
 
@@ -247,140 +486,116 @@ class _AssistantMessageSegment extends StatelessWidget {
   }
 }
 
-class _AssistantMessageContent extends StatelessWidget {
-  final AssistantMessageLayout layout;
+/// 操作条上的复制键。
+///
+/// 反馈口径与代码块的 `CopyButton` 一致（同一套 [CopyFeedback] 状态机 +
+/// [CopiedLabel] 外观）：点击后图标换成勾、右侧出现 "Copied"，
+/// [AthenaMotion.linger] 后复原，期间再点不重复复制。
+class _CopyActionButton extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _AssistantMessageContent({required this.layout});
-
-  @override
-  Widget build(BuildContext context) {
-    final message = layout.message;
-    final children = <Widget>[];
-    for (final (index, part) in layout.parts.indexed) {
-      switch (part) {
-        case StepsPart():
-          children.add(
-            StepCard(
-              key: ValueKey(
-                'steps-${message.id ?? identityHashCode(message)}-$index',
-              ),
-              steps: part.steps,
-              live: part.live,
-            ),
-          );
-        case ContentPart():
-          children.add(const SizedBox(height: 8));
-          children.add(
-            AthenaMarkdown(
-              content: message.content,
-              reference: message.reference,
-            ),
-          );
-        case ReferencePart():
-          children.add(
-            _AssistantMessageListTileReferencePart(message: message),
-          );
-      }
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-  }
-}
-
-class StreamingIndicator extends StatelessWidget {
-  const StreamingIndicator({super.key});
+  const _CopyActionButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
-    return SizedBox(
-      width: AthenaIcon.regularSize,
-      height: AthenaIconButtonSize.compact,
-      child: Center(
-        child: CircularProgressIndicator(
-          constraints: const BoxConstraints.tightFor(
-            width: AthenaIcon.regularSize,
-            height: AthenaIcon.regularSize,
-          ),
-          padding: EdgeInsets.zero,
-          strokeWidth: AthenaIcon.compactStroke,
-          strokeAlign: CircularProgressIndicator.strokeAlignInside,
-          strokeCap: StrokeCap.round,
-          color: colors.textSecondary,
+    return CopyFeedback(
+      onTap: onTap,
+      builder: (context, copied) => _MessageActionButton(
+        tooltip: 'Copy',
+        child: AnimatedSwitcher(
+          duration: AthenaMotion.hover,
+          child: copied
+              // 「已复制」比图标宽（勾 + 文字），内边距只在它身上出现，
+              // 静止态仍是 28 × 28 的方形。
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: CopiedLabel(
+                    color: colors.textSecondary,
+                    iconSize: AthenaIcon.regularSize,
+                    textStyle: AthenaTextStyle.caption,
+                  ),
+                )
+              : _MessageTileHelpers._actionBarIcon(LucideIcons.copy, colors),
         ),
       ),
     );
   }
 }
 
-class _AssistantMessageListTileReferencePart extends StatelessWidget {
-  final MessageEntity message;
-  const _AssistantMessageListTileReferencePart({required this.message});
+/// 操作条上的一个 ghost 按钮外壳：紧凑高度、hover 才出现底色、带 tooltip。
+///
+/// 尺寸：控件用紧凑档（静止态是 [AthenaIconButtonSize.compact] 见方），圆角
+/// [AthenaRadius.row]，hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）；
+/// 图标由 [child] 按 [AthenaIcon.regularSize] 与 `iconSecondary` 自己建
+/// （见 [_MessageTileHelpers._actionBarIcon]），保证整条工具条同档。
+///
+/// 内容由 [child] 决定（图标，或复制键的「已复制」反馈）。可点性也是：
+/// [onTap] 为空时这里只负责 hover 与指针形状，点击由外层收（复制键的
+/// [CopyFeedback] 要在同一次点击里切状态）。
+class _MessageActionButton extends StatelessWidget {
+  final String tooltip;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _MessageActionButton({
+    required this.tooltip,
+    required this.child,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (message.reference.isEmpty) return const SizedBox();
-    try {
-      final decoded = jsonDecode(message.reference);
-      final references = decoded is List ? decoded : const <dynamic>[];
-      final List<Widget> referenceWidgets = [];
-      for (var i = 0; i < references.length; i++) {
-        final reference = references[i];
-        if (reference is! Map<String, dynamic>) continue;
-        referenceWidgets.add(_buildReference(context, reference, index: i));
-      }
-      final children = [const Text('References:'), ...referenceWidgets];
-      final column = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 4,
-        children: children,
-      );
-      final colors = context.athenaColors;
-      final boxDecoration = BoxDecoration(
-        borderRadius: BorderRadius.circular(AthenaRadius.container),
-        color: colors.codeBackground,
-      );
-      final textStyle = AthenaTextStyle.section.copyWith(
-        color: colors.textOnCode,
-      );
-      return Container(
-        decoration: boxDecoration,
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        width: double.infinity,
-        child: DefaultTextStyle.merge(style: textStyle, child: column),
-      );
-    } catch (e) {
-      return const SizedBox();
-    }
-  }
-
-  Future<void> openLink(String? url) async {
-    final uri = Uri.parse(url ?? '');
-    if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.warning('The link is invalid');
-      return;
-    }
-    launchUrl(uri);
-  }
-
-  Widget _buildReference(
-    BuildContext context,
-    Map<String, dynamic> reference, {
-    required int index,
-  }) {
     final colors = context.athenaColors;
-    final url = reference['url'] as String?;
-    final title = reference['title'] as String?;
-    final textSpan = TextSpan(
-      text: title,
-      style: AthenaTextStyle.section.copyWith(color: colors.markdownLink),
-      recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
+    return Tooltip(
+      message: tooltip,
+      child: AthenaHover(
+        onTap: onTap,
+        cursor: SystemMouseCursors.click,
+        builder: (context, hover) => AthenaPressScale(
+          enabled: onTap != null,
+          child: AnimatedContainer(
+            duration: AthenaMotion.hover,
+            height: AthenaIconButtonSize.compact,
+            constraints: const BoxConstraints(
+              minWidth: AthenaIconButtonSize.compact,
+            ),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+              borderRadius: BorderRadius.circular(AthenaRadius.row),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
-    final children = [TextSpan(text: '${index + 1}. '), textSpan];
-    return Text.rich(TextSpan(children: children));
+  }
+}
+
+abstract final class _MessageTileHelpers {
+  /// 操作条上按钮的图标：整条工具条共用一档尺寸与配色。
+  static Widget _actionBarIcon(IconData icon, AthenaColors colors) =>
+      Icon(icon, size: AthenaIcon.regularSize, color: colors.iconSecondary);
+
+  static void _copyAssistantMessages(List<MessageEntity> messages) {
+    final content = messages
+        .map((message) => message.content)
+        .where((content) => content.isNotEmpty)
+        .join('\n\n');
+    _MessageTileHelpers._copyMessageContent(content);
+  }
+
+  /// 写系统剪贴板。用户消息与助手消息共用这一个出口。
+  static void _copyMessageContent(String content) {
+    Clipboard.setData(ClipboardData(text: content));
+  }
+
+  /// 用户消息的发送时刻，24 小时制 `HH:mm`。
+  static String _formatSentTime(DateTime sentAt) {
+    final local = sentAt.toLocal();
+    String pad(int value) => value.toString().padLeft(2, '0');
+    return '${pad(local.hour)}:${pad(local.minute)}';
   }
 }
 
@@ -524,219 +739,4 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     );
     return gestureDetector;
   }
-}
-
-/// 助手卡的 hover 归属。
-///
-/// 消息操作条挂在**整条消息行**上（`.group\/message-row:hover`
-/// 时 `[data-cds=MessageActions]` 显形），指针落在卡内任意一段都算 hover。
-/// 本仓每段消息各占一个独立列表项、各自持有 MouseRegion，因此用一个卡级的
-/// 共享 notifier 把各段的上报汇总起来：任意段进入即记为该卡，离开即清空。
-///
-/// 只有操作条订阅它，正文不参与重建，流式追加时的重建成本不变。
-class AssistantCardHover {
-  /// 当前被 hover 的卡片标识；`null` 表示没有任何卡片被 hover。
-  final ValueNotifier<Object?> hoveredCard = ValueNotifier<Object?>(null);
-
-  void enter(Object cardId) {
-    if (hoveredCard.value != cardId) hoveredCard.value = cardId;
-  }
-
-  void leave(Object cardId) {
-    if (hoveredCard.value == cardId) hoveredCard.value = null;
-  }
-
-  void dispose() => hoveredCard.dispose();
-}
-
-/// 消息底部的操作条，默认全透明、hover 才淡入。
-///
-/// 操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
-/// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
-/// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
-///
-/// [visible] 由调用方决定：助手运行中常显，完成后与用户消息一样 hover 显形。
-///
-/// 时序：
-/// - **只动透明度**，不做缩放；
-/// - 进入 120ms 且**延迟** 100ms；
-/// - 退出 60ms 且无延迟。
-/// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。
-class MessageActionBar extends StatelessWidget {
-  final bool visible;
-  final VoidCallback? onCopy;
-  final VoidCallback? onRewind;
-  final Widget? leading;
-  final Widget? trailing;
-
-  const MessageActionBar({
-    super.key,
-    required this.visible,
-    this.onCopy,
-    this.onRewind,
-    this.leading,
-    this.trailing,
-  });
-
-  // 操作条的显隐时序，**刻意不取 [AthenaMotion] 的档位**：
-  // 这三个值是一个动画的参数组（延迟 + 时长要配套算 Interval），
-  // 本仓没有 60 / 120 两档，硬映射到 AthenaMotion 会破坏时序。
-  static const _inDelayMs = 100.0;
-  static const _inDurMs = 120.0;
-  static const _outDurMs = 60.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return Padding(
-      // 与正文之间的呼吸位。这块高度常驻，hover 前后不变。
-      padding: const EdgeInsets.only(top: 4),
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: Duration(
-            milliseconds: (visible ? _inDelayMs + _inDurMs : _outDurMs).round(),
-          ),
-          curve: visible
-              ? const Interval(
-                  _inDelayMs / (_inDelayMs + _inDurMs),
-                  1,
-                  curve: Curves.easeOut,
-                )
-              : Curves.linear,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ?leading,
-              if (onCopy != null) _CopyActionButton(onTap: onCopy!),
-              if (onRewind != null)
-                _MessageActionButton(
-                  tooltip: 'Rewind',
-                  onTap: onRewind,
-                  child: _MessageTileHelpers._actionBarIcon(
-                    LucideIcons.history,
-                    colors,
-                  ),
-                ),
-              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 操作条上的复制键。
-///
-/// 反馈口径与代码块的 `CopyButton` 一致（同一套 [CopyFeedback] 状态机 +
-/// [CopiedLabel] 外观）：点击后图标换成勾、右侧出现 "Copied"，
-/// [AthenaMotion.linger] 后复原，期间再点不重复复制。
-class _CopyActionButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _CopyActionButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return CopyFeedback(
-      onTap: onTap,
-      builder: (context, copied) => _MessageActionButton(
-        tooltip: 'Copy',
-        child: AnimatedSwitcher(
-          duration: AthenaMotion.hover,
-          child: copied
-              // 「已复制」比图标宽（勾 + 文字），内边距只在它身上出现，
-              // 静止态仍是 28 × 28 的方形。
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: CopiedLabel(
-                    color: colors.textSecondary,
-                    iconSize: AthenaIcon.regularSize,
-                    textStyle: AthenaTextStyle.caption,
-                  ),
-                )
-              : _MessageTileHelpers._actionBarIcon(LucideIcons.copy, colors),
-        ),
-      ),
-    );
-  }
-}
-
-/// 操作条上的一个 ghost 按钮外壳：紧凑高度、hover 才出现底色、带 tooltip。
-///
-/// 尺寸：控件用紧凑档（静止态是 [AthenaIconButtonSize.compact] 见方），圆角
-/// [AthenaRadius.row]，hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）；
-/// 图标由 [child] 按 [AthenaIcon.regularSize] 与 `iconSecondary` 自己建
-/// （见 [_MessageTileHelpers._actionBarIcon]），保证整条工具条同档。
-///
-/// 内容由 [child] 决定（图标，或复制键的「已复制」反馈）。可点性也是：
-/// [onTap] 为空时这里只负责 hover 与指针形状，点击由外层收（复制键的
-/// [CopyFeedback] 要在同一次点击里切状态）。
-class _MessageActionButton extends StatelessWidget {
-  final String tooltip;
-  final Widget child;
-  final VoidCallback? onTap;
-
-  const _MessageActionButton({
-    required this.tooltip,
-    required this.child,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return Tooltip(
-      message: tooltip,
-      child: AthenaHover(
-        onTap: onTap,
-        cursor: SystemMouseCursors.click,
-        builder: (context, hover) => AthenaPressScale(
-          enabled: onTap != null,
-          child: AnimatedContainer(
-            duration: AthenaMotion.hover,
-            height: AthenaIconButtonSize.compact,
-            constraints: const BoxConstraints(
-              minWidth: AthenaIconButtonSize.compact,
-            ),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-              borderRadius: BorderRadius.circular(AthenaRadius.row),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-abstract final class _MessageTileHelpers {
-  /// 用户消息的发送时刻，24 小时制 `HH:mm`。
-  static String _formatSentTime(DateTime sentAt) {
-    final local = sentAt.toLocal();
-    String pad(int value) => value.toString().padLeft(2, '0');
-    return '${pad(local.hour)}:${pad(local.minute)}';
-  }
-
-  /// 写系统剪贴板。用户消息与助手消息共用这一个出口。
-  static void _copyMessageContent(String content) {
-    Clipboard.setData(ClipboardData(text: content));
-  }
-
-  static void _copyAssistantMessages(List<MessageEntity> messages) {
-    final content = messages
-        .map((message) => message.content)
-        .where((content) => content.isNotEmpty)
-        .join('\n\n');
-    _MessageTileHelpers._copyMessageContent(content);
-  }
-
-  /// 操作条上按钮的图标：整条工具条共用一档尺寸与配色。
-  static Widget _actionBarIcon(IconData icon, AthenaColors colors) =>
-      Icon(icon, size: AthenaIcon.regularSize, color: colors.iconSecondary);
 }

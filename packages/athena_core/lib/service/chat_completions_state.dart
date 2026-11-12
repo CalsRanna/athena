@@ -6,6 +6,17 @@ import 'package:athena_core/service/completion_details.dart';
 import 'package:crypto/crypto.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+class ChatCompletionsAssistantMessage extends AssistantMessage {
+  final ChatCompletionsState? chatCompletionsState;
+  const ChatCompletionsAssistantMessage({
+    this.chatCompletionsState,
+    super.content,
+    super.toolCalls,
+    super.reasoningContent,
+    super.refusal,
+  });
+}
+
 /// 兼容端的 reasoning_details 可能含签名或密文，只回传给原始来源。
 class ChatCompletionsState {
   final Map<String, dynamic> _data;
@@ -26,8 +37,26 @@ class ChatCompletionsState {
        };
   ChatCompletionsState._(this._data);
 
+  AssistantMessage get message =>
+      ChatMessage.fromJson(_data['message'] as Map<String, dynamic>)
+          as AssistantMessage;
   int get reasoningTokens => _data['reasoning_tokens'] as int? ?? 0;
   String encode() => jsonEncode(_data);
+
+  bool matches(
+    ProviderEntity provider,
+    String model,
+    AssistantMessage visible,
+  ) =>
+      provider.apiFormat == ApiFormat.chatCompletions &&
+      provider.id == _data['provider_id'] &&
+      _url(provider.baseUrl) == _data['base_url'] &&
+      model == _data['model'] &&
+      matchesMessage(visible);
+
+  bool matchesMessage(AssistantMessage visible) =>
+      _hash(visible) == _data['message_hash'];
+
   static ChatCompletionsState? decode(String value) {
     if (value.isEmpty) return null;
     try {
@@ -49,73 +78,61 @@ class ChatCompletionsState {
     }
   }
 
-  AssistantMessage get message =>
-      ChatMessage.fromJson(_data['message'] as Map<String, dynamic>)
-          as AssistantMessage;
-
-  bool matches(
+  static ChatCompletion normalizeChatCompletion(
+    ChatCompletion response,
     ProviderEntity provider,
     String model,
-    AssistantMessage visible,
-  ) =>
-      provider.apiFormat == ApiFormat.chatCompletions &&
-      provider.id == _data['provider_id'] &&
-      _url(provider.baseUrl) == _data['base_url'] &&
-      model == _data['model'] &&
-      matchesMessage(visible);
-
-  bool matchesMessage(AssistantMessage visible) =>
-      _hash(visible) == _data['message_hash'];
-  static String _url(String value) =>
-      value.trim().replaceFirst(RegExp(r'/+$'), '');
-  static String _hash(AssistantMessage message) => sha256
-      .convert(
-        utf8.encode(
-          jsonEncode({
-            'content': message.content ?? '',
-            'tool_calls':
-                message.toolCalls?.map((c) => c.toJson()).toList() ?? [],
-          }),
+  ) => DetailedChatCompletion(
+    id: response.id,
+    object: response.object,
+    created: response.created,
+    model: response.model,
+    usage: response.usage,
+    systemFingerprint: response.systemFingerprint,
+    serviceTier: response.serviceTier,
+    moderation: response.moderation,
+    provider: response.provider,
+    details: {
+      'protocol': 'chat_completions',
+      'finish_reason': response.choices.firstOrNull?.finishReason?.value,
+      if (response.choices.firstOrNull?.message.refusal
+          case final String refusal)
+        'refusal': refusal,
+      if (response.usage != null) 'usage': response.usage!.toJson(),
+    },
+    choices: [
+      for (final choice in response.choices)
+        ChatChoice(
+          index: choice.index,
+          finishReason: choice.finishReason,
+          logprobs: choice.logprobs,
+          message: ChatCompletionsAssistantMessage(
+            content: choice.message.content,
+            reasoningContent: ChatCompletionsState._visibleReasoning(
+              choice.message,
+            ),
+            refusal: choice.message.refusal,
+            toolCalls: choice.message.toolCalls,
+            chatCompletionsState:
+                choice.finishReason == FinishReason.stop ||
+                    choice.finishReason == FinishReason.toolCalls
+                ? ChatCompletionsState(
+                    provider,
+                    model,
+                    choice.message,
+                    choice.message,
+                    reasoningTokens:
+                        response
+                            .usage
+                            ?.completionTokensDetails
+                            ?.reasoningTokens ??
+                        0,
+                  )
+                : null,
+          ),
         ),
-      )
-      .toString();
-
-  static ChatCompletionCreateRequest restoreChatCompletionsRequest(
-    ChatCompletionCreateRequest request,
-    ProviderEntity provider,
-  ) => request.copyWith(
-    messages: [
-      for (final message in request.messages)
-        if (message is ChatCompletionsAssistantMessage &&
-            message.chatCompletionsState?.matches(
-                  provider,
-                  request.model,
-                  message,
-                ) ==
-                true)
-          message.chatCompletionsState!.message
-        else
-          message,
     ],
   );
-
-  static AssistantMessage _visibleMessage(AssistantMessage original) =>
-      AssistantMessage(
-        content: '${original.content ?? ''}${original.refusal ?? ''}',
-        toolCalls: original.toolCalls,
-        reasoningContent: ChatCompletionsState._visibleReasoning(original),
-      );
-
-  static String? _visibleReasoning(AssistantMessage message) {
-    final text = _ReasoningDisplay().add(
-      ChatDelta(
-        reasoningContent: message.reasoningContent,
-        reasoning: message.reasoning,
-        reasoningDetails: message.reasoningDetails,
-      ),
-    );
-    return text.isEmpty ? null : text;
-  }
 
   /// 拒答也进入文本事件；原始字段另存，避免回传时重复正文或丢失拒答语义。
   static Stream<ChatStreamEvent> normalizeChatCompletionsStream(
@@ -178,72 +195,57 @@ class ChatCompletionsState {
     }
   }
 
-  static ChatCompletion normalizeChatCompletion(
-    ChatCompletion response,
+  static ChatCompletionCreateRequest restoreChatCompletionsRequest(
+    ChatCompletionCreateRequest request,
     ProviderEntity provider,
-    String model,
-  ) => DetailedChatCompletion(
-    id: response.id,
-    object: response.object,
-    created: response.created,
-    model: response.model,
-    usage: response.usage,
-    systemFingerprint: response.systemFingerprint,
-    serviceTier: response.serviceTier,
-    moderation: response.moderation,
-    provider: response.provider,
-    details: {
-      'protocol': 'chat_completions',
-      'finish_reason': response.choices.firstOrNull?.finishReason?.value,
-      if (response.choices.firstOrNull?.message.refusal
-          case final String refusal)
-        'refusal': refusal,
-      if (response.usage != null) 'usage': response.usage!.toJson(),
-    },
-    choices: [
-      for (final choice in response.choices)
-        ChatChoice(
-          index: choice.index,
-          finishReason: choice.finishReason,
-          logprobs: choice.logprobs,
-          message: ChatCompletionsAssistantMessage(
-            content: choice.message.content,
-            reasoningContent: ChatCompletionsState._visibleReasoning(
-              choice.message,
-            ),
-            refusal: choice.message.refusal,
-            toolCalls: choice.message.toolCalls,
-            chatCompletionsState:
-                choice.finishReason == FinishReason.stop ||
-                    choice.finishReason == FinishReason.toolCalls
-                ? ChatCompletionsState(
-                    provider,
-                    model,
-                    choice.message,
-                    choice.message,
-                    reasoningTokens:
-                        response
-                            .usage
-                            ?.completionTokensDetails
-                            ?.reasoningTokens ??
-                        0,
-                  )
-                : null,
-          ),
-        ),
+  ) => request.copyWith(
+    messages: [
+      for (final message in request.messages)
+        if (message is ChatCompletionsAssistantMessage &&
+            message.chatCompletionsState?.matches(
+                  provider,
+                  request.model,
+                  message,
+                ) ==
+                true)
+          message.chatCompletionsState!.message
+        else
+          message,
     ],
   );
-}
 
-class ChatCompletionsAssistantMessage extends AssistantMessage {
-  final ChatCompletionsState? chatCompletionsState;
-  const ChatCompletionsAssistantMessage({
-    this.chatCompletionsState,
-    super.content,
-    super.toolCalls,
-    super.reasoningContent,
-    super.refusal,
-  });
+  static String _hash(AssistantMessage message) => sha256
+      .convert(
+        utf8.encode(
+          jsonEncode({
+            'content': message.content ?? '',
+            'tool_calls':
+                message.toolCalls?.map((c) => c.toJson()).toList() ?? [],
+          }),
+        ),
+      )
+      .toString();
+
+  static String _url(String value) =>
+      value.trim().replaceFirst(RegExp(r'/+$'), '');
+
+  static AssistantMessage _visibleMessage(AssistantMessage original) =>
+      AssistantMessage(
+        content: '${original.content ?? ''}${original.refusal ?? ''}',
+        toolCalls: original.toolCalls,
+        reasoningContent: ChatCompletionsState._visibleReasoning(original),
+      );
+
+  static String? _visibleReasoning(AssistantMessage message) {
+    final text = _ReasoningDisplay().add(
+      ChatDelta(
+        reasoningContent: message.reasoningContent,
+        reasoning: message.reasoning,
+        reasoningDetails: message.reasoningDetails,
+      ),
+    );
+    return text.isEmpty ? null : text;
+  }
 }
 
 class ChatCompletionsStateChunk extends ChatStreamEvent {

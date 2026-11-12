@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:signals/signals.dart';
 
 /// ExperienceViewModel：Experience（经验）的可视化管理。
@@ -13,18 +13,46 @@ class ExperienceViewModel {
   final ExperienceRepository _experienceRepository;
   final SentinelRepository _sentinelRepository;
 
+  final experiences = listSignal<ExperienceEntity>([]);
+
+  final isLoading = signal(false);
+  final error = signal<String?>(null);
+
+  /// sentinelId -> 角色名（仅供归属展示；查不到时回退原始 id）。
+  final sentinelNames = signal<Map<String, String>>({});
+
   ExperienceViewModel({
     required ExperienceRepository experienceRepository,
     required SentinelRepository sentinelRepository,
   }) : _experienceRepository = experienceRepository,
        _sentinelRepository = sentinelRepository;
 
-  final experiences = listSignal<ExperienceEntity>([]);
-  final isLoading = signal(false);
-  final error = signal<String?>(null);
+  /// 归档（保留为记录，默认不再检索/展示）。
+  Future<bool> archiveExperience(ExperienceEntity entity) =>
+      _update(entity, status: ExperienceEntity.statusArchived);
 
-  /// sentinelId -> 角色名（仅供归属展示；查不到时回退原始 id）。
-  final sentinelNames = signal<Map<String, String>>({});
+  /// 永久删除（文件删除，不可恢复）。
+  Future<bool> deleteExperience(ExperienceEntity entity) async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      final removed = await _experienceRepository.delete(
+        entity.sentinelId,
+        entity.id,
+      );
+      if (!removed) {
+        error.value = 'Experience not found';
+        return false;
+      }
+      await load();
+      return true;
+    } catch (e) {
+      error.value = e.toString();
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   /// 重新加载全部经验（所有 Sentinel 私有 + shared）。
   Future<void> load() async {
@@ -48,34 +76,19 @@ class ExperienceViewModel {
     return sentinelNames.value[entity.sentinelId] ?? entity.sentinelId;
   }
 
-  /// 归档（保留为记录，默认不再检索/展示）。
-  Future<bool> archiveExperience(ExperienceEntity entity) =>
-      _update(entity, status: ExperienceEntity.statusArchived);
-
   /// 恢复归档项为 active。
   Future<bool> restoreExperience(ExperienceEntity entity) =>
       _update(entity, status: ExperienceEntity.statusActive);
 
-  /// 永久删除（文件删除，不可恢复）。
-  Future<bool> deleteExperience(ExperienceEntity entity) async {
-    isLoading.value = true;
-    error.value = null;
+  Future<void> _loadSentinelNames() async {
     try {
-      final removed = await _experienceRepository.delete(
-        entity.sentinelId,
-        entity.id,
-      );
-      if (!removed) {
-        error.value = 'Experience not found';
-        return false;
-      }
-      await load();
-      return true;
-    } catch (e) {
-      error.value = e.toString();
-      return false;
-    } finally {
-      isLoading.value = false;
+      final sentinels = await _sentinelRepository.getAllSentinels();
+      sentinelNames.value = {
+        for (final s in sentinels)
+          if (s.id != null) '${s.id}': s.name,
+      };
+    } catch (_) {
+      // 归属名仅为展示，加载失败不影响经验列表
     }
   }
 
@@ -110,18 +123,6 @@ class ExperienceViewModel {
       return false;
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  Future<void> _loadSentinelNames() async {
-    try {
-      final sentinels = await _sentinelRepository.getAllSentinels();
-      sentinelNames.value = {
-        for (final s in sentinels)
-          if (s.id != null) '${s.id}': s.name,
-      };
-    } catch (_) {
-      // 归属名仅为展示，加载失败不影响经验列表
     }
   }
 }

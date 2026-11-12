@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -6,7 +7,6 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 会话内提问卡片（非模态）：渲染在所属对话的消息列表中。
 ///
@@ -49,8 +49,6 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 收起后卡片只剩标题行，选项与按钮一并藏起来，点开才能作答。
   bool _expanded = true;
 
-  void _toggleExpanded() => setState(() => _expanded = !_expanded);
-
   /// 问题下标 → 自由输入控制器（内容非空即视为选择「其它」）。
   final Map<int, TextEditingController> _other = {};
 
@@ -62,82 +60,14 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 而卡片自身的可滚动区没有绑定它，滚动动画期间会断言失败。
   final ScrollController _scrollController = ScrollController();
 
-  @override
-  void dispose() {
-    for (final controller in _other.values) {
-      controller.dispose();
-    }
-    for (final node in _focus.values) {
-      node.dispose();
-    }
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  List<ElicitQuestion> get _questions => widget.request.questions;
-
-  TextEditingController _controllerFor(int index) =>
-      _other.putIfAbsent(index, TextEditingController.new);
-
-  FocusNode _focusFor(int index) => _focus.putIfAbsent(index, FocusNode.new);
-
-  /// 当前问题的答案：自由输入优先，其次选项。
-  String? _answerFor(int index) {
-    final other = _other[index]?.text.trim() ?? '';
-    if (other.isNotEmpty) return other;
-    final selected = _selected[index];
-    if (selected == null || selected.isEmpty) return null;
-    return selected.join(', ');
-  }
+  /// 当前问题是否已有答案：Next / Submit 的可用条件。
+  bool get _canConfirm => _answerFor(_step) != null;
 
   bool get _hasMultiple => _questions.length > 1;
 
   bool get _isLastStep => _step >= _questions.length - 1;
 
-  /// 当前问题是否已有答案：Next / Submit 的可用条件。
-  bool get _canConfirm => _answerFor(_step) != null;
-
-  /// 确认当前问题：不是最后一步就进入下一步，是最后一步就整卡提交。
-  void _confirm() {
-    if (!_canConfirm) return;
-    if (_isLastStep) {
-      _submit();
-    } else {
-      setState(() => _step++);
-    }
-  }
-
-  void _toggle(int index, String label, {required bool multiSelect}) {
-    final controller = _controllerFor(index);
-    setState(() {
-      final selected = _selected.putIfAbsent(index, () => <String>{});
-      if (multiSelect) {
-        if (!selected.remove(label)) selected.add(label);
-      } else {
-        // 单选再点一次是「保持」而不是「取消」：每题都得有答案才能往下走，
-        // 允许点空会让用户卡在一个交不出去的步骤上。
-        selected
-          ..clear()
-          ..add(label);
-      }
-      // 选项与自由输入互斥，避免答案歧义
-      if (selected.isNotEmpty && controller.text.isNotEmpty) {
-        controller.clear();
-      }
-    });
-    // 单选点选即确认：不用再按按钮。多选还要继续勾，交给按钮收尾；
-    // 自由输入需要先打字，同样交给按钮或回车。
-    if (!multiSelect) _confirm();
-  }
-
-  void _submit() {
-    final answers = <String, String>{};
-    for (var i = 0; i < _questions.length; i++) {
-      final answer = _answerFor(i);
-      if (answer != null) answers[_questions[i].question] = answer;
-    }
-    widget.onSubmit(answers);
-  }
+  List<ElicitQuestion> get _questions => widget.request.questions;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +115,75 @@ class _ElicitCardState extends State<ElicitCard> {
     );
   }
 
+  @override
+  void dispose() {
+    for (final controller in _other.values) {
+      controller.dispose();
+    }
+    for (final node in _focus.values) {
+      node.dispose();
+    }
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 当前问题的答案：自由输入优先，其次选项。
+  String? _answerFor(int index) {
+    final other = _other[index]?.text.trim() ?? '';
+    if (other.isNotEmpty) return other;
+    final selected = _selected[index];
+    if (selected == null || selected.isEmpty) return null;
+    return selected.join(', ');
+  }
+
+  Widget _buildActions(bool mobile) {
+    // 移动端按钮整行拉伸，文字要居中；桌面端按钮在行内按内容收缩，
+    // 不能再套 Center（Center 会把按钮撑到整行宽）。
+    final label = _isLastStep ? 'Submit' : 'Next';
+    final primary = AthenaPrimaryButton(
+      onTap: _canConfirm ? _confirm : null,
+      child: mobile ? Center(child: Text(label)) : Text(label),
+    );
+    // 多问时给一个回到上一步的出口：单选点选会自动前进，
+    // 没有退路的话手滑就无法改答案。
+    final back = _step > 0
+        ? AthenaSecondaryButton(
+            onTap: () => setState(() => _step--),
+            child: mobile
+                ? const Center(child: Text('Back'))
+                : const Text('Back'),
+          )
+        : null;
+    if (mobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          primary,
+          if (back != null) ...[const SizedBox(height: 8), back],
+        ],
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (back != null) ...[back, const SizedBox(width: 12)],
+        primary,
+      ],
+    );
+  }
+
+  /// 折叠箭头：展开时朝下、收起时朝右。常驻显示——收起后卡片只剩这一行，
+  /// 没有它就找不到点回去的地方。
+  Widget _buildChevron(AthenaColors colors) => AnimatedRotation(
+    turns: _expanded ? 0.25 : 0,
+    duration: AthenaMotion.hover,
+    child: Icon(
+      LucideIcons.chevronRight,
+      size: AthenaIcon.inlineSize,
+      color: colors.textSecondary,
+    ),
+  );
+
   /// 标题行：整行可点，收起后卡片只剩这一行，此时在标题后带上当前问题，
   /// 否则单看 "Question" 无从辨认在问什么。
   Widget _buildHeader(AthenaColors colors) => AthenaHover(
@@ -214,64 +213,6 @@ class _ElicitCardState extends State<ElicitCard> {
     ),
   );
 
-  /// 折叠箭头：展开时朝下、收起时朝右。常驻显示——收起后卡片只剩这一行，
-  /// 没有它就找不到点回去的地方。
-  Widget _buildChevron(AthenaColors colors) => AnimatedRotation(
-    turns: _expanded ? 0.25 : 0,
-    duration: AthenaMotion.hover,
-    child: Icon(
-      LucideIcons.chevronRight,
-      size: AthenaIcon.inlineSize,
-      color: colors.textSecondary,
-    ),
-  );
-
-  Widget _buildQuestion(AthenaColors colors, int index) {
-    final question = _questions[index];
-    return Padding(
-      padding: EdgeInsets.only(top: index == 0 ? 0 : 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (_hasMultiple) ...[
-                _buildStepIndicator(colors),
-                const SizedBox(width: 8),
-              ],
-              if (question.header.isNotEmpty) ...[
-                _buildHeaderChip(colors, question.header),
-                const SizedBox(width: 8),
-              ],
-              if (question.multiSelect)
-                Text(
-                  'select all that apply',
-                  style: AthenaTextStyle.body.copyWith(
-                    color: colors.textPrimary,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            question.question,
-            style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          for (final option in question.options)
-            _buildOptionRow(colors, index, option, question.multiSelect),
-          _buildOtherRow(colors, index),
-        ],
-      ),
-    );
-  }
-
-  /// 步骤展示（只有多问时才需要）：问题前的 `1 / 3`。
-  Widget _buildStepIndicator(AthenaColors colors) => Text(
-    '${_step + 1} / ${_questions.length}',
-    style: AthenaTextStyle.label.copyWith(color: colors.textSecondary),
-  );
-
   Widget _buildHeaderChip(AthenaColors colors, String header) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: ShapeDecoration(
@@ -285,6 +226,36 @@ class _ElicitCardState extends State<ElicitCard> {
       style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
     ),
   );
+
+  Widget _buildMarker(
+    AthenaColors colors,
+    bool selected,
+    bool multiSelect, {
+    IconData? placeholderIcon,
+    EdgeInsets margin = const EdgeInsets.only(top: 1),
+  }) {
+    final side = BorderSide(color: selected ? colors.accent : colors.border);
+    return Container(
+      height: 16,
+      width: 16,
+      margin: margin,
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(
+        shape: multiSelect
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AthenaRadius.inline),
+                side: side,
+              )
+            : CircleBorder(side: side),
+        color: selected ? colors.accent : null,
+      ),
+      child: Icon(
+        selected ? LucideIcons.check : (placeholderIcon ?? LucideIcons.check),
+        size: 11,
+        color: selected ? colors.textOnAccent : colors.textSecondary,
+      ),
+    );
+  }
 
   Widget _buildOptionRow(
     AthenaColors colors,
@@ -400,69 +371,98 @@ class _ElicitCardState extends State<ElicitCard> {
     );
   }
 
-  Widget _buildMarker(
-    AthenaColors colors,
-    bool selected,
-    bool multiSelect, {
-    IconData? placeholderIcon,
-    EdgeInsets margin = const EdgeInsets.only(top: 1),
-  }) {
-    final side = BorderSide(color: selected ? colors.accent : colors.border);
-    return Container(
-      height: 16,
-      width: 16,
-      margin: margin,
-      alignment: Alignment.center,
-      decoration: ShapeDecoration(
-        shape: multiSelect
-            ? RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AthenaRadius.inline),
-                side: side,
-              )
-            : CircleBorder(side: side),
-        color: selected ? colors.accent : null,
-      ),
-      child: Icon(
-        selected ? LucideIcons.check : (placeholderIcon ?? LucideIcons.check),
-        size: 11,
-        color: selected ? colors.textOnAccent : colors.textSecondary,
+  Widget _buildQuestion(AthenaColors colors, int index) {
+    final question = _questions[index];
+    return Padding(
+      padding: EdgeInsets.only(top: index == 0 ? 0 : 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (_hasMultiple) ...[
+                _buildStepIndicator(colors),
+                const SizedBox(width: 8),
+              ],
+              if (question.header.isNotEmpty) ...[
+                _buildHeaderChip(colors, question.header),
+                const SizedBox(width: 8),
+              ],
+              if (question.multiSelect)
+                Text(
+                  'select all that apply',
+                  style: AthenaTextStyle.body.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            question.question,
+            style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          for (final option in question.options)
+            _buildOptionRow(colors, index, option, question.multiSelect),
+          _buildOtherRow(colors, index),
+        ],
       ),
     );
   }
 
-  Widget _buildActions(bool mobile) {
-    // 移动端按钮整行拉伸，文字要居中；桌面端按钮在行内按内容收缩，
-    // 不能再套 Center（Center 会把按钮撑到整行宽）。
-    final label = _isLastStep ? 'Submit' : 'Next';
-    final primary = AthenaPrimaryButton(
-      onTap: _canConfirm ? _confirm : null,
-      child: mobile ? Center(child: Text(label)) : Text(label),
-    );
-    // 多问时给一个回到上一步的出口：单选点选会自动前进，
-    // 没有退路的话手滑就无法改答案。
-    final back = _step > 0
-        ? AthenaSecondaryButton(
-            onTap: () => setState(() => _step--),
-            child: mobile
-                ? const Center(child: Text('Back'))
-                : const Text('Back'),
-          )
-        : null;
-    if (mobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          primary,
-          if (back != null) ...[const SizedBox(height: 8), back],
-        ],
-      );
+  /// 步骤展示（只有多问时才需要）：问题前的 `1 / 3`。
+  Widget _buildStepIndicator(AthenaColors colors) => Text(
+    '${_step + 1} / ${_questions.length}',
+    style: AthenaTextStyle.label.copyWith(color: colors.textSecondary),
+  );
+
+  /// 确认当前问题：不是最后一步就进入下一步，是最后一步就整卡提交。
+  void _confirm() {
+    if (!_canConfirm) return;
+    if (_isLastStep) {
+      _submit();
+    } else {
+      setState(() => _step++);
     }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (back != null) ...[back, const SizedBox(width: 12)],
-        primary,
-      ],
-    );
   }
+
+  TextEditingController _controllerFor(int index) =>
+      _other.putIfAbsent(index, TextEditingController.new);
+
+  FocusNode _focusFor(int index) => _focus.putIfAbsent(index, FocusNode.new);
+
+  void _submit() {
+    final answers = <String, String>{};
+    for (var i = 0; i < _questions.length; i++) {
+      final answer = _answerFor(i);
+      if (answer != null) answers[_questions[i].question] = answer;
+    }
+    widget.onSubmit(answers);
+  }
+
+  void _toggle(int index, String label, {required bool multiSelect}) {
+    final controller = _controllerFor(index);
+    setState(() {
+      final selected = _selected.putIfAbsent(index, () => <String>{});
+      if (multiSelect) {
+        if (!selected.remove(label)) selected.add(label);
+      } else {
+        // 单选再点一次是「保持」而不是「取消」：每题都得有答案才能往下走，
+        // 允许点空会让用户卡在一个交不出去的步骤上。
+        selected
+          ..clear()
+          ..add(label);
+      }
+      // 选项与自由输入互斥，避免答案歧义
+      if (selected.isNotEmpty && controller.text.isNotEmpty) {
+        controller.clear();
+      }
+    });
+    // 单选点选即确认：不用再按按钮。多选还要继续勾，交给按钮收尾；
+    // 自由输入需要先打字，同样交给按钮或回车。
+    if (!multiSelect) _confirm();
+  }
+
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
 }

@@ -1,10 +1,10 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 草稿和已有会话共用当前保留策略，避免切换会话后仍显示旧状态。
 class DesktopContextSelector extends StatelessWidget {

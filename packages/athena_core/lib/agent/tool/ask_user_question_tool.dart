@@ -32,9 +32,6 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
       'assumption you made explicitly in your reply.';
 
   @override
-  String get name => 'ask_user_question';
-
-  @override
   String get description =>
       'Ask the user a multiple-choice question when you are blocked on a '
       'decision that is genuinely theirs to make — one you cannot resolve '
@@ -49,6 +46,9 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
       'append " (Recommended)" to its label. Set multiSelect: true when '
       'several options can be chosen together. Ask everything you need in '
       'one call rather than several rounds.';
+
+  @override
+  String get name => 'ask_user_question';
 
   @override
   Map<String, dynamic> get parameters => <String, dynamic>{
@@ -133,6 +133,25 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
     }
     return ToolExecutionResult.success(_formatAnswers(questions, answers));
   }
+
+  /// 把答案交回模型：按提问顺序逐行，未作答的问题显式标出。
+  String _formatAnswers(
+    List<ElicitQuestion> questions,
+    Map<String, String> answers,
+  ) {
+    final buffer = StringBuffer('User answers:');
+    for (final question in questions) {
+      final answer = answers[question.question];
+      buffer.write('\n- ${question.header}: ${question.question} -> ');
+      buffer.write(
+        answer == null || answer.trim().isEmpty ? '(no answer)' : answer,
+      );
+    }
+    return buffer.toString();
+  }
+
+  String _invalid(String detail) =>
+      'Error: Invalid arguments for tool "$name": $detail';
 
   // 工具也可被宿主直接调用，仍保留动作级校验，不依赖引擎分发。
   ({List<ElicitQuestion>? questions, String? error}) _parseQuestions(
@@ -246,24 +265,5 @@ class AskUserQuestionTool extends Tool implements ElicitChannelAware {
     }
 
     return (questions: questions, error: null);
-  }
-
-  String _invalid(String detail) =>
-      'Error: Invalid arguments for tool "$name": $detail';
-
-  /// 把答案交回模型：按提问顺序逐行，未作答的问题显式标出。
-  String _formatAnswers(
-    List<ElicitQuestion> questions,
-    Map<String, String> answers,
-  ) {
-    final buffer = StringBuffer('User answers:');
-    for (final question in questions) {
-      final answer = answers[question.question];
-      buffer.write('\n- ${question.header}: ${question.question} -> ');
-      buffer.write(
-        answer == null || answer.trim().isEmpty ? '(no answer)' : answer,
-      );
-    }
-    return buffer.toString();
   }
 }

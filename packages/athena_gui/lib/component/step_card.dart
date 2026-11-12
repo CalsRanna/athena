@@ -1,14 +1,17 @@
 import 'package:athena_core/agent/permission/permission_rule.dart';
-import 'package:athena_core/entity/compaction_step.dart';
-import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/compaction_step_formatter.dart';
 import 'package:athena_core/agent/tool/tool_args_formatter.dart';
-import 'package:athena_gui/component/step_primitives.dart';
+import 'package:athena_core/entity/compaction_step.dart';
+import 'package:athena_core/entity/compaction_step_formatter.dart';
+import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/component/message_display.dart';
+import 'package:athena_gui/component/step_primitives.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
+
+/// 卡片头部与可展开正文的表现描述。
+typedef _Face = ({IconData icon, String label, bool running, Widget body});
 
 /// 一段步骤序列的卡片：单步平铺，≥ 2 步收纳为默认折叠的组。
 ///
@@ -26,6 +29,21 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 /// 与 key 不变，State 得以保留。序列从单步长成多步时展开态重置为折叠，避免
 /// "点开过单步结果"在第 2 步到来时变成"组已展开"。
 class StepCard extends StatefulWidget {
+  /// 工具仍在运行、参数里还没有可用的 call_description 时的头部文案。
+  static const runningToolLabel = 'Running a tool';
+
+  /// 工具结果尚未返回时，展开正文的占位文案。
+  static const waitingForResultLabel = 'Waiting for result';
+
+  /// 工具已结束但缺少 call_description 时的头部文案。
+  static const completedToolLabel = 'Used a tool';
+
+  /// 审批卡缺少 call_description 时的标题后缀：工具还没开始执行，
+  /// 不能用运行中的文案。
+  static const approvalFallbackLabel = 'Needs your approval';
+
+  // ─── 共享的静态工具函数 ────────────────────────────────
+
   final List<AssistantStep> steps;
 
   /// 序列仍在进行且本卡是它的尾部：单步推理显示 `Thinking`，组头显示当前步骤。
@@ -41,102 +59,16 @@ class StepCard extends StatefulWidget {
     this.nested = false,
   }) : assert(steps.length > 0);
 
-  // ─── 共享的静态工具函数 ────────────────────────────────
-
-  /// 工具图标映射（Lucide 图标库）。审批卡沿用同一映射。
-  ///
-  /// shell 这一组不在这里逐个列名：清单是引擎的事实（`kShellToolNames`），
-  /// 新增一个 shell 工具时它自动拿到终端图标，不必回来改这里。
-  ///
-  /// 文件那一组**不能**照搬 `kFileToolNames`：那个集合是权限口径上的「路径
-  /// 工具」（file_read / file_write / file_update），而图标上 `tool_output_read`
-  /// 也归文件一档——两个分组依据不同，硬套会漏掉它。
-  static IconData toolIcon(String toolName) {
-    if (PermissionRule.kShellToolNames.contains(toolName)) {
-      return LucideIcons.terminal;
-    }
-    return switch (toolName) {
-      'background_task' => LucideIcons.listTodo,
-      'ask_user_question' => LucideIcons.messageCircleQuestion,
-      'file_read' || 'tool_output_read' => LucideIcons.file,
-      'file_write' || 'file_update' => LucideIcons.pencilLine,
-      'web_fetch' => LucideIcons.globe,
-      'web_search' => LucideIcons.search,
-      'skill' => LucideIcons.bookOpen,
-      'experience_learn' || 'experience_recall' => LucideIcons.brain,
-      _ => LucideIcons.wrench,
-    };
-  }
-
-  /// 工具仍在运行、参数里还没有可用的 call_description 时的头部文案。
-  static const runningToolLabel = 'Running a tool';
-
-  /// 工具结果尚未返回时，展开正文的占位文案。
-  static const waitingForResultLabel = 'Waiting for result';
-
-  /// 工具已结束但缺少 call_description 时的头部文案。
-  static const completedToolLabel = 'Used a tool';
-
-  /// 审批卡缺少 call_description 时的标题后缀：工具还没开始执行，
-  /// 不能用运行中的文案。
-  static const approvalFallbackLabel = 'Needs your approval';
-
-  /// 单步、组头与嵌套工具项共用的标题，不展示参数预览。
-  ///
-  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则按
-  /// [running] 选择运行中或完成态占位。
-  static String toolLabel(String arguments, {required bool running}) =>
-      ToolArgsFormatter.toolCallDescription(arguments) ??
-      (running ? runningToolLabel : completedToolLabel);
+  @override
+  State<StepCard> createState() => _StepCardState();
 
   /// 审批卡标题：工具尚未执行，缺少描述时用审批占位。
   static String approvalLabel(String arguments) =>
       ToolArgsFormatter.toolCallDescription(arguments) ?? approvalFallbackLabel;
 
-  /// 推理结束态标题：`Thought 2.0 seconds`。
-  static String thoughtLabel(MessageEntity message) {
-    final duration =
-        message.reasoningUpdatedAt
-            .difference(message.reasoningStartedAt)
-            .inMilliseconds /
-        1000;
-    return 'Thought ${duration.toStringAsFixed(1)} seconds';
-  }
-
   /// 压缩头部文案：进行中 / 已中断 / 终态。
   static String compactionLabel(ContextCompactionStep step) =>
       CompactionStepFormatter.compactionStatus(step.step, isLive: step.isLive);
-
-  /// 组结束态折叠头文案：工具数、思考总耗时、压缩次数，按存在的部分拼接。
-  static String summaryLabel(List<AssistantStep> steps) {
-    var toolCount = 0;
-    var reasoningCount = 0;
-    var compactionCount = 0;
-    var thinkingMs = 0;
-    for (final step in steps) {
-      switch (step) {
-        case ReasoningStep(:final message):
-          reasoningCount++;
-          thinkingMs += message.reasoningUpdatedAt
-              .difference(message.reasoningStartedAt)
-              .inMilliseconds;
-        case ToolCallStep():
-          toolCount++;
-        case ContextCompactionStep():
-          compactionCount++;
-      }
-    }
-    return <String>[
-      if (toolCount > 0)
-        toolCount == 1 ? 'Used 1 tool' : 'Used $toolCount tools',
-      if (reasoningCount > 0)
-        'Thought ${(thinkingMs / 1000).toStringAsFixed(1)} seconds',
-      if (compactionCount > 0)
-        compactionCount == 1
-            ? 'Compacted once'
-            : 'Compacted $compactionCount times',
-    ].join(' · ');
-  }
 
   /// 组进行中折叠头文案：当前（最后一个）步骤。
   static String currentLabel(AssistantStep last) => switch (last) {
@@ -172,12 +104,105 @@ class StepCard extends StatefulWidget {
     return summary.isEmpty ? current : '$current · $summary';
   }
 
-  @override
-  State<StepCard> createState() => _StepCardState();
+  /// 组结束态折叠头文案：工具数、思考总耗时、压缩次数，按存在的部分拼接。
+  static String summaryLabel(List<AssistantStep> steps) {
+    var toolCount = 0;
+    var reasoningCount = 0;
+    var compactionCount = 0;
+    var thinkingMs = 0;
+    for (final step in steps) {
+      switch (step) {
+        case ReasoningStep(:final message):
+          reasoningCount++;
+          thinkingMs += message.reasoningUpdatedAt
+              .difference(message.reasoningStartedAt)
+              .inMilliseconds;
+        case ToolCallStep():
+          toolCount++;
+        case ContextCompactionStep():
+          compactionCount++;
+      }
+    }
+    return <String>[
+      if (toolCount > 0)
+        toolCount == 1 ? 'Used 1 tool' : 'Used $toolCount tools',
+      if (reasoningCount > 0)
+        'Thought ${(thinkingMs / 1000).toStringAsFixed(1)} seconds',
+      if (compactionCount > 0)
+        compactionCount == 1
+            ? 'Compacted once'
+            : 'Compacted $compactionCount times',
+    ].join(' · ');
+  }
+
+  /// 推理结束态标题：`Thought 2.0 seconds`。
+  static String thoughtLabel(MessageEntity message) {
+    final duration =
+        message.reasoningUpdatedAt
+            .difference(message.reasoningStartedAt)
+            .inMilliseconds /
+        1000;
+    return 'Thought ${duration.toStringAsFixed(1)} seconds';
+  }
+
+  /// 工具图标映射（Lucide 图标库）。审批卡沿用同一映射。
+  ///
+  /// shell 这一组不在这里逐个列名：清单是引擎的事实（`kShellToolNames`），
+  /// 新增一个 shell 工具时它自动拿到终端图标，不必回来改这里。
+  ///
+  /// 文件那一组**不能**照搬 `kFileToolNames`：那个集合是权限口径上的「路径
+  /// 工具」（file_read / file_write / file_update），而图标上 `tool_output_read`
+  /// 也归文件一档——两个分组依据不同，硬套会漏掉它。
+  static IconData toolIcon(String toolName) {
+    if (PermissionRule.kShellToolNames.contains(toolName)) {
+      return LucideIcons.terminal;
+    }
+    return switch (toolName) {
+      'background_task' => LucideIcons.listTodo,
+      'ask_user_question' => LucideIcons.messageCircleQuestion,
+      'file_read' || 'tool_output_read' => LucideIcons.file,
+      'file_write' || 'file_update' => LucideIcons.pencilLine,
+      'web_fetch' => LucideIcons.globe,
+      'web_search' => LucideIcons.search,
+      'skill' => LucideIcons.bookOpen,
+      'experience_learn' || 'experience_recall' => LucideIcons.brain,
+      _ => LucideIcons.wrench,
+    };
+  }
+
+  /// 单步、组头与嵌套工具项共用的标题，不展示参数预览。
+  ///
+  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则按
+  /// [running] 选择运行中或完成态占位。
+  static String toolLabel(String arguments, {required bool running}) =>
+      ToolArgsFormatter.toolCallDescription(arguments) ??
+      (running ? runningToolLabel : completedToolLabel);
 }
 
-/// 卡片头部与可展开正文的表现描述。
-typedef _Face = ({IconData icon, String label, bool running, Widget body});
+/// 推理正文：与消息正文同档（跟随 Text size）、点击整块收起。
+class _ReasoningBody extends StatelessWidget {
+  final MessageEntity message;
+  final VoidCallback onTap;
+
+  const _ReasoningBody({required this.message, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: double.infinity,
+        child: Text(
+          message.reasoningContent,
+          style: AthenaWorkspaceTextSize.of(context).prose
+              .copyWith(color: colors.textSecondary),
+        ),
+      ),
+    );
+  }
+}
 
 class _StepCardState extends State<StepCard> {
   bool _expanded = false;
@@ -185,17 +210,6 @@ class _StepCardState extends State<StepCard> {
   List<AssistantStep> get steps => widget.steps;
 
   bool get _single => steps.length == 1;
-
-  @override
-  void didUpdateWidget(StepCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 单步长成多步：形态从"展开看正文"变成"展开看列表"，重置为默认折叠。
-    if (oldWidget.steps.length == 1 && widget.steps.length > 1) {
-      _expanded = false;
-    }
-  }
-
-  void _toggle() => setState(() => _expanded = !_expanded);
 
   @override
   Widget build(BuildContext context) {
@@ -220,6 +234,15 @@ class _StepCardState extends State<StepCard> {
         ],
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(StepCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 单步长成多步：形态从"展开看正文"变成"展开看列表"，重置为默认折叠。
+    if (oldWidget.steps.length == 1 && widget.steps.length > 1) {
+      _expanded = false;
+    }
   }
 
   // ─── 单步 ────────────────────────────────────────────
@@ -247,16 +270,6 @@ class _StepCardState extends State<StepCard> {
       body: _resultBody(_compactionDetails(compaction)),
     ),
   };
-
-  Widget _resultBody(String text) => StepResultBody(text: text, onTap: _toggle);
-
-  /// 压缩详情：失败时以 `Error:` 前缀标红。
-  static String _compactionDetails(ContextCompactionStep compaction) {
-    final details = CompactionStepFormatter.compactionDetails(compaction.step);
-    return compaction.step.phase == CompactionPhase.failed
-        ? 'Error: $details'
-        : details;
-  }
 
   // ─── 多步 ────────────────────────────────────────────
 
@@ -297,6 +310,10 @@ class _StepCardState extends State<StepCard> {
     );
   }
 
+  Widget _resultBody(String text) => StepResultBody(text: text, onTap: _toggle);
+
+  void _toggle() => setState(() => _expanded = !_expanded);
+
   /// 组内子项的 key：**以步骤自身 id 为基底，同组内重复时追加出现序号**。
   ///
   /// 两个性质各由谁保证：
@@ -324,6 +341,14 @@ class _StepCardState extends State<StepCard> {
     return keys;
   }
 
+  /// 压缩详情：失败时以 `Error:` 前缀标红。
+  static String _compactionDetails(ContextCompactionStep compaction) {
+    final details = CompactionStepFormatter.compactionDetails(compaction.step);
+    return compaction.step.phase == CompactionPhase.failed
+        ? 'Error: $details'
+        : details;
+  }
+
   /// 步骤的身份基底：[ToolCallStep] 用工具 id，[ContextCompactionStep] 用压缩
   /// id，推理没有可靠 id（消息可能尚未落库，`id` 为空）才退回对象身份。
   static String _stepIdentity(AssistantStep step) => switch (step) {
@@ -333,29 +358,4 @@ class _StepCardState extends State<StepCard> {
     final ContextCompactionStep compaction =>
       'compaction-${compaction.step.compactionId}',
   };
-}
-
-/// 推理正文：与消息正文同档（跟随 Text size）、点击整块收起。
-class _ReasoningBody extends StatelessWidget {
-  final MessageEntity message;
-  final VoidCallback onTap;
-
-  const _ReasoningBody({required this.message, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        width: double.infinity,
-        child: Text(
-          message.reasoningContent,
-          style: AthenaWorkspaceTextSize.of(context).prose
-              .copyWith(color: colors.textSecondary),
-        ),
-      ),
-    );
-  }
 }

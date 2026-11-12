@@ -1,4 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
+import 'package:athena_gui/component/experience_format.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -10,8 +12,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-import 'package:athena_gui/component/experience_format.dart';
 
 /// 经验详情页：完整 lesson / context / tags / 归属与状态，
 /// 提供编辑、归档/恢复与删除。
@@ -28,12 +28,6 @@ class MobileExperienceDetailPage extends StatefulWidget {
 class _MobileExperienceDetailPageState
     extends State<MobileExperienceDetailPage> {
   late final viewModel = GetIt.instance<ExperienceViewModel>();
-
-  @override
-  void initState() {
-    super.initState();
-    viewModel.load();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +96,52 @@ class _MobileExperienceDetailPageState
     );
   }
 
+  Future<void> destroyExperience(
+    BuildContext context,
+    ExperienceEntity experience,
+  ) async {
+    final result = await AthenaDialog.confirm('Delete this experience?');
+    if (result != true) return;
+    final removed = await viewModel.deleteExperience(experience);
+    if (!context.mounted) return;
+    if (!removed) {
+      AthenaDialog.warning(
+        viewModel.error.value ?? 'Failed to delete experience',
+      );
+      return;
+    }
+    AutoRouter.of(context).maybePop();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel.load();
+  }
+
+  Widget _buildButtons(
+    BuildContext context,
+    ExperienceEntity experience,
+    bool isArchived,
+  ) {
+    final children = [
+      Expanded(
+        child: AthenaPrimaryButton(
+          onTap: () => _toggleStatus(experience, isArchived),
+          child: Center(child: Text(isArchived ? 'Restore' : 'Archive')),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: AthenaTextButton(
+          text: 'Delete',
+          onTap: () => destroyExperience(context, experience),
+        ),
+      ),
+    ];
+    return Row(children: children);
+  }
+
   Widget _label(BuildContext context, String text) {
     final colors = context.athenaColors;
     return Text(
@@ -134,29 +174,6 @@ class _MobileExperienceDetailPageState
     );
   }
 
-  Widget _buildButtons(
-    BuildContext context,
-    ExperienceEntity experience,
-    bool isArchived,
-  ) {
-    final children = [
-      Expanded(
-        child: AthenaPrimaryButton(
-          onTap: () => _toggleStatus(experience, isArchived),
-          child: Center(child: Text(isArchived ? 'Restore' : 'Archive')),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: AthenaTextButton(
-          text: 'Delete',
-          onTap: () => destroyExperience(context, experience),
-        ),
-      ),
-    ];
-    return Row(children: children);
-  }
-
   Future<void> _toggleStatus(
     ExperienceEntity experience,
     bool isArchived,
@@ -168,22 +185,5 @@ class _MobileExperienceDetailPageState
     if (!ok) {
       AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
     }
-  }
-
-  Future<void> destroyExperience(
-    BuildContext context,
-    ExperienceEntity experience,
-  ) async {
-    final result = await AthenaDialog.confirm('Delete this experience?');
-    if (result != true) return;
-    final removed = await viewModel.deleteExperience(experience);
-    if (!context.mounted) return;
-    if (!removed) {
-      AthenaDialog.warning(
-        viewModel.error.value ?? 'Failed to delete experience',
-      );
-      return;
-    }
-    AutoRouter.of(context).maybePop();
   }
 }

@@ -1,10 +1,10 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
@@ -26,13 +26,6 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
   String? descriptionError;
 
   late final viewModel = GetIt.instance<SkillViewModel>();
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    descriptionController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +67,13 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
 
   void cancelDialog() {
     AthenaDialog.dismiss();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    super.dispose();
   }
 
   Future<void> storeSkill() async {

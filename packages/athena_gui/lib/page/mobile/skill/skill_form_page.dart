@@ -31,22 +31,6 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
   bool get isEdit => widget.skill != null;
 
   @override
-  void initState() {
-    super.initState();
-    nameController.text = widget.skill?.name ?? '';
-    descriptionController.text = widget.skill?.description ?? '';
-    bodyController.text = widget.skill?.body ?? '';
-  }
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    descriptionController.dispose();
-    bodyController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final listChildren = [
       if (!isEdit) ...[
@@ -102,14 +86,20 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
     );
   }
 
-  Widget _buildStoreButton(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: AthenaPrimaryButton(
-        onTap: storeSkill,
-        child: const Center(child: Text('Store')),
-      ),
-    );
+  @override
+  void dispose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    bodyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.skill?.name ?? '';
+    descriptionController.text = widget.skill?.description ?? '';
+    bodyController.text = widget.skill?.body ?? '';
   }
 
   Future<void> storeSkill() async {
@@ -133,5 +123,15 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
       return;
     }
     AutoRouter.of(context).maybePop();
+  }
+
+  Widget _buildStoreButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: AthenaPrimaryButton(
+        onTap: storeSkill,
+        child: const Center(child: Text('Store')),
+      ),
+    );
   }
 }

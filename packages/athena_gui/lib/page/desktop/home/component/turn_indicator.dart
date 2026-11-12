@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 工作区左侧的轮次指示器：**一条 = 一轮**，深色那条是视口当前所在的一轮。
 ///
@@ -31,6 +31,36 @@ import 'package:athena_gui/extension/athena_theme_context.dart';
 /// 点击把那一轮滚到视口顶部（滚动由 [TurnNavigator] 落到消息 sliver 上）。
 /// 它只占条本身那一小条命中区，其余地方指针直接穿过去，不影响读消息。
 class TurnIndicator extends StatefulWidget {
+  /// 静止长度 = 最大宽度 × 该比例。
+  static const double restingWidthFactor = 0.5;
+
+  /// 静止档的条色：次级图标色压到该不透明度——与侧栏会话行状态点的静止档
+  /// 同一套灰阶。
+  static const double restingBarAlpha = 0.45;
+
+  /// 距离衰减跨度：与 hover 那条相隔这么多条及以上就回到静止长度。
+  static const int falloffSpread = 4;
+
+  static const double barHeight = 4;
+
+  /// 单条命中行高（条居中，上下各留一点，条才点得中）。
+  static const double barRowHeight = 12;
+
+  /// 整列最多画几条 = 一页多少轮。超过就分页，只画视口当前轮所在的那一页。
+  ///
+  /// 20 条按 [barRowHeight] 排是 240 高，落在消息区里不占地方又点得中；这是
+  /// "一页多大"的唯一旋钮。
+  static const int maxBars = 20;
+
+  /// 条长与颜色的过渡时长，跟全站 hover 过渡一致。
+  static const Duration barDuration = AthenaMotion.hover;
+
+  /// hover 多久弹预览卡。
+  ///
+  /// 这是**延迟**不是过渡，所以不取 [AthenaMotion] 的档位：150ms 是"留在条上
+  /// 本身就是明确意图"的判断阈值——再短会让指针路过时误弹，再长要等半拍。
+  static const Duration previewDelay = Duration(milliseconds: 150);
+
   /// 窗口里的轮次数（= 有内容可预览的那一段）。只用来判边界与摆位。
   ///
   /// **内容不进配置**：见 [turnAt]。
@@ -80,35 +110,16 @@ class TurnIndicator extends StatefulWidget {
     required this.onTurnSelected,
   });
 
-  /// 静止长度 = 最大宽度 × 该比例。
-  static const double restingWidthFactor = 0.5;
+  @override
+  State<TurnIndicator> createState() => _TurnIndicatorState();
 
-  /// 静止档的条色：次级图标色压到该不透明度——与侧栏会话行状态点的静止档
-  /// 同一套灰阶。
-  static const double restingBarAlpha = 0.45;
-
-  /// 距离衰减跨度：与 hover 那条相隔这么多条及以上就回到静止长度。
-  static const int falloffSpread = 4;
-
-  static const double barHeight = 4;
-
-  /// 单条命中行高（条居中，上下各留一点，条才点得中）。
-  static const double barRowHeight = 12;
-
-  /// 整列最多画几条 = 一页多少轮。超过就分页，只画视口当前轮所在的那一页。
-  ///
-  /// 20 条按 [barRowHeight] 排是 240 高，落在消息区里不占地方又点得中；这是
-  /// "一页多大"的唯一旋钮。
-  static const int maxBars = 20;
-
-  /// 条长与颜色的过渡时长，跟全站 hover 过渡一致。
-  static const Duration barDuration = AthenaMotion.hover;
-
-  /// hover 多久弹预览卡。
-  ///
-  /// 这是**延迟**不是过渡，所以不取 [AthenaMotion] 的档位：150ms 是"留在条上
-  /// 本身就是明确意图"的判断阈值——再短会让指针路过时误弹，再长要等半拍。
-  static const Duration previewDelay = Duration(milliseconds: 150);
+  /// 条色的**唯一**公式：hover 那条与视口当前那条用行标签色，其余是静止档。
+  static Color barColorFor({
+    required bool highlighted,
+    required AthenaColors colors,
+  }) => highlighted
+      ? colors.textRowLabel
+      : colors.iconSecondary.withValues(alpha: restingBarAlpha);
 
   /// 条长的**唯一**公式：静止 = 上限 × [restingWidthFactor]；有 hover 时那一条
   /// 最长（= 上限），其余按与它的距离线性递减，相隔 [falloffSpread] 条及以上
@@ -129,17 +140,6 @@ class TurnIndicator extends StatefulWidget {
     final weight = 1 - distance / falloffSpread;
     return resting + (maxBarWidth - resting) * weight;
   }
-
-  /// 条色的**唯一**公式：hover 那条与视口当前那条用行标签色，其余是静止档。
-  static Color barColorFor({
-    required bool highlighted,
-    required AthenaColors colors,
-  }) => highlighted
-      ? colors.textRowLabel
-      : colors.iconSecondary.withValues(alpha: restingBarAlpha);
-
-  @override
-  State<TurnIndicator> createState() => _TurnIndicatorState();
 }
 
 class _TurnIndicatorState extends State<TurnIndicator> {
@@ -148,20 +148,6 @@ class _TurnIndicatorState extends State<TurnIndicator> {
 
   Timer? _previewTimer;
   final Map<int, GlobalKey> _barKeys = {};
-
-  /// 整段会话画多少行 = 窗口那几轮 + 未加载的历史。窗口首轮的下标大于扫描到的
-  /// 总轮数时以窗口为准——新发出的消息先落进窗口、扫描还没跟上时会这样。
-  int get _rowCount => math.max(
-    widget.totalTurns,
-    widget.firstTurnIndex + widget.windowTurnCount,
-  );
-
-  /// 已加载窗口在整段会话里的下标区间（左闭右开）。
-  int get _windowStart => widget.firstTurnIndex;
-  int get _windowEnd => widget.firstTurnIndex + widget.windowTurnCount;
-
-  bool _isLoaded(int absoluteIndex) =>
-      absoluteIndex >= _windowStart && absoluteIndex < _windowEnd;
 
   /// 视口当前轮，**整段会话**的下标（[TurnNavigator.currentTurnIndex] 报的是
   /// 窗口内的下标，要加上窗口首轮的位置；-1 = 还没测出来、或本次没有轮次）。
@@ -182,10 +168,46 @@ class _TurnIndicatorState extends State<TurnIndicator> {
     return (anchor ~/ TurnIndicator.maxBars) * TurnIndicator.maxBars;
   }
 
+  /// 整段会话画多少行 = 窗口那几轮 + 未加载的历史。窗口首轮的下标大于扫描到的
+  /// 总轮数时以窗口为准——新发出的消息先落进窗口、扫描还没跟上时会这样。
+  int get _rowCount => math.max(
+    widget.totalTurns,
+    widget.firstTurnIndex + widget.windowTurnCount,
+  );
+
+  int get _windowEnd => widget.firstTurnIndex + widget.windowTurnCount;
+
+  /// 已加载窗口在整段会话里的下标区间（左闭右开）。
+  int get _windowStart => widget.firstTurnIndex;
+
   @override
-  void initState() {
-    super.initState();
-    widget.navigator.currentTurnIndex.addListener(_handleCurrentTurnChanged);
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rows = _rowCount;
+        final pageStart = _pageStart;
+        final pageEnd = math.min(pageStart + TurnIndicator.maxBars, rows);
+        final pageRows = math.max(0, pageEnd - pageStart);
+        // 一页最多 20 条，正常情况用满行高；窗口矮到放不下这一页时才压（那时
+        // 整列本来也铺不下）。压行高只针对**当前页**的轮数：按整段会话的轮数压，
+        // 几十轮就会压得点不中。
+        final rowHeight = pageRows <= 0 || !constraints.hasBoundedHeight
+            ? TurnIndicator.barRowHeight
+            : math.min(
+                TurnIndicator.barRowHeight,
+                constraints.maxHeight / pageRows,
+              );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = pageStart; index < pageEnd; index++)
+              _buildBar(colors, index, rowHeight),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -220,103 +242,16 @@ class _TurnIndicatorState extends State<TurnIndicator> {
     super.dispose();
   }
 
-  /// 视口当前轮变了：高亮那条要换色、当前轮跨过页边界时整列还要换页——都在
-  /// 这一次重建里（值由 getter 现取，不必先存一份）。
-  void _handleCurrentTurnChanged() {
-    if (mounted) setState(() {});
+  @override
+  void initState() {
+    super.initState();
+    widget.navigator.currentTurnIndex.addListener(_handleCurrentTurnChanged);
   }
 
   GlobalKey _barKey(int absoluteIndex) => _barKeys.putIfAbsent(
     absoluteIndex,
     () => GlobalKey(debugLabel: 'turn-bar-$absoluteIndex'),
   );
-
-  /// 指针停在某一轮上（页内已加载的条与未加载的历史条都调到这里）。
-  void _setHovered(int? absoluteIndex) {
-    if (_hoveredIndex == absoluteIndex) return;
-    _previewTimer?.cancel();
-    if (absoluteIndex != null && _isLoaded(absoluteIndex)) {
-      _previewTimer = Timer(
-        TurnIndicator.previewDelay,
-        () => _showPreview(absoluteIndex),
-      );
-    } else {
-      // 未加载的历史没有内容可预览：照样变长，但不弹卡
-      DesktopChatPreviewManager.instance.dismissFor(this);
-    }
-    setState(() => _hoveredIndex = absoluteIndex);
-  }
-
-  void _handleExit(int absoluteIndex) {
-    if (_hoveredIndex == absoluteIndex) _setHovered(null);
-  }
-
-  void _handleTap(int absoluteIndex) {
-    _previewTimer?.cancel();
-    DesktopChatPreviewManager.instance.dismissFor(this);
-    // 报整段会话的下标：宿主据此决定是直接滚，还是先翻页把这一轮补进来
-    widget.onTurnSelected(absoluteIndex);
-  }
-
-  void _showPreview(int absoluteIndex) {
-    if (!mounted ||
-        _hoveredIndex != absoluteIndex ||
-        !_isLoaded(absoluteIndex)) {
-      return;
-    }
-    final box =
-        _barKey(absoluteIndex).currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached) return;
-    final barRect = box.localToGlobal(Offset.zero) & box.size;
-    // 内容现取：它每帧都在变（流式正文），所以不进控件配置（见 [turnAt]）。
-    // 取不到 = 窗口已经翻走，这一轮不在库里了
-    final turn = widget.turnAt(absoluteIndex);
-    if (turn == null) return;
-    DesktopChatPreviewManager.instance.show(
-      context,
-      owner: this,
-      // 横向锚点取「最大条宽」而不是这条的当前宽度：条的宽度正随 hover
-      // 动画生长，卡片跟着长会让它抖，位置也因哪条被 hover 而变
-      anchor: Rect.fromLTRB(
-        barRect.left,
-        barRect.top,
-        barRect.left + widget.maxBarWidth,
-        barRect.bottom,
-      ),
-      title: turn.user.content,
-      answer: turn.answer,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final rows = _rowCount;
-        final pageStart = _pageStart;
-        final pageEnd = math.min(pageStart + TurnIndicator.maxBars, rows);
-        final pageRows = math.max(0, pageEnd - pageStart);
-        // 一页最多 20 条，正常情况用满行高；窗口矮到放不下这一页时才压（那时
-        // 整列本来也铺不下）。压行高只针对**当前页**的轮数：按整段会话的轮数压，
-        // 几十轮就会压得点不中。
-        final rowHeight = pageRows <= 0 || !constraints.hasBoundedHeight
-            ? TurnIndicator.barRowHeight
-            : math.min(
-                TurnIndicator.barRowHeight,
-                constraints.maxHeight / pageRows,
-              );
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var index = pageStart; index < pageEnd; index++)
-              _buildBar(colors, index, rowHeight),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildBar(AthenaColors colors, int absoluteIndex, double rowHeight) {
     // 视口当前那一轮与 hover 那一轮都用行标签色，其余次级图标色压到 45%——
@@ -356,6 +291,72 @@ class _TurnIndicatorState extends State<TurnIndicator> {
           ),
         ),
       ),
+    );
+  }
+
+  /// 视口当前轮变了：高亮那条要换色、当前轮跨过页边界时整列还要换页——都在
+  /// 这一次重建里（值由 getter 现取，不必先存一份）。
+  void _handleCurrentTurnChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleExit(int absoluteIndex) {
+    if (_hoveredIndex == absoluteIndex) _setHovered(null);
+  }
+
+  void _handleTap(int absoluteIndex) {
+    _previewTimer?.cancel();
+    DesktopChatPreviewManager.instance.dismissFor(this);
+    // 报整段会话的下标：宿主据此决定是直接滚，还是先翻页把这一轮补进来
+    widget.onTurnSelected(absoluteIndex);
+  }
+
+  bool _isLoaded(int absoluteIndex) =>
+      absoluteIndex >= _windowStart && absoluteIndex < _windowEnd;
+
+  /// 指针停在某一轮上（页内已加载的条与未加载的历史条都调到这里）。
+  void _setHovered(int? absoluteIndex) {
+    if (_hoveredIndex == absoluteIndex) return;
+    _previewTimer?.cancel();
+    if (absoluteIndex != null && _isLoaded(absoluteIndex)) {
+      _previewTimer = Timer(
+        TurnIndicator.previewDelay,
+        () => _showPreview(absoluteIndex),
+      );
+    } else {
+      // 未加载的历史没有内容可预览：照样变长，但不弹卡
+      DesktopChatPreviewManager.instance.dismissFor(this);
+    }
+    setState(() => _hoveredIndex = absoluteIndex);
+  }
+
+  void _showPreview(int absoluteIndex) {
+    if (!mounted ||
+        _hoveredIndex != absoluteIndex ||
+        !_isLoaded(absoluteIndex)) {
+      return;
+    }
+    final box =
+        _barKey(absoluteIndex).currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final barRect = box.localToGlobal(Offset.zero) & box.size;
+    // 内容现取：它每帧都在变（流式正文），所以不进控件配置（见 [turnAt]）。
+    // 取不到 = 窗口已经翻走，这一轮不在库里了
+    final turn = widget.turnAt(absoluteIndex);
+    if (turn == null) return;
+    DesktopChatPreviewManager.instance.show(
+      context,
+      owner: this,
+      // 横向锚点取「最大条宽」而不是这条的当前宽度：条的宽度正随 hover
+      // 动画生长，卡片跟着长会让它抖，位置也因哪条被 hover 而变
+      anchor: Rect.fromLTRB(
+        barRect.left,
+        barRect.top,
+        barRect.left + widget.maxBarWidth,
+        barRect.bottom,
+      ),
+      title: turn.user.content,
+      answer: turn.answer,
     );
   }
 }

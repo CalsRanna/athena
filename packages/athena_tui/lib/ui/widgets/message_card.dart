@@ -27,14 +27,6 @@ import 'package:nocterm/src/text/text_layout_engine.dart';
 /// 而非按固定宽度估算。终端尺寸变化时 LayoutBuilder 自动用新约束
 /// 重建,竖条行数随之精确更新。
 class MessageCard extends StatefulComponent {
-  const MessageCard({
-    super.key,
-    required this.color,
-    required this.child,
-    this.borderWidth = 0.5,
-    this.verticalPadding = 1,
-  });
-
   /// 左侧竖条颜色。
   final Color color;
 
@@ -47,6 +39,14 @@ class MessageCard extends StatefulComponent {
 
   /// 卡片整体上下内边距(行数,取整)。估算竖条长度时计入。
   final double verticalPadding;
+
+  const MessageCard({
+    super.key,
+    required this.color,
+    required this.child,
+    this.borderWidth = 0.5,
+    this.verticalPadding = 1,
+  });
 
   @override
   State<MessageCard> createState() => _MessageCardState();

@@ -1,18 +1,18 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/setting/component/panel.dart';
+import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/format/byte_size.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/panel.dart';
-import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 Data：数据目录、存储清理与重置。
 @RoutePage()
@@ -29,11 +29,11 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
   StorageUsage? _usage;
   var _loadingUsage = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUsage();
-  }
+  bool get _hasRewindSnapshots =>
+      !_loadingUsage && (_usage?.rewindSnapshotCount ?? 0) > 0;
+
+  bool get _hasToolOutputs =>
+      !_loadingUsage && (_usage?.toolOutputCount ?? 0) > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -105,32 +105,10 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
     );
   }
 
-  Future<void> _openFolder(String path) async {
-    final ok = await launchUrl(Uri.directory(path));
-    if (!ok && mounted) AthenaDialog.error('Unable to open $path');
-  }
-
-  bool get _hasRewindSnapshots =>
-      !_loadingUsage && (_usage?.rewindSnapshotCount ?? 0) > 0;
-
-  bool get _hasToolOutputs =>
-      !_loadingUsage && (_usage?.toolOutputCount ?? 0) > 0;
-
-  String _sizeSummary(int count, int bytes) =>
-      '$count ${count == 1 ? 'file' : 'files'} · ${ByteSize.formatByteSize(bytes)}';
-
-  Future<void> _loadUsage() async {
-    StorageUsage usage;
-    try {
-      usage = await GetIt.instance<StorageMaintenance>().measure();
-    } catch (_) {
-      usage = const StorageUsage();
-    }
-    if (!mounted) return;
-    setState(() {
-      _usage = usage;
-      _loadingUsage = false;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadUsage();
   }
 
   Future<void> _clearRewindSnapshots() async {
@@ -168,6 +146,41 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
     );
   }
 
+  Future<void> _handleReset() async {
+    final confirmed = await AthenaDialog.confirm(
+      'Reset Athena and permanently delete all local data and settings?',
+      dismissible: false,
+    );
+    if (!mounted || confirmed != true) return;
+    await _runDataOperation(
+      // 经 ChatViewModel 包一层：先停掉运行中的对话，清空后刷新会话列表
+      action: () =>
+          GetIt.instance<ChatViewModel>().runDataReset(viewModel.resetData),
+      successMessage: 'Athena has been reset',
+      cancelledMessage: 'Reset cancelled',
+      failureMessage: 'Unable to reset Athena',
+    );
+  }
+
+  Future<void> _loadUsage() async {
+    StorageUsage usage;
+    try {
+      usage = await GetIt.instance<StorageMaintenance>().measure();
+    } catch (_) {
+      usage = const StorageUsage();
+    }
+    if (!mounted) return;
+    setState(() {
+      _usage = usage;
+      _loadingUsage = false;
+    });
+  }
+
+  Future<void> _openFolder(String path) async {
+    final ok = await launchUrl(Uri.directory(path));
+    if (!ok && mounted) AthenaDialog.error('Unable to open $path');
+  }
+
   Future<void> _runCleanup({
     required Future<int> Function() action,
     required String Function(int count) successMessage,
@@ -190,22 +203,6 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
     } else {
       AthenaDialog.success(successMessage(deleted!));
     }
-  }
-
-  Future<void> _handleReset() async {
-    final confirmed = await AthenaDialog.confirm(
-      'Reset Athena and permanently delete all local data and settings?',
-      dismissible: false,
-    );
-    if (!mounted || confirmed != true) return;
-    await _runDataOperation(
-      // 经 ChatViewModel 包一层：先停掉运行中的对话，清空后刷新会话列表
-      action: () =>
-          GetIt.instance<ChatViewModel>().runDataReset(viewModel.resetData),
-      successMessage: 'Athena has been reset',
-      cancelledMessage: 'Reset cancelled',
-      failureMessage: 'Unable to reset Athena',
-    );
   }
 
   Future<void> _runDataOperation({
@@ -233,4 +230,7 @@ class _DesktopSettingDataPageState extends State<DesktopSettingDataPage> {
       AthenaDialog.info(cancelledMessage);
     }
   }
+
+  String _sizeSummary(int count, int bytes) =>
+      '$count ${count == 1 ? 'file' : 'files'} · ${ByteSize.formatByteSize(bytes)}';
 }

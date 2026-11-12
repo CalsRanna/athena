@@ -4,14 +4,15 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
+import 'package:athena_gui/page/desktop/setting/component/panel.dart';
+import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_name_form.dart';
 import 'package:athena_gui/page/desktop/setting/provider/provider_page.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
-import 'package:athena_gui/page/desktop/setting/component/panel.dart';
-import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +21,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   late Directory tempRoot;

@@ -6,6 +6,7 @@
 /// 行内控件见 `control.dart`，行类组件见 `row.dart`。
 library;
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -15,110 +16,138 @@ import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 设置面板外壳：居中浮层 + 遮罩。
+/// 标题带里的返回链接（钻取页：`← Providers`）。
 ///
-/// 左侧是分区导航，右侧固定标题栏与可滚动内容。面板尺寸不会随页面内容跳变。
-class AthenaSettingsPanel extends StatelessWidget {
-  final Widget nav;
-  final Widget content;
-  final VoidCallback? onClose;
-  const AthenaSettingsPanel({
+/// ghost 样式：静止无底，hover 前景色 5%，高 28、圆角 8；图标 14 +
+/// 标签 14 `textRowLabel`。
+class AthenaSettingsBackLink extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  const AthenaSettingsBackLink({super.key, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textRowLabel);
+    final children = [
+      Icon(
+        AthenaIcons.back,
+        color: colors.textRowLabel,
+        size: AthenaIcon.inlineSize,
+      ),
+      const SizedBox(width: 6),
+      Text(label, maxLines: 1, style: textStyle),
+    ];
+    return AthenaHover(
+      onTap: onTap,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AthenaPressScale(
+        enabled: onTap != null,
+        child: AnimatedContainer(
+          decoration: BoxDecoration(
+            // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+            borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+          ),
+          duration: AthenaMotion.hover,
+          height: 28,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AthenaSettings.rowInset,
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: children),
+        ),
+      ),
+    );
+  }
+}
+
+/// 空态：图标 + 标题 + 一句提示（+ 可选动作），居中放在分区里。
+class AthenaSettingsEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? hint;
+  final Widget? action;
+  const AthenaSettingsEmptyState({
     super.key,
-    required this.nav,
-    required this.content,
-    this.onClose,
+    required this.icon,
+    required this.title,
+    this.hint,
+    this.action,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final titleStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
+    final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [
-      _buildScrim(context),
-      Positioned.fill(child: Center(child: _buildPanel(context))),
-    ];
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): () => onClose?.call(),
-      },
-      child: Focus(autofocus: true, child: Stack(children: children)),
-    );
-  }
-
-  /// 遮罩只吸收点击，**不关闭面板**：Sentinel / Skill 的编辑区有显式 Save，
-  /// 误触遮罩会丢掉未保存的编辑。关闭走右上角的 X 或 Esc。
-  Widget _buildScrim(BuildContext context) {
-    final colors = context.athenaColors;
-    return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {},
-        child: ColoredBox(color: colors.scrim),
+      Icon(
+        icon,
+        color: colors.iconSecondary,
+        size: AthenaSettings.emptyStateIconSize,
       ),
+      const SizedBox(height: AthenaSpace.md),
+      Text(title, style: titleStyle, textAlign: TextAlign.center),
+      if (hint != null) const SizedBox(height: AthenaSpace.xs),
+      if (hint != null)
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Text(hint!, style: hintStyle, textAlign: TextAlign.center),
+        ),
+      if (action != null) const SizedBox(height: AthenaSpace.lg),
+      ?action,
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
+}
 
-  Widget _buildPanel(BuildContext context) {
+/// 一组行，行与行之间是 1px 的发丝线。
+///
+/// 实测分隔线 `#F3F3F3`，只跨文字列（与行的 hover 底不同宽）。
+class AthenaSettingsGroup extends StatelessWidget {
+  final List<Widget> children;
+  const AthenaSettingsGroup({super.key, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.athenaColors;
-    final decoration = BoxDecoration(
-      color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
-      boxShadow: AthenaShadow.modal(colors.shadow),
+    final spacer = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
+      child: Container(height: 1, color: colors.neutralRule),
     );
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const margin = AthenaSettings.panelMarginVertical;
-        final width = (constraints.maxWidth - 64).clamp(
-          320.0,
-          AthenaSettings.panelMaxWidth,
-        );
-        final height = (constraints.maxHeight - margin * 2) * 0.8;
-        final closeButton = onClose == null
-            ? null
-            : Positioned(
-                top: AthenaSettings.closeInset,
-                right: AthenaSettings.closeInset,
-                child: AthenaGhostIconButton(
-                  icon: LucideIcons.x,
-                  iconSize: AthenaSettings.closeIconSize,
-                  onTap: onClose,
-                ),
-              );
-        return Container(
-          width: width,
-          height: height,
-          decoration: decoration,
-          // 两种主题都保留前景装饰：从 null 切到非 null 会改变 Container
-          // 的子树层级，销毁右侧 AutoRouter，丢失已消费的子路由与页面状态。
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
-            border: Border.all(
-              color: context.athenaBrightness == Brightness.dark
-                  ? colors.border
-                  : colors.border.withValues(alpha: 0),
-            ),
-          ),
-          // 面板内必须有 Material：设置路由是**非透明**路由，没有 Scaffold，
-          // 而内容区里的输入框（TextField）需要 Material 祖先。
-          child: Material(
-            color: colors.surfaceMobile,
-            borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                Row(
-                  children: [
-                    nav,
-                    Expanded(child: content),
-                  ],
-                ),
-                ?closeButton,
-              ],
-            ),
-          ),
-        );
-      },
+    final merged = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0) merged.add(spacer);
+      merged.add(children[i]);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: merged,
     );
+  }
+}
+
+/// 把任意内容对齐到文字列（补上行自带的那 8 内缩）。
+///
+/// 多行输入、段落、标签组这类不是「行」的内容放进分区时用它包一层。
+class AthenaSettingsInset extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  const AthenaSettingsInset({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: AthenaSettings.rowInset,
+    ),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(padding: padding, child: child);
   }
 }
 
@@ -218,47 +247,150 @@ class AthenaSettingsPane extends StatelessWidget {
   }
 }
 
-/// 标题带里的返回链接（钻取页：`← Providers`）。
+/// 设置面板外壳：居中浮层 + 遮罩。
 ///
-/// ghost 样式：静止无底，hover 前景色 5%，高 28、圆角 8；图标 14 +
-/// 标签 14 `textRowLabel`。
-class AthenaSettingsBackLink extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  const AthenaSettingsBackLink({super.key, required this.label, this.onTap});
+/// 左侧是分区导航，右侧固定标题栏与可滚动内容。面板尺寸不会随页面内容跳变。
+class AthenaSettingsPanel extends StatelessWidget {
+  final Widget nav;
+  final Widget content;
+  final VoidCallback? onClose;
+  const AthenaSettingsPanel({
+    super.key,
+    required this.nav,
+    required this.content,
+    this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final children = [
+      _buildScrim(context),
+      Positioned.fill(child: Center(child: _buildPanel(context))),
+    ];
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () => onClose?.call(),
+      },
+      child: Focus(autofocus: true, child: Stack(children: children)),
+    );
+  }
+
+  Widget _buildPanel(BuildContext context) {
+    final colors = context.athenaColors;
+    final decoration = BoxDecoration(
+      color: colors.surfaceMobile,
+      borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+      boxShadow: AthenaShadow.modal(colors.shadow),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const margin = AthenaSettings.panelMarginVertical;
+        final width = (constraints.maxWidth - 64).clamp(
+          320.0,
+          AthenaSettings.panelMaxWidth,
+        );
+        final height = (constraints.maxHeight - margin * 2) * 0.8;
+        final closeButton = onClose == null
+            ? null
+            : Positioned(
+                top: AthenaSettings.closeInset,
+                right: AthenaSettings.closeInset,
+                child: AthenaGhostIconButton(
+                  icon: LucideIcons.x,
+                  iconSize: AthenaSettings.closeIconSize,
+                  onTap: onClose,
+                ),
+              );
+        return Container(
+          width: width,
+          height: height,
+          decoration: decoration,
+          // 两种主题都保留前景装饰：从 null 切到非 null 会改变 Container
+          // 的子树层级，销毁右侧 AutoRouter，丢失已消费的子路由与页面状态。
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+            border: Border.all(
+              color: context.athenaBrightness == Brightness.dark
+                  ? colors.border
+                  : colors.border.withValues(alpha: 0),
+            ),
+          ),
+          // 面板内必须有 Material：设置路由是**非透明**路由，没有 Scaffold，
+          // 而内容区里的输入框（TextField）需要 Material 祖先。
+          child: Material(
+            color: colors.surfaceMobile,
+            borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                Row(
+                  children: [
+                    nav,
+                    Expanded(child: content),
+                  ],
+                ),
+                ?closeButton,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 遮罩只吸收点击，**不关闭面板**：Sentinel / Skill 的编辑区有显式 Save，
+  /// 误触遮罩会丢掉未保存的编辑。关闭走右上角的 X 或 Esc。
+  Widget _buildScrim(BuildContext context) {
+    final colors = context.athenaColors;
+    return Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {},
+        child: ColoredBox(color: colors.scrim),
+      ),
+    );
+  }
+}
+
+/// 底部粘性的「未保存改动」栏：一句提示 + Discard + Save。
+///
+/// 只在编辑区脏了才出现；上边一条 `neutralBorder`，底色与内容区同为纯白。
+class AthenaSettingsSaveBar extends StatelessWidget {
+  final String message;
+  final VoidCallback? onDiscard;
+  final VoidCallback? onSave;
+  final String saveLabel;
+  const AthenaSettingsSaveBar({
+    super.key,
+    this.message = 'You have unsaved changes',
+    this.onDiscard,
+    this.onSave,
+    this.saveLabel = 'Save',
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
-    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textRowLabel);
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
     final children = [
-      Icon(
-        AthenaIcons.back,
-        color: colors.textRowLabel,
-        size: AthenaIcon.inlineSize,
+      Expanded(child: Text(message, maxLines: 1, style: textStyle)),
+      AthenaSecondaryButton.small(
+        onTap: onDiscard,
+        child: const Text('Discard'),
       ),
-      const SizedBox(width: 6),
-      Text(label, maxLines: 1, style: textStyle),
+      const SizedBox(width: AthenaSpace.sm),
+      AthenaPrimaryButton.small(onTap: onSave, child: Text(saveLabel)),
     ];
-    return AthenaHover(
-      onTap: onTap,
-      cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AthenaPressScale(
-        enabled: onTap != null,
-        child: AnimatedContainer(
-          decoration: BoxDecoration(
-            // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
-            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-            borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-          ),
-          duration: AthenaMotion.hover,
-          height: 28,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AthenaSettings.rowInset,
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: children),
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceMobile,
+        border: Border(top: BorderSide(color: colors.neutralBorder)),
       ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthenaSettings.panePadding,
+        vertical: AthenaSpace.md,
+      ),
+      child: Row(children: children),
     );
   }
 }
@@ -323,138 +455,6 @@ class AthenaSettingsSection extends StatelessWidget {
           AthenaSettingsGroup(children: children),
         ],
       ),
-    );
-  }
-}
-
-/// 一组行，行与行之间是 1px 的发丝线。
-///
-/// 实测分隔线 `#F3F3F3`，只跨文字列（与行的 hover 底不同宽）。
-class AthenaSettingsGroup extends StatelessWidget {
-  final List<Widget> children;
-  const AthenaSettingsGroup({super.key, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final spacer = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
-      child: Container(height: 1, color: colors.neutralRule),
-    );
-    final merged = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) merged.add(spacer);
-      merged.add(children[i]);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: merged,
-    );
-  }
-}
-
-/// 把任意内容对齐到文字列（补上行自带的那 8 内缩）。
-///
-/// 多行输入、段落、标签组这类不是「行」的内容放进分区时用它包一层。
-class AthenaSettingsInset extends StatelessWidget {
-  final Widget child;
-  final EdgeInsets padding;
-  const AthenaSettingsInset({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.symmetric(
-      horizontal: AthenaSettings.rowInset,
-    ),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(padding: padding, child: child);
-  }
-}
-
-/// 底部粘性的「未保存改动」栏：一句提示 + Discard + Save。
-///
-/// 只在编辑区脏了才出现；上边一条 `neutralBorder`，底色与内容区同为纯白。
-class AthenaSettingsSaveBar extends StatelessWidget {
-  final String message;
-  final VoidCallback? onDiscard;
-  final VoidCallback? onSave;
-  final String saveLabel;
-  const AthenaSettingsSaveBar({
-    super.key,
-    this.message = 'You have unsaved changes',
-    this.onDiscard,
-    this.onSave,
-    this.saveLabel = 'Save',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
-    final children = [
-      Expanded(child: Text(message, maxLines: 1, style: textStyle)),
-      AthenaSecondaryButton.small(
-        onTap: onDiscard,
-        child: const Text('Discard'),
-      ),
-      const SizedBox(width: AthenaSpace.sm),
-      AthenaPrimaryButton.small(onTap: onSave, child: Text(saveLabel)),
-    ];
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceMobile,
-        border: Border(top: BorderSide(color: colors.neutralBorder)),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AthenaSettings.panePadding,
-        vertical: AthenaSpace.md,
-      ),
-      child: Row(children: children),
-    );
-  }
-}
-
-/// 空态：图标 + 标题 + 一句提示（+ 可选动作），居中放在分区里。
-class AthenaSettingsEmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? hint;
-  final Widget? action;
-  const AthenaSettingsEmptyState({
-    super.key,
-    required this.icon,
-    required this.title,
-    this.hint,
-    this.action,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final titleStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
-    final hintStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
-    final children = [
-      Icon(
-        icon,
-        color: colors.iconSecondary,
-        size: AthenaSettings.emptyStateIconSize,
-      ),
-      const SizedBox(height: AthenaSpace.md),
-      Text(title, style: titleStyle, textAlign: TextAlign.center),
-      if (hint != null) const SizedBox(height: AthenaSpace.xs),
-      if (hint != null)
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Text(hint!, style: hintStyle, textAlign: TextAlign.center),
-        ),
-      if (action != null) const SizedBox(height: AthenaSpace.lg),
-      ?action,
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }

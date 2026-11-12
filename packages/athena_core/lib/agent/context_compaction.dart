@@ -8,15 +8,13 @@ import 'package:openai_dart/openai_dart.dart';
 typedef ContextCompactionCallback =
     Stream<ContextCompactionUpdate> Function(ContextCompactionRequest request);
 
-class ContextCompactionUpdate {
-  const ContextCompactionUpdate(this.step, {this.messages});
-  final CompactionStep step;
-
-  /// Present only after the summary and its coverage have been committed.
-  final List<ChatMessage>? messages;
-}
-
 class ContextCompactionRequest {
+  final List<ChatMessage> messages;
+
+  final List<Tool>? tools;
+  final ContextBudget budget;
+  final ToolOutputStore outputs;
+  final CancelToken cancelToken;
   const ContextCompactionRequest({
     required this.messages,
     required this.tools,
@@ -24,10 +22,13 @@ class ContextCompactionRequest {
     required this.outputs,
     required this.cancelToken,
   });
+}
 
-  final List<ChatMessage> messages;
-  final List<Tool>? tools;
-  final ContextBudget budget;
-  final ToolOutputStore outputs;
-  final CancelToken cancelToken;
+class ContextCompactionUpdate {
+  final CompactionStep step;
+
+  /// Present only after the summary and its coverage have been committed.
+  final List<ChatMessage>? messages;
+
+  const ContextCompactionUpdate(this.step, {this.messages});
 }

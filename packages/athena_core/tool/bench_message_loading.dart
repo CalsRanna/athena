@@ -52,24 +52,16 @@ Future<void> main(List<String> args) async {
   }
 }
 
-/// 首屏窗口走的是仓储的新接口（小会话整段 / 大会话尾部一页）。
-Future<void> _initial(Directory dir, String chatId, int pageSize) async {
-  final repository = JsonlSessionRepository(
-    sessionsDir: dir,
-    locks: LockRegistry(dir.parent),
-    idGenerator: const IdGenerator(),
-  );
-  late MessageWindow window;
-  final best = await _best(() async {
-    window = await repository.loadInitialMessages(chatId, pageSize: pageSize);
-  }, runs: 5);
-  final file = File('${dir.path}/$chatId.jsonl');
-  stdout.writeln(
-    '$chatId.jsonl  文件 ${await file.exists() ? _mb(await file.length()) : '不存在'}  '
-    '首屏 ${_ms(best)}  '
-    '拿到 ${window.messages.length} 条  hasOlder=${window.hasOlder}'
-    '${window.hasOlder ? '（仍分页）' : '（整段，不分页）'}',
-  );
+Future<double> _best(Future<void> Function() action, {int runs = 7}) async {
+  final samples = <double>[];
+  for (var i = 0; i < runs; i++) {
+    final watch = Stopwatch()..start();
+    await action();
+    watch.stop();
+    samples.add(watch.elapsedMicroseconds / 1000);
+  }
+  samples.sort();
+  return samples.first;
 }
 
 /// 连续翻 [pages] 页（宿主 `_selectTurn` 最多向上翻 8 页去补历史），量点一轮的等待。
@@ -93,25 +85,27 @@ Future<void> _chainedPages(File file, int pages) async {
   );
 }
 
-/// 只读基准:读路径不加锁,锁仓库只是构造参数,按生产布局给它会话目录的上一级
-/// (这样万一哪天量到写路径,锁的位置与运行时一致)。
-SessionJsonlStore _store(File file) => SessionJsonlStore(
-  file: file,
-  locks: LockRegistry(file.parent.parent),
-  idGenerator: const IdGenerator(),
-);
-
-Future<double> _best(Future<void> Function() action, {int runs = 7}) async {
-  final samples = <double>[];
-  for (var i = 0; i < runs; i++) {
-    final watch = Stopwatch()..start();
-    await action();
-    watch.stop();
-    samples.add(watch.elapsedMicroseconds / 1000);
-  }
-  samples.sort();
-  return samples.first;
+/// 首屏窗口走的是仓储的新接口（小会话整段 / 大会话尾部一页）。
+Future<void> _initial(Directory dir, String chatId, int pageSize) async {
+  final repository = JsonlSessionRepository(
+    sessionsDir: dir,
+    locks: LockRegistry(dir.parent),
+    idGenerator: const IdGenerator(),
+  );
+  late MessageWindow window;
+  final best = await _best(() async {
+    window = await repository.loadInitialMessages(chatId, pageSize: pageSize);
+  }, runs: 5);
+  final file = File('${dir.path}/$chatId.jsonl');
+  stdout.writeln(
+    '$chatId.jsonl  文件 ${await file.exists() ? _mb(await file.length()) : '不存在'}  '
+    '首屏 ${_ms(best)}  '
+    '拿到 ${window.messages.length} 条  hasOlder=${window.hasOlder}'
+    '${window.hasOlder ? '（仍分页）' : '（整段，不分页）'}',
+  );
 }
+
+String _mb(int bytes) => '${(bytes / 1024 / 1024).toStringAsFixed(2)}MB';
 
 Future<double> _median(Future<void> Function() action, {int runs = 7}) async {
   final samples = <double>[];
@@ -127,7 +121,72 @@ Future<double> _median(Future<void> Function() action, {int runs = 7}) async {
 
 String _ms(double value) => '${value.toStringAsFixed(1)}ms';
 
-String _mb(int bytes) => '${(bytes / 1024 / 1024).toStringAsFixed(2)}MB';
+/// 单场景进程 RSS：`none`（基线）/ `窗口 51` / `all`。
+Future<void> _rss(String mode, File file) async {
+  final store = _store(file);
+  final base = ProcessInfo.currentRss;
+  List<MessageEntity> held = const [];
+  var rows = 0;
+  if (mode == 'all') {
+    final all = await store.readMessageRows();
+    held = [for (final row in all) MessageEntity.fromJson(row)];
+    rows = held.length;
+  } else if (mode != 'none') {
+    final page = await store.loadRecentRows(int.parse(mode));
+    held = [for (final row in page) MessageEntity.fromJson(row)];
+    rows = held.length;
+  }
+  // 防优化：真的用一下
+  final chars = held.fold<int>(0, (sum, m) => sum + m.content.length);
+  stdout.writeln(
+    '${file.path.split('/').last}  模式=$mode  持有 $rows 条  内容字符 $chars\n'
+    '    RSS 基线 ${_mb(base)} → 之后 ${_mb(ProcessInfo.currentRss)}'
+    '   增量 ${_mb(ProcessInfo.currentRss - base)}',
+  );
+}
+
+/// 只读基准:读路径不加锁,锁仓库只是构造参数,按生产布局给它会话目录的上一级
+/// (这样万一哪天量到写路径,锁的位置与运行时一致)。
+SessionJsonlStore _store(File file) => SessionJsonlStore(
+  file: file,
+  locks: LockRegistry(file.parent.parent),
+  idGenerator: const IdGenerator(),
+);
+
+/// 合成"文本为主"的长会话（行密度按真实文件：约 8KB/行），看规模曲线。
+Future<void> _synthetic(Directory dir) async {
+  await dir.create(recursive: true);
+  const perRow = 8000; // ≈ 252.jsonl 的每行文本量
+  for (final rowCount in [500, 2000, 5000, 20000]) {
+    final file = File('${dir.path}/synth_$rowCount.jsonl');
+    final sink = file.openWrite();
+    sink.writeln(
+      jsonEncode({'type': 'chat', 'id': 1, 'title': 'synth', 'model_id': 1}),
+    );
+    final filler = 'x' * perRow;
+    for (var i = 1; i <= rowCount; i++) {
+      final role = i.isOdd ? 'user' : 'assistant';
+      sink.writeln(
+        jsonEncode({
+          'type': 'message',
+          'id': i,
+          'chat_id': 1,
+          'role': role,
+          'content': 'row $i $filler',
+          'reasoning_content': '',
+          'reasoning': 0,
+          'image_urls': '',
+          'reference': '',
+          'tool_calls': '',
+          'tool_results': '',
+          'compacted': 0,
+        }),
+      );
+    }
+    await sink.close();
+    await _timeFile(file);
+  }
+}
 
 /// 把一个文件里"分页那两条路径"与"全量"的耗时摆在一起。
 Future<void> _timeFile(File file) async {
@@ -179,63 +238,4 @@ Future<void> _timeFile(File file) async {
     '   全量/首屏最快比 ${(full / firstPage).toStringAsFixed(1)}x'
     '   持有实体 ${lastHeld.length}',
   );
-}
-
-/// 单场景进程 RSS：`none`（基线）/ `窗口 51` / `all`。
-Future<void> _rss(String mode, File file) async {
-  final store = _store(file);
-  final base = ProcessInfo.currentRss;
-  List<MessageEntity> held = const [];
-  var rows = 0;
-  if (mode == 'all') {
-    final all = await store.readMessageRows();
-    held = [for (final row in all) MessageEntity.fromJson(row)];
-    rows = held.length;
-  } else if (mode != 'none') {
-    final page = await store.loadRecentRows(int.parse(mode));
-    held = [for (final row in page) MessageEntity.fromJson(row)];
-    rows = held.length;
-  }
-  // 防优化：真的用一下
-  final chars = held.fold<int>(0, (sum, m) => sum + m.content.length);
-  stdout.writeln(
-    '${file.path.split('/').last}  模式=$mode  持有 $rows 条  内容字符 $chars\n'
-    '    RSS 基线 ${_mb(base)} → 之后 ${_mb(ProcessInfo.currentRss)}'
-    '   增量 ${_mb(ProcessInfo.currentRss - base)}',
-  );
-}
-
-/// 合成"文本为主"的长会话（行密度按真实文件：约 8KB/行），看规模曲线。
-Future<void> _synthetic(Directory dir) async {
-  await dir.create(recursive: true);
-  const perRow = 8000; // ≈ 252.jsonl 的每行文本量
-  for (final rowCount in [500, 2000, 5000, 20000]) {
-    final file = File('${dir.path}/synth_$rowCount.jsonl');
-    final sink = file.openWrite();
-    sink.writeln(
-      jsonEncode({'type': 'chat', 'id': 1, 'title': 'synth', 'model_id': 1}),
-    );
-    final filler = 'x' * perRow;
-    for (var i = 1; i <= rowCount; i++) {
-      final role = i.isOdd ? 'user' : 'assistant';
-      sink.writeln(
-        jsonEncode({
-          'type': 'message',
-          'id': i,
-          'chat_id': 1,
-          'role': role,
-          'content': 'row $i $filler',
-          'reasoning_content': '',
-          'reasoning': 0,
-          'image_urls': '',
-          'reference': '',
-          'tool_calls': '',
-          'tool_results': '',
-          'compacted': 0,
-        }),
-      );
-    }
-    await sink.close();
-    await _timeFile(file);
-  }
 }

@@ -14,6 +14,33 @@ import 'package:flutter/widgets.dart';
 /// 抽成独立助手是为了能单独验证这套坐标系换算：真正的消息列表要接
 /// GetIt / 主题，探针里跑不起来。
 abstract final class SliverItemMetrics {
+  /// 已构建子项的平均主轴尺寸；没有子项时返回 0。
+  static double averageChildExtent(RenderSliverList sliver) {
+    var total = 0.0;
+    var count = 0;
+    _visitLaidOut(sliver, (index, offset, extent) {
+      total += extent;
+      count++;
+    });
+    return count == 0 ? 0 : total / count;
+  }
+
+  /// 视口里**占得最多**的那一项下标：它就是"用户此刻在看的那一项"。
+  static int? dominantItemIndex(RenderSliverList sliver) {
+    final constraints = sliver.constraints;
+    final top = constraints.scrollOffset;
+    final bottom = top + constraints.viewportMainAxisExtent;
+    int? bestIndex;
+    var bestOverlap = 0.0;
+    _visitLaidOut(sliver, (index, offset, extent) {
+      final overlap = math.min(offset + extent, bottom) - math.max(offset, top);
+      if (overlap <= bestOverlap) return;
+      bestOverlap = overlap;
+      bestIndex = index;
+    });
+    return bestIndex;
+  }
+
   /// 视口内**可见**的第一项下标；没有已构建的子项时返回 null。
   ///
   /// 用来判断"目标在视口上方还是下方"，不用于高亮：贴着列表底部时，视口顶
@@ -33,22 +60,6 @@ abstract final class SliverItemMetrics {
     return bestIndex;
   }
 
-  /// 视口里**占得最多**的那一项下标：它就是"用户此刻在看的那一项"。
-  static int? dominantItemIndex(RenderSliverList sliver) {
-    final constraints = sliver.constraints;
-    final top = constraints.scrollOffset;
-    final bottom = top + constraints.viewportMainAxisExtent;
-    int? bestIndex;
-    var bestOverlap = 0.0;
-    _visitLaidOut(sliver, (index, offset, extent) {
-      final overlap = math.min(offset + extent, bottom) - math.max(offset, top);
-      if (overlap <= bestOverlap) return;
-      bestOverlap = overlap;
-      bestIndex = index;
-    });
-    return bestIndex;
-  }
-
   /// 把第 [itemIndex] 项顶到视口首边所需的滚动偏移；该项未被构建时返回 null。
   static double? viewportOffsetOf(
     RenderSliverList sliver,
@@ -62,17 +73,6 @@ abstract final class SliverItemMetrics {
     final offset = layoutOffset;
     if (offset == null) return null;
     return position.pixels + (offset - sliver.constraints.scrollOffset);
-  }
-
-  /// 已构建子项的平均主轴尺寸；没有子项时返回 0。
-  static double averageChildExtent(RenderSliverList sliver) {
-    var total = 0.0;
-    var count = 0;
-    _visitLaidOut(sliver, (index, offset, extent) {
-      total += extent;
-      count++;
-    });
-    return count == 0 ? 0 : total / count;
   }
 
   /// 遍历**已构建且在视口内**的子项。

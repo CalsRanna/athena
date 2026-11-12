@@ -1,25 +1,25 @@
 import 'dart:async';
 
-import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
-import 'package:athena_gui/component/message_sliver.dart';
-import 'package:athena_gui/component/message_list_scroll_controller.dart';
-import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
-import 'package:athena_gui/component/turn_navigator.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/component/elicit_card.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/component/message_sliver.dart';
+import 'package:athena_gui/component/permission_card.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/component/turn_navigator.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
+import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
-import 'package:athena_gui/component/elicit_card.dart';
-import 'package:athena_gui/component/permission_card.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -71,18 +71,6 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   /// 与 [_railKey] 相反，它每帧都刷新：不进控件配置，只被回调读。
   List<ChatTurn> _windowTurns = const [];
   int _windowFirstTurnIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    chatViewModel = GetIt.instance<ChatViewModel>();
-  }
-
-  @override
-  void dispose() {
-    turnNavigator.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +241,18 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     }
   }
 
+  @override
+  void dispose() {
+    turnNavigator.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    chatViewModel = GetIt.instance<ChatViewModel>();
+  }
+
   void openContextMenu(TapUpDetails details, MessageEntity message) {
     DesktopContextMenuManager.instance.show(
       context,
@@ -270,108 +270,6 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         ],
       ),
     );
-  }
-
-  bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0 ||
-        notification is! ScrollUpdateNotification ||
-        (notification.scrollDelta ?? 0) >= 0 ||
-        notification.metrics.extentBefore > _loadOlderThreshold ||
-        !chatViewModel.hasOlderMessages) {
-      return false;
-    }
-
-    final controller = widget.controller;
-    if (controller == null) {
-      unawaited(chatViewModel.loadOlderMessages());
-    } else {
-      unawaited(
-        controller.preservePositionWhilePrepending(
-          chatViewModel.loadOlderMessages,
-        ),
-      );
-    }
-    return false;
-  }
-
-  /// 点了第 [absoluteTurnIndex] 轮（整段会话下标）。
-  ///
-  /// 已经在窗口里就直接滚过去；在窗口之前（更早、还没加载）就先向上翻页，直到
-  /// 那一轮进窗口再滚——否则点了没有任何反应。翻页有上限，到头（没有更早的
-  /// 历史）也停下，避免点到一个已不存在的轮次后一直翻。
-  Future<void> _selectTurn(int absoluteTurnIndex) async {
-    for (var attempt = 0; attempt <= _maxTurnJumpPages; attempt++) {
-      final windowTurns = ChatTurn.buildChatTurns(chatViewModel.messages.value);
-      final windowIndex =
-          absoluteTurnIndex -
-          ChatTurn.windowFirstTurnIndex(
-            chatViewModel.turnStartIds.value,
-            windowTurns,
-          );
-      if (windowIndex >= 0 && windowIndex < windowTurns.length) {
-        turnNavigator.scrollToTurn(windowIndex);
-        return;
-      }
-      // 比窗口还新（正常不会发生）或没有更早的历史了：停下
-      if (windowIndex >= 0 || !chatViewModel.hasOlderMessages) return;
-      final added = await chatViewModel.loadOlderMessages();
-      if (added <= 0) return;
-    }
-  }
-
-  /// 轮次条 hover 到第 [absoluteIndex] 轮（整段会话下标）时取它的内容。
-  /// 不在当前窗口里就返回 null，那一次预览直接跳过。
-  ChatTurn? _turnAt(int absoluteIndex) {
-    final index = absoluteIndex - _windowFirstTurnIndex;
-    return index >= 0 && index < _windowTurns.length
-        ? _windowTurns[index]
-        : null;
-  }
-
-  /// 取轮次条子树：结构没变就复用上一次的实例。
-  ///
-  /// 复用是**必需的**，不是优化：宿主每次构建都由 `SignalBuilder` 触发（agent 工作
-  /// 期间每帧一次），照常传一棵新子树会让它逐帧重建，而重建传导下去的脏标记
-  /// 会绕过 `RepaintBoundary`——实测逐帧重绘（见 [_railKey] 的注释）。
-  /// 结构真变了才新建，此时重建一次是该的。
-  Widget _railFor({
-    required int windowTurnCount,
-    required int totalTurns,
-    required int firstTurnIndex,
-    required double barWidth,
-  }) {
-    final key = (
-      windowTurnCount: windowTurnCount,
-      totalTurns: totalTurns,
-      firstTurnIndex: firstTurnIndex,
-      barWidth: barWidth,
-    );
-    if (_rail != null && _railKey == key) return _rail!;
-    _railKey = key;
-    return _rail = RepaintBoundary(
-      // 会话 id 进 key：两条会话的轮数恰好相同时结构 key 相等，光看结构 key
-      // 会把上一条会话的 State（hover、预览卡、条的 GlobalKey）带过来
-      key: ValueKey(_displayedChatId),
-      child: TurnIndicator(
-        windowTurnCount: windowTurnCount,
-        turnAt: _turnAt,
-        navigator: turnNavigator,
-        maxBarWidth: barWidth,
-        totalTurns: totalTurns,
-        firstTurnIndex: firstTurnIndex,
-        onTurnSelected: _selectTurn,
-      ),
-    );
-  }
-
-  SentinelEntity _displaySentinel() {
-    if (chatViewModel.currentChat.value?.hasSentinel == false ||
-        chatViewModel.currentSentinel.value?.id ==
-            SentinelViewModel.directChatSentinel.id) {
-      return SentinelViewModel.directChatSentinel;
-    }
-    return chatViewModel.currentSentinel.value ??
-        sentinelViewModel.defaultSentinel.value;
   }
 
   /// 消息列表本体：空会话显示角色占位，否则是带懒加载的滚动列表。
@@ -426,5 +324,107 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         ),
       ),
     );
+  }
+
+  SentinelEntity _displaySentinel() {
+    if (chatViewModel.currentChat.value?.hasSentinel == false ||
+        chatViewModel.currentSentinel.value?.id ==
+            SentinelViewModel.directChatSentinel.id) {
+      return SentinelViewModel.directChatSentinel;
+    }
+    return chatViewModel.currentSentinel.value ??
+        sentinelViewModel.defaultSentinel.value;
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0 ||
+        notification is! ScrollUpdateNotification ||
+        (notification.scrollDelta ?? 0) >= 0 ||
+        notification.metrics.extentBefore > _loadOlderThreshold ||
+        !chatViewModel.hasOlderMessages) {
+      return false;
+    }
+
+    final controller = widget.controller;
+    if (controller == null) {
+      unawaited(chatViewModel.loadOlderMessages());
+    } else {
+      unawaited(
+        controller.preservePositionWhilePrepending(
+          chatViewModel.loadOlderMessages,
+        ),
+      );
+    }
+    return false;
+  }
+
+  /// 取轮次条子树：结构没变就复用上一次的实例。
+  ///
+  /// 复用是**必需的**，不是优化：宿主每次构建都由 `SignalBuilder` 触发（agent 工作
+  /// 期间每帧一次），照常传一棵新子树会让它逐帧重建，而重建传导下去的脏标记
+  /// 会绕过 `RepaintBoundary`——实测逐帧重绘（见 [_railKey] 的注释）。
+  /// 结构真变了才新建，此时重建一次是该的。
+  Widget _railFor({
+    required int windowTurnCount,
+    required int totalTurns,
+    required int firstTurnIndex,
+    required double barWidth,
+  }) {
+    final key = (
+      windowTurnCount: windowTurnCount,
+      totalTurns: totalTurns,
+      firstTurnIndex: firstTurnIndex,
+      barWidth: barWidth,
+    );
+    if (_rail != null && _railKey == key) return _rail!;
+    _railKey = key;
+    return _rail = RepaintBoundary(
+      // 会话 id 进 key：两条会话的轮数恰好相同时结构 key 相等，光看结构 key
+      // 会把上一条会话的 State（hover、预览卡、条的 GlobalKey）带过来
+      key: ValueKey(_displayedChatId),
+      child: TurnIndicator(
+        windowTurnCount: windowTurnCount,
+        turnAt: _turnAt,
+        navigator: turnNavigator,
+        maxBarWidth: barWidth,
+        totalTurns: totalTurns,
+        firstTurnIndex: firstTurnIndex,
+        onTurnSelected: _selectTurn,
+      ),
+    );
+  }
+
+  /// 点了第 [absoluteTurnIndex] 轮（整段会话下标）。
+  ///
+  /// 已经在窗口里就直接滚过去；在窗口之前（更早、还没加载）就先向上翻页，直到
+  /// 那一轮进窗口再滚——否则点了没有任何反应。翻页有上限，到头（没有更早的
+  /// 历史）也停下，避免点到一个已不存在的轮次后一直翻。
+  Future<void> _selectTurn(int absoluteTurnIndex) async {
+    for (var attempt = 0; attempt <= _maxTurnJumpPages; attempt++) {
+      final windowTurns = ChatTurn.buildChatTurns(chatViewModel.messages.value);
+      final windowIndex =
+          absoluteTurnIndex -
+          ChatTurn.windowFirstTurnIndex(
+            chatViewModel.turnStartIds.value,
+            windowTurns,
+          );
+      if (windowIndex >= 0 && windowIndex < windowTurns.length) {
+        turnNavigator.scrollToTurn(windowIndex);
+        return;
+      }
+      // 比窗口还新（正常不会发生）或没有更早的历史了：停下
+      if (windowIndex >= 0 || !chatViewModel.hasOlderMessages) return;
+      final added = await chatViewModel.loadOlderMessages();
+      if (added <= 0) return;
+    }
+  }
+
+  /// 轮次条 hover 到第 [absoluteIndex] 轮（整段会话下标）时取它的内容。
+  /// 不在当前窗口里就返回 null，那一次预览直接跳过。
+  ChatTurn? _turnAt(int absoluteIndex) {
+    final index = absoluteIndex - _windowFirstTurnIndex;
+    return index >= 0 && index < _windowTurns.length
+        ? _windowTurns[index]
+        : null;
   }
 }

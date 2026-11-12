@@ -8,8 +8,8 @@ import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
-import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
+import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
@@ -486,16 +486,16 @@ class _StubBashTool extends BashShellTool {
 }
 
 class _StubFileReadTool extends FileReadTool {
+  int executions = 0;
+
+  int _active = 0;
+  int maxConcurrent = 0;
   @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => executeResult(args, onUpdate: onUpdate);
-
-  int executions = 0;
-  int _active = 0;
-  int maxConcurrent = 0;
 
   @override
   Future<ToolExecutionResult> executeResult(
@@ -521,9 +521,8 @@ class _StubFileWriteTool extends FileWriteTool {
 
 /// 第一轮请求工具,第二轮结束;非流式请求由真实 AI 审核器发起。
 class _ToolCompletionService extends ChatCompletionsService {
-  _ToolCompletionService() : super(llmClient: LlmClient());
-
   final List<String> reviews = [];
+
   String reviewDecision = 'allow';
   String? reviewResponse;
   void Function()? duringReview;
@@ -534,6 +533,19 @@ class _ToolCompletionService extends ChatCompletionsService {
   Map<String, dynamic> nextArguments = {};
   int _turn = 0;
   String? firstSystemPrompt;
+  _ToolCompletionService() : super(llmClient: LlmClient());
+
+  @override
+  Future<String> complete({
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    Future<void>? cancelSignal,
+  }) async {
+    reviews.add(jsonEncode(messages.map((m) => m.toJson()).toList()));
+    duringReview?.call();
+    return reviewResponse ?? jsonEncode({'decision': reviewDecision});
+  }
 
   @override
   Stream<ChatStreamEvent> getCompletion({
@@ -583,17 +595,5 @@ class _ToolCompletionService extends ChatCompletionsService {
         },
       ],
     });
-  }
-
-  @override
-  Future<String> complete({
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    Future<void>? cancelSignal,
-  }) async {
-    reviews.add(jsonEncode(messages.map((m) => m.toJson()).toList()));
-    duringReview?.call();
-    return reviewResponse ?? jsonEncode({'decision': reviewDecision});
   }
 }

@@ -26,6 +26,17 @@ class TokenUsage {
   });
 
   @override
+  int get hashCode => Object.hash(
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    reasoningTokens,
+    cachedTokens,
+    cacheCreationTokens,
+    outputDuration,
+  );
+
+  @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TokenUsage &&
@@ -37,17 +48,6 @@ class TokenUsage {
           cachedTokens == other.cachedTokens &&
           cacheCreationTokens == other.cacheCreationTokens &&
           outputDuration == other.outputDuration;
-
-  @override
-  int get hashCode => Object.hash(
-    promptTokens,
-    completionTokens,
-    totalTokens,
-    reasoningTokens,
-    cachedTokens,
-    cacheCreationTokens,
-    outputDuration,
-  );
 
   @override
   String toString() =>

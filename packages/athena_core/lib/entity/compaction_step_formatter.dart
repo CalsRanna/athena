@@ -1,6 +1,15 @@
 import 'package:athena_core/entity/compaction_step.dart';
 
 abstract final class CompactionStepFormatter {
+  static String compactionDetails(CompactionStep step) => [
+    '覆盖 ${step.messageCount} 条消息',
+    CompactionStepFormatter.compactionTokenChange(step),
+    if (step.finishedAt != null)
+      '耗时 ${(step.finishedAt!.difference(step.startedAt).inMilliseconds / 1000).toStringAsFixed(1)} 秒',
+    if (step.error != null) step.error!,
+    if (step.summary.isNotEmpty) '\n${step.summary}',
+  ].join('\n');
+
   static String compactionStatus(CompactionStep step, {required bool isLive}) {
     if (!step.isTerminal && !isLive) return '压缩已中断';
     return switch (step.phase) {
@@ -17,13 +26,4 @@ abstract final class CompactionStepFormatter {
       step.afterTokens == null
       ? '约 ${step.beforeTokens} tokens'
       : '约 ${step.beforeTokens} → ${step.afterTokens} tokens';
-
-  static String compactionDetails(CompactionStep step) => [
-    '覆盖 ${step.messageCount} 条消息',
-    CompactionStepFormatter.compactionTokenChange(step),
-    if (step.finishedAt != null)
-      '耗时 ${(step.finishedAt!.difference(step.startedAt).inMilliseconds / 1000).toStringAsFixed(1)} 秒',
-    if (step.error != null) step.error!,
-    if (step.summary.isNotEmpty) '\n${step.summary}',
-  ].join('\n');
 }

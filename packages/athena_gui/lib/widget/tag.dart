@@ -1,8 +1,8 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/press_scale.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 筛选 chip：胶囊 + 1px 实线边框，没有渐变边框。
 ///

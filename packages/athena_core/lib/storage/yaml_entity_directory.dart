@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/storage/yaml_scalar.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -31,30 +31,48 @@ import 'package:yaml/yaml.dart';
 ///
 /// 本类只搬运 `Map`,实体层的解析与编码由各自的 Store 负责。
 class YamlEntityDirectory {
-  YamlEntityDirectory({
-    required Directory directory,
-    required LockRegistry locks,
-  }) : _directory = directory,
-       _locks = locks;
+  static const extension = '.yaml';
+
+  /// 实体 id 直接拼进文件名,必须限制为单个文件名段(与经验的 id 校验同口径)。
+  static final _validId = RegExp(r'^[A-Za-z0-9_-]+$');
 
   final Directory _directory;
 
   /// 锁放哪由它决定,见 [LockRegistry]。
   final LockRegistry _locks;
 
-  static const extension = '.yaml';
-
-  /// 实体 id 直接拼进文件名,必须限制为单个文件名段(与经验的 id 校验同口径)。
-  static final _validId = RegExp(r'^[A-Za-z0-9_-]+$');
-
-  static bool isValidId(String id) => _validId.hasMatch(id);
+  YamlEntityDirectory({
+    required Directory directory,
+    required LockRegistry locks,
+  }) : _directory = directory,
+       _locks = locks;
 
   Directory get directory => _directory;
 
-  File fileFor(String id) => File(p.join(_directory.path, '$id$extension'));
-
   /// 目录级锁:`replaceAllRaw` 的「清空 + 重建」与并发的单条写互斥。
   File get _directoryLock => _locks.forDirectory(_directory);
+
+  /// 实体文件数。只数文件、不解析内容;id 不合法的文件不计入。不加锁。
+  Future<int> count() async {
+    if (!await _directory.exists()) return 0;
+    var total = 0;
+    await for (final entry in _directory.list()) {
+      if (entry is! File || !entry.path.endsWith(extension)) continue;
+      if (_validId.hasMatch(p.basenameWithoutExtension(entry.path))) total++;
+    }
+    return total;
+  }
+
+  /// 删除单个实体(不存在视为成功)。持该文件的锁。
+  Future<void> deleteRaw(String id) {
+    if (!_validId.hasMatch(id)) return Future.value();
+    final file = fileFor(id);
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
+      if (await file.exists()) await file.delete();
+    });
+  }
+
+  File fileFor(String id) => File(p.join(_directory.path, '$id$extension'));
 
   /// 目录下全部合法 id;实体文件之外的任何东西(id 不合法的文件、标记文件、
   /// 子目录)一律跳过。不加锁,理由见类注释。
@@ -67,31 +85,6 @@ class YamlEntityDirectory {
       if (_validId.hasMatch(id)) ids.add(id);
     }
     return ids;
-  }
-
-  /// 该 id 的原始映射;不存在或损坏返回 null。不加锁。
-  Future<Map<String, dynamic>?> readRaw(
-    String id, {
-    bool forWrite = false,
-  }) async {
-    if (!_validId.hasMatch(id)) return null;
-    final file = fileFor(id);
-    if (!await file.exists()) return null;
-    return _readFile(file, forWrite: forWrite);
-  }
-
-  /// 覆盖写入(不存在则创建)。持该文件的锁。
-  ///
-  /// 目标已存在但读不出来时(手工编辑写出语法错误)先备份再覆盖:这里是盲写,
-  /// 不像 [mutateRaw] 那样本来就要读一次,不额外检查的话,损坏文件里的内容会被
-  /// 整文件覆盖直接抹掉。
-  Future<void> writeRaw(String id, Map<String, dynamic> raw) {
-    _requireValidId(id);
-    final file = fileFor(id);
-    return FileLocking.withFileLock(_locks.forTarget(file), () async {
-      if (await file.exists()) await _readFile(file, forWrite: true);
-      await _writeFile(file, raw);
-    });
   }
 
   /// 读-改-写:全过程持该文件的跨进程锁。
@@ -116,32 +109,15 @@ class YamlEntityDirectory {
     });
   }
 
-  /// 读-改-写,文件不存在时以空映射为基础创建。
-  ///
-  /// 与 [mutateRaw] 的差别只在「不存在怎么办」:那条路径刻意不复活已删除的
-  /// 实体,这条是 upsert,用于「新建一个实体」。(损坏的文件仍按空映射处理并
-  /// 备份,随后被新内容覆盖——那是 upsert 的应有语义。)
-  Future<void> upsertRaw(
-    String id,
-    Map<String, dynamic> Function(Map<String, dynamic> current) transform,
-  ) {
-    _requireValidId(id);
+  /// 该 id 的原始映射;不存在或损坏返回 null。不加锁。
+  Future<Map<String, dynamic>?> readRaw(
+    String id, {
+    bool forWrite = false,
+  }) async {
+    if (!_validId.hasMatch(id)) return null;
     final file = fileFor(id);
-    return FileLocking.withFileLock(_locks.forTarget(file), () async {
-      final current = await file.exists()
-          ? await _readFile(file, forWrite: true)
-          : null;
-      await _writeFile(file, transform(current ?? <String, dynamic>{}));
-    });
-  }
-
-  /// 删除单个实体(不存在视为成功)。持该文件的锁。
-  Future<void> deleteRaw(String id) {
-    if (!_validId.hasMatch(id)) return Future.value();
-    final file = fileFor(id);
-    return FileLocking.withFileLock(_locks.forTarget(file), () async {
-      if (await file.exists()) await file.delete();
-    });
+    if (!await file.exists()) return null;
+    return _readFile(file, forWrite: forWrite);
   }
 
   /// 整目录替换为 [rows](迁移用):先清空再逐个写入,持目录锁。
@@ -171,21 +147,37 @@ class YamlEntityDirectory {
     });
   }
 
-  /// 实体文件数。只数文件、不解析内容;id 不合法的文件不计入。不加锁。
-  Future<int> count() async {
-    if (!await _directory.exists()) return 0;
-    var total = 0;
-    await for (final entry in _directory.list()) {
-      if (entry is! File || !entry.path.endsWith(extension)) continue;
-      if (_validId.hasMatch(p.basenameWithoutExtension(entry.path))) total++;
-    }
-    return total;
+  /// 读-改-写,文件不存在时以空映射为基础创建。
+  ///
+  /// 与 [mutateRaw] 的差别只在「不存在怎么办」:那条路径刻意不复活已删除的
+  /// 实体,这条是 upsert,用于「新建一个实体」。(损坏的文件仍按空映射处理并
+  /// 备份,随后被新内容覆盖——那是 upsert 的应有语义。)
+  Future<void> upsertRaw(
+    String id,
+    Map<String, dynamic> Function(Map<String, dynamic> current) transform,
+  ) {
+    _requireValidId(id);
+    final file = fileFor(id);
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
+      final current = await file.exists()
+          ? await _readFile(file, forWrite: true)
+          : null;
+      await _writeFile(file, transform(current ?? <String, dynamic>{}));
+    });
   }
 
-  void _requireValidId(String id) {
-    if (!_validId.hasMatch(id)) {
-      throw ArgumentError('Invalid entity id: $id');
-    }
+  /// 覆盖写入(不存在则创建)。持该文件的锁。
+  ///
+  /// 目标已存在但读不出来时(手工编辑写出语法错误)先备份再覆盖:这里是盲写,
+  /// 不像 [mutateRaw] 那样本来就要读一次,不额外检查的话,损坏文件里的内容会被
+  /// 整文件覆盖直接抹掉。
+  Future<void> writeRaw(String id, Map<String, dynamic> raw) {
+    _requireValidId(id);
+    final file = fileFor(id);
+    return FileLocking.withFileLock(_locks.forTarget(file), () async {
+      if (await file.exists()) await _readFile(file, forWrite: true);
+      await _writeFile(file, raw);
+    });
   }
 
   /// [forWrite] 为 true 时(写锁内、随后要覆盖这个文件)遇到损坏内容先备份成
@@ -210,6 +202,12 @@ class YamlEntityDirectory {
         LoggerUtil.w('${file.path} is unreadable ($e), skipped');
       }
       return null;
+    }
+  }
+
+  void _requireValidId(String id) {
+    if (!_validId.hasMatch(id)) {
+      throw ArgumentError('Invalid entity id: $id');
     }
   }
 
@@ -246,6 +244,8 @@ class YamlEntityDirectory {
     }
     return buf.toString();
   }
+
+  static bool isValidId(String id) => _validId.hasMatch(id);
 
   /// 列表元素:首行内联,其余键按两个空格缩进续写。
   static String _encodeListEntry(Map item) {

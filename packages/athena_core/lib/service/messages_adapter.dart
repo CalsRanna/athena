@@ -4,12 +4,10 @@ import 'dart:math';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/service/completion_details.dart';
+import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/service/messages_thinking.dart';
 import 'package:openai_dart/openai_dart.dart';
-
-enum _Role { none, user, assistant }
 
 abstract final class MessagesAdapter {
   /// Messages（Anthropic）与 Chat Completions 形状之间的转换。
@@ -35,6 +33,18 @@ abstract final class MessagesAdapter {
   /// 也不可用时的兜底值。
   static const _defaultMaxTokens = 128000;
 
+  /// Messages 没有 `response_format` 字段，`jsonObject` 只能落到提示词上。
+  ///
+  /// 面向模型的提示词按仓库约定用英文。措辞刻意保守：只要求「一个 JSON 对象」，
+  /// 不承诺 schema。特别点明不要 Markdown 围栏——那是模型最常见的偏离方式，会
+  /// 直接让调用方的 `jsonDecode` 失败。
+  static const _jsonOnlyInstruction =
+      'Return only a single valid JSON object as your entire response. '
+      'Do not wrap it in Markdown code fences and do not add any text before or '
+      'after the JSON.';
+
+  static final _validToolUseId = RegExp(r'^[a-zA-Z0-9_-]+$');
+
   /// 一次 Messages 请求的 `max_tokens`。
   ///
   /// 模型输出上限已知（[outputLimit]，来自 models.dev）就用它；未单独配置时用
@@ -52,234 +62,72 @@ abstract final class MessagesAdapter {
     return max(1, min(cap, outputRoom));
   }
 
-  /// Messages 没有 `response_format` 字段，`jsonObject` 只能落到提示词上。
-  ///
-  /// 面向模型的提示词按仓库约定用英文。措辞刻意保守：只要求「一个 JSON 对象」，
-  /// 不承诺 schema。特别点明不要 Markdown 围栏——那是模型最常见的偏离方式，会
-  /// 直接让调用方的 `jsonDecode` 失败。
-  static const _jsonOnlyInstruction =
-      'Return only a single valid JSON object as your entire response. '
-      'Do not wrap it in Markdown code fences and do not add any text before or '
-      'after the JSON.';
-
-  /// 把 Chat Completions 形状的请求转成 Messages 请求。
-  ///
-  /// 显式输出上限受 [maxTokens] 预算收紧；都未提供时用 [MessagesAdapter.messagesMaxTokens]。
-  static anthropic.MessageCreateRequest toMessageRequest(
-    ChatCompletionCreateRequest request, {
-    bool stream = false,
-    int? maxTokens,
+  /// 把 Messages 的完整响应转成 Chat Completion（非流式路径）。
+  static ChatCompletion messageToChatCompletion(
+    anthropic.Message message, {
     ProviderEntity? provider,
+    anthropic.MessageCreateRequest? request,
   }) {
-    CompletionDetails.checkRequestFields(request, 'Messages', {
-      'model',
-      'messages',
-      'tools',
-      'tool_choice',
-      'parallel_tool_calls',
-      'temperature',
-      'top_p',
-      'top_k',
-      'max_tokens',
-      'max_completion_tokens',
-      'reasoning_effort',
-      'response_format',
-      'stop',
-      'user',
-      'stream_options',
-    });
-    // Messages 没有 response_format 字段，但「只输出一个 JSON 对象」这个意图可以
-    // 用提示词表达，所以翻译过去而不是拒绝。
-    //
-    // 仍然不静默：只有 jsonObject 能这样表达。json_schema 要求结构可保证，提示词
-    // 兜不住，继续显式失败——宁可给调用方一个明确的错误，也不要一份「看起来符合
-    // schema、实际没有」的结果。
-    final jsonInstruction = switch (request.responseFormat) {
-      null => null,
-      JsonObjectResponseFormat() => MessagesAdapter._jsonOnlyInstruction,
-      _ => throw UnsupportedError(
-        'Messages protocol does not support response_format '
-        '${request.responseFormat.runtimeType}',
-      ),
-    };
-
-    final system = <String>[
-      for (final message in request.messages)
-        if (message is SystemMessage && message.content.isNotEmpty)
-          message.content
-        else if (message is DeveloperMessage && message.content.isNotEmpty)
-          message.content,
-      ?jsonInstruction,
-    ];
-    final systemPrompt = system.isEmpty
-        ? null
-        : anthropic.SystemPrompt.text(system.join('\n\n'));
-    final tools = request.tools
-        ?.map(MessagesAdapter._toToolDefinition)
-        .toList();
-    final messages = <anthropic.InputMessage>[];
-    final pending = <anthropic.InputContentBlock>[];
-    _Role pendingRole = _Role.none;
-    MessagesState? lastAssistantState;
-
-    void flush() {
-      if (pending.isEmpty) return;
-      messages.add(
-        pendingRole == _Role.user
-            ? anthropic.InputMessage.userBlocks(List.of(pending))
-            : anthropic.InputMessage.assistantBlocks(List.of(pending)),
-      );
-      pending.clear();
-      pendingRole = _Role.none;
-    }
-
-    void push(_Role role, List<anthropic.InputContentBlock> blocks) {
-      if (blocks.isEmpty) return;
-      if (pendingRole != _Role.none && pendingRole != role) flush();
-      pendingRole = role;
-      pending.addAll(blocks);
-    }
-
-    for (final message in request.messages) {
-      switch (message) {
-        case SystemMessage():
-          break;
-        case DeveloperMessage():
-          break;
-        case UserMessage(:final content):
-          push(_Role.user, MessagesAdapter._toUserBlocks(content));
-        case AssistantMessage(:final content, :final toolCalls):
-          lastAssistantState = null;
-          if (message is MessagesAssistantMessage && provider != null) {
-            final state = message.messagesState;
-            flush();
-            final prefix = MessagesState.hashJson({
-              'system': systemPrompt?.toJson(),
-              'tools': tools?.map((tool) => tool.toJson()).toList(),
-              'messages': messages.map((message) => message.toJson()).toList(),
-            });
-            if (state != null &&
-                state.matches(provider, request.model, message, prefix)) {
-              lastAssistantState = state;
-              push(
-                _Role.assistant,
-                state.content
-                    .map(anthropic.InputContentBlock.fromJson)
-                    .toList(),
-              );
-              continue;
-            }
-          }
-          final blocks = <anthropic.InputContentBlock>[
-            if (content != null && content.isNotEmpty)
-              anthropic.InputContentBlock.text(content),
-            if (message.refusal?.isNotEmpty == true &&
-                message.refusal != content)
-              anthropic.InputContentBlock.text(message.refusal!),
-            for (final call in toolCalls ?? const <ToolCall>[])
-              anthropic.InputContentBlock.toolUse(
-                id: MessagesAdapter._toolUseId(call.id),
-                name: call.function.name,
-                // Chat Completions 里参数是 JSON 字符串，Messages 要对象；
-                // 解析失败说明上游给的不是 JSON，按空对象下发让模型重试。
-                input: MessagesAdapter._decodeArguments(
-                  call.function.arguments,
-                ),
-              ),
-          ];
-          push(_Role.assistant, blocks);
-        case ToolMessage(:final toolCallId, :final content):
-          push(_Role.user, [
-            anthropic.InputContentBlock.toolResultText(
-              toolUseId: MessagesAdapter._toolUseId(toolCallId),
-              text: content,
-            ),
-          ]);
-      }
-    }
-    flush();
-
-    final explicitLimit = request.maxCompletionTokens ?? request.maxTokens;
-    final outputLimit = explicitLimit == null
-        ? maxTokens ?? MessagesAdapter.messagesMaxTokens()
-        : maxTokens == null
-        ? explicitLimit
-        : min(explicitLimit, maxTokens);
-    var thinking = MessagesThinking.resolve(
-      request.model,
-      request.reasoningEffort,
-      outputLimit,
-    );
-    // 工具循环属于同一个 assistant turn，不能中途改变 thinking 配置。
-    final continuation = request.messages.lastOrNull is ToolMessage
-        ? lastAssistantState
+    final content = message.content.map((block) => block.toJson()).toList();
+    final assistant = MessagesAdapter._assistantFromContent(content);
+    final thinkingReplayable = MessagesAdapter._completeStop(message.stopReason)
+        ? MessagesAdapter._thinkingReplayable(content)
         : null;
-    if (continuation != null) {
-      final config = continuation.thinking == null
-          ? null
-          : anthropic.ThinkingConfig.fromJson(continuation.thinking!);
-      if (config is anthropic.ThinkingEnabled &&
-          config.budgetTokens >= outputLimit) {
-        throw StateError(
-          'Insufficient output room to continue Messages thinking',
-        );
-      }
-      thinking = MessagesThinking(
-        config,
-        continuation.outputConfig == null
-            ? null
-            : anthropic.OutputConfig.fromJson(continuation.outputConfig!),
-        thinking.omitTemperature ||
-            config is anthropic.ThinkingEnabled ||
-            config is anthropic.ThinkingAdaptive,
-      );
-    }
-    return anthropic.MessageCreateRequest(
-      model: request.model,
-      maxTokens: outputLimit,
-      system: systemPrompt,
-      messages: messages,
-      tools: tools,
-      toolChoice: MessagesAdapter._messageToolChoice(
-        request.toolChoice,
-        request.parallelToolCalls,
+    final state =
+        provider != null && request != null && thinkingReplayable == true
+        ? MessagesState(
+            provider: provider,
+            model: request.model,
+            content: content,
+            reasoningTokens:
+                message.usage.outputTokensDetails?.thinkingTokens ??
+                message.usage.outputTokens,
+            prefixHash: MessagesState.hashPrefix(request),
+            thinking: request.thinking?.toJson(),
+            outputConfig: request.outputConfig?.toJson(),
+            message: assistant,
+          )
+        : null;
+    final refusal = message.stopReason == anthropic.StopReason.refusal
+        ? assistant.content ??
+              message.stopDetails?.explanation ??
+              'Request refused.'
+        : null;
+    return DetailedChatCompletion(
+      details: {
+        'protocol': 'messages',
+        'stop_reason': message.stopReason?.value,
+        'stop_sequence': message.stopSequence,
+        'thinking_replayable': ?thinkingReplayable,
+        if (message.stopDetails != null)
+          'stop_details': message.stopDetails!.toJson(),
+        'usage': message.usage.toJson(),
+      },
+      id: message.id,
+      object: 'chat.completion',
+      model: message.model,
+      choices: [
+        ChatChoice(
+          index: 0,
+          message: MessagesAssistantMessage(
+            content: assistant.content,
+            refusal: refusal,
+            toolCalls: assistant.toolCalls,
+            reasoningContent: assistant.reasoningContent,
+            messagesState: state,
+          ),
+          finishReason: MessagesAdapter._finishReason(message.stopReason),
+        ),
+      ],
+      usage: MessagesAdapter._usage(
+        inputTokens: message.usage.inputTokens,
+        outputTokens: message.usage.outputTokens,
+        cachedTokens: message.usage.cacheReadInputTokens ?? 0,
+        cacheCreationTokens: message.usage.cacheCreationInputTokens ?? 0,
+        reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens,
       ),
-      topP: request.topP,
-      topK: request.topK,
-      stopSequences: request.stop,
-      metadata: request.user == null
-          ? null
-          : anthropic.Metadata(userId: request.user),
-      thinking: thinking.thinking,
-      outputConfig: thinking.outputConfig,
-      // Messages 只接受 0–1，而会话温度按 OpenAI 口径可调到 2（移动端滑杆）：
-      // 推理模式及新版 Claude 不接受自定义温度，必须省略。
-      temperature: thinking.omitTemperature
-          ? null
-          : request.temperature?.clamp(0.0, 1.0).toDouble(),
-      stream: stream,
     );
   }
-
-  /// Messages 要求 tool_use id 只含字母、数字、`_`、`-`；历史里的 id 来自
-  /// 生成它的那家 provider（有的带 `.` / `:`，如 `functions.bash:0`），切到
-  /// Messages 后原样下发会让这个会话之后的每次请求都被拒绝。
-  ///
-  /// 合法的 id 原样保留；否则替换非法字符并带上原 id 的短哈希，避免只差在
-  /// 非法字符上的两个 id 撞成同一个。tool_use 与 tool_result 两侧用同一个
-  /// 函数，映射保持一致。
-  static String _toolUseId(String id) {
-    if (MessagesAdapter._validToolUseId.hasMatch(id)) return id;
-    final sanitized = id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    // FNV-1a（32 位）：确定性、无需额外依赖
-    var hash = 0x811c9dc5;
-    for (final unit in utf8.encode(id)) {
-      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
-    }
-    return '${sanitized}_${hash.toRadixString(16).padLeft(8, '0')}';
-  }
-
-  static final _validToolUseId = RegExp(r'^[a-zA-Z0-9_-]+$');
 
   /// 把 Messages 的流式事件归一成 Chat Completions 形状的流。
   static Stream<ChatStreamEvent> normalizeMessagesStream(
@@ -518,114 +366,204 @@ abstract final class MessagesAdapter {
     }
   }
 
-  /// Anthropic 错误类型对应的 HTTP 状态（与请求阶段返回的状态码一致）。
-  /// 未知类型按服务端错误处理。
-  static int _statusForErrorType(String errorType) => switch (errorType) {
-    'invalid_request_error' => 400,
-    'authentication_error' => 401,
-    'permission_error' => 403,
-    'not_found_error' => 404,
-    'request_too_large' => 413,
-    'rate_limit_error' => 429,
-    'overloaded_error' => 529,
-    _ => 500,
-  };
-
-  /// 把 Messages 的完整响应转成 Chat Completion（非流式路径）。
-  static ChatCompletion messageToChatCompletion(
-    anthropic.Message message, {
+  /// 把 Chat Completions 形状的请求转成 Messages 请求。
+  ///
+  /// 显式输出上限受 [maxTokens] 预算收紧；都未提供时用 [MessagesAdapter.messagesMaxTokens]。
+  static anthropic.MessageCreateRequest toMessageRequest(
+    ChatCompletionCreateRequest request, {
+    bool stream = false,
+    int? maxTokens,
     ProviderEntity? provider,
-    anthropic.MessageCreateRequest? request,
   }) {
-    final content = message.content.map((block) => block.toJson()).toList();
-    final assistant = MessagesAdapter._assistantFromContent(content);
-    final thinkingReplayable = MessagesAdapter._completeStop(message.stopReason)
-        ? MessagesAdapter._thinkingReplayable(content)
-        : null;
-    final state =
-        provider != null && request != null && thinkingReplayable == true
-        ? MessagesState(
-            provider: provider,
-            model: request.model,
-            content: content,
-            reasoningTokens:
-                message.usage.outputTokensDetails?.thinkingTokens ??
-                message.usage.outputTokens,
-            prefixHash: MessagesState.hashPrefix(request),
-            thinking: request.thinking?.toJson(),
-            outputConfig: request.outputConfig?.toJson(),
-            message: assistant,
-          )
-        : null;
-    final refusal = message.stopReason == anthropic.StopReason.refusal
-        ? assistant.content ??
-              message.stopDetails?.explanation ??
-              'Request refused.'
-        : null;
-    return DetailedChatCompletion(
-      details: {
-        'protocol': 'messages',
-        'stop_reason': message.stopReason?.value,
-        'stop_sequence': message.stopSequence,
-        'thinking_replayable': ?thinkingReplayable,
-        if (message.stopDetails != null)
-          'stop_details': message.stopDetails!.toJson(),
-        'usage': message.usage.toJson(),
-      },
-      id: message.id,
-      object: 'chat.completion',
-      model: message.model,
-      choices: [
-        ChatChoice(
-          index: 0,
-          message: MessagesAssistantMessage(
-            content: assistant.content,
-            refusal: refusal,
-            toolCalls: assistant.toolCalls,
-            reasoningContent: assistant.reasoningContent,
-            messagesState: state,
-          ),
-          finishReason: MessagesAdapter._finishReason(message.stopReason),
-        ),
-      ],
-      usage: MessagesAdapter._usage(
-        inputTokens: message.usage.inputTokens,
-        outputTokens: message.usage.outputTokens,
-        cachedTokens: message.usage.cacheReadInputTokens ?? 0,
-        cacheCreationTokens: message.usage.cacheCreationInputTokens ?? 0,
-        reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens,
+    CompletionDetails.checkRequestFields(request, 'Messages', {
+      'model',
+      'messages',
+      'tools',
+      'tool_choice',
+      'parallel_tool_calls',
+      'temperature',
+      'top_p',
+      'top_k',
+      'max_tokens',
+      'max_completion_tokens',
+      'reasoning_effort',
+      'response_format',
+      'stop',
+      'user',
+      'stream_options',
+    });
+    // Messages 没有 response_format 字段，但「只输出一个 JSON 对象」这个意图可以
+    // 用提示词表达，所以翻译过去而不是拒绝。
+    //
+    // 仍然不静默：只有 jsonObject 能这样表达。json_schema 要求结构可保证，提示词
+    // 兜不住，继续显式失败——宁可给调用方一个明确的错误，也不要一份「看起来符合
+    // schema、实际没有」的结果。
+    final jsonInstruction = switch (request.responseFormat) {
+      null => null,
+      JsonObjectResponseFormat() => MessagesAdapter._jsonOnlyInstruction,
+      _ => throw UnsupportedError(
+        'Messages protocol does not support response_format '
+        '${request.responseFormat.runtimeType}',
       ),
+    };
+
+    final system = <String>[
+      for (final message in request.messages)
+        if (message is SystemMessage && message.content.isNotEmpty)
+          message.content
+        else if (message is DeveloperMessage && message.content.isNotEmpty)
+          message.content,
+      ?jsonInstruction,
+    ];
+    final systemPrompt = system.isEmpty
+        ? null
+        : anthropic.SystemPrompt.text(system.join('\n\n'));
+    final tools = request.tools
+        ?.map(MessagesAdapter._toToolDefinition)
+        .toList();
+    final messages = <anthropic.InputMessage>[];
+    final pending = <anthropic.InputContentBlock>[];
+    _Role pendingRole = _Role.none;
+    MessagesState? lastAssistantState;
+
+    void flush() {
+      if (pending.isEmpty) return;
+      messages.add(
+        pendingRole == _Role.user
+            ? anthropic.InputMessage.userBlocks(List.of(pending))
+            : anthropic.InputMessage.assistantBlocks(List.of(pending)),
+      );
+      pending.clear();
+      pendingRole = _Role.none;
+    }
+
+    void push(_Role role, List<anthropic.InputContentBlock> blocks) {
+      if (blocks.isEmpty) return;
+      if (pendingRole != _Role.none && pendingRole != role) flush();
+      pendingRole = role;
+      pending.addAll(blocks);
+    }
+
+    for (final message in request.messages) {
+      switch (message) {
+        case SystemMessage():
+          break;
+        case DeveloperMessage():
+          break;
+        case UserMessage(:final content):
+          push(_Role.user, MessagesAdapter._toUserBlocks(content));
+        case AssistantMessage(:final content, :final toolCalls):
+          lastAssistantState = null;
+          if (message is MessagesAssistantMessage && provider != null) {
+            final state = message.messagesState;
+            flush();
+            final prefix = MessagesState.hashJson({
+              'system': systemPrompt?.toJson(),
+              'tools': tools?.map((tool) => tool.toJson()).toList(),
+              'messages': messages.map((message) => message.toJson()).toList(),
+            });
+            if (state != null &&
+                state.matches(provider, request.model, message, prefix)) {
+              lastAssistantState = state;
+              push(
+                _Role.assistant,
+                state.content
+                    .map(anthropic.InputContentBlock.fromJson)
+                    .toList(),
+              );
+              continue;
+            }
+          }
+          final blocks = <anthropic.InputContentBlock>[
+            if (content != null && content.isNotEmpty)
+              anthropic.InputContentBlock.text(content),
+            if (message.refusal?.isNotEmpty == true &&
+                message.refusal != content)
+              anthropic.InputContentBlock.text(message.refusal!),
+            for (final call in toolCalls ?? const <ToolCall>[])
+              anthropic.InputContentBlock.toolUse(
+                id: MessagesAdapter._toolUseId(call.id),
+                name: call.function.name,
+                // Chat Completions 里参数是 JSON 字符串，Messages 要对象；
+                // 解析失败说明上游给的不是 JSON，按空对象下发让模型重试。
+                input: MessagesAdapter._decodeArguments(
+                  call.function.arguments,
+                ),
+              ),
+          ];
+          push(_Role.assistant, blocks);
+        case ToolMessage(:final toolCallId, :final content):
+          push(_Role.user, [
+            anthropic.InputContentBlock.toolResultText(
+              toolUseId: MessagesAdapter._toolUseId(toolCallId),
+              text: content,
+            ),
+          ]);
+      }
+    }
+    flush();
+
+    final explicitLimit = request.maxCompletionTokens ?? request.maxTokens;
+    final outputLimit = explicitLimit == null
+        ? maxTokens ?? MessagesAdapter.messagesMaxTokens()
+        : maxTokens == null
+        ? explicitLimit
+        : min(explicitLimit, maxTokens);
+    var thinking = MessagesThinking.resolve(
+      request.model,
+      request.reasoningEffort,
+      outputLimit,
+    );
+    // 工具循环属于同一个 assistant turn，不能中途改变 thinking 配置。
+    final continuation = request.messages.lastOrNull is ToolMessage
+        ? lastAssistantState
+        : null;
+    if (continuation != null) {
+      final config = continuation.thinking == null
+          ? null
+          : anthropic.ThinkingConfig.fromJson(continuation.thinking!);
+      if (config is anthropic.ThinkingEnabled &&
+          config.budgetTokens >= outputLimit) {
+        throw StateError(
+          'Insufficient output room to continue Messages thinking',
+        );
+      }
+      thinking = MessagesThinking(
+        config,
+        continuation.outputConfig == null
+            ? null
+            : anthropic.OutputConfig.fromJson(continuation.outputConfig!),
+        thinking.omitTemperature ||
+            config is anthropic.ThinkingEnabled ||
+            config is anthropic.ThinkingAdaptive,
+      );
+    }
+    return anthropic.MessageCreateRequest(
+      model: request.model,
+      maxTokens: outputLimit,
+      system: systemPrompt,
+      messages: messages,
+      tools: tools,
+      toolChoice: MessagesAdapter._messageToolChoice(
+        request.toolChoice,
+        request.parallelToolCalls,
+      ),
+      topP: request.topP,
+      topK: request.topK,
+      stopSequences: request.stop,
+      metadata: request.user == null
+          ? null
+          : anthropic.Metadata(userId: request.user),
+      thinking: thinking.thinking,
+      outputConfig: thinking.outputConfig,
+      // Messages 只接受 0–1，而会话温度按 OpenAI 口径可调到 2（移动端滑杆）：
+      // 推理模式及新版 Claude 不接受自定义温度，必须省略。
+      temperature: thinking.omitTemperature
+          ? null
+          : request.temperature?.clamp(0.0, 1.0).toDouble(),
+      stream: stream,
     );
   }
-
-  // 兼容端点可能把其他协议的推理转换为全部无签名的 thinking。完整响应仍能
-  // 展示并执行工具，但不能伪装成可回传的原生状态；用 completion_details 显式
-  // 记录此区别，流式与非流式共用口径。部分签名缺失或 redacted 数据损坏不属于
-  // 这种兼容响应，继续报错，避免把不完整的原生推理误当成无签名推理。
-  static bool? _thinkingReplayable(List<Map<String, dynamic>> content) {
-    final thinking = content
-        .where(
-          (block) =>
-              block['type'] == 'thinking' ||
-              block['type'] == 'redacted_thinking',
-        )
-        .toList();
-    if (thinking.isEmpty) return null;
-    if (MessagesState.hasCompleteThinking(content)) return true;
-    if (thinking.any(
-      (block) =>
-          block['type'] == 'redacted_thinking' ||
-          (block['signature'] as String?)?.isNotEmpty == true,
-    )) {
-      throw StateError('Messages response contains incomplete signed thinking');
-    }
-    return false;
-  }
-
-  static bool _completeStop(anthropic.StopReason? reason) =>
-      reason == anthropic.StopReason.endTurn ||
-      reason == anthropic.StopReason.toolUse ||
-      reason == anthropic.StopReason.stopSequence;
 
   static AssistantMessage _assistantFromContent(
     List<Map<String, dynamic>> blocks,
@@ -658,21 +596,131 @@ abstract final class MessagesAdapter {
     );
   }
 
-  static List<anthropic.InputContentBlock> _toUserBlocks(
-    UserMessageContent content,
-  ) {
-    switch (content) {
-      case UserTextContent(:final text):
-        return text.isEmpty
-            ? const []
-            : [anthropic.InputContentBlock.text(text)];
-      case UserPartsContent(:final parts):
-        // 与纯文本分支同口径：空 text block 会被 Messages 协议 400 拒绝。
-        return parts
-            .where((part) => !(part is TextContentPart && part.text.isEmpty))
-            .map(MessagesAdapter._toContentBlock)
-            .toList();
+  static ChatStreamEvent _chunk(ChatDelta delta) {
+    return ChatStreamEvent(
+      object: 'chat.completion.chunk',
+      choices: [ChatStreamChoice(index: 0, delta: delta)],
+    );
+  }
+
+  static bool _completeStop(anthropic.StopReason? reason) =>
+      reason == anthropic.StopReason.endTurn ||
+      reason == anthropic.StopReason.toolUse ||
+      reason == anthropic.StopReason.stopSequence;
+
+  static Map<String, dynamic> _decodeArguments(String arguments) {
+    if (arguments.trim().isEmpty) return const <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(arguments);
+      return decoded is Map<String, dynamic>
+          ? decoded
+          : const <String, dynamic>{};
+    } on FormatException {
+      // 上游给的参数半截、非 JSON 或非对象：下发空对象，让模型重新发起调用，
+      // 而不是把整轮对话打挂。
+      return const <String, dynamic>{};
     }
+  }
+
+  static FinishReason? _finishReason(anthropic.StopReason? stopReason) {
+    return switch (stopReason) {
+      null => null,
+      anthropic.StopReason.toolUse => FinishReason.toolCalls,
+      anthropic.StopReason.maxTokens ||
+      anthropic.StopReason.modelContextWindowExceeded => FinishReason.length,
+      anthropic.StopReason.refusal => FinishReason.contentFilter,
+      anthropic.StopReason.endTurn ||
+      anthropic.StopReason.stopSequence => FinishReason.stop,
+      // Athena 尚未请求服务端工具或服务端压缩，不能假装已完成这些回合。
+      _ => throw UnsupportedError(
+        'Messages continuation is not supported: ${stopReason.value}',
+      ),
+    };
+  }
+
+  static anthropic.ToolChoice? _messageToolChoice(
+    ToolChoice? choice,
+    bool? parallel,
+  ) {
+    final disable = parallel == null ? null : !parallel;
+    return switch (choice) {
+      null =>
+        parallel == null
+            ? null
+            : anthropic.ToolChoice.auto(disableParallelToolUse: disable),
+      ToolChoiceAuto() => anthropic.ToolChoice.auto(
+        disableParallelToolUse: disable,
+      ),
+      ToolChoiceNone() => anthropic.ToolChoice.none(),
+      ToolChoiceRequired() => anthropic.ToolChoice.any(
+        disableParallelToolUse: disable,
+      ),
+      ToolChoiceFunction(:final name) => anthropic.ToolChoice.tool(
+        name,
+        disableParallelToolUse: disable,
+      ),
+      _ => throw UnsupportedError(
+        'Messages does not support ${choice.runtimeType}',
+      ),
+    };
+  }
+
+  /// Anthropic 错误类型对应的 HTTP 状态（与请求阶段返回的状态码一致）。
+  /// 未知类型按服务端错误处理。
+  static int _statusForErrorType(String errorType) => switch (errorType) {
+    'invalid_request_error' => 400,
+    'authentication_error' => 401,
+    'permission_error' => 403,
+    'not_found_error' => 404,
+    'request_too_large' => 413,
+    'rate_limit_error' => 429,
+    'overloaded_error' => 529,
+    _ => 500,
+  };
+
+  static ChatStreamEvent _terminalChunk({
+    required String? id,
+    required String? model,
+    required FinishReason? finishReason,
+    required Usage usage,
+  }) {
+    return ChatStreamEvent(
+      id: id,
+      object: 'chat.completion.chunk',
+      model: model,
+      choices: [
+        ChatStreamChoice(
+          index: 0,
+          delta: const ChatDelta(),
+          finishReason: finishReason,
+        ),
+      ],
+      usage: usage,
+    );
+  }
+
+  // 兼容端点可能把其他协议的推理转换为全部无签名的 thinking。完整响应仍能
+  // 展示并执行工具，但不能伪装成可回传的原生状态；用 completion_details 显式
+  // 记录此区别，流式与非流式共用口径。部分签名缺失或 redacted 数据损坏不属于
+  // 这种兼容响应，继续报错，避免把不完整的原生推理误当成无签名推理。
+  static bool? _thinkingReplayable(List<Map<String, dynamic>> content) {
+    final thinking = content
+        .where(
+          (block) =>
+              block['type'] == 'thinking' ||
+              block['type'] == 'redacted_thinking',
+        )
+        .toList();
+    if (thinking.isEmpty) return null;
+    if (MessagesState.hasCompleteThinking(content)) return true;
+    if (thinking.any(
+      (block) =>
+          block['type'] == 'redacted_thinking' ||
+          (block['signature'] as String?)?.isNotEmpty == true,
+    )) {
+      throw StateError('Messages response contains incomplete signed thinking');
+    }
+    return false;
   }
 
   static anthropic.InputContentBlock _toContentBlock(ContentPart part) {
@@ -718,17 +766,6 @@ abstract final class MessagesAdapter {
     );
   }
 
-  static anthropic.ToolDefinition _toToolDefinition(Tool tool) {
-    return anthropic.ToolDefinition.custom(
-      anthropic.Tool(
-        name: tool.function.name,
-        description: tool.function.description,
-        inputSchema: MessagesAdapter._toInputSchema(tool.function.parameters),
-        strict: tool.function.strict,
-      ),
-    );
-  }
-
   static anthropic.InputSchema _toInputSchema(
     Map<String, dynamic>? parameters,
   ) {
@@ -751,34 +788,50 @@ abstract final class MessagesAdapter {
     );
   }
 
-  static Map<String, dynamic> _decodeArguments(String arguments) {
-    if (arguments.trim().isEmpty) return const <String, dynamic>{};
-    try {
-      final decoded = jsonDecode(arguments);
-      return decoded is Map<String, dynamic>
-          ? decoded
-          : const <String, dynamic>{};
-    } on FormatException {
-      // 上游给的参数半截、非 JSON 或非对象：下发空对象，让模型重新发起调用，
-      // 而不是把整轮对话打挂。
-      return const <String, dynamic>{};
+  /// Messages 要求 tool_use id 只含字母、数字、`_`、`-`；历史里的 id 来自
+  /// 生成它的那家 provider（有的带 `.` / `:`，如 `functions.bash:0`），切到
+  /// Messages 后原样下发会让这个会话之后的每次请求都被拒绝。
+  ///
+  /// 合法的 id 原样保留；否则替换非法字符并带上原 id 的短哈希，避免只差在
+  /// 非法字符上的两个 id 撞成同一个。tool_use 与 tool_result 两侧用同一个
+  /// 函数，映射保持一致。
+  static String _toolUseId(String id) {
+    if (MessagesAdapter._validToolUseId.hasMatch(id)) return id;
+    final sanitized = id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    // FNV-1a（32 位）：确定性、无需额外依赖
+    var hash = 0x811c9dc5;
+    for (final unit in utf8.encode(id)) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
     }
+    return '${sanitized}_${hash.toRadixString(16).padLeft(8, '0')}';
   }
 
-  static FinishReason? _finishReason(anthropic.StopReason? stopReason) {
-    return switch (stopReason) {
-      null => null,
-      anthropic.StopReason.toolUse => FinishReason.toolCalls,
-      anthropic.StopReason.maxTokens ||
-      anthropic.StopReason.modelContextWindowExceeded => FinishReason.length,
-      anthropic.StopReason.refusal => FinishReason.contentFilter,
-      anthropic.StopReason.endTurn ||
-      anthropic.StopReason.stopSequence => FinishReason.stop,
-      // Athena 尚未请求服务端工具或服务端压缩，不能假装已完成这些回合。
-      _ => throw UnsupportedError(
-        'Messages continuation is not supported: ${stopReason.value}',
+  static anthropic.ToolDefinition _toToolDefinition(Tool tool) {
+    return anthropic.ToolDefinition.custom(
+      anthropic.Tool(
+        name: tool.function.name,
+        description: tool.function.description,
+        inputSchema: MessagesAdapter._toInputSchema(tool.function.parameters),
+        strict: tool.function.strict,
       ),
-    };
+    );
+  }
+
+  static List<anthropic.InputContentBlock> _toUserBlocks(
+    UserMessageContent content,
+  ) {
+    switch (content) {
+      case UserTextContent(:final text):
+        return text.isEmpty
+            ? const []
+            : [anthropic.InputContentBlock.text(text)];
+      case UserPartsContent(:final parts):
+        // 与纯文本分支同口径：空 text block 会被 Messages 协议 400 拒绝。
+        return parts
+            .where((part) => !(part is TextContentPart && part.text.isEmpty))
+            .map(MessagesAdapter._toContentBlock)
+            .toList();
+    }
   }
 
   static Usage _usage({
@@ -800,59 +853,6 @@ abstract final class MessagesAdapter {
           : CompletionTokensDetails(reasoningTokens: reasoningTokens),
     );
   }
-
-  static ChatStreamEvent _chunk(ChatDelta delta) {
-    return ChatStreamEvent(
-      object: 'chat.completion.chunk',
-      choices: [ChatStreamChoice(index: 0, delta: delta)],
-    );
-  }
-
-  static ChatStreamEvent _terminalChunk({
-    required String? id,
-    required String? model,
-    required FinishReason? finishReason,
-    required Usage usage,
-  }) {
-    return ChatStreamEvent(
-      id: id,
-      object: 'chat.completion.chunk',
-      model: model,
-      choices: [
-        ChatStreamChoice(
-          index: 0,
-          delta: const ChatDelta(),
-          finishReason: finishReason,
-        ),
-      ],
-      usage: usage,
-    );
-  }
-
-  static anthropic.ToolChoice? _messageToolChoice(
-    ToolChoice? choice,
-    bool? parallel,
-  ) {
-    final disable = parallel == null ? null : !parallel;
-    return switch (choice) {
-      null =>
-        parallel == null
-            ? null
-            : anthropic.ToolChoice.auto(disableParallelToolUse: disable),
-      ToolChoiceAuto() => anthropic.ToolChoice.auto(
-        disableParallelToolUse: disable,
-      ),
-      ToolChoiceNone() => anthropic.ToolChoice.none(),
-      ToolChoiceRequired() => anthropic.ToolChoice.any(
-        disableParallelToolUse: disable,
-      ),
-      ToolChoiceFunction(:final name) => anthropic.ToolChoice.tool(
-        name,
-        disableParallelToolUse: disable,
-      ),
-      _ => throw UnsupportedError(
-        'Messages does not support ${choice.runtimeType}',
-      ),
-    };
-  }
 }
+
+enum _Role { none, user, assistant }

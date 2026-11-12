@@ -1,11 +1,10 @@
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
-import 'package:meta/meta.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart'
     show ElicitQuestion;
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
-import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
@@ -13,15 +12,26 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store.dart';
-import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
+import 'package:meta/meta.dart';
+
+/// 提问回调:由 TUI UI 层注册(终端内模态)。参数含义同 [TuiPermissionHandler]。
+///
+/// 返回 null = 未作答(UI 未就绪或用户跳过),工具据此按标注过的假定继续。
+typedef TuiElicitHandler =
+    Future<Map<String, String>?> Function(
+      String chatId,
+      List<ElicitQuestion> questions,
+      Future<void> cancelled,
+    );
 
 /// 权限审批回调:由 TUI UI 层注册(终端内模态)。
 ///
@@ -33,16 +43,6 @@ typedef TuiPermissionHandler =
       String chatId,
       String toolName,
       String arguments,
-      Future<void> cancelled,
-    );
-
-/// 提问回调:由 TUI UI 层注册(终端内模态)。参数含义同 [TuiPermissionHandler]。
-///
-/// 返回 null = 未作答(UI 未就绪或用户跳过),工具据此按标注过的假定继续。
-typedef TuiElicitHandler =
-    Future<Map<String, String>?> Function(
-      String chatId,
-      List<ElicitQuestion> questions,
       Future<void> cancelled,
     );
 
@@ -95,44 +95,29 @@ class TuiAgentBridge {
     );
   }
 
-  /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
-  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
-
   /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
   Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
 
+  /// 指定会话当前是否为 Bypass。
+  bool isBypassPermissions(String chatId) =>
+      _coordinator.isBypassPermissions(chatId);
+
   MessageEntity? liveMessage(String chatId) => _coordinator.liveMessage(chatId);
-
-  Stream<RunEvent> send({
-    required MessageEntity message,
-    required ChatEntity chat,
-    bool jsonMode = false,
-  }) {
-    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
-  }
-
-  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
-      _coordinator.rewindToUserMessage(chatId, messageId);
-
-  void stop(String chatId) {
-    _coordinator.stop(chatId);
-  }
 
   /// 运行中输入：落库排队，当前 run 结束后自动接续为新 run。
   Future<MessageEntity?> queueInput(String chatId, MessageEntity message) {
     return _coordinator.queueInput(chatId, message);
   }
 
-  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
-  void updateApprovalMode(String chatId, ApprovalMode mode) {
-    _coordinator.updateApprovalMode(chatId, mode);
+  /// 测试入口:直接请求一次提问(走与 Agent 相同的 handler 逻辑)。
+  @visibleForTesting
+  Future<Map<String, String>?> requestElicitForTest(
+    List<ElicitQuestion> questions, {
+    String chatId = '',
+    CancelToken? cancelToken,
+  }) {
+    return _askElicit(chatId, questions, cancelToken ?? CancelToken());
   }
-
-  /// 指定会话当前是否为 Bypass。
-  bool isBypassPermissions(String chatId) =>
-      _coordinator.isBypassPermissions(chatId);
-
-  // ─── TUI 侧实现:终端内模态 ─────────────────────────────
 
   /// 测试入口:直接请求一次权限(走与 Agent 相同的 handler 逻辑)。
   @visibleForTesting
@@ -150,14 +135,29 @@ class TuiAgentBridge {
     );
   }
 
-  /// 测试入口:直接请求一次提问(走与 Agent 相同的 handler 逻辑)。
-  @visibleForTesting
-  Future<Map<String, String>?> requestElicitForTest(
-    List<ElicitQuestion> questions, {
-    String chatId = '',
-    CancelToken? cancelToken,
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
+      _coordinator.rewindToUserMessage(chatId, messageId);
+
+  Stream<RunEvent> send({
+    required MessageEntity message,
+    required ChatEntity chat,
+    bool jsonMode = false,
   }) {
-    return _askElicit(chatId, questions, cancelToken ?? CancelToken());
+    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
+  }
+
+  /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
+  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
+
+  // ─── TUI 侧实现:终端内模态 ─────────────────────────────
+
+  void stop(String chatId) {
+    _coordinator.stop(chatId);
+  }
+
+  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _coordinator.updateApprovalMode(chatId, mode);
   }
 
   Future<Map<String, String>?> _askElicit(

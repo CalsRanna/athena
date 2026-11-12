@@ -7,110 +7,6 @@ import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 只读用的最小仓储：测试只走 [getMessagesByChatId]，写方法不应被调用。
-class _FakeMessageRepository implements MessageRepository {
-  _FakeMessageRepository(this.messages);
-
-  final List<MessageEntity> messages;
-
-  @override
-  Future<List<MessageEntity>> getMessagesByChatId(
-    String chatId, {
-    bool includeCompacted = true,
-  }) async => messages
-      .where((m) => m.chatId == chatId && (includeCompacted || !m.compacted))
-      .toList();
-
-  @override
-  Future<MessageEntity?> getMessageById(String chatId, String id) async =>
-      messages.where((m) => m.id == id).firstOrNull;
-
-  @override
-  Future<int> getMessagesCount(String chatId) async =>
-      messages.where((m) => m.chatId == chatId).length;
-
-  @override
-  Future<MessageEntity?> getLatestMessageByChatId(String chatId) async =>
-      messages.where((m) => m.chatId == chatId).lastOrNull;
-
-  @override
-  Future<List<String>> getTurnStartIds(String chatId) async => const [];
-
-  @override
-  Future<MessageEntity> storeMessage(MessageEntity message) =>
-      throw UnimplementedError('read-only fake');
-
-  @override
-  Future<void> updateMessage(MessageEntity message) =>
-      throw UnimplementedError('read-only fake');
-
-  @override
-  Future<void> deleteMessages(String chatId, Set<String> ids) =>
-      throw UnimplementedError('read-only fake');
-
-  @override
-  Future<void> deleteMessagesByChatId(String chatId) =>
-      throw UnimplementedError('read-only fake');
-
-  @override
-  Future<void> markAsCompacted(String chatId, Set<String> ids) =>
-      throw UnimplementedError('read-only fake');
-}
-
-ChatEntity _chat({int retention = -1}) => ChatEntity(
-  id: '1',
-  title: 't',
-  modelId: '1',
-  sentinelId: ChatEntity.noSentinelId,
-  retention: retention,
-  createdAt: DateTime(2026),
-  updatedAt: DateTime(2026),
-);
-
-MessageEntity _message({
-  required String id,
-  required String role,
-  String content = '',
-  String reasoningContent = '',
-  List<Map<String, dynamic>> toolCalls = const [],
-  List<Map<String, dynamic>> toolResults = const [],
-}) => MessageEntity(
-  id: id,
-  seq: int.tryParse(id) ?? 0,
-  chatId: '1',
-  role: role,
-  content: content,
-  reasoningContent: reasoningContent,
-  reasoning: reasoningContent.isNotEmpty,
-  toolCalls: toolCalls.isEmpty ? '' : jsonEncode(toolCalls),
-  toolResults: toolResults.isEmpty ? '' : jsonEncode(toolResults),
-);
-
-/// 非法请求的判据：OpenAI 兼容端（DeepSeek/OpenAI）要求 assistant 消息至少
-/// 带 content 或 tool_calls 之一，两者皆空即 400
-/// （`Invalid assistant message: content or tool_calls must be set`）。
-bool _isIllegalAssistant(ChatMessage m) =>
-    m is AssistantMessage && m.content == null && m.toolCalls == null;
-
-List<Map<String, dynamic>> _call(String id, String name) => [
-  {'id': id, 'name': name, 'arguments': '{}'},
-];
-
-List<Map<String, dynamic>> _result(String id, String name) => [
-  {'id': id, 'name': name, 'result': 'Error: x', 'modelResult': 'Error: x'},
-];
-
-Future<List<ChatMessage>> _build(
-  List<MessageEntity> messages, {
-  bool includeReasoning = false,
-  int retention = -1,
-}) => ChatMessageConverter(messageRepository: _FakeMessageRepository(messages))
-    .buildMessages(
-      chat: _chat(retention: retention),
-      sentinel: null,
-      includeReasoning: includeReasoning,
-    );
-
 void main() {
   group('空 assistant 记录不产生非法请求', () {
     test('进程被强杀后遗留的空迭代占位不进入请求', () async {
@@ -349,4 +245,108 @@ void main() {
       expect(messages.last, isA<ToolMessage>());
     });
   });
+}
+
+Future<List<ChatMessage>> _build(
+  List<MessageEntity> messages, {
+  bool includeReasoning = false,
+  int retention = -1,
+}) => ChatMessageConverter(messageRepository: _FakeMessageRepository(messages))
+    .buildMessages(
+      chat: _chat(retention: retention),
+      sentinel: null,
+      includeReasoning: includeReasoning,
+    );
+
+List<Map<String, dynamic>> _call(String id, String name) => [
+  {'id': id, 'name': name, 'arguments': '{}'},
+];
+
+ChatEntity _chat({int retention = -1}) => ChatEntity(
+  id: '1',
+  title: 't',
+  modelId: '1',
+  sentinelId: ChatEntity.noSentinelId,
+  retention: retention,
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
+
+/// 非法请求的判据：OpenAI 兼容端（DeepSeek/OpenAI）要求 assistant 消息至少
+/// 带 content 或 tool_calls 之一，两者皆空即 400
+/// （`Invalid assistant message: content or tool_calls must be set`）。
+bool _isIllegalAssistant(ChatMessage m) =>
+    m is AssistantMessage && m.content == null && m.toolCalls == null;
+
+MessageEntity _message({
+  required String id,
+  required String role,
+  String content = '',
+  String reasoningContent = '',
+  List<Map<String, dynamic>> toolCalls = const [],
+  List<Map<String, dynamic>> toolResults = const [],
+}) => MessageEntity(
+  id: id,
+  seq: int.tryParse(id) ?? 0,
+  chatId: '1',
+  role: role,
+  content: content,
+  reasoningContent: reasoningContent,
+  reasoning: reasoningContent.isNotEmpty,
+  toolCalls: toolCalls.isEmpty ? '' : jsonEncode(toolCalls),
+  toolResults: toolResults.isEmpty ? '' : jsonEncode(toolResults),
+);
+
+List<Map<String, dynamic>> _result(String id, String name) => [
+  {'id': id, 'name': name, 'result': 'Error: x', 'modelResult': 'Error: x'},
+];
+
+/// 只读用的最小仓储：测试只走 [getMessagesByChatId]，写方法不应被调用。
+class _FakeMessageRepository implements MessageRepository {
+  final List<MessageEntity> messages;
+
+  _FakeMessageRepository(this.messages);
+
+  @override
+  Future<void> deleteMessages(String chatId, Set<String> ids) =>
+      throw UnimplementedError('read-only fake');
+
+  @override
+  Future<void> deleteMessagesByChatId(String chatId) =>
+      throw UnimplementedError('read-only fake');
+
+  @override
+  Future<MessageEntity?> getLatestMessageByChatId(String chatId) async =>
+      messages.where((m) => m.chatId == chatId).lastOrNull;
+
+  @override
+  Future<MessageEntity?> getMessageById(String chatId, String id) async =>
+      messages.where((m) => m.id == id).firstOrNull;
+
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    String chatId, {
+    bool includeCompacted = true,
+  }) async => messages
+      .where((m) => m.chatId == chatId && (includeCompacted || !m.compacted))
+      .toList();
+
+  @override
+  Future<int> getMessagesCount(String chatId) async =>
+      messages.where((m) => m.chatId == chatId).length;
+
+  @override
+  Future<List<String>> getTurnStartIds(String chatId) async => const [];
+
+  @override
+  Future<void> markAsCompacted(String chatId, Set<String> ids) =>
+      throw UnimplementedError('read-only fake');
+
+  @override
+  Future<MessageEntity> storeMessage(MessageEntity message) =>
+      throw UnimplementedError('read-only fake');
+
+  @override
+  Future<void> updateMessage(MessageEntity message) =>
+      throw UnimplementedError('read-only fake');
 }

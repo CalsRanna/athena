@@ -1,12 +1,12 @@
-import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -40,14 +40,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
 
   String? retriesError;
   String? outputLimitError;
-
-  @override
-  void dispose() {
-    retriesController.dispose();
-    outputLimitController.dispose();
-    braveApiKeyController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +146,14 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     );
   }
 
+  @override
+  void dispose() {
+    retriesController.dispose();
+    outputLimitController.dispose();
+    braveApiKeyController.dispose();
+    super.dispose();
+  }
+
   Widget _buildNumberField({
     required TextEditingController controller,
     required String placeholder,
@@ -172,15 +172,10 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     );
   }
 
-  Future<void> _commitRetries() async {
-    final value = int.tryParse(retriesController.text.trim());
-    if (value == null || value < 1) {
-      setState(() => retriesError = 'Enter a whole number of at least 1.');
-      return;
-    }
-    setState(() => retriesError = null);
-    if (value == viewModel.maxRetries.value) return;
-    await viewModel.updateMaxRetries(value);
+  Future<void> _commitBraveApiKey() async {
+    final value = braveApiKeyController.text.trim();
+    if (value == viewModel.braveApiKey.value) return;
+    await viewModel.updateBraveApiKey(value);
   }
 
   Future<void> _commitOutputLimit() async {
@@ -196,9 +191,14 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     await viewModel.updateDefaultOutputLimit(value);
   }
 
-  Future<void> _commitBraveApiKey() async {
-    final value = braveApiKeyController.text.trim();
-    if (value == viewModel.braveApiKey.value) return;
-    await viewModel.updateBraveApiKey(value);
+  Future<void> _commitRetries() async {
+    final value = int.tryParse(retriesController.text.trim());
+    if (value == null || value < 1) {
+      setState(() => retriesError = 'Enter a whole number of at least 1.');
+      return;
+    }
+    setState(() => retriesError = null);
+    if (value == viewModel.maxRetries.value) return;
+    await viewModel.updateMaxRetries(value);
   }
 }

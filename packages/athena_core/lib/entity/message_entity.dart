@@ -1,5 +1,5 @@
-import 'package:athena_core/extension/json_map_extension.dart';
 import 'package:athena_core/entity/run_statistics.dart';
+import 'package:athena_core/extension/json_map_extension.dart';
 
 class MessageEntity {
   final String? id;
@@ -87,30 +87,6 @@ class MessageEntity {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      'chat_id': chatId,
-      'seq': seq,
-      'role': role,
-      'content': content,
-      'reasoning_content': reasoningContent,
-      'reasoning': reasoning ? 1 : 0,
-      'image_urls': imageUrls,
-      'reference': reference,
-      'tool_calls': toolCalls,
-      'tool_results': toolResults,
-      'responses_state': responsesState,
-      'messages_state': messagesState,
-      'chat_completions_state': chatCompletionsState,
-      'completion_details': completionDetails,
-      if (runStatistics != null) 'run_statistics': runStatistics!.toJson(),
-      'compacted': compacted ? 1 : 0,
-      'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
-      'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
-    };
-  }
-
   MessageEntity copyWith({
     String? id,
     int? seq,
@@ -153,5 +129,29 @@ class MessageEntity {
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'chat_id': chatId,
+      'seq': seq,
+      'role': role,
+      'content': content,
+      'reasoning_content': reasoningContent,
+      'reasoning': reasoning ? 1 : 0,
+      'image_urls': imageUrls,
+      'reference': reference,
+      'tool_calls': toolCalls,
+      'tool_results': toolResults,
+      'responses_state': responsesState,
+      'messages_state': messagesState,
+      'chat_completions_state': chatCompletionsState,
+      'completion_details': completionDetails,
+      if (runStatistics != null) 'run_statistics': runStatistics!.toJson(),
+      'compacted': compacted ? 1 : 0,
+      'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
+      'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
+    };
   }
 }

@@ -7,9 +7,8 @@ import 'package:tray_manager/tray_manager.dart';
 class SystemTrayUtil {
   static final SystemTrayUtil instance = SystemTrayUtil._();
 
-  SystemTrayUtil._();
-
   TrayIcon? _trayIcon;
+
   Menu? _menu;
   MenuItem? _quitItem;
   Image? _icon;
@@ -17,6 +16,8 @@ class SystemTrayUtil {
   /// 退出前的收尾回调（停止后台任务等）。在 exit(0) 之前 await，
   /// 否则进程先没了，子进程会变成孤儿。
   Future<void> Function()? onBeforeQuit;
+
+  SystemTrayUtil._();
 
   Future<void> dispose() async {
     // 先摘掉托盘图标再释放菜单与图像：图标仍引用它们时释放顺序反过来不安全。

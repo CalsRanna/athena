@@ -1,12 +1,12 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 侧栏底部常驻页脚：一整行可点的应用标识，点击在行的上方弹出菜单。
 ///
@@ -28,12 +28,6 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
   String version = '';
 
   @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
     return Container(
@@ -46,25 +40,18 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
   Future<void> _loadVersion() async {
     final packageInfo = await PackageInfo.fromPlatform();
     if (!mounted) return;
     setState(() {
       version = '${packageInfo.version} (${packageInfo.buildNumber})';
     });
-  }
-
-  Future<void> _openSettings({bool about = false}) async {
-    final route = DesktopSettingRoute(
-      children: [
-        if (about)
-          const DesktopSettingAboutRoute()
-        else
-          const DesktopSettingAgentRoute(),
-      ],
-    );
-    final newSession = await route.push<bool>(context);
-    if (mounted && newSession == true) widget.onNewSession?.call();
   }
 
   /// 在 [anchor]（页脚行的全局矩形）上方弹出菜单：面板外沿与行左右对齐、
@@ -97,6 +84,56 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
       onDismissed: () {
         if (mounted) setState(() => open = false);
       },
+    );
+  }
+
+  Future<void> _openSettings({bool about = false}) async {
+    final route = DesktopSettingRoute(
+      children: [
+        if (about)
+          const DesktopSettingAboutRoute()
+        else
+          const DesktopSettingAgentRoute(),
+      ],
+    );
+    final newSession = await route.push<bool>(context);
+    if (mounted && newSession == true) widget.onNewSession?.call();
+  }
+}
+
+/// 菜单头部：应用名 + 版本号。
+class _FooterMenuHeader extends StatelessWidget {
+  final String name;
+  final String version;
+  const _FooterMenuHeader({required this.name, required this.version});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final width = DesktopContextMenuConfiguration.widthOf(context);
+    // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
+    final nameStyle = AthenaTextStyle.row.copyWith(
+      color: colors.textPrimary,
+      decoration: TextDecoration.none,
+    );
+    final versionStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.textSecondary,
+      decoration: TextDecoration.none,
+    );
+    return Container(
+      width: width,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(name, style: nameStyle),
+          if (version.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(version, style: versionStyle),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -167,42 +204,5 @@ class _FooterTileState extends State<_FooterTile> {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
     widget.onTap(box.localToGlobal(Offset.zero) & box.size);
-  }
-}
-
-/// 菜单头部：应用名 + 版本号。
-class _FooterMenuHeader extends StatelessWidget {
-  final String name;
-  final String version;
-  const _FooterMenuHeader({required this.name, required this.version});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final width = DesktopContextMenuConfiguration.widthOf(context);
-    // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
-    final nameStyle = AthenaTextStyle.row.copyWith(
-      color: colors.textPrimary,
-      decoration: TextDecoration.none,
-    );
-    final versionStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.textSecondary,
-      decoration: TextDecoration.none,
-    );
-    return Container(
-      width: width,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(name, style: nameStyle),
-          if (version.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(version, style: versionStyle),
-          ],
-        ],
-      ),
-    );
   }
 }

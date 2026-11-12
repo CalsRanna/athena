@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_gui/component/approval_mode_label.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:flutter/widgets.dart';
 import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:flutter/widgets.dart';
 
 /// composer 左下角的审批模式文字（如 `Bypass permissions`）。
 ///
@@ -46,22 +46,6 @@ class DesktopPermissionModeMenu extends StatelessWidget {
     this.onSelected,
   });
 
-  static void show(
-    BuildContext context,
-    Rect anchor, {
-    required ApprovalMode current,
-    void Function(ApprovalMode)? onSelected,
-  }) {
-    DesktopContextMenuManager.instance.show(
-      context,
-      DesktopPermissionModeMenu(
-        anchor: anchor,
-        current: current,
-        onSelected: onSelected,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const width = 296.0;
@@ -81,6 +65,22 @@ class DesktopPermissionModeMenu extends StatelessWidget {
             onTap: () => onSelected?.call(mode),
           ),
       ],
+    );
+  }
+
+  static void show(
+    BuildContext context,
+    Rect anchor, {
+    required ApprovalMode current,
+    void Function(ApprovalMode)? onSelected,
+  }) {
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopPermissionModeMenu(
+        anchor: anchor,
+        current: current,
+        onSelected: onSelected,
+      ),
     );
   }
 }

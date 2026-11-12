@@ -1,16 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
-
-/// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
-///
-/// - [exact]:shell 工具。折叠空白并去掉参数末尾的 `/` 后匹配完整命令
-/// - [origin]:web_fetch。pattern 为 URL origin,前缀 + 主机边界
-/// - [path]:文件工具。归一化路径 + 目录前缀(/ 边界)或路径 glob
-enum RuleKind { exact, origin, path }
 
 /// 单条持久禁令:工具名 + 匹配方式 + 模式。
 ///
@@ -19,7 +12,17 @@ enum RuleKind { exact, origin, path }
 /// - 仅路径支持通配符:`*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨;
 ///   命令内容按字面匹配,不解析命令语法
 class PermissionRule {
+  /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
+  static const kFileToolNames = {'file_read', 'file_write', 'file_update'};
+
+  /// Shell 类工具:禁令按整条命令匹配，不分析命令语义。
+  ///
+  /// 与 [PermissionRule.kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
+  /// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
+  static const kShellToolNames = {'bash', 'powershell'};
+
   final String tool;
+
   final RuleKind kind;
 
   /// 匹配模式:exact 的完整命令 / origin /
@@ -31,38 +34,6 @@ class PermissionRule {
     required this.kind,
     this.pattern = '',
   });
-
-  /// 严格解析;旧 allow、非法组合或已移除的 action 规则
-  /// 返回 null,由存储层跳过——损坏规则不能拖垮整个权限检查。
-  static PermissionRule? fromJson(Map<String, dynamic> json) {
-    final tool = json['tool'] as String?;
-    final kindName = json['kind'] as String?;
-    if (tool == null || kindName == null) return null;
-    final kind = RuleKind.values.asNameMap()[kindName];
-    if (kind == null) return null;
-    final pattern = json['pattern'] as String? ?? '';
-    final wildcard = json['wildcard'] as bool? ?? false;
-    // 旧 allow 规则（包括省略 effect 的旧格式）停止生效，绝不能改读成 deny。
-    if (json['effect'] != 'deny') return null;
-
-    // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
-    if (kind == RuleKind.origin && tool != 'web_fetch') {
-      return null;
-    } else if (kind == RuleKind.path &&
-        !PermissionRule.kFileToolNames.contains(tool)) {
-      return null;
-    } else if (wildcard) {
-      return null;
-    }
-    return PermissionRule(tool: tool, kind: kind, pattern: pattern);
-  }
-
-  Map<String, dynamic> toJson() => {
-    'tool': tool,
-    'kind': kind.name,
-    'effect': 'deny',
-    'pattern': pattern,
-  };
 
   /// [keyArg] 是归一化后的参数(路径/命令/origin)。
   bool matches(String toolName, String? keyArg) {
@@ -89,6 +60,13 @@ class PermissionRule {
     }
   }
 
+  Map<String, dynamic> toJson() => {
+    'tool': tool,
+    'kind': kind.name,
+    'effect': 'deny',
+    'pattern': pattern,
+  };
+
   /// origin 匹配:前缀 + 主机边界(`:` 端口或 `/` 路径)。
   ///
   /// `https://a.com` 命中 `https://a.com/api` 与 `https://a.com:8080/x`,
@@ -98,6 +76,62 @@ class PermissionRule {
     if (!keyArg.startsWith(pattern)) return false;
     final next = keyArg[pattern.length];
     return next == ':' || next == '/';
+  }
+
+  /// 路径匹配:归一化(分隔符、.. 词法解析、相对路径绝对化)后,
+  /// 含通配符按路径 glob,否则目录前缀(/ 边界)。
+  ///
+  /// 两侧都解析符号链接(通配符段不存在,原样保留):执行侧的 keyArg 已由
+  /// `applyRunWorkspace` 解析为真实路径,若 pattern 仍是词法路径,写在链接
+  /// 目录下的规则(macOS 的 `/tmp` 即 `/private/tmp`)不再命中,deny 规则
+  /// 也能被链接绕开。对已解析的 keyArg 再解析一次结果不变。
+  bool _matchesPath(String keyArg) {
+    var p = PathNormalizer.resolveRealPathSync(pattern);
+    var k = PathNormalizer.resolveRealPathSync(keyArg);
+    if (p.endsWith('/')) p = p.substring(0, p.length - 1);
+    if (k.endsWith('/')) k = k.substring(0, k.length - 1);
+    if (p.contains('*') || p.contains('?')) {
+      return _globMatch(p, k);
+    }
+    return k == p || k.startsWith('$p/');
+  }
+
+  /// 严格解析;旧 allow、非法组合或已移除的 action 规则
+  /// 返回 null,由存储层跳过——损坏规则不能拖垮整个权限检查。
+  static PermissionRule? fromJson(Map<String, dynamic> json) {
+    final tool = json['tool'] as String?;
+    final kindName = json['kind'] as String?;
+    if (tool == null || kindName == null) return null;
+    final kind = RuleKind.values.asNameMap()[kindName];
+    if (kind == null) return null;
+    final pattern = json['pattern'] as String? ?? '';
+    final wildcard = json['wildcard'] as bool? ?? false;
+    // 旧 allow 规则（包括省略 effect 的旧格式）停止生效，绝不能改读成 deny。
+    if (json['effect'] != 'deny') return null;
+
+    // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
+    if (kind == RuleKind.origin && tool != 'web_fetch') {
+      return null;
+    } else if (kind == RuleKind.path &&
+        !PermissionRule.kFileToolNames.contains(tool)) {
+      return null;
+    } else if (wildcard) {
+      return null;
+    }
+    return PermissionRule(tool: tool, kind: kind, pattern: pattern);
+  }
+
+  /// 路径通配符 → 正则:`*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨 `/`。
+  ///
+  /// 先 RegExp.escape 转义全部元字符,再还原通配符——`(` `|` `[` 等
+  /// 一律按字面匹配,避免路径中的正则元字符造成编译失败或正则注入。
+  static bool _globMatch(String glob, String value) {
+    final escaped = RegExp.escape(glob)
+        .replaceAll(r'\*\*', '___DSTAR___')
+        .replaceAll(r'\*', r'[^/]*')
+        .replaceAll(r'\?', r'[^/]')
+        .replaceAll('___DSTAR___', r'.*');
+    return RegExp('^$escaped\$').hasMatch(value);
   }
 
   /// deny 规则用的 shell 命令归一化：折叠空白、去掉每个参数末尾的 `/`。
@@ -119,46 +153,6 @@ class PermissionRule {
         })
         .join(' ');
   }
-
-  /// 路径匹配:归一化(分隔符、.. 词法解析、相对路径绝对化)后,
-  /// 含通配符按路径 glob,否则目录前缀(/ 边界)。
-  ///
-  /// 两侧都解析符号链接(通配符段不存在,原样保留):执行侧的 keyArg 已由
-  /// `applyRunWorkspace` 解析为真实路径,若 pattern 仍是词法路径,写在链接
-  /// 目录下的规则(macOS 的 `/tmp` 即 `/private/tmp`)不再命中,deny 规则
-  /// 也能被链接绕开。对已解析的 keyArg 再解析一次结果不变。
-  bool _matchesPath(String keyArg) {
-    var p = PathNormalizer.resolveRealPathSync(pattern);
-    var k = PathNormalizer.resolveRealPathSync(keyArg);
-    if (p.endsWith('/')) p = p.substring(0, p.length - 1);
-    if (k.endsWith('/')) k = k.substring(0, k.length - 1);
-    if (p.contains('*') || p.contains('?')) {
-      return _globMatch(p, k);
-    }
-    return k == p || k.startsWith('$p/');
-  }
-
-  /// 路径通配符 → 正则:`*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨 `/`。
-  ///
-  /// 先 RegExp.escape 转义全部元字符,再还原通配符——`(` `|` `[` 等
-  /// 一律按字面匹配,避免路径中的正则元字符造成编译失败或正则注入。
-  static bool _globMatch(String glob, String value) {
-    final escaped = RegExp.escape(glob)
-        .replaceAll(r'\*\*', '___DSTAR___')
-        .replaceAll(r'\*', r'[^/]*')
-        .replaceAll(r'\?', r'[^/]')
-        .replaceAll('___DSTAR___', r'.*');
-    return RegExp('^$escaped\$').hasMatch(value);
-  }
-
-  /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
-  static const kFileToolNames = {'file_read', 'file_write', 'file_update'};
-
-  /// Shell 类工具:禁令按整条命令匹配，不分析命令语义。
-  ///
-  /// 与 [PermissionRule.kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
-  /// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
-  static const kShellToolNames = {'bash', 'powershell'};
 }
 
 /// 规则持久化存储(`FileStorage.permissionsFile`,GUI 与 TUI 共用)。
@@ -175,6 +169,18 @@ class PermissionRule {
 /// 锁都由装配层从数据根传入,**不再自己拼 `$HOME`**:否则换了数据根(移动端、
 /// TUI 的 `--data-dir`)之后,规则仍会写进真实主目录。
 class PermissionStore {
+  /// 落盘文件;null = 纯内存实例,此时 [_locks] 也为 null。
+  final File? _file;
+
+  /// 锁放哪由它决定;仅当 [_file] 非空时非空。
+  final LockRegistry? _locks;
+
+  List<PermissionRule> rules = [];
+
+  bool _loaded = false;
+
+  (DateTime, int)? _loadedStamp;
+
   /// [file] 与 [locks] 成对提供:[file] 是落点,[locks] 决定它的锁放哪(见
   /// [LockRegistry])。都不提供 = 纯内存实例(测试)。
   PermissionStore({File? file, LockRegistry? locks})
@@ -186,36 +192,6 @@ class PermissionStore {
                   'Locking the permissions file requires a LockRegistry '
                   'configured with that file',
                 ));
-
-  /// 落盘文件;null = 纯内存实例,此时 [_locks] 也为 null。
-  final File? _file;
-
-  /// 锁放哪由它决定;仅当 [_file] 非空时非空。
-  final LockRegistry? _locks;
-
-  List<PermissionRule> rules = [];
-
-  bool _loaded = false;
-  (DateTime, int)? _loadedStamp;
-
-  /// 开始与磁盘同步。没配置落盘文件时调用它是装配错误:那意味着本该持久化的
-  /// 规则会静默只留在内存里,重启即丢。
-  Future<void> load() async {
-    if (_file == null) {
-      throw StateError('PermissionStore has no backing file; cannot load()');
-    }
-    _loaded = true;
-    _reload();
-  }
-
-  /// 文件自上次读取后被改过(另一进程写入、手工编辑)就重读。
-  ///
-  /// 同步实现:权限检查是同步的,且在每次工具调用前执行;未变化时只有
-  /// 一次 stat。
-  void refreshIfChanged() {
-    if (!_loaded) return;
-    if (_stamp() != _loadedStamp) _reload();
-  }
 
   Future<void> add(PermissionRule rule) async {
     if (!_loaded) {
@@ -245,6 +221,25 @@ class PermissionStore {
     });
   }
 
+  /// 开始与磁盘同步。没配置落盘文件时调用它是装配错误:那意味着本该持久化的
+  /// 规则会静默只留在内存里,重启即丢。
+  Future<void> load() async {
+    if (_file == null) {
+      throw StateError('PermissionStore has no backing file; cannot load()');
+    }
+    _loaded = true;
+    _reload();
+  }
+
+  /// 文件自上次读取后被改过(另一进程写入、手工编辑)就重读。
+  ///
+  /// 同步实现:权限检查是同步的,且在每次工具调用前执行;未变化时只有
+  /// 一次 stat。
+  void refreshIfChanged() {
+    if (!_loaded) return;
+    if (_stamp() != _loadedStamp) _reload();
+  }
+
   void _reload() {
     final parsed = _parse(_file!);
     // 解析失败保留已有规则:清空会让 deny 规则在这段时间里失效
@@ -257,6 +252,14 @@ class PermissionStore {
     if (stat.type == FileSystemEntityType.notFound) return null;
     return (stat.modified, stat.size);
   }
+
+  static bool _contains(List<PermissionRule> list, PermissionRule rule) =>
+      list.any(
+        (r) =>
+            r.tool == rule.tool &&
+            r.kind == rule.kind &&
+            r.pattern == rule.pattern,
+      );
 
   /// 读取并解析规则文件。文件不存在返回空列表;整体无法解析返回 null。
   static List<PermissionRule>? _parse(File file) {
@@ -289,12 +292,11 @@ class PermissionStore {
       return null;
     }
   }
-
-  static bool _contains(List<PermissionRule> list, PermissionRule rule) =>
-      list.any(
-        (r) =>
-            r.tool == rule.tool &&
-            r.kind == rule.kind &&
-            r.pattern == rule.pattern,
-      );
 }
+
+/// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
+///
+/// - [exact]:shell 工具。折叠空白并去掉参数末尾的 `/` 后匹配完整命令
+/// - [origin]:web_fetch。pattern 为 URL origin,前缀 + 主机边界
+/// - [path]:文件工具。归一化路径 + 目录前缀(/ 边界)或路径 glob
+enum RuleKind { exact, origin, path }

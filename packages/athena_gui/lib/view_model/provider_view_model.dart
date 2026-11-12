@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
+import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
@@ -11,6 +11,22 @@ class ProviderViewModel {
   final ModelViewModel _modelViewModel;
   final ModelCatalogService _catalogService;
   Future<CatalogSyncResult?>? _syncOperation;
+
+  // Signals 状态
+  final providers = listSignal<ProviderEntity>([]);
+
+  final isLoading = signal(false);
+  final isSyncing = signal(false);
+  final lastSyncedAt = signal<DateTime?>(null);
+  final error = signal<String?>(null);
+  // Computed signals
+  late final enabledProviders = computed(() {
+    return providers.value.where((p) => p.enabled).toList();
+  });
+
+  late final disabledProviders = computed(() {
+    return providers.value.where((p) => !p.enabled).toList();
+  });
 
   ProviderViewModel({
     required ProviderRepository repository,
@@ -20,21 +36,41 @@ class ProviderViewModel {
        _modelViewModel = modelViewModel,
        _catalogService = catalogService;
 
-  // Signals 状态
-  final providers = listSignal<ProviderEntity>([]);
-  final isLoading = signal(false);
-  final isSyncing = signal(false);
-  final lastSyncedAt = signal<DateTime?>(null);
-  final error = signal<String?>(null);
+  Future<void> deleteProvider(ProviderEntity provider) async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await _repository.deleteProvider(provider.id!);
+      providers.value = providers.value
+          .where((p) => p.id != provider.id)
+          .toList();
+      // Provider 文件包含它的模型，持久化删除已完成；这里只移除本地列表项。
+      _modelViewModel.removeModelsOfProvider(provider.id!);
+      await _modelViewModel.loadEnabledModels();
+    } catch (e) {
+      error.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-  // Computed signals
-  late final enabledProviders = computed(() {
-    return providers.value.where((p) => p.enabled).toList();
-  });
+  Future<List<ProviderEntity>> getEnabledProviders() async {
+    try {
+      return await _repository.getEnabledProviders();
+    } catch (e) {
+      error.value = e.toString();
+      return [];
+    }
+  }
 
-  late final disabledProviders = computed(() {
-    return providers.value.where((p) => !p.enabled).toList();
-  });
+  Future<ProviderEntity?> getProviderById(String id) async {
+    try {
+      return await _repository.getProviderById(id);
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    }
+  }
 
   Future<void> initSignals() async {
     isLoading.value = true;
@@ -49,9 +85,52 @@ class ProviderViewModel {
     }
   }
 
+  /// 新建 provider;成功返回带 id 的实体(设置页据此直接打开它)。
+  Future<ProviderEntity?> storeProvider(ProviderEntity provider) async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      final id = await _repository.storeProvider(provider);
+      final created = provider.copyWith(id: id);
+      providers.value = [...providers.value, created];
+      return created;
+    } catch (e) {
+      AthenaDialog.error(e.toString());
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   /// Synchronizes the catalog and refreshes both provider and model state.
   Future<CatalogSyncResult?> syncCatalog() => _syncOperation ??= _syncCatalog()
       .whenComplete(() => _syncOperation = null);
+
+  Future<void> toggleEnabled(ProviderEntity provider) async {
+    error.value = null;
+    try {
+      final updated = provider.copyWith(enabled: !provider.enabled);
+      await _repository.updateProvider(updated);
+      providers.replaceWhere((p) => p.id == provider.id, updated);
+      await _modelViewModel.loadEnabledModels();
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
+
+  Future<void> updateProvider(ProviderEntity provider) async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await _repository.updateProvider(provider);
+      providers.replaceWhere((p) => p.id == provider.id, provider);
+      await _modelViewModel.loadEnabledModels();
+    } catch (e) {
+      error.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   Future<CatalogSyncResult?> _syncCatalog() async {
     isSyncing.value = true;
@@ -77,85 +156,6 @@ class ProviderViewModel {
       return null;
     } finally {
       isSyncing.value = false;
-    }
-  }
-
-  Future<ProviderEntity?> getProviderById(String id) async {
-    try {
-      return await _repository.getProviderById(id);
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  Future<List<ProviderEntity>> getEnabledProviders() async {
-    try {
-      return await _repository.getEnabledProviders();
-    } catch (e) {
-      error.value = e.toString();
-      return [];
-    }
-  }
-
-  /// 新建 provider;成功返回带 id 的实体(设置页据此直接打开它)。
-  Future<ProviderEntity?> storeProvider(ProviderEntity provider) async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      final id = await _repository.storeProvider(provider);
-      final created = provider.copyWith(id: id);
-      providers.value = [...providers.value, created];
-      return created;
-    } catch (e) {
-      AthenaDialog.error(e.toString());
-      return null;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> updateProvider(ProviderEntity provider) async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      await _repository.updateProvider(provider);
-      providers.replaceWhere((p) => p.id == provider.id, provider);
-      await _modelViewModel.loadEnabledModels();
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> deleteProvider(ProviderEntity provider) async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      await _repository.deleteProvider(provider.id!);
-      providers.value = providers.value
-          .where((p) => p.id != provider.id)
-          .toList();
-      // Provider 文件包含它的模型，持久化删除已完成；这里只移除本地列表项。
-      _modelViewModel.removeModelsOfProvider(provider.id!);
-      await _modelViewModel.loadEnabledModels();
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> toggleEnabled(ProviderEntity provider) async {
-    error.value = null;
-    try {
-      final updated = provider.copyWith(enabled: !provider.enabled);
-      await _repository.updateProvider(updated);
-      providers.replaceWhere((p) => p.id == provider.id, updated);
-      await _modelViewModel.loadEnabledModels();
-    } catch (e) {
-      error.value = e.toString();
     }
   }
 }

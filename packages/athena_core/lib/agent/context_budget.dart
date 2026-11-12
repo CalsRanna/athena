@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:athena_core/agent/tool/tool_output_store.dart';
-import 'package:athena_core/service/responses_state.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/messages_state.dart';
+import 'package:athena_core/service/responses_state.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// Checks every request, including iterations within a single run.
@@ -17,12 +17,6 @@ import 'package:openai_dart/openai_dart.dart';
 /// 用量、压缩触发用高估的估算，于是指示器还不到 80% 就先压缩了。
 /// 安全余量不靠高估，而是 [inputLimit] 给输出留的那部分。
 class ContextBudget {
-  ContextBudget(this.contextWindow, {String? calibrationKey})
-    : _calibrationKey = calibrationKey,
-      _usageScale = _calibrations[calibrationKey] ?? 1;
-
-  final int contextWindow;
-
   /// 校准是模型（tokenizer）的属性，不是某一次 run 的属性：GUI / TUI 都是
   /// 长驻进程，同一个模型的第二个 run 不该从「保守高估」重新学起，否则每轮
   /// run 的第一个请求（压缩触发就在这一步）都会按高估值判断。
@@ -33,28 +27,32 @@ class ContextBudget {
   /// 本身可疑（provider 漏报缓存、消息被替换过），高于上限说明估算漏了内容，
   /// 两种情况都不该把校准甩到任意值上。
   static const double _minScale = 0.25;
+
   static const double _maxScale = 4;
+
+  static const _contextOverflowMarkers = [
+    'context budget exceeded',
+    'context_length_exceeded',
+    'maximum context length',
+    'exceeds the maximum number of tokens',
+    'exceed context limit',
+    'prompt is too long',
+    'input is too long',
+    'too many input tokens',
+  ];
+  final int contextWindow;
 
   final String? _calibrationKey;
   double _usageScale;
 
-  int get inputLimit => contextWindow - min(8192, max(256, contextWindow ~/ 5));
+  ContextBudget(this.contextWindow, {String? calibrationKey})
+    : _calibrationKey = calibrationKey,
+      _usageScale = _calibrations[calibrationKey] ?? 1;
 
-  bool shouldCompact(List<ChatMessage> messages, List<Tool>? tools) =>
-      contextWindow > 0 &&
-      estimate(messages, tools) >=
-          min((contextWindow * 0.8).floor(), inputLimit);
+  int get inputLimit => contextWindow - min(8192, max(256, contextWindow ~/ 5));
 
   int estimate(List<ChatMessage> messages, List<Tool>? tools) =>
       (_estimate(messages, tools) * _usageScale).ceil();
-
-  /// 这次请求还能留给输出的 token 数；窗口未知时为 null。
-  ///
-  /// 按校准后的估算算余量：估算已被 provider 回报的真实用量拉齐（见
-  /// [observe]），所以这个余量是「窗口减去真实输入的近似值」，不再自带
-  /// 高估带来的额外余量。
-  int? outputRoom(List<ChatMessage> messages, List<Tool>? tools) =>
-      contextWindow > 0 ? contextWindow - estimate(messages, tools) : null;
 
   void observe({
     required int promptTokens,
@@ -69,6 +67,14 @@ class ContextBudget {
     final key = _calibrationKey;
     if (key != null) _calibrations[key] = _usageScale;
   }
+
+  /// 这次请求还能留给输出的 token 数；窗口未知时为 null。
+  ///
+  /// 按校准后的估算算余量：估算已被 provider 回报的真实用量拉齐（见
+  /// [observe]），所以这个余量是「窗口减去真实输入的近似值」，不再自带
+  /// 高估带来的额外余量。
+  int? outputRoom(List<ChatMessage> messages, List<Tool>? tools) =>
+      contextWindow > 0 ? contextWindow - estimate(messages, tools) : null;
 
   Future<List<ChatMessage>> prepare({
     required List<ChatMessage> messages,
@@ -106,6 +112,11 @@ class ContextBudget {
       'a model with a larger context window. Saved tool outputs are retained.',
     );
   }
+
+  bool shouldCompact(List<ChatMessage> messages, List<Tool>? tools) =>
+      contextWindow > 0 &&
+      estimate(messages, tools) >=
+          min((contextWindow * 0.8).floor(), inputLimit);
 
   int _estimate(List<ChatMessage> messages, List<Tool>? tools) {
     var imageTokens = 0;
@@ -182,15 +193,4 @@ class ContextBudget {
     final text = error.toString().toLowerCase();
     return ContextBudget._contextOverflowMarkers.any(text.contains);
   }
-
-  static const _contextOverflowMarkers = [
-    'context budget exceeded',
-    'context_length_exceeded',
-    'maximum context length',
-    'exceeds the maximum number of tokens',
-    'exceed context limit',
-    'prompt is too long',
-    'input is too long',
-    'too many input tokens',
-  ];
 }

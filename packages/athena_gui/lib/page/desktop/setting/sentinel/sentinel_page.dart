@@ -2,46 +2,27 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/component/tool_config.dart';
-import 'package:athena_gui/view_model/model_view_model.dart';
-import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
-import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/switch.dart';
+import 'package:athena_gui/page/desktop/component/desktop_list_selection.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/list_pane.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/page/desktop/setting/component/row.dart';
+import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
+import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-
-enum _Source implements SettingsListOption {
-  all('All sources'),
-  custom('Your Sentinels'),
-  builtin('Built-in');
-
-  const _Source(this.label);
-  @override
-  final String label;
-}
-
-enum _Sort implements SettingsListOption {
-  ascending('Name (A–Z)'),
-  descending('Name (Z–A)');
-
-  const _Sort(this.label);
-  @override
-  final String label;
-}
 
 /// 桌面端 Sentinels：单列列表 → 点进一个角色的编辑页。
 ///
@@ -88,29 +69,16 @@ class _DesktopSettingSentinelPageState
   /// 当前平台实际注册的工具；设置页只展示真实存在的。
   late final List<Tool> registeredTools = GetIt.instance<ToolRegistry>().all;
 
-  @override
-  void initState() {
-    super.initState();
-    for (final controller in _controllers) {
-      controller.addListener(_recomputeDirty);
-    }
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    for (final controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
   List<TextEditingController> get _controllers => [
     nameController,
     descriptionController,
     tagsController,
     promptController,
   ];
+
+  /// 工具区按固定顺序展示；未登记的工具排在最后。
+  List<Tool> get _displayTools =>
+      ToolConfig.orderedToolsForConfig(registeredTools);
 
   @override
   Widget build(BuildContext context) {
@@ -124,162 +92,167 @@ class _DesktopSettingSentinelPageState
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 列表
-  // ---------------------------------------------------------------------------
+  void createSentinel() {
+    AthenaDialog.show(
+      DesktopSentinelFormDialog(
+        onStored: (sentinel) {
+          if (mounted) _openSentinel(sentinel);
+        },
+      ),
+    );
+  }
 
-  Widget _buildList(List<SentinelEntity> sentinels) {
-    final query = searchController.text.trim().toLowerCase();
-    final matches = sentinels.where((s) {
-      if (source == _Source.custom && s.isPreset ||
-          source == _Source.builtin && !s.isPreset) {
-        return false;
+  Future<void> destroySentinels(List<SentinelEntity> targets) async {
+    final deletable = targets
+        .where((item) => !item.isPreset && item.id != null)
+        .toList();
+    if (deletable.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      deletable.length == 1
+          ? 'Delete ${deletable.single.name}?\n\n'
+                'Its private experiences and evolution history are deleted '
+                'with it. Shared experiences are kept. This cannot be undone.'
+          : 'Delete ${deletable.length} Sentinels?\n\n'
+                'Their private experiences and evolution history are deleted '
+                'with them. Shared experiences are kept. This cannot be '
+                'undone.',
+    );
+    if (confirmed != true) return;
+    for (final sentinel in deletable) {
+      await viewModel.deleteSentinel(sentinel);
+      if (viewModel.sentinels.value.any((item) => item.id == sentinel.id)) {
+        if (mounted) {
+          AthenaDialog.error(
+            viewModel.error.value ?? 'Failed to delete sentinel',
+          );
+        }
+        break;
       }
-      return s.name.toLowerCase().contains(query) ||
-          s.description.toLowerCase().contains(query) ||
-          s.tags.toLowerCase().contains(query);
-    }).toList();
-    matches.sort((a, b) {
-      final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      if (byName != 0) return sort == _Sort.ascending ? byName : -byName;
-      return (a.id ?? '').compareTo(b.id ?? '');
+    }
+    if (!mounted) return;
+    setState(() {
+      _selection.clear();
+      if (deletable.any((item) => item.id == openId)) {
+        openId = null;
+        dirty = false;
+      }
     });
-    final selectableIds = [
-      for (final s in matches)
-        if (!s.isPreset && s.id != null) s.id!,
-    ];
-    return AthenaSettingsListPane(
-      title: 'Sentinels',
-      searchController: searchController,
-      onSearchChanged: (_) => setState(_selection.clear),
-      filterBy: 'source',
-      filter: source,
-      filters: _Source.values,
-      onFilterChanged: (option) => setState(() {
-        source = option;
-        _selection.clear();
-      }),
-      sort: sort,
-      sorts: _Sort.values,
-      onSortChanged: (option) => setState(() {
-        sort = option;
-        _selection.clear();
-      }),
-      onAdd: createSentinel,
-      children: [
-        if (sentinels.isEmpty)
-          AthenaSettingsEmptyState(
-            icon: LucideIcons.userRound,
-            title: 'No Sentinels',
-            hint:
-                'A Sentinel is a reusable persona: a system prompt plus a name, '
-                'description and tags.',
-            action: AthenaSecondaryButton.small(
-              onTap: createSentinel,
-              child: const Text('New Sentinel'),
-            ),
-          )
-        else if (matches.isEmpty)
-          const AthenaSettingsEmptyState(
-            icon: LucideIcons.search,
-            title: 'No matching Sentinels',
-            hint: 'Try another search or change the source filter.',
-          )
-        else
-          AthenaSettingsSection(
-            first: true,
-            title: 'Sentinels · ${matches.length}',
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> duplicateSentinel(SentinelEntity source) async {
+    final copy = SentinelEntity(
+      name: '${source.name} copy',
+      description: source.description,
+      prompt: source.prompt,
+      tags: source.tags,
+      enabledTools: source.enabledTools,
+    );
+    final created = await viewModel.createSentinel(copy);
+    if (!mounted) return;
+    if (created == null) {
+      AthenaDialog.error(viewModel.error.value ?? 'Failed to duplicate');
+      return;
+    }
+    _openSentinel(created);
+  }
+
+  /// 生成入口：校验提示词后先让用户选模型，选中才发起请求。
+  ///
+  /// 每次生成都重新选，不记忆也不落设置——元数据生成是低频动作，多一次
+  /// 点选换来「用哪个模型」始终可见。
+  Future<void> generateSentinel() async {
+    if (viewModel.isGenerating.value) return;
+    if (promptController.text.trim().isEmpty) {
+      setState(() => promptError = 'Write the system prompt first.');
+      return;
+    }
+    setState(() => promptError = null);
+    // 用户可能刚在 Providers 里启用了一家，保证菜单里是最新的模型。
+    await modelViewModel.loadEnabledModels();
+    if (!mounted) return;
+    final groups = modelViewModel.groupedEnabledModels.value;
+    if (groups.isEmpty) {
+      AthenaDialog.warning('No enabled models found');
+      return;
+    }
+    final anchorContext = _generateButtonKey.currentContext;
+    if (anchorContext == null || !anchorContext.mounted) return;
+    final anchor = DesktopContextMenu.contextMenuAnchorOf(anchorContext);
+    DesktopContextMenuManager.instance.show(
+      anchorContext,
+      DesktopContextMenu(
+        // 菜单右边与按钮右边对齐；宽度同其他选择菜单。
+        offset: Offset(
+          anchor.right - AthenaSettingsSelect.menuWidth - 8,
+          anchor.bottom + 4,
+        ),
+        width: AthenaSettingsSelect.menuWidth,
+        children: [
+          DesktopContextMenuList(
+            maxHeight: 360,
             children: [
-              for (final sentinel in matches)
-                _buildSentinelRow(sentinel, selectableIds),
+              for (final entry in groups.entries) ...[
+                DesktopContextMenuGroupLabel(text: entry.key),
+                for (final model in entry.value)
+                  DesktopContextMenuTile(
+                    text: model.name,
+                    onTap: () => _generateWith(model.id!),
+                  ),
+              ],
             ],
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildSentinelRow(
-    SentinelEntity sentinel,
-    List<String> selectableIds,
-  ) {
-    final description = sentinel.description.trim();
-    return AthenaSettingsListRow(
-      label: sentinel.name,
-      badge: sentinel.isPreset ? 'Built-in' : null,
-      description: description.isEmpty ? 'No description' : description,
-      descriptionMaxLines: 1,
-      selected: _selection.selectedIds.contains(sentinel.id),
-      onTap: () => _handleSentinelTap(sentinel, selectableIds),
-      onSecondaryTap: (details) => _openContextMenu(details, sentinel),
-    );
-  }
-
-  void _handleSentinelTap(SentinelEntity sentinel, List<String> selectableIds) {
-    final activate = _selection.handleTap(sentinel.id, ids: selectableIds);
-    if (activate) {
-      _openSentinel(sentinel);
-    } else {
-      setState(() {});
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in _controllers) {
+      controller.addListener(_recomputeDirty);
     }
   }
 
-  void _openSentinel(SentinelEntity sentinel) {
-    _selection.clear();
-    _fill(sentinel);
-    setState(() {
-      openId = sentinel.id;
-      dirty = false;
-      nameError = null;
-      promptError = null;
-    });
-  }
+  // ---------------------------------------------------------------------------
+  // 动作
+  // ---------------------------------------------------------------------------
 
-  Future<void> _closeEditor() async {
-    if (dirty) {
-      final leave = await AthenaDialog.confirm(
-        'Discard unsaved changes to this Sentinel?',
-      );
-      if (leave != true || !mounted) return;
-    }
+  Future<void> storeSentinel(SentinelEntity sentinel) async {
+    final name = nameController.text.trim();
+    final prompt = promptController.text;
     setState(() {
-      openId = null;
-      dirty = false;
+      nameError = name.isEmpty ? 'Name is required.' : null;
+      promptError = prompt.trim().isEmpty ? 'System prompt is required.' : null;
     });
-  }
-
-  void _openContextMenu(TapUpDetails details, SentinelEntity sentinel) {
-    final selected = viewModel.sentinels.value
-        .where((item) => _selection.selectedIds.contains(item.id))
-        .toList();
-    final multiSelect = selected.length > 1 && selected.contains(sentinel);
-    final targets = multiSelect ? selected : [sentinel];
-    final deletable = targets.where((item) => !item.isPreset).toList();
-    final menu = DesktopContextMenu(
-      offset: details.globalPosition,
-      width: 160,
-      children: [
-        if (!multiSelect)
-          DesktopContextMenuTile(
-            text: sentinel.isPreset ? 'View' : 'Edit',
-            onTap: () => _openSentinel(sentinel),
-          ),
-        if (!multiSelect)
-          DesktopContextMenuTile(
-            text: 'Duplicate',
-            onTap: () => duplicateSentinel(sentinel),
-          ),
-        if (deletable.isNotEmpty) const DesktopContextMenuSeparator(),
-        if (deletable.isNotEmpty)
-          DesktopContextMenuTile(
-            text: deletable.length > 1
-                ? 'Delete ${deletable.length} Sentinels'
-                : 'Delete',
-            danger: true,
-            onTap: () => destroySentinels(deletable),
-          ),
-      ],
+    if (nameError != null || promptError != null) return;
+    final copied = sentinel.copyWith(
+      name: name,
+      description: descriptionController.text.trim(),
+      tags: tagsController.text.trim(),
+      prompt: prompt,
+      enabledTools: enabledToolsDraft == null
+          ? null
+          : (enabledToolsDraft!.toList()..sort()),
     );
-    DesktopContextMenuManager.instance.show(context, menu);
+    await viewModel.updateSentinel(copied);
+    if (!mounted) return;
+    final error = viewModel.error.value;
+    if (error != null) {
+      AthenaDialog.error(error);
+      return;
+    }
+    setState(() => dirty = false);
+    AthenaDialog.success('Sentinel saved');
   }
 
   // ---------------------------------------------------------------------------
@@ -445,42 +418,94 @@ class _DesktopSettingSentinelPageState
     );
   }
 
-  void _fill(SentinelEntity sentinel) {
-    nameController.text = sentinel.name;
-    descriptionController.text = sentinel.description;
-    tagsController.text = sentinel.tags;
-    promptController.text = sentinel.prompt;
-    enabledToolsDraft = sentinel.enabledTools?.toSet();
+  // ---------------------------------------------------------------------------
+  // 列表
+  // ---------------------------------------------------------------------------
+
+  Widget _buildList(List<SentinelEntity> sentinels) {
+    final query = searchController.text.trim().toLowerCase();
+    final matches = sentinels.where((s) {
+      if (source == _Source.custom && s.isPreset ||
+          source == _Source.builtin && !s.isPreset) {
+        return false;
+      }
+      return s.name.toLowerCase().contains(query) ||
+          s.description.toLowerCase().contains(query) ||
+          s.tags.toLowerCase().contains(query);
+    }).toList();
+    matches.sort((a, b) {
+      final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      if (byName != 0) return sort == _Sort.ascending ? byName : -byName;
+      return (a.id ?? '').compareTo(b.id ?? '');
+    });
+    final selectableIds = [
+      for (final s in matches)
+        if (!s.isPreset && s.id != null) s.id!,
+    ];
+    return AthenaSettingsListPane(
+      title: 'Sentinels',
+      searchController: searchController,
+      onSearchChanged: (_) => setState(_selection.clear),
+      filterBy: 'source',
+      filter: source,
+      filters: _Source.values,
+      onFilterChanged: (option) => setState(() {
+        source = option;
+        _selection.clear();
+      }),
+      sort: sort,
+      sorts: _Sort.values,
+      onSortChanged: (option) => setState(() {
+        sort = option;
+        _selection.clear();
+      }),
+      onAdd: createSentinel,
+      children: [
+        if (sentinels.isEmpty)
+          AthenaSettingsEmptyState(
+            icon: LucideIcons.userRound,
+            title: 'No Sentinels',
+            hint:
+                'A Sentinel is a reusable persona: a system prompt plus a name, '
+                'description and tags.',
+            action: AthenaSecondaryButton.small(
+              onTap: createSentinel,
+              child: const Text('New Sentinel'),
+            ),
+          )
+        else if (matches.isEmpty)
+          const AthenaSettingsEmptyState(
+            icon: LucideIcons.search,
+            title: 'No matching Sentinels',
+            hint: 'Try another search or change the source filter.',
+          )
+        else
+          AthenaSettingsSection(
+            first: true,
+            title: 'Sentinels · ${matches.length}',
+            children: [
+              for (final sentinel in matches)
+                _buildSentinelRow(sentinel, selectableIds),
+            ],
+          ),
+      ],
+    );
   }
 
-  /// 工具区按固定顺序展示；未登记的工具排在最后。
-  List<Tool> get _displayTools =>
-      ToolConfig.orderedToolsForConfig(registeredTools);
-
-  bool _isToolOn(String name) =>
-      ToolSet.kUndeactivatableToolNames.contains(name) ||
-      (enabledToolsDraft?.contains(name) ?? true);
-
-  void _setToolEnabled(String name, bool enabled) {
-    final all = registeredTools.map((tool) => tool.name).toSet();
-    final next = {
-      ...?enabledToolsDraft,
-      // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
-      // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
-      if (enabledToolsDraft == null) ...all,
-      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
-      ...ToolSet.kUndeactivatableToolNames,
-    };
-    if (enabled) {
-      next.add(name);
-    } else {
-      next.remove(name);
-    }
-    setState(() {
-      // 全部选中等价于「不限制」：存回 null，新增工具才会自动出现。
-      enabledToolsDraft = next.containsAll(all) ? null : next;
-    });
-    _recomputeDirty();
+  Widget _buildSentinelRow(
+    SentinelEntity sentinel,
+    List<String> selectableIds,
+  ) {
+    final description = sentinel.description.trim();
+    return AthenaSettingsListRow(
+      label: sentinel.name,
+      badge: sentinel.isPreset ? 'Built-in' : null,
+      description: description.isEmpty ? 'No description' : description,
+      descriptionMaxLines: 1,
+      selected: _selection.selectedIds.contains(sentinel.id),
+      onTap: () => _handleSentinelTap(sentinel, selectableIds),
+      onSecondaryTap: (details) => _openContextMenu(details, sentinel),
+    );
   }
 
   Widget _buildToolsSection() {
@@ -510,100 +535,25 @@ class _DesktopSettingSentinelPageState
     );
   }
 
-  void _recomputeDirty() {
-    final sentinel = viewModel.sentinels.value
-        .where((s) => s.id == openId)
-        .firstOrNull;
-    if (sentinel == null) return;
-    final next =
-        nameController.text != sentinel.name ||
-        descriptionController.text != sentinel.description ||
-        tagsController.text != sentinel.tags ||
-        promptController.text != sentinel.prompt ||
-        !setEquals(enabledToolsDraft, sentinel.enabledTools?.toSet());
-    if (next != dirty && mounted) setState(() => dirty = next);
-  }
-
-  // ---------------------------------------------------------------------------
-  // 动作
-  // ---------------------------------------------------------------------------
-
-  Future<void> storeSentinel(SentinelEntity sentinel) async {
-    final name = nameController.text.trim();
-    final prompt = promptController.text;
+  Future<void> _closeEditor() async {
+    if (dirty) {
+      final leave = await AthenaDialog.confirm(
+        'Discard unsaved changes to this Sentinel?',
+      );
+      if (leave != true || !mounted) return;
+    }
     setState(() {
-      nameError = name.isEmpty ? 'Name is required.' : null;
-      promptError = prompt.trim().isEmpty ? 'System prompt is required.' : null;
+      openId = null;
+      dirty = false;
     });
-    if (nameError != null || promptError != null) return;
-    final copied = sentinel.copyWith(
-      name: name,
-      description: descriptionController.text.trim(),
-      tags: tagsController.text.trim(),
-      prompt: prompt,
-      enabledTools: enabledToolsDraft == null
-          ? null
-          : (enabledToolsDraft!.toList()..sort()),
-    );
-    await viewModel.updateSentinel(copied);
-    if (!mounted) return;
-    final error = viewModel.error.value;
-    if (error != null) {
-      AthenaDialog.error(error);
-      return;
-    }
-    setState(() => dirty = false);
-    AthenaDialog.success('Sentinel saved');
   }
 
-  /// 生成入口：校验提示词后先让用户选模型，选中才发起请求。
-  ///
-  /// 每次生成都重新选，不记忆也不落设置——元数据生成是低频动作，多一次
-  /// 点选换来「用哪个模型」始终可见。
-  Future<void> generateSentinel() async {
-    if (viewModel.isGenerating.value) return;
-    if (promptController.text.trim().isEmpty) {
-      setState(() => promptError = 'Write the system prompt first.');
-      return;
-    }
-    setState(() => promptError = null);
-    // 用户可能刚在 Providers 里启用了一家，保证菜单里是最新的模型。
-    await modelViewModel.loadEnabledModels();
-    if (!mounted) return;
-    final groups = modelViewModel.groupedEnabledModels.value;
-    if (groups.isEmpty) {
-      AthenaDialog.warning('No enabled models found');
-      return;
-    }
-    final anchorContext = _generateButtonKey.currentContext;
-    if (anchorContext == null || !anchorContext.mounted) return;
-    final anchor = DesktopContextMenu.contextMenuAnchorOf(anchorContext);
-    DesktopContextMenuManager.instance.show(
-      anchorContext,
-      DesktopContextMenu(
-        // 菜单右边与按钮右边对齐；宽度同其他选择菜单。
-        offset: Offset(
-          anchor.right - AthenaSettingsSelect.menuWidth - 8,
-          anchor.bottom + 4,
-        ),
-        width: AthenaSettingsSelect.menuWidth,
-        children: [
-          DesktopContextMenuList(
-            maxHeight: 360,
-            children: [
-              for (final entry in groups.entries) ...[
-                DesktopContextMenuGroupLabel(text: entry.key),
-                for (final model in entry.value)
-                  DesktopContextMenuTile(
-                    text: model.name,
-                    onTap: () => _generateWith(model.id!),
-                  ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
+  void _fill(SentinelEntity sentinel) {
+    nameController.text = sentinel.name;
+    descriptionController.text = sentinel.description;
+    tagsController.text = sentinel.tags;
+    promptController.text = sentinel.prompt;
+    enabledToolsDraft = sentinel.enabledTools?.toSet();
   }
 
   Future<void> _generateWith(String modelId) async {
@@ -632,67 +582,117 @@ class _DesktopSettingSentinelPageState
     }
   }
 
-  void createSentinel() {
-    AthenaDialog.show(
-      DesktopSentinelFormDialog(
-        onStored: (sentinel) {
-          if (mounted) _openSentinel(sentinel);
-        },
-      ),
-    );
-  }
-
-  Future<void> duplicateSentinel(SentinelEntity source) async {
-    final copy = SentinelEntity(
-      name: '${source.name} copy',
-      description: source.description,
-      prompt: source.prompt,
-      tags: source.tags,
-      enabledTools: source.enabledTools,
-    );
-    final created = await viewModel.createSentinel(copy);
-    if (!mounted) return;
-    if (created == null) {
-      AthenaDialog.error(viewModel.error.value ?? 'Failed to duplicate');
-      return;
+  void _handleSentinelTap(SentinelEntity sentinel, List<String> selectableIds) {
+    final activate = _selection.handleTap(sentinel.id, ids: selectableIds);
+    if (activate) {
+      _openSentinel(sentinel);
+    } else {
+      setState(() {});
     }
-    _openSentinel(created);
   }
 
-  Future<void> destroySentinels(List<SentinelEntity> targets) async {
-    final deletable = targets
-        .where((item) => !item.isPreset && item.id != null)
+  bool _isToolOn(String name) =>
+      ToolSet.kUndeactivatableToolNames.contains(name) ||
+      (enabledToolsDraft?.contains(name) ?? true);
+
+  void _openContextMenu(TapUpDetails details, SentinelEntity sentinel) {
+    final selected = viewModel.sentinels.value
+        .where((item) => _selection.selectedIds.contains(item.id))
         .toList();
-    if (deletable.isEmpty) return;
-    final confirmed = await AthenaDialog.confirm(
-      deletable.length == 1
-          ? 'Delete ${deletable.single.name}?\n\n'
-                'Its private experiences and evolution history are deleted '
-                'with it. Shared experiences are kept. This cannot be undone.'
-          : 'Delete ${deletable.length} Sentinels?\n\n'
-                'Their private experiences and evolution history are deleted '
-                'with them. Shared experiences are kept. This cannot be '
-                'undone.',
+    final multiSelect = selected.length > 1 && selected.contains(sentinel);
+    final targets = multiSelect ? selected : [sentinel];
+    final deletable = targets.where((item) => !item.isPreset).toList();
+    final menu = DesktopContextMenu(
+      offset: details.globalPosition,
+      width: 160,
+      children: [
+        if (!multiSelect)
+          DesktopContextMenuTile(
+            text: sentinel.isPreset ? 'View' : 'Edit',
+            onTap: () => _openSentinel(sentinel),
+          ),
+        if (!multiSelect)
+          DesktopContextMenuTile(
+            text: 'Duplicate',
+            onTap: () => duplicateSentinel(sentinel),
+          ),
+        if (deletable.isNotEmpty) const DesktopContextMenuSeparator(),
+        if (deletable.isNotEmpty)
+          DesktopContextMenuTile(
+            text: deletable.length > 1
+                ? 'Delete ${deletable.length} Sentinels'
+                : 'Delete',
+            danger: true,
+            onTap: () => destroySentinels(deletable),
+          ),
+      ],
     );
-    if (confirmed != true) return;
-    for (final sentinel in deletable) {
-      await viewModel.deleteSentinel(sentinel);
-      if (viewModel.sentinels.value.any((item) => item.id == sentinel.id)) {
-        if (mounted) {
-          AthenaDialog.error(
-            viewModel.error.value ?? 'Failed to delete sentinel',
-          );
-        }
-        break;
-      }
-    }
-    if (!mounted) return;
+    DesktopContextMenuManager.instance.show(context, menu);
+  }
+
+  void _openSentinel(SentinelEntity sentinel) {
+    _selection.clear();
+    _fill(sentinel);
     setState(() {
-      _selection.clear();
-      if (deletable.any((item) => item.id == openId)) {
-        openId = null;
-        dirty = false;
-      }
+      openId = sentinel.id;
+      dirty = false;
+      nameError = null;
+      promptError = null;
     });
   }
+
+  void _recomputeDirty() {
+    final sentinel = viewModel.sentinels.value
+        .where((s) => s.id == openId)
+        .firstOrNull;
+    if (sentinel == null) return;
+    final next =
+        nameController.text != sentinel.name ||
+        descriptionController.text != sentinel.description ||
+        tagsController.text != sentinel.tags ||
+        promptController.text != sentinel.prompt ||
+        !setEquals(enabledToolsDraft, sentinel.enabledTools?.toSet());
+    if (next != dirty && mounted) setState(() => dirty = next);
+  }
+
+  void _setToolEnabled(String name, bool enabled) {
+    final all = registeredTools.map((tool) => tool.name).toSet();
+    final next = {
+      ...?enabledToolsDraft,
+      // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
+      // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
+      if (enabledToolsDraft == null) ...all,
+      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
+      ...ToolSet.kUndeactivatableToolNames,
+    };
+    if (enabled) {
+      next.add(name);
+    } else {
+      next.remove(name);
+    }
+    setState(() {
+      // 全部选中等价于「不限制」：存回 null，新增工具才会自动出现。
+      enabledToolsDraft = next.containsAll(all) ? null : next;
+    });
+    _recomputeDirty();
+  }
+}
+
+enum _Sort implements SettingsListOption {
+  ascending('Name (A–Z)'),
+  descending('Name (Z–A)');
+
+  @override
+  final String label;
+  const _Sort(this.label);
+}
+
+enum _Source implements SettingsListOption {
+  all('All sources'),
+  custom('Your Sentinels'),
+  builtin('Built-in');
+
+  @override
+  final String label;
+  const _Source(this.label);
 }

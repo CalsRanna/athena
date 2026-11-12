@@ -13,13 +13,6 @@ import 'package:path/path.dart' as p;
 ///
 /// 只覆盖根目录这一份；目标文件所在目录层级的嵌套约定不在本类范围内。
 class ProjectInstructions {
-  const ProjectInstructions({
-    required this.path,
-    required this.content,
-    required this.size,
-    required this.modifiedMillis,
-  });
-
   /// 约定文件名，固定在工作文件夹根目录。
   static const String fileName = 'AGENTS.md';
 
@@ -36,8 +29,29 @@ class ProjectInstructions {
   /// 读取时的修改时间（毫秒），用于判断文件是否变化。
   final int modifiedMillis;
 
+  const ProjectInstructions({
+    required this.path,
+    required this.content,
+    required this.size,
+    required this.modifiedMillis,
+  });
+
   /// 注入文本：一行来源说明 + 正文。
   String get prompt => '以下项目约定来自 $path（由工作文件夹中的仓库维护）：\n\n$content';
+
+  /// 在每次请求前复核文件是否变化。
+  ///
+  /// 返回新快照表示内容已变化（调用方就地替换已注入的那条消息）；返回 null
+  /// 表示保持现状，包含两种情形：
+  /// - 文件未变化（size 与 mtime 都相同）；
+  /// - 文件被删除、不可读或已被清空——run 进行中把约定从上下文里抽走没有
+  ///   收益，保留已注入的内容，下一次 run 自然不再注入。
+  ProjectInstructions? refresh() {
+    final read = _read(path);
+    if (read == null) return null;
+    if (read.size == size && read.modifiedMillis == modifiedMillis) return null;
+    return read.snapshot;
+  }
 
   /// 读取 [workspace] 根目录的约定文件。
   ///
@@ -54,20 +68,6 @@ class ProjectInstructions {
       );
     }
     return snapshot;
-  }
-
-  /// 在每次请求前复核文件是否变化。
-  ///
-  /// 返回新快照表示内容已变化（调用方就地替换已注入的那条消息）；返回 null
-  /// 表示保持现状，包含两种情形：
-  /// - 文件未变化（size 与 mtime 都相同）；
-  /// - 文件被删除、不可读或已被清空——run 进行中把约定从上下文里抽走没有
-  ///   收益，保留已注入的内容，下一次 run 自然不再注入。
-  ProjectInstructions? refresh() {
-    final read = _read(path);
-    if (read == null) return null;
-    if (read.size == size && read.modifiedMillis == modifiedMillis) return null;
-    return read.snapshot;
   }
 
   static _FileRead? _read(String path) {
@@ -93,11 +93,11 @@ class ProjectInstructions {
 }
 
 class _FileRead {
-  const _FileRead(this.snapshot);
-
   final ProjectInstructions snapshot;
 
-  int get size => snapshot.size;
+  const _FileRead(this.snapshot);
 
   int get modifiedMillis => snapshot.modifiedMillis;
+
+  int get size => snapshot.size;
 }

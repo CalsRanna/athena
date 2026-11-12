@@ -1,6 +1,6 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:collection';
 
 import 'package:athena_core/util/cancellable_stream.dart';
 
@@ -190,16 +190,11 @@ class TextFileReader {
 }
 
 class _LineIndex {
-  _LineIndex(this.stat);
   final FileStat stat;
   int total = 0;
   int stride = 256;
   final List<({int line, int byte})> points = [(line: 0, byte: 0)];
-
-  bool matches(FileStat other) =>
-      stat.size == other.size &&
-      stat.modified == other.modified &&
-      stat.changed == other.changed;
+  _LineIndex(this.stat);
 
   ({int line, int byte}) checkpoint(int line) {
     var low = 0;
@@ -214,4 +209,9 @@ class _LineIndex {
     }
     return points[low];
   }
+
+  bool matches(FileStat other) =>
+      stat.size == other.size &&
+      stat.modified == other.modified &&
+      stat.changed == other.changed;
 }

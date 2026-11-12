@@ -5,16 +5,16 @@ import 'package:nocterm/nocterm.dart';
 
 /// 底部状态栏: 模型 | 角色 ｜ 工作区 | 右侧:token 用量。
 class StatusBar extends StatelessComponent {
+  final ChatController controller;
+
+  /// 当前工作区目录名(Agent 工具的工作根目录)。
+  final String workspace;
+
   const StatusBar({
     super.key,
     required this.controller,
     required this.workspace,
   });
-
-  final ChatController controller;
-
-  /// 当前工作区目录名(Agent 工具的工作根目录)。
-  final String workspace;
 
   @override
   Component build(BuildContext context) {

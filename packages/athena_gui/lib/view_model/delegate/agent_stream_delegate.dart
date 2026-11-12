@@ -4,9 +4,9 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart'
     show ElicitQuestion;
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
-import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
@@ -14,45 +14,44 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/rewind_result.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store.dart';
-import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 
-/// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
-class ApprovalRequest {
-  final String chatId;
-  final String toolName;
+/// 组装 [AgentRunCoordinator] 所需依赖的载体（由 di.dart 构造）。
+class AgentServiceCoordinatorDeps {
+  final AgentService agentService;
+  final ChatStore chatStore;
+  final ChatMessageConverter messageService;
+  final ChatCompletionsService chatService;
+  final MessageRepository messageRepo;
+  final ModelRepository modelRepo;
+  final SentinelRepository sentinelRepo;
+  final ChatRepository chatRepo;
+  final ChatUpdateService supportService;
+  final AgentSettings agentSettings;
+  final PermissionService permissionService;
+  final ExperienceRepository experienceRepository;
 
-  /// Original argument JSON, including optional call description metadata.
-  final String arguments;
-  final Completer<PermissionDecision> completer;
-
-  ApprovalRequest({
-    required this.chatId,
-    required this.toolName,
-    required this.arguments,
-    required this.completer,
-  });
-}
-
-/// 一个挂起的提问请求（按 [chatId] 隔离，渲染到对应会话）。
-class ElicitRequest {
-  final String chatId;
-  final List<ElicitQuestion> questions;
-
-  /// 用户提交答案后完成；run 取消时以 null 完成（卡片随之移除）。
-  final Completer<Map<String, String>?> completer;
-
-  ElicitRequest({
-    required this.chatId,
-    required this.questions,
-    required this.completer,
+  AgentServiceCoordinatorDeps({
+    required this.agentService,
+    required this.chatStore,
+    required this.messageService,
+    required this.chatService,
+    required this.messageRepo,
+    required this.modelRepo,
+    required this.sentinelRepo,
+    required this.chatRepo,
+    required this.supportService,
+    required this.agentSettings,
+    required this.permissionService,
+    required this.experienceRepository,
   });
 }
 
@@ -63,13 +62,7 @@ class AgentStreamDelegate {
 
   final _approvalController = StreamController<ApprovalRequest>.broadcast();
 
-  /// 挂起的权限审批请求流（ChatViewModel 订阅后渲染为会话内卡片）。
-  Stream<ApprovalRequest> get approvalRequests => _approvalController.stream;
-
   final _elicitController = StreamController<ElicitRequest>.broadcast();
-
-  /// 挂起的提问请求流（ChatViewModel 订阅后渲染为会话内卡片）。
-  Stream<ElicitRequest> get elicitRequests => _elicitController.stream;
 
   AgentStreamDelegate({required AgentServiceCoordinatorDeps deps}) {
     _coordinator = AgentRunCoordinator(
@@ -93,44 +86,27 @@ class AgentStreamDelegate {
     );
   }
 
-  /// 正在流式运行的对话 id 集合（多对话可同时运行）。
-  Set<String> get streamingChatIds => _coordinator.streamingChatIds;
+  /// 挂起的权限审批请求流（ChatViewModel 订阅后渲染为会话内卡片）。
+  Stream<ApprovalRequest> get approvalRequests => _approvalController.stream;
 
-  /// 指定对话是否正在流式运行。
-  bool isStreamingChat(String chatId) => _coordinator.isStreamingChat(chatId);
+  /// 挂起的提问请求流（ChatViewModel 订阅后渲染为会话内卡片）。
+  Stream<ElicitRequest> get elicitRequests => _elicitController.stream;
 
   /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
   Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
 
-  /// 等待指定对话的 run 完成后 resolve 的 Future。
-  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
-
-  /// 指定对话当前流式中的消息快照（用于切换到运行中的对话时恢复进度）。
-  MessageEntity? liveMessage(String chatId) => _coordinator.liveMessage(chatId);
-
-  Stream<RunEvent> send({
-    required MessageEntity message,
-    required ChatEntity chat,
-    bool jsonMode = false,
-  }) {
-    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
-  }
-
-  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
-  void updateApprovalMode(String chatId, ApprovalMode mode) {
-    _coordinator.updateApprovalMode(chatId, mode);
-  }
+  /// 正在流式运行的对话 id 集合（多对话可同时运行）。
+  Set<String> get streamingChatIds => _coordinator.streamingChatIds;
 
   /// 指定会话当前是否为 Bypass。
   bool isBypassPermissions(String chatId) =>
       _coordinator.isBypassPermissions(chatId);
 
-  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
-      _coordinator.rewindToUserMessage(chatId, messageId);
+  /// 指定对话是否正在流式运行。
+  bool isStreamingChat(String chatId) => _coordinator.isStreamingChat(chatId);
 
-  void stop(String chatId, {bool stopBackgroundTasks = true}) {
-    _coordinator.stop(chatId, stopBackgroundTasks: stopBackgroundTasks);
-  }
+  /// 指定对话当前流式中的消息快照（用于切换到运行中的对话时恢复进度）。
+  MessageEntity? liveMessage(String chatId) => _coordinator.liveMessage(chatId);
 
   /// 用户对某个审批请求做出决策（由 UI 卡片调用）。
   void respondApproval(ApprovalRequest request, PermissionDecision decision) {
@@ -144,6 +120,49 @@ class AgentStreamDelegate {
     if (!request.completer.isCompleted) {
       request.completer.complete(answers);
     }
+  }
+
+  Future<RewindResult> rewindToUserMessage(String chatId, String messageId) =>
+      _coordinator.rewindToUserMessage(chatId, messageId);
+
+  Stream<RunEvent> send({
+    required MessageEntity message,
+    required ChatEntity chat,
+    bool jsonMode = false,
+  }) {
+    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
+  }
+
+  /// 等待指定对话的 run 完成后 resolve 的 Future。
+  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
+
+  void stop(String chatId, {bool stopBackgroundTasks = true}) {
+    _coordinator.stop(chatId, stopBackgroundTasks: stopBackgroundTasks);
+  }
+
+  /// 运行中切换审批档位：当前 run 的权限门从下一次工具调用起按新档位处理。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _coordinator.updateApprovalMode(chatId, mode);
+  }
+
+  /// GUI 侧实现：会话内提问卡片。卡片提交答案即完成；run 取消时以
+  /// null 完成——工具据此返回「未作答」并按既定策略降级，不挂死。
+  Future<Map<String, String>?> _askElicit(
+    String chatId,
+    List<ElicitQuestion> questions,
+    CancelToken cancelToken,
+  ) async {
+    final completer = Completer<Map<String, String>?>();
+    _elicitController.add(
+      ElicitRequest(chatId: chatId, questions: questions, completer: completer),
+    );
+
+    final result = await Future.any<Map<String, String>?>([
+      completer.future,
+      cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
+    ]);
+    if (!completer.isCompleted) completer.complete(result);
+    return result;
   }
 
   // ─── GUI 侧实现：会话内审批卡片（非模态） ────────────────
@@ -178,55 +197,36 @@ class AgentStreamDelegate {
     if (!completer.isCompleted) completer.complete(result);
     return result;
   }
-
-  /// GUI 侧实现：会话内提问卡片。卡片提交答案即完成；run 取消时以
-  /// null 完成——工具据此返回「未作答」并按既定策略降级，不挂死。
-  Future<Map<String, String>?> _askElicit(
-    String chatId,
-    List<ElicitQuestion> questions,
-    CancelToken cancelToken,
-  ) async {
-    final completer = Completer<Map<String, String>?>();
-    _elicitController.add(
-      ElicitRequest(chatId: chatId, questions: questions, completer: completer),
-    );
-
-    final result = await Future.any<Map<String, String>?>([
-      completer.future,
-      cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
-    ]);
-    if (!completer.isCompleted) completer.complete(result);
-    return result;
-  }
 }
 
-/// 组装 [AgentRunCoordinator] 所需依赖的载体（由 di.dart 构造）。
-class AgentServiceCoordinatorDeps {
-  final AgentService agentService;
-  final ChatStore chatStore;
-  final ChatMessageConverter messageService;
-  final ChatCompletionsService chatService;
-  final MessageRepository messageRepo;
-  final ModelRepository modelRepo;
-  final SentinelRepository sentinelRepo;
-  final ChatRepository chatRepo;
-  final ChatUpdateService supportService;
-  final AgentSettings agentSettings;
-  final PermissionService permissionService;
-  final ExperienceRepository experienceRepository;
+/// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
+class ApprovalRequest {
+  final String chatId;
+  final String toolName;
 
-  AgentServiceCoordinatorDeps({
-    required this.agentService,
-    required this.chatStore,
-    required this.messageService,
-    required this.chatService,
-    required this.messageRepo,
-    required this.modelRepo,
-    required this.sentinelRepo,
-    required this.chatRepo,
-    required this.supportService,
-    required this.agentSettings,
-    required this.permissionService,
-    required this.experienceRepository,
+  /// Original argument JSON, including optional call description metadata.
+  final String arguments;
+  final Completer<PermissionDecision> completer;
+
+  ApprovalRequest({
+    required this.chatId,
+    required this.toolName,
+    required this.arguments,
+    required this.completer,
+  });
+}
+
+/// 一个挂起的提问请求（按 [chatId] 隔离，渲染到对应会话）。
+class ElicitRequest {
+  final String chatId;
+  final List<ElicitQuestion> questions;
+
+  /// 用户提交答案后完成；run 取消时以 null 完成（卡片随之移除）。
+  final Completer<Map<String, String>?> completer;
+
+  ElicitRequest({
+    required this.chatId,
+    required this.questions,
+    required this.completer,
   });
 }

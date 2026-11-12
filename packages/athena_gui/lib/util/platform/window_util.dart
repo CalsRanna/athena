@@ -71,6 +71,14 @@ class WindowUtil {
     await windowManager.setPreventClose(!Platform.isWindows);
   }
 
+  /// 立即写入未落盘的尺寸（退出前调用；[saveWindowSize] 的防抖会被取消）。
+  Future<void> flushWindowSize(UserSettingsStore settings) async {
+    if (_saveTimer == null) return;
+    _saveTimer!.cancel();
+    _saveTimer = null;
+    await _writeWindowSize(settings);
+  }
+
   Future<void> hide() async {
     await windowManager.setSkipTaskbar(true);
     await windowManager.hide();
@@ -92,6 +100,14 @@ class WindowUtil {
     if (await windowManager.isMinimized()) {
       await windowManager.restore();
     }
+  }
+
+  /// 记下当前窗口尺寸，等拖动停下来再落盘（见 [_saveDebounce]）。
+  ///
+  /// 传入的 store 只在真正写入时用到；拖动期间只是重置计时器。
+  void saveWindowSize(UserSettingsStore settings) {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(_saveDebounce, () => _writeWindowSize(settings));
   }
 
   Future<void> show() async {
@@ -116,14 +132,6 @@ class WindowUtil {
     await windowManager.unmaximize();
   }
 
-  /// 记下当前窗口尺寸，等拖动停下来再落盘（见 [_saveDebounce]）。
-  ///
-  /// 传入的 store 只在真正写入时用到；拖动期间只是重置计时器。
-  void saveWindowSize(UserSettingsStore settings) {
-    _saveTimer?.cancel();
-    _saveTimer = Timer(_saveDebounce, () => _writeWindowSize(settings));
-  }
-
   Future<void> _writeWindowSize(UserSettingsStore settings) async {
     // 最大化与全屏都不是用户选定的窗口尺寸，记下来会让下次启动开出一个
     // 屏幕大小的窗口。两个都要挡：全屏时 `isMaximized()` 仍为 false。
@@ -134,13 +142,5 @@ class WindowUtil {
     final size = await windowManager.getSize();
     await settings.setDouble(_keyWindowHeight, size.height);
     await settings.setDouble(_keyWindowWidth, size.width);
-  }
-
-  /// 立即写入未落盘的尺寸（退出前调用；[saveWindowSize] 的防抖会被取消）。
-  Future<void> flushWindowSize(UserSettingsStore settings) async {
-    if (_saveTimer == null) return;
-    _saveTimer!.cancel();
-    _saveTimer = null;
-    await _writeWindowSize(settings);
   }
 }

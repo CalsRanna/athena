@@ -51,22 +51,6 @@ class _DesktopSettingApiFormatMenu extends StatelessWidget {
     required this.onSelected,
   });
 
-  static void show(
-    BuildContext context,
-    Rect anchor, {
-    required ProviderEntity provider,
-    required void Function({required bool auto, ApiFormat? format}) onSelected,
-  }) {
-    DesktopContextMenuManager.instance.show(
-      context,
-      _DesktopSettingApiFormatMenu(
-        anchor: anchor,
-        provider: provider,
-        onSelected: onSelected,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // 触发控件按当前值收紧，菜单沿用统一的选择菜单宽度；触控件更宽时与它同宽。
@@ -103,6 +87,22 @@ class _DesktopSettingApiFormatMenu extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  static void show(
+    BuildContext context,
+    Rect anchor, {
+    required ProviderEntity provider,
+    required void Function({required bool auto, ApiFormat? format}) onSelected,
+  }) {
+    DesktopContextMenuManager.instance.show(
+      context,
+      _DesktopSettingApiFormatMenu(
+        anchor: anchor,
+        provider: provider,
+        onSelected: onSelected,
+      ),
     );
   }
 }

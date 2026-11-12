@@ -54,25 +54,6 @@ class ModelEntity {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      'name': name,
-      'model_id': modelId,
-      'provider_id': providerId,
-      'context_window': contextWindow,
-      'output_limit': outputLimit,
-      'input_price': inputPrice,
-      'output_price': outputPrice,
-      'released_at': releasedAt,
-      'reasoning': reasoning ? 1 : 0,
-      'vision': vision ? 1 : 0,
-      'is_preset': isPreset ? 1 : 0,
-      'created_at': createdAt.millisecondsSinceEpoch,
-      'updated_at': updatedAt.millisecondsSinceEpoch,
-    };
-  }
-
   ModelEntity copyWith({
     String? id,
     String? name,
@@ -105,5 +86,24 @@ class ModelEntity {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'name': name,
+      'model_id': modelId,
+      'provider_id': providerId,
+      'context_window': contextWindow,
+      'output_limit': outputLimit,
+      'input_price': inputPrice,
+      'output_price': outputPrice,
+      'released_at': releasedAt,
+      'reasoning': reasoning ? 1 : 0,
+      'vision': vision ? 1 : 0,
+      'is_preset': isPreset ? 1 : 0,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'updated_at': updatedAt.millisecondsSinceEpoch,
+    };
   }
 }

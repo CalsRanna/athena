@@ -4,50 +4,24 @@ import 'dart:io';
 
 import 'package:athena_core/agent/tool/shell_runner.dart' as shell;
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/util/capped_text_buffer.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
-
-/// 后台任务状态。
-enum BackgroundTaskStatus {
-  /// 进程仍在运行。
-  running,
-
-  /// 正常退出（退出码 0）。
-  completed,
-
-  /// 以非零退出码结束。
-  failed,
-
-  /// 被用户/会话停止，或随 run 取消而终止。与 [failed] 区分：用户需要知道
-  /// 是「我停的」还是「它自己挂了」。
-  cancelled,
-
-  /// 进程尚未成功启动（可执行文件不可用等）。
-  launchFailed,
-}
 
 /// 一个后台任务：命令、进程、持续累积的输出与终态。
 ///
 /// 输出有界保留头尾、超额时显式标记丢弃；**停止任务不丢保留的输出**——
 /// 这是「取消即杀」能被接受的前提：杀掉的是进程，不是证据。
 class BackgroundTask {
-  BackgroundTask({
-    required this.id,
-    required this.chatId,
-    required this.command,
-    required this.workdir,
-    required this.startedAt,
-  });
-
   /// 面向前后端的短 id（bg-1、bg-2）：模型要把它写进工具调用参数。
   final String id;
+
   final String chatId;
   final String command;
   final String workdir;
   final DateTime startedAt;
-
   BackgroundTaskStatus status = BackgroundTaskStatus.running;
+
   int? exitCode;
   DateTime? finishedAt;
 
@@ -57,9 +31,25 @@ class BackgroundTask {
   Process? _process;
 
   final CappedTextBuffer _stdout = CappedTextBuffer();
+
   final CappedTextBuffer _stderr = CappedTextBuffer();
+  BackgroundTask({
+    required this.id,
+    required this.chatId,
+    required this.command,
+    required this.workdir,
+    required this.startedAt,
+  });
+
+  Duration get elapsed => (finishedAt ?? DateTime.now()).difference(startedAt);
 
   bool get isRunning => status == BackgroundTaskStatus.running;
+
+  /// 与前台 shell 结果同一格式：stdout 在前，stderr 单独成段。
+  String get output => _outputChunks.map((chunk) => chunk.text).join();
+
+  int get outputLength =>
+      _outputChunks.fold(0, (sum, chunk) => sum + chunk.characters);
 
   /// 任务结束是否应当触发一次自动汇报。
   ///
@@ -71,13 +61,19 @@ class BackgroundTask {
       status == BackgroundTaskStatus.completed ||
       status == BackgroundTaskStatus.failed;
 
-  int get outputLength =>
-      _outputChunks.fold(0, (sum, chunk) => sum + chunk.characters);
-
-  Duration get elapsed => (finishedAt ?? DateTime.now()).difference(startedAt);
-
-  /// 与前台 shell 结果同一格式：stdout 在前，stderr 单独成段。
-  String get output => _outputChunks.map((chunk) => chunk.text).join();
+  /// 状态行：任务列表与工具结果都用它，保证口径一致。
+  String get statusLine {
+    final buffer = StringBuffer(_statusLabel(status));
+    final code = exitCode;
+    if (code != null) buffer.write(' (exit code $code)');
+    buffer.write(
+      ', elapsed ${elapsed.inSeconds}s, '
+      '$outputLength characters of output',
+    );
+    final error = launchError;
+    if (error != null) buffer.write(', $error');
+    return buffer.toString();
+  }
 
   Iterable<TextChunk> get _outputChunks sync* {
     yield* _stdout.chunks;
@@ -97,18 +93,12 @@ class BackgroundTask {
   }) =>
       CappedTextBuffer.readChunks(_outputChunks, offset: offset, limit: limit);
 
-  /// 状态行：任务列表与工具结果都用它，保证口径一致。
-  String get statusLine {
-    final buffer = StringBuffer(_statusLabel(status));
-    final code = exitCode;
-    if (code != null) buffer.write(' (exit code $code)');
-    buffer.write(
-      ', elapsed ${elapsed.inSeconds}s, '
-      '$outputLength characters of output',
-    );
-    final error = launchError;
-    if (error != null) buffer.write(', $error');
-    return buffer.toString();
+  void _appendStderr(String chunk) => _stderr.add(chunk);
+
+  void _appendStdout(String chunk) => _stdout.add(chunk);
+
+  void _attach(Process process) {
+    _process = process;
   }
 
   static String _statusLabel(BackgroundTaskStatus status) => switch (status) {
@@ -118,14 +108,6 @@ class BackgroundTask {
     BackgroundTaskStatus.cancelled => 'cancelled',
     BackgroundTaskStatus.launchFailed => 'launch failed',
   };
-
-  void _attach(Process process) {
-    _process = process;
-  }
-
-  void _appendStdout(String chunk) => _stdout.add(chunk);
-
-  void _appendStderr(String chunk) => _stderr.add(chunk);
 }
 
 /// 后台任务登记表。
@@ -136,20 +118,7 @@ class BackgroundTask {
 ///
 /// 单例由 [ToolRegistry] 持有（与 [ToolOutputStore] 同级），工具与协调层共用。
 class BackgroundTaskService {
-  BackgroundTaskService({
-    DateTime Function()? now,
-    Directory? stateDirectory,
-    LockRegistry? locks,
-    this.maxRetainedPerChat = 20,
-  }) : _now = now ?? DateTime.now,
-       _stateDirectory = stateDirectory,
-       _locks = stateDirectory == null
-           ? null
-           : locks ??
-                 (throw ArgumentError(
-                   'stateDirectory must be provided together with locks: '
-                   'orphan-record locks live under the data root .locks/',
-                 ));
+  static const _orphanFileName = 'background_tasks.json';
 
   final DateTime Function() _now;
 
@@ -171,23 +140,69 @@ class BackgroundTaskService {
 
   int _nextId = 0;
 
+  BackgroundTaskService({
+    DateTime Function()? now,
+    Directory? stateDirectory,
+    LockRegistry? locks,
+    this.maxRetainedPerChat = 20,
+  }) : _now = now ?? DateTime.now,
+       _stateDirectory = stateDirectory,
+       _locks = stateDirectory == null
+           ? null
+           : locks ??
+                 (throw ArgumentError(
+                   'stateDirectory must be provided together with locks: '
+                   'orphan-record locks live under the data root .locks/',
+                 ));
+
   /// 任务结束（含被停止）时发出，供协调层决定是否自动汇报。
   Stream<BackgroundTask> get completions => _completions.stream;
 
-  List<BackgroundTask> tasksOf(String chatId) =>
-      _tasks.where((t) => t.chatId == chatId).toList();
-
-  BackgroundTask? task(String id, {String? chatId}) {
-    for (final task in _tasks) {
-      if (task.id == id && (chatId == null || task.chatId == chatId)) {
-        return task;
-      }
-    }
-    return null;
-  }
-
   List<BackgroundTask> get runningTasks =>
       _tasks.where((t) => t.isRunning).toList();
+
+  Future<void> dispose() async {
+    await _completions.close();
+  }
+
+  /// 清理上次进程被强杀（崩溃 / kill -9）后遗留的孤儿进程。
+  ///
+  /// 强杀时 Dart 侧没有机会执行 [stopAll]，子进程会被 reparent 给 launchd
+  /// 继续跑。这里在启动时按记录核对并清理：只有 pid 存活且命令行与记录的
+  /// 命令一致才动手——pid 复用是真实存在的，不能只凭 pid 杀。
+  ///
+  /// 无法避免孤儿（强杀时没有钩子可挂），只能发现并清理，因此崩溃期间
+  /// 遗留的副作用窗口是这套设计的已知残余，需在文档中如实标注。
+  ///
+  /// GUI 与 TUI（以及多个 TUI）共用登记表：属主进程（`owner_pid`）仍在运行
+  /// 的记录是**另一个活着的实例**的任务，原样保留、不许杀——只凭「任务 pid
+  /// 活着且命令行匹配」会在打开第二个实例时杀掉第一个实例正在跑的任务。
+  Future<int> recoverOrphans() async {
+    var killed = 0;
+    await _updateOrphanState(
+      recover: (entries) async {
+        final keep = <Map<String, dynamic>>[];
+        for (final entry in entries) {
+          final pidValue = entry['pid'];
+          final command = entry['command'];
+          if (pidValue is! int || command is! String) continue;
+          final owner = entry['owner_pid'];
+          if (owner is int && owner != pid && await _isLiveAthena(owner)) {
+            keep.add(entry);
+            continue;
+          }
+          if (!await _isOurProcess(pidValue, command)) continue;
+          LoggerUtil.w(
+            'Killing orphaned background task process $pidValue ($command)',
+          );
+          await shell.ShellRunner.terminateShellProcessTreeByPid(pidValue);
+          killed++;
+        }
+        return keep;
+      },
+    );
+    return killed;
+  }
 
   /// 启动一个后台任务，**立即返回**（不等待进程结束）。
   Future<BackgroundTask> start({
@@ -255,6 +270,15 @@ class BackgroundTaskService {
     return true;
   }
 
+  /// 停止所有会话的后台任务（应用退出）。
+  Future<int> stopAll() async {
+    final running = runningTasks;
+    for (final task in running) {
+      await _stopTask(task);
+    }
+    return running.length;
+  }
+
   /// 停止一个会话的全部后台任务（取消 run / 删除会话 / 优雅退出）。
   ///
   /// 返回被停止的任务数，供 UI 明确告知「已同时停止 N 个后台任务」——
@@ -267,74 +291,69 @@ class BackgroundTaskService {
     return running.length;
   }
 
-  /// 停止所有会话的后台任务（应用退出）。
-  Future<int> stopAll() async {
-    final running = runningTasks;
-    for (final task in running) {
-      await _stopTask(task);
-    }
-    return running.length;
-  }
-
-  /// 清理上次进程被强杀（崩溃 / kill -9）后遗留的孤儿进程。
-  ///
-  /// 强杀时 Dart 侧没有机会执行 [stopAll]，子进程会被 reparent 给 launchd
-  /// 继续跑。这里在启动时按记录核对并清理：只有 pid 存活且命令行与记录的
-  /// 命令一致才动手——pid 复用是真实存在的，不能只凭 pid 杀。
-  ///
-  /// 无法避免孤儿（强杀时没有钩子可挂），只能发现并清理，因此崩溃期间
-  /// 遗留的副作用窗口是这套设计的已知残余，需在文档中如实标注。
-  ///
-  /// GUI 与 TUI（以及多个 TUI）共用登记表：属主进程（`owner_pid`）仍在运行
-  /// 的记录是**另一个活着的实例**的任务，原样保留、不许杀——只凭「任务 pid
-  /// 活着且命令行匹配」会在打开第二个实例时杀掉第一个实例正在跑的任务。
-  Future<int> recoverOrphans() async {
-    var killed = 0;
-    await _updateOrphanState(
-      recover: (entries) async {
-        final keep = <Map<String, dynamic>>[];
-        for (final entry in entries) {
-          final pidValue = entry['pid'];
-          final command = entry['command'];
-          if (pidValue is! int || command is! String) continue;
-          final owner = entry['owner_pid'];
-          if (owner is int && owner != pid && await _isLiveAthena(owner)) {
-            keep.add(entry);
-            continue;
-          }
-          if (!await _isOurProcess(pidValue, command)) continue;
-          LoggerUtil.w(
-            'Killing orphaned background task process $pidValue ($command)',
-          );
-          await shell.ShellRunner.terminateShellProcessTreeByPid(pidValue);
-          killed++;
-        }
-        return keep;
-      },
-    );
-    return killed;
-  }
-
-  Future<void> dispose() async {
-    await _completions.close();
-  }
-
-  // ─── 内部 ─────────────────────────────────────────────────
-
-  Future<void> _stopTask(BackgroundTask task) async {
-    // 先落终态再杀：exitCode 回调随后到达时不能再按「正常结束」触发汇报。
-    _finish(task, BackgroundTaskStatus.cancelled);
-    final process = task._process;
-    if (process != null) {
-      try {
-        task.exitCode = await shell.ShellRunner.terminateShellProcessTree(
-          process,
-        );
-      } catch (e) {
-        LoggerUtil.w('Failed to stop background task ${task.id}: $e');
+  BackgroundTask? task(String id, {String? chatId}) {
+    for (final task in _tasks) {
+      if (task.id == id && (chatId == null || task.chatId == chatId)) {
+        return task;
       }
     }
-    await _writeOrphanState();
+    return null;
+  }
+
+  List<BackgroundTask> tasksOf(String chatId) =>
+      _tasks.where((t) => t.chatId == chatId).toList();
+
+  void _finish(BackgroundTask task, BackgroundTaskStatus status) {
+    if (!task.isRunning) return;
+    task.status = status;
+    task.finishedAt = _now();
+    _prune();
+    if (!_completions.isClosed) _completions.add(task);
+  }
+
+  /// [ownerPid] 是否是一个仍在运行的 Athena 实例（GUI 或 TUI）。
+  ///
+  /// 除了存活还要求命令行里带 `athena`：属主退出后 pid 被别的程序复用时，
+  /// 它的任务才会被认定为孤儿。Windows 无法免依赖地查询命令行，按「不在
+  /// 运行」处理——那里 [_isOurProcess] 本就不杀进程，只是丢掉记录。
+  Future<bool> _isLiveAthena(int ownerPid) async {
+    if (Platform.isWindows) return false;
+    try {
+      final result = await Process.run('ps', [
+        '-o',
+        'command=',
+        '-p',
+        '$ownerPid',
+      ]).timeout(const Duration(seconds: 2));
+      if (result.exitCode != 0) return false;
+      return result.stdout.toString().toLowerCase().contains('athena');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// pid 是否仍是「我们记录的那条命令」。
+  ///
+  /// Windows 没有免依赖的命令行查询能力，直接放弃核对（返回 false），
+  /// 宁可漏清也不误杀。
+  Future<bool> _isOurProcess(int pid, String command) async {
+    if (Platform.isWindows) return false;
+    try {
+      final result = await Process.run('ps', [
+        '-o',
+        'command=',
+        '-p',
+        '$pid',
+      ]).timeout(const Duration(seconds: 2));
+      if (result.exitCode != 0) return false;
+      final line = result.stdout.toString().trim();
+      if (line.isEmpty) return false;
+      // 记录的是 shell -c <command>，命令行里应包含原命令文本。
+      final head = command.length > 40 ? command.substring(0, 40) : command;
+      return line.contains(head);
+    } catch (_) {
+      return false;
+    }
   }
 
   void _onExit(BackgroundTask task, int? code, {Object? error}) {
@@ -362,14 +381,6 @@ class BackgroundTaskService {
     );
   }
 
-  void _finish(BackgroundTask task, BackgroundTaskStatus status) {
-    if (!task.isRunning) return;
-    task.status = status;
-    task.finishedAt = _now();
-    _prune();
-    if (!_completions.isClosed) _completions.add(task);
-  }
-
   /// 淘汰最老的已完成任务，避免长时间运行的应用无限累积输出。
   void _prune() {
     final byChat = <String, List<BackgroundTask>>{};
@@ -386,10 +397,23 @@ class BackgroundTaskService {
     }
   }
 
-  static const _orphanFileName = 'background_tasks.json';
+  // ─── 内部 ─────────────────────────────────────────────────
 
-  /// 记录当前运行中的任务（pid + 命令行），供下次启动清理孤儿。
-  Future<void> _writeOrphanState() => _updateOrphanState();
+  Future<void> _stopTask(BackgroundTask task) async {
+    // 先落终态再杀：exitCode 回调随后到达时不能再按「正常结束」触发汇报。
+    _finish(task, BackgroundTaskStatus.cancelled);
+    final process = task._process;
+    if (process != null) {
+      try {
+        task.exitCode = await shell.ShellRunner.terminateShellProcessTree(
+          process,
+        );
+      } catch (e) {
+        LoggerUtil.w('Failed to stop background task ${task.id}: $e');
+      }
+    }
+    await _writeOrphanState();
+  }
 
   /// 在登记表的跨进程锁内「读磁盘 → 保留别的实例的记录 → 换上本进程当前
   /// 运行中的任务 → 原子写回」。每个进程只拥有 `owner_pid` 是自己的记录，
@@ -452,6 +476,9 @@ class BackgroundTaskService {
     }
   }
 
+  /// 记录当前运行中的任务（pid + 命令行），供下次启动清理孤儿。
+  Future<void> _writeOrphanState() => _updateOrphanState();
+
   static Future<List<Map<String, dynamic>>> _readOrphanEntries(
     File file,
   ) async {
@@ -466,49 +493,23 @@ class BackgroundTaskService {
       return [];
     }
   }
+}
 
-  /// [ownerPid] 是否是一个仍在运行的 Athena 实例（GUI 或 TUI）。
-  ///
-  /// 除了存活还要求命令行里带 `athena`：属主退出后 pid 被别的程序复用时，
-  /// 它的任务才会被认定为孤儿。Windows 无法免依赖地查询命令行，按「不在
-  /// 运行」处理——那里 [_isOurProcess] 本就不杀进程，只是丢掉记录。
-  Future<bool> _isLiveAthena(int ownerPid) async {
-    if (Platform.isWindows) return false;
-    try {
-      final result = await Process.run('ps', [
-        '-o',
-        'command=',
-        '-p',
-        '$ownerPid',
-      ]).timeout(const Duration(seconds: 2));
-      if (result.exitCode != 0) return false;
-      return result.stdout.toString().toLowerCase().contains('athena');
-    } catch (_) {
-      return false;
-    }
-  }
+/// 后台任务状态。
+enum BackgroundTaskStatus {
+  /// 进程仍在运行。
+  running,
 
-  /// pid 是否仍是「我们记录的那条命令」。
-  ///
-  /// Windows 没有免依赖的命令行查询能力，直接放弃核对（返回 false），
-  /// 宁可漏清也不误杀。
-  Future<bool> _isOurProcess(int pid, String command) async {
-    if (Platform.isWindows) return false;
-    try {
-      final result = await Process.run('ps', [
-        '-o',
-        'command=',
-        '-p',
-        '$pid',
-      ]).timeout(const Duration(seconds: 2));
-      if (result.exitCode != 0) return false;
-      final line = result.stdout.toString().trim();
-      if (line.isEmpty) return false;
-      // 记录的是 shell -c <command>，命令行里应包含原命令文本。
-      final head = command.length > 40 ? command.substring(0, 40) : command;
-      return line.contains(head);
-    } catch (_) {
-      return false;
-    }
-  }
+  /// 正常退出（退出码 0）。
+  completed,
+
+  /// 以非零退出码结束。
+  failed,
+
+  /// 被用户/会话停止，或随 run 取消而终止。与 [failed] 区分：用户需要知道
+  /// 是「我停的」还是「它自己挂了」。
+  cancelled,
+
+  /// 进程尚未成功启动（可执行文件不可用等）。
+  launchFailed,
 }

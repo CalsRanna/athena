@@ -1,11 +1,14 @@
 import 'package:athena_core/util/platform_util.dart';
-
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 @AutoRouterConfig()
 class AthenaRouter extends RootStackRouter {
+  static final router = AthenaRouter();
+
+  static final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
   var isDesktop = PlatformUtil.isDesktop;
 
   AthenaRouter({super.navigatorKey});
@@ -53,10 +56,6 @@ class AthenaRouter extends RootStackRouter {
       AutoRoute(page: MobileAgentRoute.page),
     ];
   }
-
-  static final router = AthenaRouter();
-
-  static final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 }
 
 /// 桌面端路由：与 [AutoRoute] 唯一的区别是取消转场动画（桌面端页面主由设置

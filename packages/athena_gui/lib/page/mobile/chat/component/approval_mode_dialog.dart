@@ -1,8 +1,8 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_gui/component/approval_mode_label.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 审批模式选择对话框——移动端：三行（名称 + 一句说明），当前档加粗。
 ///

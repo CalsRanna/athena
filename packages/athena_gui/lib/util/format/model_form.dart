@@ -5,17 +5,6 @@
 library;
 
 abstract final class ModelForm {
-  /// `Released 2026-09-10` → `2026-09-10`（编辑框里只放日期）。
-  static String stripModelReleasedAt(String raw) {
-    return raw.replaceFirst(RegExp(r'^Released\s+'), '').trim();
-  }
-
-  /// `$0.15/M input tokens` / `$0.15/M` → `0.15`；自由文本原样保留。
-  static String stripModelPrice(String raw) {
-    final match = RegExp(r'^\$?(\d+(?:\.\d+)?)/M').firstMatch(raw.trim());
-    return match?.group(1) ?? raw.trim();
-  }
-
   /// `0.15` → `$0.15/M`；空串留空；非数字原样保存（用户自己的写法）。
   static String formatModelPrice(String raw) {
     final text = raw.trim();
@@ -26,5 +15,16 @@ abstract final class ModelForm {
     s = s.replaceAll(RegExp(r'0+$'), '');
     s = s.replaceAll(RegExp(r'\.$'), '');
     return '\$$s/M';
+  }
+
+  /// `$0.15/M input tokens` / `$0.15/M` → `0.15`；自由文本原样保留。
+  static String stripModelPrice(String raw) {
+    final match = RegExp(r'^\$?(\d+(?:\.\d+)?)/M').firstMatch(raw.trim());
+    return match?.group(1) ?? raw.trim();
+  }
+
+  /// `Released 2026-09-10` → `2026-09-10`（编辑框里只放日期）。
+  static String stripModelReleasedAt(String raw) {
+    return raw.replaceFirst(RegExp(r'^Released\s+'), '').trim();
   }
 }

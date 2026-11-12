@@ -6,6 +6,7 @@ import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/util/platform/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
@@ -16,8 +17,6 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

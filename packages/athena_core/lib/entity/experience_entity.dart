@@ -77,22 +77,6 @@ class ExperienceEntity {
     this.updatedAt,
   });
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'created_at': createdAt.toIso8601String(),
-    'lesson': lesson,
-    'context': context,
-    'tags': tags,
-    'source': source,
-    'source_chat_id': sourceChatId,
-    'source_message_id': sourceMessageId,
-    'workspace_path': workspacePath,
-    'scope': scope,
-    'sentinel_id': sentinelId,
-    'status': status,
-    'updated_at': updatedAt?.toIso8601String(),
-  };
-
   factory ExperienceEntity.fromJson(Map<String, dynamic> json) =>
       ExperienceEntity(
         id: json['id'] as String,
@@ -115,4 +99,20 @@ class ExperienceEntity {
             ? DateTime.parse(json['updated_at'] as String)
             : null,
       );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'created_at': createdAt.toIso8601String(),
+    'lesson': lesson,
+    'context': context,
+    'tags': tags,
+    'source': source,
+    'source_chat_id': sourceChatId,
+    'source_message_id': sourceMessageId,
+    'workspace_path': workspacePath,
+    'scope': scope,
+    'sentinel_id': sentinelId,
+    'status': status,
+    'updated_at': updatedAt?.toIso8601String(),
+  };
 }

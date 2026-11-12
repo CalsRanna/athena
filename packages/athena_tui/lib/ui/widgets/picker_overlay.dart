@@ -13,6 +13,15 @@ import 'package:nocterm/nocterm.dart';
 /// SingleChildScrollView 滚动;选中索引变化(方向键)后自动滚动到
 /// 选中项,保证当前项始终可见。
 class PickerOverlay extends StatefulComponent {
+  /// 弹层最大高度(行);超出时内部滚动。
+  static const double _maxHeight = 12;
+
+  final bool visible;
+  final String title;
+  final List<String> labels;
+  final int selectedIndex;
+  final String hint;
+
   const PickerOverlay({
     super.key,
     this.visible = false,
@@ -22,49 +31,12 @@ class PickerOverlay extends StatefulComponent {
     this.hint = '↑↓ 选择 · Enter 确认 · Esc 取消',
   });
 
-  final bool visible;
-  final String title;
-  final List<String> labels;
-  final int selectedIndex;
-  final String hint;
-
-  /// 弹层最大高度(行);超出时内部滚动。
-  static const double _maxHeight = 12;
-
   @override
   State<PickerOverlay> createState() => _PickerOverlayState();
 }
 
 class _PickerOverlayState extends State<PickerOverlay> {
   final _scrollController = ScrollController();
-
-  @override
-  void didUpdateComponent(PickerOverlay oldComponent) {
-    super.didUpdateComponent(oldComponent);
-    if (component.visible &&
-        (oldComponent.selectedIndex != component.selectedIndex ||
-            oldComponent.visible != component.visible)) {
-      // 布局完成后滚动到选中项:内容第一行为标题,每项占 1 行,
-      // 所以选中项顶部 offset = 1 + index。ensureVisible 只在
-      // 项超出视口时才滚动,项可见时不打扰。
-      final binding = NoctermBinding.instance;
-      if (binding is SchedulerBinding) {
-        binding.addPostFrameCallback((_) {
-          if (!mounted) return;
-          _scrollController.ensureVisible(
-            itemOffset: 1.0 + component.selectedIndex,
-            itemExtent: 1.0,
-          );
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Component build(BuildContext context) {
@@ -117,5 +89,33 @@ class _PickerOverlayState extends State<PickerOverlay> {
         ),
       ),
     );
+  }
+
+  @override
+  void didUpdateComponent(PickerOverlay oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    if (component.visible &&
+        (oldComponent.selectedIndex != component.selectedIndex ||
+            oldComponent.visible != component.visible)) {
+      // 布局完成后滚动到选中项:内容第一行为标题,每项占 1 行,
+      // 所以选中项顶部 offset = 1 + index。ensureVisible 只在
+      // 项超出视口时才滚动,项可见时不打扰。
+      final binding = NoctermBinding.instance;
+      if (binding is SchedulerBinding) {
+        binding.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _scrollController.ensureVisible(
+            itemOffset: 1.0 + component.selectedIndex,
+            itemExtent: 1.0,
+          );
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }

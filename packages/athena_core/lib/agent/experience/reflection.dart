@@ -26,108 +26,6 @@ abstract final class ReflectionPolicy {
   }
 }
 
-/// Reflection 模型输出的候选经验。
-class ReflectionProposal {
-  final String action;
-  final String? experienceId;
-  final String lesson;
-  final String context;
-  final String tags;
-  final String scope;
-  final double confidence;
-  final String reuseReason;
-  final String evidence;
-
-  const ReflectionProposal({
-    required this.action,
-    this.experienceId,
-    required this.lesson,
-    required this.context,
-    required this.tags,
-    required this.scope,
-    required this.confidence,
-    required this.reuseReason,
-    required this.evidence,
-  });
-
-  /// 长期价值和验证依据缺一不可；只能修订宿主提供的候选经验。
-  static ReflectionProposal? tryParse(
-    String text, {
-    Set<String> allowedExperienceIds = const {},
-  }) {
-    final jsonText = _extractJsonObject(text);
-    if (jsonText == null) return null;
-
-    try {
-      final json = jsonDecode(jsonText) as Map<String, dynamic>;
-      if (json['should_learn'] != true ||
-          !ExperienceWritePolicy.accepts(json)) {
-        return null;
-      }
-      final reuseReason = (json['reuse_reason'] as String? ?? '').trim();
-      final evidence = (json['evidence'] as String? ?? '').trim();
-      final action = json['action'] as String? ?? 'create';
-      final experienceId = json['experience_id'] as String?;
-      if (action == 'update') {
-        if (!allowedExperienceIds.contains(experienceId)) return null;
-      } else if (action != 'create' || experienceId != null) {
-        return null;
-      }
-      final lesson = (json['lesson'] as String? ?? '').trim();
-      final confidence = (json['confidence'] as num?)?.toDouble() ?? 0;
-      if (lesson.isEmpty || lesson.length > ExperienceEntity.maxLessonLength) {
-        return null;
-      }
-
-      final rawTags = json['tags'];
-      final tags = rawTags is List
-          ? rawTags
-                .map((tag) => tag.toString().trim())
-                .where((tag) => tag.isNotEmpty)
-                .join(', ')
-          : (rawTags as String? ?? '').trim();
-      final scope = json['scope'] == 'shared' ? 'shared' : 'self';
-      return ReflectionProposal(
-        action: action,
-        experienceId: experienceId,
-        lesson: lesson,
-        context: (json['context'] as String? ?? '').trim(),
-        tags: tags,
-        scope: scope,
-        confidence: confidence,
-        reuseReason: reuseReason,
-        evidence: evidence,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Map<String, dynamic> toToolArguments() => {
-    'action': action,
-    if (experienceId != null) 'experience_id': experienceId,
-    'lesson': lesson,
-    if (context.isNotEmpty) 'context': context,
-    'durability': 'long_term',
-    'reuse_reason': reuseReason,
-    'evidence': evidence,
-    'confidence': confidence,
-    if (tags.isNotEmpty) 'tags': tags,
-    if (action == 'create') 'scope': scope,
-    // 反思通道的程序化调用同样要带必填的调用说明（会作为卡片展示给用户）。
-    ToolArguments.toolCallDescriptionKey: action == 'update'
-        ? '修订已验证的长期经验'
-        : '记录可长期复用的经验',
-  };
-
-  static String? _extractJsonObject(String text) {
-    final start = text.indexOf('{');
-    final end = text.lastIndexOf('}');
-    if (start < 0 || end <= start) return null;
-    return text.substring(start, end + 1);
-  }
-}
-
 abstract final class ReflectionPrompt {
   static const system =
       '''
@@ -212,4 +110,106 @@ lesson 不超过 ${ExperienceEntity.maxLessonLength} 个字符，支持性细节
 
   static String _truncate(String value, int max) =>
       value.length <= max ? value : value.substring(0, max);
+}
+
+/// Reflection 模型输出的候选经验。
+class ReflectionProposal {
+  final String action;
+  final String? experienceId;
+  final String lesson;
+  final String context;
+  final String tags;
+  final String scope;
+  final double confidence;
+  final String reuseReason;
+  final String evidence;
+
+  const ReflectionProposal({
+    required this.action,
+    this.experienceId,
+    required this.lesson,
+    required this.context,
+    required this.tags,
+    required this.scope,
+    required this.confidence,
+    required this.reuseReason,
+    required this.evidence,
+  });
+
+  Map<String, dynamic> toToolArguments() => {
+    'action': action,
+    if (experienceId != null) 'experience_id': experienceId,
+    'lesson': lesson,
+    if (context.isNotEmpty) 'context': context,
+    'durability': 'long_term',
+    'reuse_reason': reuseReason,
+    'evidence': evidence,
+    'confidence': confidence,
+    if (tags.isNotEmpty) 'tags': tags,
+    if (action == 'create') 'scope': scope,
+    // 反思通道的程序化调用同样要带必填的调用说明（会作为卡片展示给用户）。
+    ToolArguments.toolCallDescriptionKey: action == 'update'
+        ? '修订已验证的长期经验'
+        : '记录可长期复用的经验',
+  };
+
+  /// 长期价值和验证依据缺一不可；只能修订宿主提供的候选经验。
+  static ReflectionProposal? tryParse(
+    String text, {
+    Set<String> allowedExperienceIds = const {},
+  }) {
+    final jsonText = _extractJsonObject(text);
+    if (jsonText == null) return null;
+
+    try {
+      final json = jsonDecode(jsonText) as Map<String, dynamic>;
+      if (json['should_learn'] != true ||
+          !ExperienceWritePolicy.accepts(json)) {
+        return null;
+      }
+      final reuseReason = (json['reuse_reason'] as String? ?? '').trim();
+      final evidence = (json['evidence'] as String? ?? '').trim();
+      final action = json['action'] as String? ?? 'create';
+      final experienceId = json['experience_id'] as String?;
+      if (action == 'update') {
+        if (!allowedExperienceIds.contains(experienceId)) return null;
+      } else if (action != 'create' || experienceId != null) {
+        return null;
+      }
+      final lesson = (json['lesson'] as String? ?? '').trim();
+      final confidence = (json['confidence'] as num?)?.toDouble() ?? 0;
+      if (lesson.isEmpty || lesson.length > ExperienceEntity.maxLessonLength) {
+        return null;
+      }
+
+      final rawTags = json['tags'];
+      final tags = rawTags is List
+          ? rawTags
+                .map((tag) => tag.toString().trim())
+                .where((tag) => tag.isNotEmpty)
+                .join(', ')
+          : (rawTags as String? ?? '').trim();
+      final scope = json['scope'] == 'shared' ? 'shared' : 'self';
+      return ReflectionProposal(
+        action: action,
+        experienceId: experienceId,
+        lesson: lesson,
+        context: (json['context'] as String? ?? '').trim(),
+        tags: tags,
+        scope: scope,
+        confidence: confidence,
+        reuseReason: reuseReason,
+        evidence: evidence,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String? _extractJsonObject(String text) {
+    final start = text.indexOf('{');
+    final end = text.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    return text.substring(start, end + 1);
+  }
 }

@@ -1,9 +1,8 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 全站提示框的材质由 `buildAthenaThemeData` 的 `tooltipTheme` 统一提供：
 /// 反色面 `surfaceRaised` 配 `textOnRaised` 的 caption 文案。

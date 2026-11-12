@@ -27,34 +27,38 @@ class QueuedInputQueue {
 
   bool get isEmpty => _inputs.value.isEmpty;
 
-  /// 属于 [chatId] 的排队项对应的消息，按排队顺序——composer 上方展示的就是它。
-  List<MessageEntity> messagesFor(String? chatId) => [
-    for (final input in _inputs.value)
-      if (input.chat.id == chatId) input.message,
-  ];
+  void clear() {
+    _inputs.value = [];
+  }
+
+  bool contains(QueuedChatInput input) => _inputs.value.contains(input);
+
+  /// 丢掉这些会话的全部排队项（会话被删掉时用）。
+  void discardChats(Set<String> chatIds) {
+    _inputs.value = _inputs.value
+        .where((input) => !chatIds.contains(input.chat.id))
+        .toList();
+  }
 
   void enqueue(QueuedChatInput input) {
     if (contains(input)) return;
     _inputs.value = [..._inputs.value, input];
   }
 
-  bool contains(QueuedChatInput input) => _inputs.value.contains(input);
-
   /// [message] 对应的排队项；不在队里返回 null。
   QueuedChatInput? inputFor(MessageEntity message) => _inputs.value
       .where((input) => identical(input.message, message))
       .firstOrNull;
 
+  /// 属于 [chatId] 的排队项对应的消息，按排队顺序——composer 上方展示的就是它。
+  List<MessageEntity> messagesFor(String? chatId) => [
+    for (final input in _inputs.value)
+      if (input.chat.id == chatId) input.message,
+  ];
+
   /// 该会话最早排队的输入；没有就是 null。
   QueuedChatInput? nextFor(String chatId) =>
       _inputs.value.where((input) => input.chat.id == chatId).firstOrNull;
-
-  void remove(QueuedChatInput input) {
-    if (!contains(input)) return;
-    _inputs.value = _inputs.value
-        .where((queued) => !identical(queued, input))
-        .toList();
-  }
 
   /// 把 [input] 提到它所属会话的队首，其余排队顺序不变（Steer 用）。
   ///
@@ -70,14 +74,10 @@ class QueuedInputQueue {
     _inputs.value = rest;
   }
 
-  void clear() {
-    _inputs.value = [];
-  }
-
-  /// 丢掉这些会话的全部排队项（会话被删掉时用）。
-  void discardChats(Set<String> chatIds) {
+  void remove(QueuedChatInput input) {
+    if (!contains(input)) return;
     _inputs.value = _inputs.value
-        .where((input) => !chatIds.contains(input.chat.id))
+        .where((queued) => !identical(queued, input))
         .toList();
   }
 }

@@ -14,15 +14,36 @@ class FakeMessageRepo implements MessageRepository, RecentMessageRepository {
 
   Duration olderDelay = Duration.zero;
 
-  List<MessageEntity> _all(String chatId) => [
-    for (var i = 0; i < total; i++)
-      MessageEntity(
-        id: 'm$i',
-        chatId: chatId,
-        role: 'user',
-        content: 'c$i',
-        seq: i,
-      ),
+  @override
+  Future<void> deleteMessages(String chatId, Set<String> ids) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteMessagesByChatId(String chatId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MessageEntity?> getLatestMessageByChatId(String chatId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MessageEntity?> getMessageById(String chatId, String id) =>
+      throw UnimplementedError();
+
+  // 下面这些不在分页路径上。显式抛错而不是返回假数据：将来若有人把它们接进
+  // 分页路径，测试会立刻炸，而不是悄悄拿到空结果。
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    String chatId, {
+    bool includeCompacted = true,
+  }) async => _all(chatId);
+
+  @override
+  Future<int> getMessagesCount(String chatId) async => total;
+
+  @override
+  Future<List<String>> getTurnStartIds(String chatId) async => [
+    for (final message in _all(chatId)) message.id!,
   ];
 
   @override
@@ -51,20 +72,7 @@ class FakeMessageRepo implements MessageRepository, RecentMessageRepository {
   }
 
   @override
-  Future<List<String>> getTurnStartIds(String chatId) async => [
-    for (final message in _all(chatId)) message.id!,
-  ];
-
-  // 下面这些不在分页路径上。显式抛错而不是返回假数据：将来若有人把它们接进
-  // 分页路径，测试会立刻炸，而不是悄悄拿到空结果。
-  @override
-  Future<List<MessageEntity>> getMessagesByChatId(
-    String chatId, {
-    bool includeCompacted = true,
-  }) async => _all(chatId);
-
-  @override
-  Future<MessageEntity?> getMessageById(String chatId, String id) =>
+  Future<void> markAsCompacted(String chatId, Set<String> ids) =>
       throw UnimplementedError();
 
   @override
@@ -75,22 +83,14 @@ class FakeMessageRepo implements MessageRepository, RecentMessageRepository {
   Future<void> updateMessage(MessageEntity message) =>
       throw UnimplementedError();
 
-  @override
-  Future<void> deleteMessages(String chatId, Set<String> ids) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> deleteMessagesByChatId(String chatId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<int> getMessagesCount(String chatId) async => total;
-
-  @override
-  Future<void> markAsCompacted(String chatId, Set<String> ids) =>
-      throw UnimplementedError();
-
-  @override
-  Future<MessageEntity?> getLatestMessageByChatId(String chatId) =>
-      throw UnimplementedError();
+  List<MessageEntity> _all(String chatId) => [
+    for (var i = 0; i < total; i++)
+      MessageEntity(
+        id: 'm$i',
+        chatId: chatId,
+        role: 'user',
+        content: 'c$i',
+        seq: i,
+      ),
+  ];
 }

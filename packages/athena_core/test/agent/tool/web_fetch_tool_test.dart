@@ -177,33 +177,66 @@ void main() {
   );
 }
 
-class _Headers implements HttpHeaders {
-  _Headers(this.values);
-  final Map<String, String> values;
+class _Client implements HttpClient {
+  final List<_Response> responses;
+  final List<Uri> requests = [];
+  bool closed = false;
+  _Client(this.responses);
   @override
-  String? value(String name) => values[name];
+  void close({bool force = false}) {
+    closed = true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async {
+    requests.add(url);
+    return _Request(responses.removeAt(0));
+  }
+}
+
+class _Headers implements HttpHeaders {
+  final Map<String, String> values;
+  _Headers(this.values);
   @override
   void add(String name, Object value, {bool preserveHeaderCase = false}) {}
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  @override
+  String? value(String name) => values[name];
+}
+
+class _Request implements HttpClientRequest {
+  final _Response response;
+  @override
+  final headers = _Headers({});
+  _Request(this.response);
+  @override
+  set followRedirects(bool value) {}
+  @override
+  Future<HttpClientResponse> close() async => response;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _Response extends Stream<List<int>> implements HttpClientResponse {
+  final Stream<List<int>> stream;
+  @override
+  final _Headers headers;
+  @override
+  final int statusCode;
   _Response(
     this.stream, {
     String type = 'text/plain',
     this.statusCode = 200,
     String? location,
   }) : headers = _Headers({'content-type': type, 'location': ?location});
-  final Stream<List<int>> stream;
-  @override
-  final _Headers headers;
-  @override
-  final int statusCode;
-  @override
-  String get reasonPhrase => 'mock';
   @override
   int get contentLength => -1;
+  @override
+  String get reasonPhrase => 'mock';
   @override
   StreamSubscription<List<int>> listen(
     void Function(List<int>)? onData, {
@@ -216,39 +249,6 @@ class _Response extends Stream<List<int>> implements HttpClientResponse {
     onDone: onDone,
     cancelOnError: cancelOnError,
   );
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _Request implements HttpClientRequest {
-  _Request(this.response);
-  final _Response response;
-  @override
-  final headers = _Headers({});
-  @override
-  set followRedirects(bool value) {}
-  @override
-  Future<HttpClientResponse> close() async => response;
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _Client implements HttpClient {
-  _Client(this.responses);
-  final List<_Response> responses;
-  final List<Uri> requests = [];
-  bool closed = false;
-  @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async {
-    requests.add(url);
-    return _Request(responses.removeAt(0));
-  }
-
-  @override
-  void close({bool force = false}) {
-    closed = true;
-  }
-
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -3,13 +3,12 @@ import 'dart:async';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_gui/component/elicit_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   testWidgets('提问卡默认展开，收起后只留标题行与当前问题', (tester) async {

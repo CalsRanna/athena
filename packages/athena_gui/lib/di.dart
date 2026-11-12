@@ -5,27 +5,27 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/task/background_task.dart';
-import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store.dart';
-import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
-import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/storage_maintenance.dart';
 import 'package:athena_core/util/platform_util.dart';
+import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -35,24 +35,10 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
-import 'package:get_it/get_it.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
 
 abstract final class DI {
-  /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
-  /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
-  /// ([dataDirectory])。写入端(experience 工具)必须与
-  /// 这里读同一目录。
-  static String _homeDir(String? dataDirectory, String? homeDirOverride) {
-    // 测试专用:把用户级数据根整个指到临时目录。生产调用一律不传——
-    // 桌面端必须与 TUI 共享 `$HOME/.athena`。
-    if (homeDirOverride != null) return homeDirOverride;
-    if (PlatformUtil.isMobile && dataDirectory != null) return dataDirectory;
-    return Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        Directory.current.path;
-  }
-
   /// [homeDirOverride] 只给测试用(见 [_homeDir])：让 GUI 的 widget 测试能装出
   /// 一份隔离的依赖图，不碰真实的 `~/.athena`。不传时行为与之前完全一致。
   static void ensureInitialized({
@@ -234,6 +220,20 @@ abstract final class DI {
         sentinelViewModel: getIt<SentinelViewModel>(),
       ),
     );
+  }
+
+  /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
+  /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
+  /// ([dataDirectory])。写入端(experience 工具)必须与
+  /// 这里读同一目录。
+  static String _homeDir(String? dataDirectory, String? homeDirOverride) {
+    // 测试专用:把用户级数据根整个指到临时目录。生产调用一律不传——
+    // 桌面端必须与 TUI 共享 `$HOME/.athena`。
+    if (homeDirOverride != null) return homeDirOverride;
+    if (PlatformUtil.isMobile && dataDirectory != null) return dataDirectory;
+    return Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        Directory.current.path;
   }
 
   /// [userHomeDir] 是"用户级数据根"（`$HOME` 的替代，见

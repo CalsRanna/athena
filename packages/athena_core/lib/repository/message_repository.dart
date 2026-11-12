@@ -1,19 +1,10 @@
 import 'package:athena_core/entity/message_entity.dart';
 
+/// 一次读进来的消息窗口：[messages] 按 seq 升序，[hasOlder] 表示还有更早的消息。
+typedef MessageWindow = ({List<MessageEntity> messages, bool hasOlder});
+
 /// 消息存储接口。文件实现见 `storage/jsonl_session_repository.dart`。
 abstract class MessageRepository {
-  /// 获取聊天消息，[includeCompacted] 为 false 时排除已被 compact 压缩的消息。
-  Future<List<MessageEntity>> getMessagesByChatId(
-    String chatId, {
-    bool includeCompacted = true,
-  });
-
-  Future<MessageEntity?> getMessageById(String chatId, String id);
-
-  Future<MessageEntity> storeMessage(MessageEntity message);
-
-  Future<void> updateMessage(MessageEntity message);
-
   /// 删除 [chatId] 会话内 [ids] 命中的消息（一次读-改-写）。
   ///
   /// [chatId] 用来直接定位会话文件；UUID 是身份，不能用它比较消息顺序。
@@ -21,13 +12,17 @@ abstract class MessageRepository {
 
   Future<void> deleteMessagesByChatId(String chatId);
 
-  Future<int> getMessagesCount(String chatId);
-
-  /// 批量标记 [chatId] 会话内的消息为已压缩（同样必须带 chatId，理由见
-  /// [deleteMessages]）。
-  Future<void> markAsCompacted(String chatId, Set<String> ids);
-
   Future<MessageEntity?> getLatestMessageByChatId(String chatId);
+
+  Future<MessageEntity?> getMessageById(String chatId, String id);
+
+  /// 获取聊天消息，[includeCompacted] 为 false 时排除已被 compact 压缩的消息。
+  Future<List<MessageEntity>> getMessagesByChatId(
+    String chatId, {
+    bool includeCompacted = true,
+  });
+
+  Future<int> getMessagesCount(String chatId);
 
   /// 整段会话里每一轮的起点(每条 user 消息)的 id,按文件顺序。
   ///
@@ -35,10 +30,15 @@ abstract class MessageRepository {
   /// 的轮数来画,所以只能从文件里补这一段。这是一次**整文件**扫描,调用方
   /// 必须按 chatId 缓存(见 `ChatViewModel.turnStartIds`),不要每次构建都调。
   Future<List<String>> getTurnStartIds(String chatId);
-}
 
-/// 一次读进来的消息窗口：[messages] 按 seq 升序，[hasOlder] 表示还有更早的消息。
-typedef MessageWindow = ({List<MessageEntity> messages, bool hasOlder});
+  /// 批量标记 [chatId] 会话内的消息为已压缩（同样必须带 chatId，理由见
+  /// [deleteMessages]）。
+  Future<void> markAsCompacted(String chatId, Set<String> ids);
+
+  Future<MessageEntity> storeMessage(MessageEntity message);
+
+  Future<void> updateMessage(MessageEntity message);
+}
 
 /// 可选的消息游标分页能力。
 ///

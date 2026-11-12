@@ -6,6 +6,12 @@ import 'package:nocterm/nocterm.dart';
 ///
 /// 显示期间全局按键被 app 层接管,输入区不接收输入。
 class PermissionBar extends StatelessComponent {
+  final String title;
+
+  final String detail;
+  final String hint;
+  final String? summary;
+  final ScrollController? scrollController;
   const PermissionBar({
     super.key,
     required this.title,
@@ -14,12 +20,6 @@ class PermissionBar extends StatelessComponent {
     this.summary,
     this.scrollController,
   });
-
-  final String title;
-  final String detail;
-  final String hint;
-  final String? summary;
-  final ScrollController? scrollController;
 
   @override
   Component build(BuildContext context) {

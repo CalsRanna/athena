@@ -9,13 +9,13 @@ import 'package:nocterm/nocterm.dart';
 /// 用 [AnimationController.repeat] 循环驱动,[AnimatedBuilder] 每帧重建,
 /// 亮块位置由动画值 0..1 映射,形成平滑的跑马灯效果。
 class StreamingProgressBar extends StatefulComponent {
-  const StreamingProgressBar({super.key, this.width = 20, this.pulseWidth = 6});
-
   /// 进度条总宽度(字符数)。
   final int width;
 
   /// 亮块宽度(字符数)。
   final int pulseWidth;
+
+  const StreamingProgressBar({super.key, this.width = 20, this.pulseWidth = 6});
 
   @override
   State<StreamingProgressBar> createState() => _StreamingProgressBarState();
@@ -24,21 +24,6 @@ class StreamingProgressBar extends StatefulComponent {
 class _StreamingProgressBarState extends State<StreamingProgressBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   @override
   Component build(BuildContext context) {
@@ -60,6 +45,21 @@ class _StreamingProgressBarState extends State<StreamingProgressBar>
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
   }
 
   /// 把动画值 0..1 映射为跑马灯三段:暗块 / 亮块 / 暗块。

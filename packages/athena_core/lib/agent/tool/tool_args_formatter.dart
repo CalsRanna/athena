@@ -4,41 +4,6 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 
 abstract final class ToolArgsFormatter {
-  /// Optional model-authored intent; never used to decide permission or execution.
-  static String? toolCallDescription(String arguments) =>
-      ToolArgsFormatter._callDescription(
-        ToolArgsFormatter._decodeArgs(arguments),
-      );
-
-  static String? _callDescription(Map<String, dynamic>? args) {
-    final description = args?[ToolArguments.toolCallDescriptionKey];
-    if (description is! String || description.trim().isEmpty) return null;
-    return description.trim();
-  }
-
-  /// Single-line preview for tool cards. Approval details use the full payload.
-  static String toolArgPreview(String toolName, String arguments) {
-    final args = ToolArgsFormatter._decodeArgs(arguments);
-    if (args == null) return ToolArgsFormatter._preview(arguments);
-
-    final description = ToolArgsFormatter._callDescription(args);
-    if (description != null) return ToolArgsFormatter._preview(description);
-
-    final keyField = switch (toolName) {
-      _ when PermissionRule.kShellToolNames.contains(toolName) => 'command',
-      _ when PermissionRule.kFileToolNames.contains(toolName) => 'path',
-      'web_fetch' => 'url',
-      'web_search' => 'query',
-      _ => null,
-    };
-    final value = args[keyField];
-    if (value is String && value.trim().isNotEmpty) {
-      return ToolArgsFormatter._preview(value);
-    }
-    args.remove(ToolArguments.toolCallDescriptionKey);
-    return ToolArgsFormatter._preview(jsonEncode(args));
-  }
-
   /// Actual arguments for approval, with display metadata omitted.
   ///
   /// Values are never truncated: callers provide scrolling so the user can inspect
@@ -64,6 +29,41 @@ abstract final class ToolArgsFormatter {
       lines.add('${entry.key}: $value');
     }
     return lines.join('\n');
+  }
+
+  /// Single-line preview for tool cards. Approval details use the full payload.
+  static String toolArgPreview(String toolName, String arguments) {
+    final args = ToolArgsFormatter._decodeArgs(arguments);
+    if (args == null) return ToolArgsFormatter._preview(arguments);
+
+    final description = ToolArgsFormatter._callDescription(args);
+    if (description != null) return ToolArgsFormatter._preview(description);
+
+    final keyField = switch (toolName) {
+      _ when PermissionRule.kShellToolNames.contains(toolName) => 'command',
+      _ when PermissionRule.kFileToolNames.contains(toolName) => 'path',
+      'web_fetch' => 'url',
+      'web_search' => 'query',
+      _ => null,
+    };
+    final value = args[keyField];
+    if (value is String && value.trim().isNotEmpty) {
+      return ToolArgsFormatter._preview(value);
+    }
+    args.remove(ToolArguments.toolCallDescriptionKey);
+    return ToolArgsFormatter._preview(jsonEncode(args));
+  }
+
+  /// Optional model-authored intent; never used to decide permission or execution.
+  static String? toolCallDescription(String arguments) =>
+      ToolArgsFormatter._callDescription(
+        ToolArgsFormatter._decodeArgs(arguments),
+      );
+
+  static String? _callDescription(Map<String, dynamic>? args) {
+    final description = args?[ToolArguments.toolCallDescriptionKey];
+    if (description is! String || description.trim().isEmpty) return null;
+    return description.trim();
   }
 
   static Map<String, dynamic>? _decodeArgs(String arguments) {

@@ -1,10 +1,10 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaAppBar extends StatelessWidget {
   final Widget? action;
@@ -23,22 +23,6 @@ class AthenaAppBar extends StatelessWidget {
       return _DesktopAppBar(action: action, title: title);
     }
     return _MobileAppBar(action: action, title: title);
-  }
-}
-
-class _MobilePopButton extends StatelessWidget {
-  const _MobilePopButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return AthenaIconButton(
-      icon: AthenaIcons.back,
-      onTap: () => handleTap(context),
-    );
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).pop();
   }
 }
 
@@ -138,5 +122,21 @@ class _MobileAppBar extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _MobilePopButton extends StatelessWidget {
+  const _MobilePopButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return AthenaIconButton(
+      icon: AthenaIcons.back,
+      onTap: () => handleTap(context),
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    Navigator.of(context).pop();
   }
 }

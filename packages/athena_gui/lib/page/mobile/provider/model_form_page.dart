@@ -1,5 +1,6 @@
-import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/format/context_window.dart';
 import 'package:athena_gui/util/format/model_form.dart';
@@ -15,7 +16,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileModelFormPage extends StatefulWidget {

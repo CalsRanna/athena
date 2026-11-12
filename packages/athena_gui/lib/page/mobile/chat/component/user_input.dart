@@ -1,10 +1,10 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/chat/component/send_button.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class UserInput extends StatefulWidget {
   final TextEditingController controller;
@@ -34,24 +34,6 @@ class UserInput extends StatefulWidget {
 class _UserInputState extends State<UserInput> {
   final _scrollController = ScrollController();
   late final _focusNode = widget.focusNode ?? FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(_handleFocusChanged);
-  }
-
-  void _handleFocusChanged() {
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _focusNode.removeListener(_handleFocusChanged);
-    if (widget.focusNode == null) _focusNode.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +115,30 @@ class _UserInputState extends State<UserInput> {
     );
   }
 
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    if (widget.focusNode == null) _focusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void handleTapOutside(BuildContext context) {
+    // FocusScope.of(context) 在焦点位于输入框自身时自身并不持焦,
+    // unfocus 会直接返回;必须对实际持焦节点释放焦点。
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  void _handleFocusChanged() {
+    setState(() {});
+  }
+
   /// 多行输入超过可视高度时滚动到光标所在的最新一行
   /// （TextField 不会自动跟随光标，需在文本变化后手动滚动）。
   void _scrollToCaret() {
@@ -143,11 +149,5 @@ class _UserInputState extends State<UserInput> {
         _scrollController.jumpTo(position.maxScrollExtent);
       }
     });
-  }
-
-  void handleTapOutside(BuildContext context) {
-    // FocusScope.of(context) 在焦点位于输入框自身时自身并不持焦,
-    // unfocus 会直接返回;必须对实际持焦节点释放焦点。
-    FocusManager.instance.primaryFocus?.unfocus();
   }
 }

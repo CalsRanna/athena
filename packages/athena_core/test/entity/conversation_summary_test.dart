@@ -3,39 +3,6 @@ import 'package:athena_core/entity/conversation_summary.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:test/test.dart';
 
-MessageEntity _message({
-  required String id,
-  required int seq,
-  String role = 'user',
-  String content = '',
-}) => MessageEntity(
-  id: id,
-  seq: seq,
-  chatId: 'chat',
-  role: role,
-  content: content,
-);
-
-/// 压缩步骤落库后的那一行（role = `compaction`）。
-MessageEntity _compactionRow({
-  required String id,
-  required int seq,
-  required CompactionPhase phase,
-  List<String> coveredMessageIds = const [],
-  int? throughSeq,
-}) => CompactionStep(
-  messageId: id,
-  seq: seq,
-  chatId: 'chat',
-  runId: 1,
-  phase: phase,
-  startedAt: DateTime.now(),
-  beforeTokens: 100,
-  coveredMessageIds: coveredMessageIds,
-  throughSeq: throughSeq,
-  summary: phase == CompactionPhase.completed ? '摘要正文' : '',
-).toMessage();
-
 void main() {
   test('覆盖范围随摘要合并：二次压缩带上上一份摘要覆盖的消息', () {
     final first = _message(id: 'm1', seq: 1);
@@ -96,3 +63,36 @@ void main() {
     ]);
   });
 }
+
+/// 压缩步骤落库后的那一行（role = `compaction`）。
+MessageEntity _compactionRow({
+  required String id,
+  required int seq,
+  required CompactionPhase phase,
+  List<String> coveredMessageIds = const [],
+  int? throughSeq,
+}) => CompactionStep(
+  messageId: id,
+  seq: seq,
+  chatId: 'chat',
+  runId: 1,
+  phase: phase,
+  startedAt: DateTime.now(),
+  beforeTokens: 100,
+  coveredMessageIds: coveredMessageIds,
+  throughSeq: throughSeq,
+  summary: phase == CompactionPhase.completed ? '摘要正文' : '',
+).toMessage();
+
+MessageEntity _message({
+  required String id,
+  required int seq,
+  String role = 'user',
+  String content = '',
+}) => MessageEntity(
+  id: id,
+  seq: seq,
+  chatId: 'chat',
+  role: role,
+  content: content,
+);

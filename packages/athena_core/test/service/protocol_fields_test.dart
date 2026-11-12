@@ -10,44 +10,14 @@ import 'package:athena_core/service/completion_details.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/responses_adapter.dart';
-import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/service/retry.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
 import '../support/responses_fixture.dart';
-
-ChatCompletionCreateRequest request([Map<String, dynamic> fields = const {}]) =>
-    ChatCompletionCreateRequest.fromJson({
-      'model': 'test-model',
-      'messages': [
-        {'role': 'user', 'content': 'hi'},
-      ],
-      ...fields,
-    });
-
-Map<String, dynamic> messageJson({String stop = 'end_turn'}) => {
-  'id': 'msg_test',
-  'type': 'message',
-  'role': 'assistant',
-  'model': 'test-model',
-  'content': [
-    {'type': 'text', 'text': 'answer'},
-  ],
-  'stop_reason': stop,
-  'usage': {
-    'input_tokens': 10,
-    'output_tokens': 5,
-    'cache_read_input_tokens': 100,
-    'cache_creation_input_tokens': 20,
-    'cache_creation': {
-      'ephemeral_5m_input_tokens': 8,
-      'ephemeral_1h_input_tokens': 12,
-    },
-  },
-};
 
 void main() {
   final tools = [
@@ -621,3 +591,33 @@ void main() {
     );
   });
 }
+
+Map<String, dynamic> messageJson({String stop = 'end_turn'}) => {
+  'id': 'msg_test',
+  'type': 'message',
+  'role': 'assistant',
+  'model': 'test-model',
+  'content': [
+    {'type': 'text', 'text': 'answer'},
+  ],
+  'stop_reason': stop,
+  'usage': {
+    'input_tokens': 10,
+    'output_tokens': 5,
+    'cache_read_input_tokens': 100,
+    'cache_creation_input_tokens': 20,
+    'cache_creation': {
+      'ephemeral_5m_input_tokens': 8,
+      'ephemeral_1h_input_tokens': 12,
+    },
+  },
+};
+
+ChatCompletionCreateRequest request([Map<String, dynamic> fields = const {}]) =>
+    ChatCompletionCreateRequest.fromJson({
+      'model': 'test-model',
+      'messages': [
+        {'role': 'user', 'content': 'hi'},
+      ],
+      ...fields,
+    });

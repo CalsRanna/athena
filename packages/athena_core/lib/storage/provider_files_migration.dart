@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/provider_store.dart';
-import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/storage/yaml_scalar.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -24,6 +24,16 @@ import 'package:yaml/yaml.dart';
 /// 空了就在下次启动把已清空的段又搬回来(那时它已被移除,搬不回来,但会把
 /// 「已完成」误判成「待迁移」)。
 class ProviderFilesMigration {
+  static const version = 1;
+
+  static const _providersKey = 'providers';
+
+  final File _settingFile;
+  final Directory _providersDir;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   ProviderFilesMigration({
     required File settingFile,
     required Directory providersDir,
@@ -32,18 +42,8 @@ class ProviderFilesMigration {
        _providersDir = providersDir,
        _locks = locks;
 
-  static const version = 1;
-
-  final File _settingFile;
-  final Directory _providersDir;
-
-  /// 锁放哪由它决定,见 [LockRegistry]。
-  final LockRegistry _locks;
-
-  static const _providersKey = 'providers';
-
-  File get _marker => File(p.join(_providersDir.path, '.version'));
   File get _lockFile => _locks.named('provider-files-migration');
+  File get _marker => File(p.join(_providersDir.path, '.version'));
 
   Future<void> run() {
     return FileLocking.withFileLock(_lockFile, () async {
@@ -70,6 +70,32 @@ class ProviderFilesMigration {
         'to ${_providersDir.path} (setting.yaml backed up to $backup)',
       );
     });
+  }
+
+  /// 把整个 setting.yaml 复制成 `.pre-provider-files-{时间戳}` 的独立备份。
+  ///
+  /// 用 [FileLocking.preserveCorruptFile] 那套 `.corrupt-` 命名会让读者以为文件损坏;
+  /// 这里显式给一个说明迁移的标记。备份是整文件复制(不是解析后重建),
+  /// 坏行与未知字段原样保留。
+  Future<File> _backupSetting() async {
+    final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final backup = File('${_settingFile.path}.pre-provider-files-$stamp');
+    await _settingFile.copy(backup.path);
+    return backup;
+  }
+
+  Future<Map<String, dynamic>> _readSetting() async {
+    try {
+      final raw = loadYaml(await _settingFile.readAsString());
+      if (raw is Map) return Map<String, dynamic>.from(raw);
+    } catch (e) {
+      LoggerUtil.w('${_settingFile.path} is unreadable ($e), skipped');
+    }
+    return {};
+  }
+
+  Future<void> _writeMarker() async {
+    await FileLocking.atomicWriteString(_marker, 'version: $version\n');
   }
 
   /// 把旧数组段写成独立文件。
@@ -101,46 +127,6 @@ class ProviderFilesMigration {
     }
   }
 
-  /// 单个旧条目 → 新文件文本。键名与 [ProviderStore.encode] 一致,只是这里
-  /// 从原始 YAML 映射出发:迁移不做字段级解释,把用户手写的额外键也一起带
-  /// 过去(本迁移只管搬家,不管内容对错)。
-  static String _encodeEntry(String id, Map value) {
-    final buf = StringBuffer()
-      ..writeln('# Athena provider 配置:可手工编辑,重启生效')
-      ..writeln('# 文件名(去掉 .yaml)就是它的 id,不要与别的文件重名')
-      ..writeln();
-    buf.writeln('id: ${YamlScalarCodec.encode(id)}');
-    for (final entry in value.entries) {
-      final key = entry.key;
-      if (key == 'id') continue;
-      if (key is! String) continue;
-      buf.writeln('$key: ${YamlScalarCodec.encode(entry.value)}');
-    }
-    return buf.toString();
-  }
-
-  Future<Map<String, dynamic>> _readSetting() async {
-    try {
-      final raw = loadYaml(await _settingFile.readAsString());
-      if (raw is Map) return Map<String, dynamic>.from(raw);
-    } catch (e) {
-      LoggerUtil.w('${_settingFile.path} is unreadable ($e), skipped');
-    }
-    return {};
-  }
-
-  /// 把整个 setting.yaml 复制成 `.pre-provider-files-{时间戳}` 的独立备份。
-  ///
-  /// 用 [FileLocking.preserveCorruptFile] 那套 `.corrupt-` 命名会让读者以为文件损坏;
-  /// 这里显式给一个说明迁移的标记。备份是整文件复制(不是解析后重建),
-  /// 坏行与未知字段原样保留。
-  Future<File> _backupSetting() async {
-    final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-    final backup = File('${_settingFile.path}.pre-provider-files-$stamp');
-    await _settingFile.copy(backup.path);
-    return backup;
-  }
-
   /// 写回移除 providers 段后的 setting.yaml,保留其余键与标量类型。
   ///
   /// 接受全部标量类型(bool / num / String),不只是 int 与 String:这个文件
@@ -161,7 +147,21 @@ class ProviderFilesMigration {
     await FileLocking.atomicWriteString(_settingFile, buf.toString());
   }
 
-  Future<void> _writeMarker() async {
-    await FileLocking.atomicWriteString(_marker, 'version: $version\n');
+  /// 单个旧条目 → 新文件文本。键名与 [ProviderStore.encode] 一致,只是这里
+  /// 从原始 YAML 映射出发:迁移不做字段级解释,把用户手写的额外键也一起带
+  /// 过去(本迁移只管搬家,不管内容对错)。
+  static String _encodeEntry(String id, Map value) {
+    final buf = StringBuffer()
+      ..writeln('# Athena provider 配置:可手工编辑,重启生效')
+      ..writeln('# 文件名(去掉 .yaml)就是它的 id,不要与别的文件重名')
+      ..writeln();
+    buf.writeln('id: ${YamlScalarCodec.encode(id)}');
+    for (final entry in value.entries) {
+      final key = entry.key;
+      if (key == 'id') continue;
+      if (key is! String) continue;
+      buf.writeln('$key: ${YamlScalarCodec.encode(entry.value)}');
+    }
+    return buf.toString();
   }
 }

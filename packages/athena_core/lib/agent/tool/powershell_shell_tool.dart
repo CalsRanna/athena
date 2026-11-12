@@ -7,19 +7,16 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 
 /// shell 工具统一串行：由审批模式处理完整调用，不推断命令的副作用。
 class PowerShellShellTool extends Tool implements CancellableTool {
-  /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
-  /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
-  PowerShellShellTool({String? defaultWorkdir, BackgroundTaskService? tasks})
-    : _defaultWorkdir = defaultWorkdir,
-      _tasks = tasks;
-
   final String? _defaultWorkdir;
 
   /// 后台任务登记表。null = 本宿主不支持后台任务。
   final BackgroundTaskService? _tasks;
 
-  @override
-  String get name => 'powershell';
+  /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
+  /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
+  PowerShellShellTool({String? defaultWorkdir, BackgroundTaskService? tasks})
+    : _defaultWorkdir = defaultWorkdir,
+      _tasks = tasks;
 
   @override
   String get description =>
@@ -39,13 +36,8 @@ class PowerShellShellTool extends Tool implements CancellableTool {
       'after the turn ends; check it with the background_task tool). '
       'Commands run in $_defaultWorkdirHint by default.';
 
-  /// 默认目录的措辞。装配期已确定的注入值（TUI 启动参数）直接报出来；
-  /// 为 null 时默认目录随会话变化（工作文件夹），而工具描述是构造期的
-  /// 静态文本，只能说明优先级，具体路径由运行时上下文声明。
-  String get _defaultWorkdirHint =>
-      _defaultWorkdir ??
-      'the session working folder when one is set, otherwise the user home '
-          'directory';
+  @override
+  String get name => 'powershell';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -83,11 +75,13 @@ class PowerShellShellTool extends Tool implements CancellableTool {
     'required': ['command'],
   };
 
-  @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args, onUpdate: onUpdate);
+  /// 默认目录的措辞。装配期已确定的注入值（TUI 启动参数）直接报出来；
+  /// 为 null 时默认目录随会话变化（工作文件夹），而工具描述是构造期的
+  /// 静态文本，只能说明优先级，具体路径由运行时上下文声明。
+  String get _defaultWorkdirHint =>
+      _defaultWorkdir ??
+      'the session working folder when one is set, otherwise the user home '
+          'directory';
 
   @override
   Future<ToolExecutionResult> executeCancellable(
@@ -95,6 +89,12 @@ class PowerShellShellTool extends Tool implements CancellableTool {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args, onUpdate: onUpdate);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {

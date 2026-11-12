@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
+import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/agent/tool/tool_args_formatter.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/widgets/command_suggestions.dart';
@@ -14,8 +14,8 @@ import 'package:athena_tui/ui/widgets/error_bar.dart';
 import 'package:athena_tui/ui/widgets/input_area.dart';
 import 'package:athena_tui/ui/widgets/message_list.dart';
 import 'package:athena_tui/ui/widgets/permission_bar.dart';
-import 'package:athena_tui/ui/widgets/question_bar.dart';
 import 'package:athena_tui/ui/widgets/picker_overlay.dart';
+import 'package:athena_tui/ui/widgets/question_bar.dart';
 import 'package:athena_tui/ui/widgets/status_bar.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
@@ -31,6 +31,77 @@ class TuiApp extends StatefulComponent {
 
   @override
   State<TuiApp> createState() => _TuiAppState();
+}
+
+/// 一次提问的进行中状态:问题、选项选择、自填文本、当前问题、作答器。
+class _ElicitRequest {
+  final String chatId;
+
+  final List<ElicitQuestion> questions;
+  final Completer<Map<String, String>?> completer;
+
+  /// 问题下标 → 已选 label 集合(单选恒为 0 或 1 个)。
+  final Map<int, Set<String>> selected = {};
+
+  /// 问题下标 → 用户自填文本(与选项互斥)。
+  final Map<int, String> freeText = {};
+
+  /// 当前操作的问题下标。
+  int index = 0;
+
+  /// 非 null:输入区正用于为该问题自填答案。
+  int? textIndex;
+
+  _ElicitRequest(this.chatId, this.questions, this.completer);
+
+  /// 问题文本 → 答案(与 GUI 卡片回传的形状一致)。
+  Map<String, String> get answers => {
+    for (var i = 0; i < questions.length; i++)
+      if (answerFor(i) != null) questions[i].question: answerFor(i)!,
+  };
+
+  /// 第一个未作答的问题下标;全部已答返回 null。
+  int? get firstUnanswered {
+    for (var i = 0; i < questions.length; i++) {
+      if (answerFor(i) == null) return i;
+    }
+    return null;
+  }
+
+  /// 某个问题的答案:自填优先,其次选项;未作答返回 null。
+  String? answerFor(int questionIndex) {
+    final custom = freeText[questionIndex]?.trim() ?? '';
+    if (custom.isNotEmpty) return custom;
+    final chosen = selected[questionIndex];
+    if (chosen == null || chosen.isEmpty) return null;
+    return chosen.join(', ');
+  }
+}
+
+class _PermissionRequest {
+  final String chatId;
+  final String toolName;
+  final String arguments;
+  final Completer<PermissionDecision> completer;
+  _PermissionRequest(
+    this.chatId,
+    this.toolName,
+    this.arguments,
+    this.completer,
+  );
+}
+
+class _PickerState {
+  final String title;
+  final List<String> labels;
+  final Completer<int?> completer;
+  int index;
+  _PickerState({
+    required this.title,
+    required this.labels,
+    required this.index,
+    required this.completer,
+  });
 }
 
 class _TuiAppState extends State<TuiApp> {
@@ -51,6 +122,15 @@ class _TuiAppState extends State<TuiApp> {
     ('/review', '本会话审批模式: manual / ai / bypass'),
     ('/quit', '退出'),
   ];
+
+  /// /format 的选项:首项是「跟随 models.dev」,其余是三种固定协议。
+  static final List<({String label, bool auto, ApiFormat? format})>
+  _apiFormatOptions = [
+    (label: 'Auto (models.dev)', auto: true, format: null),
+    for (final format in ApiFormat.values)
+      (label: _apiFormatName(format), auto: false, format: format),
+  ];
+
   static String get _helpText {
     // 行数须控制在消息区视口内(约 19 行):超出会被自动滚底裁掉标题。
     // 整条消息是一张卡片:nocterm 边框布局上下各占 1 行,故内容行数 +
@@ -72,23 +152,20 @@ class _TuiAppState extends State<TuiApp> {
   }
 
   late final ChatController _controller;
+
   late final ScrollController _scrollController;
-
   final _textController = TextEditingController();
-  final List<void Function()> _disposers = [];
 
+  final List<void Function()> _disposers = [];
   // 权限审批请求(M3 模态)。按到达顺序排队、一次只显示队首：自动汇报 run
   // 可能在别的会话上同时发起审批,只有一个槽位时后来的会覆盖先来的,
   // 先来的那个 run 就永远等不到结果。
   final List<_PermissionRequest> _permissionQueue = [];
-  _PermissionRequest? get _permissionRequest => _permissionQueue.firstOrNull;
   final _permissionScrollController = ScrollController();
 
   // 提问请求(模态),同样排队
   final List<_ElicitRequest> _elicitQueue = [];
-  _ElicitRequest? get _elicitRequest => _elicitQueue.firstOrNull;
   final _questionScrollController = ScrollController();
-
   // 选择模态(模型 / 角色 / 聊天)
   _PickerState? _picker;
 
@@ -105,13 +182,10 @@ class _TuiAppState extends State<TuiApp> {
   /// 当前匹配输入的斜杠命令建议(实时过滤,输入以 `/` 开头时非空)。
   List<(String, String)> _commandSuggestions = const [];
 
-  /// 命令建议是否可见:有匹配且不在任何模态(审批/选择/key 输入)中。
-  bool get _showCommandSuggestions =>
-      _commandSuggestions.isNotEmpty &&
-      _permissionRequest == null &&
-      _elicitRequest == null &&
-      _picker == null &&
-      _keyInputProvider == null;
+  /// 分页加载进行中(防重入:滚动事件高频触发,加载是异步 IO)。
+  bool _loadingOlder = false;
+
+  _ElicitRequest? get _elicitRequest => _elicitQueue.firstOrNull;
 
   /// 输入区提示语:自填答案 > API key > 普通输入。
   String get _inputPlaceholder {
@@ -137,6 +211,16 @@ class _TuiAppState extends State<TuiApp> {
     }
     return '';
   }
+
+  _PermissionRequest? get _permissionRequest => _permissionQueue.firstOrNull;
+
+  /// 命令建议是否可见:有匹配且不在任何模态(审批/选择/key 输入)中。
+  bool get _showCommandSuggestions =>
+      _commandSuggestions.isNotEmpty &&
+      _permissionRequest == null &&
+      _elicitRequest == null &&
+      _picker == null &&
+      _keyInputProvider == null;
 
   // ─── 构建 ────────────────────────────────────────────────
 
@@ -312,6 +396,23 @@ class _TuiAppState extends State<TuiApp> {
     unawaited(_controller.initialize());
   }
 
+  /// 切到 Bypass 时收掉该会话已挂起的审批：请求按批准完成并退出队列。
+  void _approvePendingPermissions(String chatId) {
+    final requests = _permissionQueue
+        .where((request) => request.chatId == chatId)
+        .toList();
+    if (requests.isEmpty) return;
+    setState(
+      () => _permissionQueue.removeWhere((request) => request.chatId == chatId),
+    );
+    _permissionScrollController.jumpTo(0);
+    for (final request in requests) {
+      if (!request.completer.isCompleted) {
+        request.completer.complete(const PermissionDecision(approved: true));
+      }
+    }
+  }
+
   void _closePicker([int? result]) {
     final picker = _picker;
     if (picker == null) return;
@@ -329,6 +430,13 @@ class _TuiAppState extends State<TuiApp> {
     _textController
       ..text = command + rest
       ..selection = TextSelection.collapsed(offset: command.length);
+  }
+
+  void _dropPermission(_PermissionRequest request) {
+    if (!mounted || !_permissionQueue.contains(request)) return;
+    final wasHead = identical(_permissionRequest, request);
+    setState(() => _permissionQueue.remove(request));
+    if (wasHead) _permissionScrollController.jumpTo(0);
   }
 
   Future<void> _handleCommand(String input) async {
@@ -421,81 +529,98 @@ class _TuiAppState extends State<TuiApp> {
     }
   }
 
-  Future<void> _rewind(String args) async {
-    final targets = await _controller.rewindTargets();
-    if (targets.isEmpty) {
-      _pushSystemMessage('当前会话没有可回退的轮次。');
-      return;
-    }
-    final chatId = _controller.currentChat.value?.id;
-    int? index;
-    if (args.isNotEmpty) {
-      final turn = int.tryParse(args);
-      if (turn == null || turn < 1 || turn > targets.length) {
-        _pushSystemMessage('用法: /rewind [1-${targets.length}]');
-        return;
-      }
-      index = turn - 1;
-    } else {
-      index = await _openPicker(
-        title: '回退到哪一轮发送前？',
-        labels: [
-          for (final (i, m) in targets.indexed)
-            '${i + 1}. ${TextUtil.truncateText(m.content, 60)}',
-        ],
-        initialIndex: targets.length - 1,
-      );
-    }
-    if (index == null ||
-        !mounted ||
-        _controller.currentChat.value?.id != chatId) {
-      return;
-    }
-    final confirmed = await _openPicker(
-      title: '回退对话（文件和命令不撤销；保存恢复快照）',
-      labels: ['取消', '回退并替换草稿，停止本会话排队输入和后台工作'],
-      initialIndex: 0,
+  // ─── 提问(向用户问「你要哪个」) ──────────────────────────
+
+  Future<Map<String, String>?> _handleElicit(
+    String chatId,
+    List<ElicitQuestion> questions,
+    Future<void> cancelled,
+  ) {
+    final completer = Completer<Map<String, String>?>();
+    final request = _ElicitRequest(chatId, questions, completer);
+    if (_elicitQueue.isEmpty) _questionScrollController.jumpTo(0);
+    setState(() => _elicitQueue.add(request));
+
+    // run 取消时桥已按未作答返回(TuiAgentBridge._askElicit),这里只把
+    // 提问条撤下。
+    unawaited(
+      cancelled.then((_) {
+        if (!mounted || !_elicitQueue.contains(request)) return;
+        _resolveElicit(request, null);
+      }),
     );
-    if (confirmed != 1 ||
-        !mounted ||
-        _controller.currentChat.value?.id != chatId) {
-      return;
-    }
-    final result = await _controller.rewindMessage(targets[index]);
-    if (result == null || !mounted) return;
-    _textController
-      ..text = result.input.content
-      ..selection = TextSelection.collapsed(
-        offset: result.input.content.length,
-      );
-    _stickToBottom = true;
+    return completer.future;
   }
 
-  /// 退出前收尾：流式进行中先停止并等待 run 完全落库（最多 3s），
-  /// 避免退出时留下未 finalize 的空占位消息、丢失已生成内容与
-  /// [Cancelled] 标记。
-  Future<void> _quitApp() async {
-    if (_controller.isStreaming.value) {
-      final chatId = _controller.currentChat.value?.id;
-      _controller.stopGenerating();
-      try {
-        if (chatId != null) {
-          await _controller.bridge
-              .settledOf(chatId)
-              ?.timeout(const Duration(seconds: 3));
+  /// 提问模态按键:数字选选项、上下切问题、[e] 自填、回车提交、Esc 跳过。
+  void _handleElicitKey(KeyboardEvent event, _ElicitRequest request) {
+    final question = request.questions[request.index];
+
+    final option = _optionIndex(event);
+    if (option != null) {
+      if (option > question.options.length) return;
+      setState(() {
+        final label = question.options[option - 1].label;
+        final chosen = request.selected.putIfAbsent(
+          request.index,
+          () => <String>{},
+        );
+        if (question.multiSelect) {
+          if (!chosen.remove(label)) chosen.add(label);
+        } else {
+          final wasChosen = chosen.contains(label);
+          chosen
+            ..clear()
+            ..addAll(wasChosen ? const <String>[] : [label]);
         }
-      } catch (_) {
-        // 超时/异常不阻塞退出
-      }
-      // settled 只代表 Agent 循环结束;sendMessage 的 finally/50ms flush
-      // 在其后才执行,拆解前再等一轮,避免拆解后写已失效的信号订阅
-      try {
-        await _controller.waitForSend().timeout(const Duration(seconds: 2));
-      } catch (_) {
-        // 超时/异常不阻塞退出
-      }
+        // 选项与自填互斥:混在一起回传的答案会有歧义
+        request.freeText.remove(request.index);
+      });
+      return;
     }
-    shutdownApp();
+
+    switch (event.logicalKey) {
+      case LogicalKey.arrowUp:
+        setState(() {
+          request.index =
+              (request.index - 1 + request.questions.length) %
+              request.questions.length;
+        });
+        return;
+      case LogicalKey.arrowDown:
+        setState(() {
+          request.index = (request.index + 1) % request.questions.length;
+        });
+        return;
+      case LogicalKey.pageUp:
+        _questionScrollController.pageUp();
+        return;
+      case LogicalKey.pageDown:
+        _questionScrollController.pageDown();
+        return;
+      case LogicalKey.keyE:
+        setState(() {
+          request.textIndex = request.index;
+          request.selected[request.index]?.clear();
+          _textController.clear();
+        });
+        return;
+      case LogicalKey.enter:
+        final unanswered = request.firstUnanswered;
+        if (unanswered == null) {
+          _resolveElicit(request, request.answers);
+        } else {
+          setState(() => request.index = unanswered);
+          _pushSystemMessage('还有问题未作答,已跳到第 ${unanswered + 1} 个。');
+        }
+        return;
+      case LogicalKey.escape:
+        // 跳过提问:以 null 完成,模型按标注过的假定继续(不中断本轮)
+        _resolveElicit(request, null);
+        return;
+      default:
+        return;
+    }
   }
 
   // ─── 全局按键 ────────────────────────────────────────────
@@ -611,140 +736,6 @@ class _TuiAppState extends State<TuiApp> {
     return completer.future;
   }
 
-  void _dropPermission(_PermissionRequest request) {
-    if (!mounted || !_permissionQueue.contains(request)) return;
-    final wasHead = identical(_permissionRequest, request);
-    setState(() => _permissionQueue.remove(request));
-    if (wasHead) _permissionScrollController.jumpTo(0);
-  }
-
-  /// 模态标题:请求不属于当前会话时带上它的会话标题,否则看不出是谁在问。
-  String _requestTitle(String title, String chatId) {
-    final queued = _permissionQueue.length + _elicitQueue.length;
-    final more = queued > 1 ? '(还有 ${queued - 1} 个待处理)' : '';
-    if (chatId == _controller.currentChat.value?.id) return '$title$more';
-    return '$title · ${_controller.chatTitleOf(chatId)}$more';
-  }
-
-  // ─── 提问(向用户问「你要哪个」) ──────────────────────────
-
-  Future<Map<String, String>?> _handleElicit(
-    String chatId,
-    List<ElicitQuestion> questions,
-    Future<void> cancelled,
-  ) {
-    final completer = Completer<Map<String, String>?>();
-    final request = _ElicitRequest(chatId, questions, completer);
-    if (_elicitQueue.isEmpty) _questionScrollController.jumpTo(0);
-    setState(() => _elicitQueue.add(request));
-
-    // run 取消时桥已按未作答返回(TuiAgentBridge._askElicit),这里只把
-    // 提问条撤下。
-    unawaited(
-      cancelled.then((_) {
-        if (!mounted || !_elicitQueue.contains(request)) return;
-        _resolveElicit(request, null);
-      }),
-    );
-    return completer.future;
-  }
-
-  /// 数字键 → 选项序号(1 起);非数字键返回 null。
-  static int? _optionIndex(KeyboardEvent event) {
-    const digits = [
-      LogicalKey.digit1,
-      LogicalKey.digit2,
-      LogicalKey.digit3,
-      LogicalKey.digit4,
-    ];
-    final index = digits.indexOf(event.logicalKey);
-    return index < 0 ? null : index + 1;
-  }
-
-  /// 提问模态按键:数字选选项、上下切问题、[e] 自填、回车提交、Esc 跳过。
-  void _handleElicitKey(KeyboardEvent event, _ElicitRequest request) {
-    final question = request.questions[request.index];
-
-    final option = _optionIndex(event);
-    if (option != null) {
-      if (option > question.options.length) return;
-      setState(() {
-        final label = question.options[option - 1].label;
-        final chosen = request.selected.putIfAbsent(
-          request.index,
-          () => <String>{},
-        );
-        if (question.multiSelect) {
-          if (!chosen.remove(label)) chosen.add(label);
-        } else {
-          final wasChosen = chosen.contains(label);
-          chosen
-            ..clear()
-            ..addAll(wasChosen ? const <String>[] : [label]);
-        }
-        // 选项与自填互斥:混在一起回传的答案会有歧义
-        request.freeText.remove(request.index);
-      });
-      return;
-    }
-
-    switch (event.logicalKey) {
-      case LogicalKey.arrowUp:
-        setState(() {
-          request.index =
-              (request.index - 1 + request.questions.length) %
-              request.questions.length;
-        });
-        return;
-      case LogicalKey.arrowDown:
-        setState(() {
-          request.index = (request.index + 1) % request.questions.length;
-        });
-        return;
-      case LogicalKey.pageUp:
-        _questionScrollController.pageUp();
-        return;
-      case LogicalKey.pageDown:
-        _questionScrollController.pageDown();
-        return;
-      case LogicalKey.keyE:
-        setState(() {
-          request.textIndex = request.index;
-          request.selected[request.index]?.clear();
-          _textController.clear();
-        });
-        return;
-      case LogicalKey.enter:
-        final unanswered = request.firstUnanswered;
-        if (unanswered == null) {
-          _resolveElicit(request, request.answers);
-        } else {
-          setState(() => request.index = unanswered);
-          _pushSystemMessage('还有问题未作答,已跳到第 ${unanswered + 1} 个。');
-        }
-        return;
-      case LogicalKey.escape:
-        // 跳过提问:以 null 完成,模型按标注过的假定继续(不中断本轮)
-        _resolveElicit(request, null);
-        return;
-      default:
-        return;
-    }
-  }
-
-  void _resolveElicit(_ElicitRequest request, Map<String, String>? answers) {
-    if (!request.completer.isCompleted) {
-      request.completer.complete(answers);
-    }
-    final wasHead = identical(_elicitRequest, request);
-    setState(() {
-      _elicitQueue.remove(request);
-      request.textIndex = null;
-      if (wasHead) _textController.clear();
-    });
-    if (wasHead) _questionScrollController.jumpTo(0);
-  }
-
   /// picker 按键处理(全局键与输入区共用,模态期间拦截方向键)。
   bool _handlePickerKey(KeyboardEvent event) {
     final picker = _picker;
@@ -769,6 +760,31 @@ class _TuiAppState extends State<TuiApp> {
     return true; // 模态期间吞掉其他按键,防止误操作
   }
 
+  /// 向上加载更早的消息,并保持用户正在看的内容位置不变。
+  Future<void> _loadOlder() async {
+    if (_loadingOlder) return;
+    _loadingOlder = true;
+    try {
+      final beforeOffset = _scrollController.offset;
+      final beforeMax = _scrollController.maxScrollExtent;
+      final added = await _controller.loadOlderMessages();
+      if (added == 0 || !mounted) return;
+      // 新消息插入头部后,当前内容被往下推「新增总高」;布局后
+      // maxScrollExtent 精确(lazy:false),其差值即新增高度,
+      // jumpTo 回原位保证用户视角不跳动
+      final binding = NoctermBinding.instance;
+      if (binding is SchedulerBinding) {
+        binding.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final afterMax = _scrollController.maxScrollExtent;
+          _scrollController.jumpTo(beforeOffset + (afterMax - beforeMax));
+        });
+      }
+    } finally {
+      _loadingOlder = false;
+    }
+  }
+
   /// /providers:选择 provider 后进入 API key 输入模式。
   Future<void> _manageProviders() async {
     final providers = await _controller.availableProviders;
@@ -787,56 +803,6 @@ class _TuiAppState extends State<TuiApp> {
     if (picked == null || picked >= providers.length) return;
     setState(() => _keyInputProvider = providers[picked]);
     _pushSystemMessage('为 ${providers[picked].name} 输入 API key(回车保存,留空取消)。');
-  }
-
-  /// /format 的选项:首项是「跟随 models.dev」,其余是三种固定协议。
-  static final List<({String label, bool auto, ApiFormat? format})>
-  _apiFormatOptions = [
-    (label: 'Auto (models.dev)', auto: true, format: null),
-    for (final format in ApiFormat.values)
-      (label: _apiFormatName(format), auto: false, format: format),
-  ];
-
-  /// 协议在界面上的名字(`ApiFormat.value` 是落库标识,不直接展示)。
-  static String _apiFormatName(ApiFormat format) => switch (format) {
-    ApiFormat.chatCompletions => 'Chat Completions',
-    ApiFormat.responses => 'Responses',
-    ApiFormat.messages => 'Messages',
-  };
-
-  /// /format:先选 provider,再选 API 格式。
-  Future<void> _pickApiFormat() async {
-    final providers = await _controller.availableProviders;
-    if (providers.isEmpty) {
-      _pushSystemMessage('暂无 provider。');
-      return;
-    }
-    final picked = await _openPicker(
-      title: '选择 Provider(配置 API 格式)',
-      labels: [
-        for (final p in providers)
-          '${p.name} — ${p.apiFormatAuto ? 'Auto' : _apiFormatName(p.apiFormat)}',
-      ],
-      initialIndex: 0,
-    );
-    if (picked == null || picked >= providers.length) return;
-    final provider = providers[picked];
-    final initial = provider.apiFormatAuto
-        ? 0
-        : _apiFormatOptions.indexWhere((o) => o.format == provider.apiFormat);
-    final formatPicked = await _openPicker(
-      title: '选择 API 格式(${provider.name})',
-      labels: [for (final option in _apiFormatOptions) option.label],
-      initialIndex: initial < 0 ? 0 : initial,
-    );
-    if (formatPicked == null) return;
-    final choice = _apiFormatOptions[formatPicked];
-    await _controller.updateProviderApiFormat(
-      provider,
-      auto: choice.auto,
-      format: choice.format,
-    );
-    _pushSystemMessage('${provider.name} 的 API 格式已设为 ${choice.label}。');
   }
 
   /// 输入变化时实时计算斜杠命令建议:文本以 `/` 开头时按命令前缀过滤
@@ -904,34 +870,6 @@ class _TuiAppState extends State<TuiApp> {
     }
   }
 
-  /// 分页加载进行中(防重入:滚动事件高频触发,加载是异步 IO)。
-  bool _loadingOlder = false;
-
-  /// 向上加载更早的消息,并保持用户正在看的内容位置不变。
-  Future<void> _loadOlder() async {
-    if (_loadingOlder) return;
-    _loadingOlder = true;
-    try {
-      final beforeOffset = _scrollController.offset;
-      final beforeMax = _scrollController.maxScrollExtent;
-      final added = await _controller.loadOlderMessages();
-      if (added == 0 || !mounted) return;
-      // 新消息插入头部后,当前内容被往下推「新增总高」;布局后
-      // maxScrollExtent 精确(lazy:false),其差值即新增高度,
-      // jumpTo 回原位保证用户视角不跳动
-      final binding = NoctermBinding.instance;
-      if (binding is SchedulerBinding) {
-        binding.addPostFrameCallback((_) {
-          if (!mounted) return;
-          final afterMax = _scrollController.maxScrollExtent;
-          _scrollController.jumpTo(beforeOffset + (afterMax - beforeMax));
-        });
-      }
-    } finally {
-      _loadingOlder = false;
-    }
-  }
-
   // ─── 选择模态(常驻组件,visible 切换;不用 Overlay ─────────
   // 避免 NoctermApp/Navigator 对根树的挂载时序依赖) ─────────
 
@@ -949,6 +887,41 @@ class _TuiAppState extends State<TuiApp> {
     );
     setState(() {});
     return completer.future;
+  }
+
+  /// /format:先选 provider,再选 API 格式。
+  Future<void> _pickApiFormat() async {
+    final providers = await _controller.availableProviders;
+    if (providers.isEmpty) {
+      _pushSystemMessage('暂无 provider。');
+      return;
+    }
+    final picked = await _openPicker(
+      title: '选择 Provider(配置 API 格式)',
+      labels: [
+        for (final p in providers)
+          '${p.name} — ${p.apiFormatAuto ? 'Auto' : _apiFormatName(p.apiFormat)}',
+      ],
+      initialIndex: 0,
+    );
+    if (picked == null || picked >= providers.length) return;
+    final provider = providers[picked];
+    final initial = provider.apiFormatAuto
+        ? 0
+        : _apiFormatOptions.indexWhere((o) => o.format == provider.apiFormat);
+    final formatPicked = await _openPicker(
+      title: '选择 API 格式(${provider.name})',
+      labels: [for (final option in _apiFormatOptions) option.label],
+      initialIndex: initial < 0 ? 0 : initial,
+    );
+    if (formatPicked == null) return;
+    final choice = _apiFormatOptions[formatPicked];
+    await _controller.updateProviderApiFormat(
+      provider,
+      auto: choice.auto,
+      format: choice.format,
+    );
+    _pushSystemMessage('${provider.name} 的 API 格式已设为 ${choice.label}。');
   }
 
   Future<void> _pickModel() async {
@@ -1003,9 +976,117 @@ class _TuiAppState extends State<TuiApp> {
     _controller.pushTransientMessage(message);
   }
 
+  /// 退出前收尾：流式进行中先停止并等待 run 完全落库（最多 3s），
+  /// 避免退出时留下未 finalize 的空占位消息、丢失已生成内容与
+  /// [Cancelled] 标记。
+  Future<void> _quitApp() async {
+    if (_controller.isStreaming.value) {
+      final chatId = _controller.currentChat.value?.id;
+      _controller.stopGenerating();
+      try {
+        if (chatId != null) {
+          await _controller.bridge
+              .settledOf(chatId)
+              ?.timeout(const Duration(seconds: 3));
+        }
+      } catch (_) {
+        // 超时/异常不阻塞退出
+      }
+      // settled 只代表 Agent 循环结束;sendMessage 的 finally/50ms flush
+      // 在其后才执行,拆解前再等一轮,避免拆解后写已失效的信号订阅
+      try {
+        await _controller.waitForSend().timeout(const Duration(seconds: 2));
+      } catch (_) {
+        // 超时/异常不阻塞退出
+      }
+    }
+    shutdownApp();
+  }
+
   void _refresh() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  /// 模态标题:请求不属于当前会话时带上它的会话标题,否则看不出是谁在问。
+  String _requestTitle(String title, String chatId) {
+    final queued = _permissionQueue.length + _elicitQueue.length;
+    final more = queued > 1 ? '(还有 ${queued - 1} 个待处理)' : '';
+    if (chatId == _controller.currentChat.value?.id) return '$title$more';
+    return '$title · ${_controller.chatTitleOf(chatId)}$more';
+  }
+
+  void _resolveElicit(_ElicitRequest request, Map<String, String>? answers) {
+    if (!request.completer.isCompleted) {
+      request.completer.complete(answers);
+    }
+    final wasHead = identical(_elicitRequest, request);
+    setState(() {
+      _elicitQueue.remove(request);
+      request.textIndex = null;
+      if (wasHead) _textController.clear();
+    });
+    if (wasHead) _questionScrollController.jumpTo(0);
+  }
+
+  void _resolvePermission(bool approved) {
+    final request = _permissionRequest;
+    if (request == null) return;
+    if (!request.completer.isCompleted) {
+      request.completer.complete(PermissionDecision(approved: approved));
+    }
+    setState(() => _permissionQueue.remove(request));
+    _permissionScrollController.jumpTo(0);
+  }
+
+  Future<void> _rewind(String args) async {
+    final targets = await _controller.rewindTargets();
+    if (targets.isEmpty) {
+      _pushSystemMessage('当前会话没有可回退的轮次。');
+      return;
+    }
+    final chatId = _controller.currentChat.value?.id;
+    int? index;
+    if (args.isNotEmpty) {
+      final turn = int.tryParse(args);
+      if (turn == null || turn < 1 || turn > targets.length) {
+        _pushSystemMessage('用法: /rewind [1-${targets.length}]');
+        return;
+      }
+      index = turn - 1;
+    } else {
+      index = await _openPicker(
+        title: '回退到哪一轮发送前？',
+        labels: [
+          for (final (i, m) in targets.indexed)
+            '${i + 1}. ${TextUtil.truncateText(m.content, 60)}',
+        ],
+        initialIndex: targets.length - 1,
+      );
+    }
+    if (index == null ||
+        !mounted ||
+        _controller.currentChat.value?.id != chatId) {
+      return;
+    }
+    final confirmed = await _openPicker(
+      title: '回退对话（文件和命令不撤销；保存恢复快照）',
+      labels: ['取消', '回退并替换草稿，停止本会话排队输入和后台工作'],
+      initialIndex: 0,
+    );
+    if (confirmed != 1 ||
+        !mounted ||
+        _controller.currentChat.value?.id != chatId) {
+      return;
+    }
+    final result = await _controller.rewindMessage(targets[index]);
+    if (result == null || !mounted) return;
+    _textController
+      ..text = result.input.content
+      ..selection = TextSelection.collapsed(
+        offset: result.input.content.length,
+      );
+    _stickToBottom = true;
   }
 
   /// 执行用户触发的异步动作,失败写入错误条。
@@ -1019,33 +1100,6 @@ class _TuiAppState extends State<TuiApp> {
         if (mounted) _controller.error.value = e.toString();
       }),
     );
-  }
-
-  void _resolvePermission(bool approved) {
-    final request = _permissionRequest;
-    if (request == null) return;
-    if (!request.completer.isCompleted) {
-      request.completer.complete(PermissionDecision(approved: approved));
-    }
-    setState(() => _permissionQueue.remove(request));
-    _permissionScrollController.jumpTo(0);
-  }
-
-  /// 切到 Bypass 时收掉该会话已挂起的审批：请求按批准完成并退出队列。
-  void _approvePendingPermissions(String chatId) {
-    final requests = _permissionQueue
-        .where((request) => request.chatId == chatId)
-        .toList();
-    if (requests.isEmpty) return;
-    setState(
-      () => _permissionQueue.removeWhere((request) => request.chatId == chatId),
-    );
-    _permissionScrollController.jumpTo(0);
-    for (final request in requests) {
-      if (!request.completer.isCompleted) {
-        request.completer.complete(const PermissionDecision(approved: true));
-      }
-    }
   }
 
   Future<void> _saveApiKey(ProviderEntity provider, String apiKey) async {
@@ -1165,6 +1219,25 @@ class _TuiAppState extends State<TuiApp> {
     }
   }
 
+  /// 协议在界面上的名字(`ApiFormat.value` 是落库标识,不直接展示)。
+  static String _apiFormatName(ApiFormat format) => switch (format) {
+    ApiFormat.chatCompletions => 'Chat Completions',
+    ApiFormat.responses => 'Responses',
+    ApiFormat.messages => 'Messages',
+  };
+
+  /// 数字键 → 选项序号(1 起);非数字键返回 null。
+  static int? _optionIndex(KeyboardEvent event) {
+    const digits = [
+      LogicalKey.digit1,
+      LogicalKey.digit2,
+      LogicalKey.digit3,
+      LogicalKey.digit4,
+    ];
+    final index = digits.indexOf(event.logicalKey);
+    return index < 0 ? null : index + 1;
+  }
+
   static bool _sameSuggestions(
     List<(String, String)> a,
     List<(String, String)> b,
@@ -1175,74 +1248,4 @@ class _TuiAppState extends State<TuiApp> {
     }
     return true;
   }
-}
-
-class _PermissionRequest {
-  final String chatId;
-  final String toolName;
-  final String arguments;
-  final Completer<PermissionDecision> completer;
-  _PermissionRequest(
-    this.chatId,
-    this.toolName,
-    this.arguments,
-    this.completer,
-  );
-}
-
-/// 一次提问的进行中状态:问题、选项选择、自填文本、当前问题、作答器。
-class _ElicitRequest {
-  _ElicitRequest(this.chatId, this.questions, this.completer);
-
-  final String chatId;
-  final List<ElicitQuestion> questions;
-  final Completer<Map<String, String>?> completer;
-
-  /// 问题下标 → 已选 label 集合(单选恒为 0 或 1 个)。
-  final Map<int, Set<String>> selected = {};
-
-  /// 问题下标 → 用户自填文本(与选项互斥)。
-  final Map<int, String> freeText = {};
-
-  /// 当前操作的问题下标。
-  int index = 0;
-
-  /// 非 null:输入区正用于为该问题自填答案。
-  int? textIndex;
-
-  /// 某个问题的答案:自填优先,其次选项;未作答返回 null。
-  String? answerFor(int questionIndex) {
-    final custom = freeText[questionIndex]?.trim() ?? '';
-    if (custom.isNotEmpty) return custom;
-    final chosen = selected[questionIndex];
-    if (chosen == null || chosen.isEmpty) return null;
-    return chosen.join(', ');
-  }
-
-  /// 第一个未作答的问题下标;全部已答返回 null。
-  int? get firstUnanswered {
-    for (var i = 0; i < questions.length; i++) {
-      if (answerFor(i) == null) return i;
-    }
-    return null;
-  }
-
-  /// 问题文本 → 答案(与 GUI 卡片回传的形状一致)。
-  Map<String, String> get answers => {
-    for (var i = 0; i < questions.length; i++)
-      if (answerFor(i) != null) questions[i].question: answerFor(i)!,
-  };
-}
-
-class _PickerState {
-  final String title;
-  final List<String> labels;
-  final Completer<int?> completer;
-  int index;
-  _PickerState({
-    required this.title,
-    required this.labels,
-    required this.index,
-    required this.completer,
-  });
 }

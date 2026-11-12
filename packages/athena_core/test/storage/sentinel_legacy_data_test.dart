@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 void main() {
   late Directory temp;

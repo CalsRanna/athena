@@ -1,14 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 输入框工具栏最右的上下文占用指示器。
 ///
@@ -34,100 +34,6 @@ class DesktopTokenIndicator extends StatefulWidget {
 
   @override
   State<DesktopTokenIndicator> createState() => _DesktopTokenIndicatorState();
-}
-
-class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
-  final viewModel = GetIt.instance.get<ChatViewModel>();
-
-  @override
-  Widget build(BuildContext context) {
-    return SignalBuilder(
-      builder: (context) {
-        final chat = viewModel.currentChat.value;
-        // 负数只出现在回退后的"未知"，与"还没跑过推理"一样按 0 展示
-        final used = math.max(chat?.contextTokens ?? 0, 0);
-        final window = math.max(
-          viewModel.currentModel.value?.contextWindow ?? 0,
-          0,
-        );
-        final stats = _ContextStats(
-          used: used,
-          window: window,
-          cached: (chat?.cachedTokens ?? 0).clamp(0, used),
-        );
-        return _buildRing(context, stats);
-      },
-    );
-  }
-
-  Widget _buildRing(BuildContext context, _ContextStats stats) {
-    final colors = context.athenaColors;
-    final ring = SizedBox.square(
-      dimension: 12,
-      child: CircularProgressIndicator(
-        value: stats.ratio,
-        strokeWidth: 2.5,
-        strokeCap: StrokeCap.round,
-        backgroundColor: colors.border,
-        color: stats.nearLimit ? colors.statusWarning : colors.textSecondary,
-      ),
-    );
-    // tooltip 是深色底白字的一句话（底色与字号由全局 tooltipTheme 统一），
-    // 明细留给点击。
-    return Tooltip(
-      message: 'Context ${stats.summary}',
-      preferBelow: false,
-      verticalOffset: 16,
-      // 12 圆环 + 8 内边距 = 28 方盒，与同一行的 ghost 控件同档
-      child: AthenaGhostButton(
-        onTap: () => _openDetails(stats),
-        padding: const EdgeInsets.all(8),
-        child: ring,
-      ),
-    );
-  }
-
-  /// 面板右边与圆环右边对齐、底边离圆环顶 8，向上展开。
-  void _openDetails(_ContextStats stats) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final anchor = box.localToGlobal(Offset.zero) & box.size;
-    const contentWidth = 288.0;
-    // 面板自带 4 内边距，左边要比"右对齐"再让出 8
-    final panel = DesktopContextMenu(
-      offset: Offset(anchor.right - contentWidth - 8, anchor.top - 8),
-      upward: true,
-      width: contentWidth,
-      children: [_ContextDetails(stats: stats)],
-    );
-    DesktopContextMenuManager.instance.show(context, panel);
-  }
-}
-
-/// 一次推理的上下文占用快照及其派生量。
-class _ContextStats {
-  final int used;
-  final int window;
-  final int cached;
-
-  const _ContextStats({
-    required this.used,
-    required this.window,
-    required this.cached,
-  });
-
-  /// 模型没配上下文窗口：占用率无从计算，圆环只有空轨道。
-  bool get windowUnknown => window <= 0;
-
-  int get uncached => used - cached;
-  int get free => math.max(window - used, 0);
-  double get ratio => windowUnknown ? 0 : (used / window).clamp(0.0, 1.0);
-  bool get nearLimit => !windowUnknown && ratio >= 0.8;
-
-  /// `181.6k / 1M (18%)`，tooltip 与面板标题共用。窗口未知时只说用了多少。
-  String get summary => windowUnknown
-      ? '${_TokenFormat._compact(used)} (window unknown)'
-      : '${_TokenFormat._compact(used)} / ${_TokenFormat._compact(window)} (${_TokenFormat._percent(used, window)})';
 }
 
 /// 明细面板：标题行、分段占用条、三行图例。
@@ -219,6 +125,101 @@ class _ContextDetails extends StatelessWidget {
   }
 }
 
+/// 一次推理的上下文占用快照及其派生量。
+class _ContextStats {
+  final int used;
+  final int window;
+  final int cached;
+
+  const _ContextStats({
+    required this.used,
+    required this.window,
+    required this.cached,
+  });
+
+  int get free => math.max(window - used, 0);
+
+  bool get nearLimit => !windowUnknown && ratio >= 0.8;
+  double get ratio => windowUnknown ? 0 : (used / window).clamp(0.0, 1.0);
+
+  /// `181.6k / 1M (18%)`，tooltip 与面板标题共用。窗口未知时只说用了多少。
+  String get summary => windowUnknown
+      ? '${_TokenFormat._compact(used)} (window unknown)'
+      : '${_TokenFormat._compact(used)} / ${_TokenFormat._compact(window)} (${_TokenFormat._percent(used, window)})';
+  int get uncached => used - cached;
+
+  /// 模型没配上下文窗口：占用率无从计算，圆环只有空轨道。
+  bool get windowUnknown => window <= 0;
+}
+
+class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
+  final viewModel = GetIt.instance.get<ChatViewModel>();
+
+  @override
+  Widget build(BuildContext context) {
+    return SignalBuilder(
+      builder: (context) {
+        final chat = viewModel.currentChat.value;
+        // 负数只出现在回退后的"未知"，与"还没跑过推理"一样按 0 展示
+        final used = math.max(chat?.contextTokens ?? 0, 0);
+        final window = math.max(
+          viewModel.currentModel.value?.contextWindow ?? 0,
+          0,
+        );
+        final stats = _ContextStats(
+          used: used,
+          window: window,
+          cached: (chat?.cachedTokens ?? 0).clamp(0, used),
+        );
+        return _buildRing(context, stats);
+      },
+    );
+  }
+
+  Widget _buildRing(BuildContext context, _ContextStats stats) {
+    final colors = context.athenaColors;
+    final ring = SizedBox.square(
+      dimension: 12,
+      child: CircularProgressIndicator(
+        value: stats.ratio,
+        strokeWidth: 2.5,
+        strokeCap: StrokeCap.round,
+        backgroundColor: colors.border,
+        color: stats.nearLimit ? colors.statusWarning : colors.textSecondary,
+      ),
+    );
+    // tooltip 是深色底白字的一句话（底色与字号由全局 tooltipTheme 统一），
+    // 明细留给点击。
+    return Tooltip(
+      message: 'Context ${stats.summary}',
+      preferBelow: false,
+      verticalOffset: 16,
+      // 12 圆环 + 8 内边距 = 28 方盒，与同一行的 ghost 控件同档
+      child: AthenaGhostButton(
+        onTap: () => _openDetails(stats),
+        padding: const EdgeInsets.all(8),
+        child: ring,
+      ),
+    );
+  }
+
+  /// 面板右边与圆环右边对齐、底边离圆环顶 8，向上展开。
+  void _openDetails(_ContextStats stats) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final anchor = box.localToGlobal(Offset.zero) & box.size;
+    const contentWidth = 288.0;
+    // 面板自带 4 内边距，左边要比"右对齐"再让出 8
+    final panel = DesktopContextMenu(
+      offset: Offset(anchor.right - contentWidth - 8, anchor.top - 8),
+      upward: true,
+      width: contentWidth,
+      children: [_ContextDetails(stats: stats)],
+    );
+    DesktopContextMenuManager.instance.show(context, panel);
+  }
+}
+
 /// 图例行：色点 + 名称 + 数量 + 占比。
 class _LegendRow extends StatelessWidget {
   final Color color;
@@ -272,6 +273,32 @@ class _LegendRow extends StatelessWidget {
   }
 }
 
+abstract final class _TokenFormat {
+  /// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
+  static String _compact(int value) {
+    if (value < 1000) return '$value';
+    var scaled = value / 1000;
+    var unit = 'k';
+    // 999.95k 起一位小数会进成 1000.0k，直接换到 M
+    if (scaled >= 999.95) {
+      scaled = value / 1000000;
+      unit = 'M';
+    }
+    final text = scaled.toStringAsFixed(1);
+    final trimmed = text.endsWith('.0')
+        ? text.substring(0, text.length - 2)
+        : text;
+    return '$trimmed$unit';
+  }
+
+  /// 整数百分比；有量但不足 1% 时给 `<1%` 而不是误导性的 `0%`。
+  static String _percent(int part, int whole) {
+    if (whole <= 0 || part <= 0) return '0%';
+    final pct = (part / whole * 100).round();
+    return pct == 0 ? '<1%' : '$pct%';
+  }
+}
+
 /// 分段占用条：整条圆角轨道上按比例依次铺各段，段间留 1 逻辑像素的缝。
 class _UsageBarPainter extends CustomPainter {
   final Color track;
@@ -303,30 +330,4 @@ class _UsageBarPainter extends CustomPainter {
   @override
   bool shouldRepaint(_UsageBarPainter oldDelegate) =>
       oldDelegate.track != track || !listEquals(oldDelegate.segments, segments);
-}
-
-abstract final class _TokenFormat {
-  /// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
-  static String _compact(int value) {
-    if (value < 1000) return '$value';
-    var scaled = value / 1000;
-    var unit = 'k';
-    // 999.95k 起一位小数会进成 1000.0k，直接换到 M
-    if (scaled >= 999.95) {
-      scaled = value / 1000000;
-      unit = 'M';
-    }
-    final text = scaled.toStringAsFixed(1);
-    final trimmed = text.endsWith('.0')
-        ? text.substring(0, text.length - 2)
-        : text;
-    return '$trimmed$unit';
-  }
-
-  /// 整数百分比；有量但不足 1% 时给 `<1%` 而不是误导性的 `0%`。
-  static String _percent(int part, int whole) {
-    if (whole <= 0 || part <= 0) return '0%';
-    final pct = (part / whole * 100).round();
-    return pct == 0 ? '<1%' : '$pct%';
-  }
 }

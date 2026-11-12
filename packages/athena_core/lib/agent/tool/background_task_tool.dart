@@ -6,12 +6,9 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 /// 单独成一个工具而不是塞进 shell 的参数：后台任务的生命周期跨越多轮，
 /// 而 shell 是「一次调用一次结果」的形状。
 class BackgroundTaskTool extends Tool {
-  BackgroundTaskTool(this.tasks);
-
   final BackgroundTaskService tasks;
 
-  @override
-  String get name => 'background_task';
+  BackgroundTaskTool(this.tasks);
 
   @override
   String get description =>
@@ -24,6 +21,9 @@ class BackgroundTaskTool extends Tool {
       '- action="stop": terminate a running task (its process tree is '
       'killed, output is kept).\n'
       'Prefer this over re-running a command to see whether it finished.';
+
+  @override
+  String get name => 'background_task';
 
   @override
   Map<String, dynamic> get parameters => {

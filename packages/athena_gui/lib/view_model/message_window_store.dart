@@ -18,15 +18,8 @@ import 'package:signals/signals.dart';
 ///   prepend 之前也必须冲刷——缓冲里那批待提交的增量攥着一份完整快照，直接整表
 ///   替换会把它们挤掉。
 class MessageWindowStore {
-  MessageWindowStore({
-    required MessageRepository repository,
-    required String? Function() currentChatId,
-    this.pageSize = 50,
-    this.flushInterval = StreamingMessageBuffer.defaultInterval,
-  }) : _repository = repository,
-       _currentChatId = currentChatId;
-
   final MessageRepository _repository;
+
   final String? Function() _currentChatId;
 
   /// 一页的条数。
@@ -45,15 +38,47 @@ class MessageWindowStore {
   );
 
   int? _oldestSeq;
+
   bool _loadingOlder = false;
   int _generation = 0;
   int _olderGeneration = 0;
+  MessageWindowStore({
+    required MessageRepository repository,
+    required String? Function() currentChatId,
+    this.pageSize = 50,
+    this.flushInterval = StreamingMessageBuffer.defaultInterval,
+  }) : _repository = repository,
+       _currentChatId = currentChatId;
+
+  /// 当前加载代次；配合 [isCurrent] 使用。
+  int get generation => _generation;
 
   /// 还有更早的消息没读进来。
   bool get hasOlder => _oldestSeq != null;
 
-  /// 当前加载代次；配合 [isCurrent] 使用。
-  int get generation => _generation;
+  /// 把一条增量交给合并缓冲（同 id 替换、否则追加），到窗口末统一提交。
+  void addBuffered(MessageEntity message, String chatId) {
+    _buffer.add(message, scope: chatId);
+  }
+
+  /// 立即追加或替换一条消息（不走缓冲）。
+  ///
+  /// 用于切换对话的竞态下合并内存快照：占位消息可能已在列表里（快照合并或 DB
+  /// 预读），按 id 替换避免重复追加。
+  void appendOrReplaceNow(MessageEntity message) {
+    if (!messages.replaceWhere((m) => m.id == message.id, message)) {
+      messages.value = [...messages.value, message];
+    }
+  }
+
+  /// 把一页结果铺成当前窗口（整表替换）。
+  void applyPage(MessageWindow page) {
+    _buffer.discard();
+    messages.value = page.messages;
+    _oldestSeq = page.hasOlder && page.messages.isNotEmpty
+        ? page.messages.first.seq
+        : null;
+  }
 
   /// 开始一次新的加载：推进代次、重置分页、丢弃挂起增量，并返回新代次。
   ///
@@ -66,26 +91,31 @@ class MessageWindowStore {
     return _generation;
   }
 
+  /// 直接清空窗口（切会话/新建草稿时先卸下旧列表）。
+  void clear() {
+    messages.value = [];
+  }
+
+  /// 丢弃挂起增量。整表即将被替换（切会话、新建草稿）时使用。
+  void discardPending() => _buffer.discard();
+
+  /// 立即提交挂起增量。收尾、以及任何需要读到最新列表的操作之前必须调用，
+  /// 否则会读到过期的 [messages]。
+  void flush() => _buffer.flush();
+
+  // ─── 流式增量 ───────────────────────────────────────────────
+
+  /// 只冲刷属于 [chatId] 的挂起增量——无条件冲刷会把别的对话的缓冲也提交掉。
+  void flushFor(String chatId) {
+    if (_buffer.hasPendingFor(chatId)) _buffer.flush();
+  }
+
   /// 这次加载是否仍然有效：代次没变、且当前对话仍是 [chatId]。
   bool isCurrent(int generation, String chatId) =>
       generation == _generation && _currentChatId() == chatId;
 
   /// 首屏：会话小到能一次读进来时给整段（此后 [hasOlder] 为假），否则只给最新一页。
   Future<MessageWindow> loadInitial(String chatId) => _loadPage(chatId);
-
-  /// 把一页结果铺成当前窗口（整表替换）。
-  void applyPage(MessageWindow page) {
-    _buffer.discard();
-    messages.value = page.messages;
-    _oldestSeq = page.hasOlder && page.messages.isNotEmpty
-        ? page.messages.first.seq
-        : null;
-  }
-
-  /// 直接清空窗口（切会话/新建草稿时先卸下旧列表）。
-  void clear() {
-    messages.value = [];
-  }
 
   /// 向列表顶部追加一页更早的消息，返回实际新增条数。
   Future<int> loadOlder() async {
@@ -130,41 +160,24 @@ class MessageWindowStore {
     applyPage(page);
   }
 
-  // ─── 流式增量 ───────────────────────────────────────────────
-
-  /// 把一条增量交给合并缓冲（同 id 替换、否则追加），到窗口末统一提交。
-  void addBuffered(MessageEntity message, String chatId) {
-    _buffer.add(message, scope: chatId);
-  }
-
-  /// 立即提交挂起增量。收尾、以及任何需要读到最新列表的操作之前必须调用，
-  /// 否则会读到过期的 [messages]。
-  void flush() => _buffer.flush();
-
-  /// 只冲刷属于 [chatId] 的挂起增量——无条件冲刷会把别的对话的缓冲也提交掉。
-  void flushFor(String chatId) {
-    if (_buffer.hasPendingFor(chatId)) _buffer.flush();
-  }
-
-  /// 丢弃挂起增量。整表即将被替换（切会话、新建草稿）时使用。
-  void discardPending() => _buffer.discard();
-
-  /// 立即追加或替换一条消息（不走缓冲）。
-  ///
-  /// 用于切换对话的竞态下合并内存快照：占位消息可能已在列表里（快照合并或 DB
-  /// 预读），按 id 替换避免重复追加。
-  void appendOrReplaceNow(MessageEntity message) {
-    if (!messages.replaceWhere((m) => m.id == message.id, message)) {
-      messages.value = [...messages.value, message];
+  Future<MessageWindow> _loadPage(String chatId, {int? beforeSeq}) async {
+    final repository = _repository;
+    if (beforeSeq == null && repository is RecentMessageRepository) {
+      // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
+      // 仍只给尾部一页。轮次条 hover/点击、列表高度因此不再分两段。
+      return (repository as RecentMessageRepository).loadInitialMessages(
+        chatId,
+        pageSize: pageSize,
+      );
     }
-  }
-
-  // ─── 内部 ──────────────────────────────────────────────────
-
-  void _resetPagination() {
-    _oldestSeq = null;
-    _loadingOlder = false;
-    _olderGeneration++;
+    final loaded = await _loadRecent(
+      chatId,
+      count: pageSize + 1,
+      beforeSeq: beforeSeq,
+    );
+    final hasOlder = loaded.length > pageSize;
+    final page = hasOlder ? loaded.sublist(loaded.length - pageSize) : loaded;
+    return (hasOlder: hasOlder, messages: page);
   }
 
   Future<List<MessageEntity>> _loadRecent(
@@ -189,23 +202,11 @@ class MessageWindowStore {
     return eligible.sublist(eligible.length - count);
   }
 
-  Future<MessageWindow> _loadPage(String chatId, {int? beforeSeq}) async {
-    final repository = _repository;
-    if (beforeSeq == null && repository is RecentMessageRepository) {
-      // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
-      // 仍只给尾部一页。轮次条 hover/点击、列表高度因此不再分两段。
-      return (repository as RecentMessageRepository).loadInitialMessages(
-        chatId,
-        pageSize: pageSize,
-      );
-    }
-    final loaded = await _loadRecent(
-      chatId,
-      count: pageSize + 1,
-      beforeSeq: beforeSeq,
-    );
-    final hasOlder = loaded.length > pageSize;
-    final page = hasOlder ? loaded.sublist(loaded.length - pageSize) : loaded;
-    return (hasOlder: hasOlder, messages: page);
+  // ─── 内部 ──────────────────────────────────────────────────
+
+  void _resetPagination() {
+    _oldestSeq = null;
+    _loadingOlder = false;
+    _olderGeneration++;
   }
 }

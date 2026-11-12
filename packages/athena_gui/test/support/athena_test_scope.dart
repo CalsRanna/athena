@@ -13,9 +13,9 @@ import 'package:flutter/material.dart';
 /// 挂在 `MaterialApp.builder` 上：builder 的 child 是 Navigator，
 /// 因此所有路由页面与浮层都在作用域内。
 class AthenaTestScope extends StatelessWidget {
-  const AthenaTestScope({super.key, required this.child});
-
   final Widget child;
+
+  const AthenaTestScope({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

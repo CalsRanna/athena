@@ -1,34 +1,11 @@
 import 'dart:convert';
 
-import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/compaction_step.dart';
+import 'package:athena_core/entity/message_entity.dart';
 
 /// Summary coverage is stored with the summary so replay stays consistent even
 /// if marking the original records is interrupted. Originals remain recoverable.
 abstract final class ConversationSummary {
-  static bool isSummary(MessageEntity message) =>
-      message.role == 'summary' ||
-      message.role == 'system' ||
-      (message.role == 'compaction' &&
-          CompactionStep.fromMessage(message).phase ==
-              CompactionPhase.completed);
-
-  static Set<String> coveredIds(MessageEntity message) {
-    if (message.role != 'summary' && message.role != 'compaction') return {};
-    final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
-    return (metadata['coveredMessageIds'] as List<dynamic>)
-        .cast<String>()
-        .toSet();
-  }
-
-  static int position(MessageEntity message) {
-    // Legacy system summaries precede all retained history.
-    if (message.role == 'system') return -1;
-    if (!isSummary(message)) return message.seq;
-    final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
-    return metadata['throughSeq'] as int;
-  }
-
   static List<MessageEntity> activeHistory(List<MessageEntity> records) {
     final covered = <String>{
       for (final message in records)
@@ -46,6 +23,14 @@ abstract final class ConversationSummary {
         final byPosition = position(a).compareTo(position(b));
         return byPosition != 0 ? byPosition : a.seq.compareTo(b.seq);
       });
+  }
+
+  static Set<String> coveredIds(MessageEntity message) {
+    if (message.role != 'summary' && message.role != 'compaction') return {};
+    final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
+    return (metadata['coveredMessageIds'] as List<dynamic>)
+        .cast<String>()
+        .toSet();
   }
 
   static MessageEntity create({
@@ -69,5 +54,20 @@ abstract final class ConversationSummary {
         'throughSeq': positions.last,
       }),
     );
+  }
+
+  static bool isSummary(MessageEntity message) =>
+      message.role == 'summary' ||
+      message.role == 'system' ||
+      (message.role == 'compaction' &&
+          CompactionStep.fromMessage(message).phase ==
+              CompactionPhase.completed);
+
+  static int position(MessageEntity message) {
+    // Legacy system summaries precede all retained history.
+    if (message.role == 'system') return -1;
+    if (!isSummary(message)) return message.seq;
+    final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
+    return metadata['throughSeq'] as int;
   }
 }

@@ -1,62 +1,9 @@
 import 'dart:async';
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-
-/// 「已复制」反馈的状态机：点击进入已复制态，[AthenaMotion.linger] 后复原。
-///
-/// 只收敛三件容易写错的事——先复制再切状态、已复制期间重复点击不再复制、
-/// 计时没走完就被卸载时不对已销毁的 State 调 setState；反馈长什么样交给
-/// [builder] 画（同 [AthenaHover] 的分工：骨架共用，装饰各自画）。代码块的
-/// 复制键是 [CopyButton]，消息工具条的复制键保留自己的外壳。
-class CopyFeedback extends StatefulWidget {
-  /// 点击时先复制，再切到已复制态。
-  final void Function()? onTap;
-
-  /// 用当前的已复制态构建子树。
-  final Widget Function(BuildContext context, bool copied) builder;
-
-  const CopyFeedback({super.key, this.onTap, required this.builder});
-
-  @override
-  State<CopyFeedback> createState() => _CopyFeedbackState();
-}
-
-class _CopyFeedbackState extends State<CopyFeedback> {
-  bool copied = false;
-
-  /// 计时结束前按钮可能被卸载（切换对话、流式重建），dispose 时取消，
-  /// 不对已销毁的 State 调 setState。
-  Timer? _resetTimer;
-
-  @override
-  void dispose() {
-    _resetTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _handleTap,
-      child: widget.builder(context, copied),
-    );
-  }
-
-  void _handleTap() {
-    // 已复制期间重复点击不再复制：剪贴板里已经是这份内容，再点一次只会把
-    // 计时重新拉满，反馈一直挂在屏上。
-    if (copied) return;
-    widget.onTap?.call();
-    setState(() => copied = true);
-    _resetTimer = Timer(AthenaMotion.linger, () {
-      setState(() => copied = false);
-    });
-  }
-}
 
 /// 「已复制」的内容：勾 + "Copied"。
 ///
@@ -127,5 +74,58 @@ class CopyButton extends StatelessWidget {
               ),
       ),
     );
+  }
+}
+
+/// 「已复制」反馈的状态机：点击进入已复制态，[AthenaMotion.linger] 后复原。
+///
+/// 只收敛三件容易写错的事——先复制再切状态、已复制期间重复点击不再复制、
+/// 计时没走完就被卸载时不对已销毁的 State 调 setState；反馈长什么样交给
+/// [builder] 画（同 [AthenaHover] 的分工：骨架共用，装饰各自画）。代码块的
+/// 复制键是 [CopyButton]，消息工具条的复制键保留自己的外壳。
+class CopyFeedback extends StatefulWidget {
+  /// 点击时先复制，再切到已复制态。
+  final void Function()? onTap;
+
+  /// 用当前的已复制态构建子树。
+  final Widget Function(BuildContext context, bool copied) builder;
+
+  const CopyFeedback({super.key, this.onTap, required this.builder});
+
+  @override
+  State<CopyFeedback> createState() => _CopyFeedbackState();
+}
+
+class _CopyFeedbackState extends State<CopyFeedback> {
+  bool copied = false;
+
+  /// 计时结束前按钮可能被卸载（切换对话、流式重建），dispose 时取消，
+  /// 不对已销毁的 State 调 setState。
+  Timer? _resetTimer;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _handleTap,
+      child: widget.builder(context, copied),
+    );
+  }
+
+  @override
+  void dispose() {
+    _resetTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    // 已复制期间重复点击不再复制：剪贴板里已经是这份内容，再点一次只会把
+    // 计时重新拉满，反馈一直挂在屏上。
+    if (copied) return;
+    widget.onTap?.call();
+    setState(() => copied = true);
+    _resetTimer = Timer(AthenaMotion.linger, () {
+      setState(() => copied = false);
+    });
   }
 }

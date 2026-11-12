@@ -12,18 +12,19 @@ import 'package:flutter/widgets.dart';
 /// [StreamController] 和假的 [show] 即可，不必拉起整张依赖图，也不必为了弹一个
 /// 对话框而准备好 Router（`AthenaDialog` 内部取的是 router 的 navigatorKey）。
 class ChatErrorDialogListener extends StatefulWidget {
+  final Stream<String> errors;
+
+  final Widget child;
+
+  /// 实际呈现方式。默认弹错误对话框；测试可换成记录器。
+  final void Function(String message) show;
+
   const ChatErrorDialogListener({
     super.key,
     required this.errors,
     required this.child,
     this.show = AthenaDialog.error,
   });
-
-  final Stream<String> errors;
-  final Widget child;
-
-  /// 实际呈现方式。默认弹错误对话框；测试可换成记录器。
-  final void Function(String message) show;
 
   @override
   State<ChatErrorDialogListener> createState() =>
@@ -34,10 +35,7 @@ class _ChatErrorDialogListenerState extends State<ChatErrorDialogListener> {
   StreamSubscription<String>? _subscription;
 
   @override
-  void initState() {
-    super.initState();
-    _subscription = widget.errors.listen(_onError);
-  }
+  Widget build(BuildContext context) => widget.child;
 
   @override
   void didUpdateWidget(ChatErrorDialogListener oldWidget) {
@@ -55,13 +53,16 @@ class _ChatErrorDialogListenerState extends State<ChatErrorDialogListener> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.errors.listen(_onError);
+  }
+
   void _onError(String message) {
     // 事件可能来自任意后台路径（run 收尾、后台汇报、列表重载），到达时页面未必
     // 还挂着；拆掉了就不再弹。
     if (!mounted) return;
     widget.show(message);
   }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

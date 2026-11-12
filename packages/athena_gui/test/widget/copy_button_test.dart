@@ -1,13 +1,12 @@
-import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/copy_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 /// 「已复制」3 秒后自动复原；按钮在这之前被卸载（切换对话、流式重建）
 /// 时不能再对已销毁的 State 调 setState。

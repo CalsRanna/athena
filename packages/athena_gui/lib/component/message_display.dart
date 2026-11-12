@@ -5,77 +5,6 @@ import 'package:athena_core/entity/message_entity.dart';
 
 // ─── Assistant 卡片内的步骤分组 ─────────────────────────────
 
-/// Assistant 回合内的一个展示步骤：一段推理或一次工具调用。
-sealed class AssistantStep {
-  const AssistantStep();
-}
-
-/// 一段推理（来自一条消息的 reasoningContent）。
-final class ReasoningStep extends AssistantStep {
-  final MessageEntity message;
-
-  const ReasoningStep(this.message);
-}
-
-/// 一次工具调用及其结果；[result] 为 null 表示尚未返回。
-final class ToolCallStep extends AssistantStep {
-  final String id;
-  final String toolName;
-  final String arguments;
-  final String? result;
-
-  const ToolCallStep({
-    required this.id,
-    required this.toolName,
-    required this.arguments,
-    this.result,
-  });
-
-  bool get hasResult => result != null;
-}
-
-/// 一次上下文压缩（来自一条 `compaction` 角色的消息）。
-///
-/// [isLive] 表示该压缩仍属于当前 run：未结束且 live 时视为进行中，未结束但
-/// 不 live 时按"已中断"展示。
-final class ContextCompactionStep extends AssistantStep {
-  final CompactionStep step;
-  final bool isLive;
-
-  const ContextCompactionStep({required this.step, required this.isLive});
-
-  /// 仍在压缩中：只有当前 run 里未到终态的压缩才算。
-  bool get running => isLive && !step.isTerminal;
-}
-
-/// 一条 Assistant 消息按顺序渲染的片段。
-sealed class AssistantPart {
-  const AssistantPart();
-}
-
-/// 推理与工具调用按时间序组成的步骤序列。
-///
-/// 跨消息合并后挂在序列首步所在的宿主消息上；后续消息并入的步骤不再在
-/// 各自消息里渲染。
-final class StepsPart extends AssistantPart {
-  final List<AssistantStep> steps;
-
-  /// 序列仍在进行：对话流式中，且尚未被正文 / 引用收口。
-  final bool live;
-
-  const StepsPart({required this.steps, required this.live});
-}
-
-/// 消息正文（Markdown）。
-final class ContentPart extends AssistantPart {
-  const ContentPart();
-}
-
-/// 引用列表。
-final class ReferencePart extends AssistantPart {
-  const ReferencePart();
-}
-
 /// 卡片内一条可见 Assistant / 压缩消息的渲染布局。
 class AssistantMessageLayout {
   final MessageEntity message;
@@ -93,41 +22,36 @@ class AssistantMessageLayout {
   });
 }
 
-/// 构建期间可追加步骤的序列，最终转换为不可变的 [StepsPart]。
-class _StepRun {
-  final List<AssistantStep> steps = [];
-  bool live = false;
+/// 一条 Assistant 消息按顺序渲染的片段。
+sealed class AssistantPart {
+  const AssistantPart();
+}
 
-  StepsPart toPart() => StepsPart(steps: List.unmodifiable(steps), live: live);
+/// Assistant 回合内的一个展示步骤：一段推理或一次工具调用。
+sealed class AssistantStep {
+  const AssistantStep();
+}
+
+/// 消息正文（Markdown）。
+final class ContentPart extends AssistantPart {
+  const ContentPart();
+}
+
+/// 一次上下文压缩（来自一条 `compaction` 角色的消息）。
+///
+/// [isLive] 表示该压缩仍属于当前 run：未结束且 live 时视为进行中，未结束但
+/// 不 live 时按"已中断"展示。
+final class ContextCompactionStep extends AssistantStep {
+  final CompactionStep step;
+  final bool isLive;
+
+  const ContextCompactionStep({required this.step, required this.isLive});
+
+  /// 仍在压缩中：只有当前 run 里未到终态的压缩才算。
+  bool get running => isLive && !step.isTerminal;
 }
 
 abstract final class MessageDisplay {
-  /// 把消息划分为 UI 卡片，同时保留每条原始消息。
-  ///
-  /// 同一 run 连续的 assistant 消息与压缩步骤共用一张外层卡片；其他角色各自占一张。卡片内部
-  /// 仍逐条渲染 reasoning、正文、工具、压缩和引用，不合并或过滤消息字段。
-  static List<List<MessageEntity>> buildMessageDisplayCards(
-    List<MessageEntity> messages,
-  ) {
-    final cards = <List<MessageEntity>>[];
-
-    for (final message in messages) {
-      if (MessageDisplay.isAssistantCardMessage(message) &&
-          cards.isNotEmpty &&
-          MessageDisplay.isAssistantCardMessage(cards.last.first) &&
-          message.runStatistics?.id == cards.last.first.runStatistics?.id) {
-        cards.last.add(message);
-      } else {
-        cards.add([message]);
-      }
-    }
-
-    return cards;
-  }
-
-  static bool isAssistantCardMessage(MessageEntity message) =>
-      message.role == 'assistant' || message.role == 'compaction';
-
   /// 把同一张卡片内的连续 Assistant 消息展开为渲染布局。
   ///
   /// 分组规则：
@@ -213,6 +137,32 @@ abstract final class MessageDisplay {
     return result;
   }
 
+  /// 把消息划分为 UI 卡片，同时保留每条原始消息。
+  ///
+  /// 同一 run 连续的 assistant 消息与压缩步骤共用一张外层卡片；其他角色各自占一张。卡片内部
+  /// 仍逐条渲染 reasoning、正文、工具、压缩和引用，不合并或过滤消息字段。
+  static List<List<MessageEntity>> buildMessageDisplayCards(
+    List<MessageEntity> messages,
+  ) {
+    final cards = <List<MessageEntity>>[];
+
+    for (final message in messages) {
+      if (MessageDisplay.isAssistantCardMessage(message) &&
+          cards.isNotEmpty &&
+          MessageDisplay.isAssistantCardMessage(cards.last.first) &&
+          message.runStatistics?.id == cards.last.first.runStatistics?.id) {
+        cards.last.add(message);
+      } else {
+        cards.add([message]);
+      }
+    }
+
+    return cards;
+  }
+
+  static bool isAssistantCardMessage(MessageEntity message) =>
+      message.role == 'assistant' || message.role == 'compaction';
+
   /// 解析一条消息的工具调用，并按 id 关联已返回的结果。
   ///
   /// toolCalls / toolResults 任一 JSON 不合法时按无该部分处理，不抛异常。
@@ -244,4 +194,54 @@ abstract final class MessageDisplay {
       return const [];
     }
   }
+}
+
+/// 一段推理（来自一条消息的 reasoningContent）。
+final class ReasoningStep extends AssistantStep {
+  final MessageEntity message;
+
+  const ReasoningStep(this.message);
+}
+
+/// 引用列表。
+final class ReferencePart extends AssistantPart {
+  const ReferencePart();
+}
+
+/// 推理与工具调用按时间序组成的步骤序列。
+///
+/// 跨消息合并后挂在序列首步所在的宿主消息上；后续消息并入的步骤不再在
+/// 各自消息里渲染。
+final class StepsPart extends AssistantPart {
+  final List<AssistantStep> steps;
+
+  /// 序列仍在进行：对话流式中，且尚未被正文 / 引用收口。
+  final bool live;
+
+  const StepsPart({required this.steps, required this.live});
+}
+
+/// 一次工具调用及其结果；[result] 为 null 表示尚未返回。
+final class ToolCallStep extends AssistantStep {
+  final String id;
+  final String toolName;
+  final String arguments;
+  final String? result;
+
+  const ToolCallStep({
+    required this.id,
+    required this.toolName,
+    required this.arguments,
+    this.result,
+  });
+
+  bool get hasResult => result != null;
+}
+
+/// 构建期间可追加步骤的序列，最终转换为不可变的 [StepsPart]。
+class _StepRun {
+  final List<AssistantStep> steps = [];
+  bool live = false;
+
+  StepsPart toPart() => StepsPart(steps: List.unmodifiable(steps), live: live);
 }

@@ -25,74 +25,6 @@ class Skill {
 }
 
 class SkillLoader {
-  static bool isValidSkillName(String name) {
-    if (name.isEmpty || name.length > 64) return false;
-    for (final code in name.codeUnits) {
-      if (code < 0x20 || code == 0x7f) return false; // 控制字符
-      if (code == 0x2f || code == 0x5c) return false; // / \
-      if (code == 0x3a || // :
-          code == 0x2a || // *
-          code == 0x3f || // ?
-          code == 0x22 || // "
-          code == 0x3c || // <
-          code == 0x3e || // >
-          code == 0x7c) {
-        return false; // Windows 文件名非法字符
-      }
-    }
-    if (name == '.' || name == '..') return false;
-    return true;
-  }
-
-  /// 写入 SKILL.md（front matter + body），目录不存在时递归创建。
-  ///
-  /// 与 [parseSkillFile] 互为逆操作；标量统一用双引号包裹并转义，
-  /// 避免 description 含冒号/井号/引号/换行时破坏 YAML。
-  /// 调用方应先以 [isValidSkillName] 校验 name。
-  void saveSkill({
-    required String name,
-    required String description,
-    required String body,
-    required String targetDir,
-  }) {
-    final buffer = StringBuffer();
-    buffer.writeln('---');
-    buffer.writeln('name: ${_yamlScalar(name)}');
-    buffer.writeln('description: ${_yamlScalar(description)}');
-    buffer.writeln('---');
-    buffer.writeln();
-    buffer.write(body.trim());
-    if (!body.endsWith('\n')) {
-      buffer.writeln();
-    }
-
-    final dir = Directory(targetDir);
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-    }
-    File('$targetDir/SKILL.md').writeAsStringSync(buffer.toString());
-  }
-
-  /// YAML 双引号标量：转义反斜杠/引号/换行/回车/制表符。
-  static String _yamlScalar(String value) {
-    final escaped = value
-        .replaceAll(r'\', r'\\')
-        .replaceAll('"', r'\"')
-        .replaceAll('\n', r'\n')
-        .replaceAll('\r', r'\r')
-        .replaceAll('\t', r'\t');
-    return '"$escaped"';
-  }
-
-  /// 解析 YAML；语法错误返回 null，由调用方连同原因一起报出去。
-  static Object? _tryLoadYaml(String yaml) {
-    try {
-      return loadYaml(yaml);
-    } catch (_) {
-      return null;
-    }
-  }
-
   List<Skill> loadFromDirectory(String directoryPath) {
     final dir = Directory(directoryPath);
     if (!dir.existsSync()) return [];
@@ -130,6 +62,35 @@ class SkillLoader {
       LoggerUtil.w('Skill skipped (${file.path}): ${error.message}');
       return null;
     }
+  }
+
+  /// 写入 SKILL.md（front matter + body），目录不存在时递归创建。
+  ///
+  /// 与 [parseSkillFile] 互为逆操作；标量统一用双引号包裹并转义，
+  /// 避免 description 含冒号/井号/引号/换行时破坏 YAML。
+  /// 调用方应先以 [isValidSkillName] 校验 name。
+  void saveSkill({
+    required String name,
+    required String description,
+    required String body,
+    required String targetDir,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln('---');
+    buffer.writeln('name: ${_yamlScalar(name)}');
+    buffer.writeln('description: ${_yamlScalar(description)}');
+    buffer.writeln('---');
+    buffer.writeln();
+    buffer.write(body.trim());
+    if (!body.endsWith('\n')) {
+      buffer.writeln();
+    }
+
+    final dir = Directory(targetDir);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    File('$targetDir/SKILL.md').writeAsStringSync(buffer.toString());
   }
 
   /// 内容不合法时抛 [FormatException]，message 即原因。
@@ -183,5 +144,44 @@ class SkillLoader {
       sourcePath: file.parent.path,
       modifiedAt: file.lastModifiedSync(),
     );
+  }
+
+  static bool isValidSkillName(String name) {
+    if (name.isEmpty || name.length > 64) return false;
+    for (final code in name.codeUnits) {
+      if (code < 0x20 || code == 0x7f) return false; // 控制字符
+      if (code == 0x2f || code == 0x5c) return false; // / \
+      if (code == 0x3a || // :
+          code == 0x2a || // *
+          code == 0x3f || // ?
+          code == 0x22 || // "
+          code == 0x3c || // <
+          code == 0x3e || // >
+          code == 0x7c) {
+        return false; // Windows 文件名非法字符
+      }
+    }
+    if (name == '.' || name == '..') return false;
+    return true;
+  }
+
+  /// 解析 YAML；语法错误返回 null，由调用方连同原因一起报出去。
+  static Object? _tryLoadYaml(String yaml) {
+    try {
+      return loadYaml(yaml);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// YAML 双引号标量：转义反斜杠/引号/换行/回车/制表符。
+  static String _yamlScalar(String value) {
+    final escaped = value
+        .replaceAll(r'\', r'\\')
+        .replaceAll('"', r'\"')
+        .replaceAll('\n', r'\n')
+        .replaceAll('\r', r'\r')
+        .replaceAll('\t', r'\t');
+    return '"$escaped"';
   }
 }

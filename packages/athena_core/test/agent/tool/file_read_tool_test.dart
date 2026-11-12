@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:test/test.dart';
 
 void main() {

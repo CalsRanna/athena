@@ -11,11 +11,9 @@ import 'package:signals/signals.dart';
 class SkillViewModel {
   final SkillRegistry _skillRegistry;
 
-  SkillViewModel({required SkillRegistry skillRegistry})
-    : _skillRegistry = skillRegistry;
-
   /// 全部 Skill（含内置技能）。
   final skills = listSignal<Skill>([]);
+
   final isLoading = signal(false);
   final error = signal<String?>(null);
 
@@ -26,19 +24,8 @@ class SkillViewModel {
     return list;
   });
 
-  /// 重新扫描用户级目录（复用 [SkillRegistry] 的 homeDir 配置）。
-  Future<void> load() async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      _skillRegistry.reload();
-      skills.value = _skillRegistry.all;
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
+  SkillViewModel({required SkillRegistry skillRegistry})
+    : _skillRegistry = skillRegistry;
 
   /// 新建 Skill；成功返回 true。
   ///
@@ -70,24 +57,6 @@ class SkillViewModel {
     );
   }
 
-  /// 更新已有 Skill（名称不变）；内置 Skill 拒绝修改。
-  Future<bool> updateSkill(
-    Skill skill, {
-    required String description,
-    required String body,
-  }) async {
-    if (skill.isBuiltin) {
-      error.value = 'Built-in skills cannot be modified';
-      return false;
-    }
-    return _write(
-      name: skill.name,
-      description: description,
-      body: body,
-      targetDir: skill.sourcePath,
-    );
-  }
-
   /// 删除用户级 Skill（目录与内存一并移除）；内置 Skill 拒绝删除。
   Future<bool> deleteSkill(Skill skill) async {
     if (skill.isBuiltin) {
@@ -110,6 +79,38 @@ class SkillViewModel {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// 重新扫描用户级目录（复用 [SkillRegistry] 的 homeDir 配置）。
+  Future<void> load() async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      _skillRegistry.reload();
+      skills.value = _skillRegistry.all;
+    } catch (e) {
+      error.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 更新已有 Skill（名称不变）；内置 Skill 拒绝修改。
+  Future<bool> updateSkill(
+    Skill skill, {
+    required String description,
+    required String body,
+  }) async {
+    if (skill.isBuiltin) {
+      error.value = 'Built-in skills cannot be modified';
+      return false;
+    }
+    return _write(
+      name: skill.name,
+      description: description,
+      body: body,
+      targetDir: skill.sourcePath,
+    );
   }
 
   Future<bool> _write({

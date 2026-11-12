@@ -1,14 +1,6 @@
 abstract final class TextUtil {
-  /// 文本截断:超长时保留内容使**总长不超过 [max]**(含 [suffix])。
-  ///
-  /// 与各组件原有的私有 `_truncate(text, max)` 语义一致:
-  /// 结果长度 = min(原文长度, max)。
-  static String truncateText(String text, int max, {String suffix = ''}) {
-    if (text.length <= max) return text;
-    final keep = max - suffix.length;
-    if (keep <= 0) return suffix.substring(0, max);
-    return '${text.substring(0, keep)}$suffix';
-  }
+  /// sanitize 结果缓存:key = 原文本(值相等,字符串 hash 有惰性缓存)。
+  static final Map<String, String> _sanitizeCache = {};
 
   /// 剥离 ANSI 转义序列与危险控制字符，用于**渲染层**清洗不可信文本
   /// （模型输出、工具结果、权限参数等）。
@@ -60,8 +52,16 @@ abstract final class TextUtil {
     return result;
   }
 
-  /// sanitize 结果缓存:key = 原文本(值相等,字符串 hash 有惰性缓存)。
-  static final Map<String, String> _sanitizeCache = {};
+  /// 文本截断:超长时保留内容使**总长不超过 [max]**(含 [suffix])。
+  ///
+  /// 与各组件原有的私有 `_truncate(text, max)` 语义一致:
+  /// 结果长度 = min(原文长度, max)。
+  static String truncateText(String text, int max, {String suffix = ''}) {
+    if (text.length <= max) return text;
+    final keep = max - suffix.length;
+    if (keep <= 0) return suffix.substring(0, max);
+    return '${text.substring(0, keep)}$suffix';
+  }
 
   /// 跳过从 [start]（指向 ESC）开始的转义序列，返回下一个应处理的索引。
   ///

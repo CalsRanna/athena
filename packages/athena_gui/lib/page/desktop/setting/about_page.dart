@@ -1,14 +1,14 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/setting/component/panel.dart';
+import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/panel.dart';
-import 'package:athena_gui/page/desktop/setting/component/row.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 桌面端 About：应用标识 + 版本，下面是几条可点的资源行。
 ///
@@ -29,12 +29,6 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   String version = '';
   String buildNumber = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,13 +105,10 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
     );
   }
 
-  Future<void> _loadVersion() async {
-    final packageInfo = await PackageInfo.fromPlatform();
-    if (!mounted) return;
-    setState(() {
-      version = packageInfo.version;
-      buildNumber = packageInfo.buildNumber;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
   }
 
   Future<void> _copyVersion() async {
@@ -125,6 +116,15 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
       ClipboardData(text: 'Athena $version ($buildNumber)'),
     );
     if (mounted) AthenaDialog.success('Version copied');
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      version = packageInfo.version;
+      buildNumber = packageInfo.buildNumber;
+    });
   }
 
   Future<void> _open(String url) async {

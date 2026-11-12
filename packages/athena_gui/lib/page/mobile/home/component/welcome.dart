@@ -1,10 +1,10 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class MobileHomeWelcome extends StatefulWidget {
   const MobileHomeWelcome({super.key});

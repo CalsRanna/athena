@@ -12,6 +12,52 @@ abstract final class SchemaValidator {
     return _validateValue('', args, parameters);
   }
 
+  static String? _checkType(
+    String name,
+    dynamic value,
+    Map<String, dynamic> schema,
+  ) {
+    final expectedType = schema['type'] as String?;
+    if (expectedType == null) return null;
+
+    switch (expectedType) {
+      case 'string':
+        if (value is! String) return _typeError(name, 'string', value);
+        break;
+      case 'number':
+        if (value is! num) return _typeError(name, 'number', value);
+        break;
+      case 'integer':
+        if (value is! int) return _typeError(name, 'integer', value);
+        break;
+      case 'boolean':
+        if (value is! bool) return _typeError(name, 'boolean', value);
+        break;
+      case 'array':
+        if (value is! List) return _typeError(name, 'array', value);
+        break;
+      case 'object':
+        if (value is! Map<String, dynamic>) {
+          return _typeError(name, 'object', value);
+        }
+        break;
+    }
+
+    return null;
+  }
+
+  static List<String> _extractRequired(Map<String, dynamic> parameters) {
+    final list = parameters['required'];
+    if (list is List) {
+      return list.cast<String>();
+    }
+    return [];
+  }
+
+  static String _typeError(String name, String expected, dynamic actual) {
+    return 'Parameter "$name" expected type "$expected", got "${actual.runtimeType}"';
+  }
+
   static String? _validateValue(
     String name,
     dynamic value,
@@ -82,51 +128,5 @@ abstract final class SchemaValidator {
       }
     }
     return null;
-  }
-
-  static String? _checkType(
-    String name,
-    dynamic value,
-    Map<String, dynamic> schema,
-  ) {
-    final expectedType = schema['type'] as String?;
-    if (expectedType == null) return null;
-
-    switch (expectedType) {
-      case 'string':
-        if (value is! String) return _typeError(name, 'string', value);
-        break;
-      case 'number':
-        if (value is! num) return _typeError(name, 'number', value);
-        break;
-      case 'integer':
-        if (value is! int) return _typeError(name, 'integer', value);
-        break;
-      case 'boolean':
-        if (value is! bool) return _typeError(name, 'boolean', value);
-        break;
-      case 'array':
-        if (value is! List) return _typeError(name, 'array', value);
-        break;
-      case 'object':
-        if (value is! Map<String, dynamic>) {
-          return _typeError(name, 'object', value);
-        }
-        break;
-    }
-
-    return null;
-  }
-
-  static List<String> _extractRequired(Map<String, dynamic> parameters) {
-    final list = parameters['required'];
-    if (list is List) {
-      return list.cast<String>();
-    }
-    return [];
-  }
-
-  static String _typeError(String name, String expected, dynamic actual) {
-    return 'Parameter "$name" expected type "$expected", got "${actual.runtimeType}"';
   }
 }

@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
-import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/text_file_reader.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:path/path.dart' as p;
 
 class SkillTool extends Tool implements CancellableTool {
@@ -11,9 +11,6 @@ class SkillTool extends Tool implements CancellableTool {
   final SkillRegistry _registry;
 
   SkillTool(this._registry);
-
-  @override
-  String get name => 'skill';
 
   @override
   String get description =>
@@ -24,6 +21,9 @@ class SkillTool extends Tool implements CancellableTool {
       'Pass resource to read a UTF-8 text file inside that skill directory '
       '(references, templates, or script source), with optional offset/limit '
       'pagination. Resource reads do not execute scripts.';
+
+  @override
+  String get name => 'skill';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -59,17 +59,17 @@ class SkillTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args);
-
-  @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {

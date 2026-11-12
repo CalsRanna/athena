@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:athena_core/storage/id_generator.dart';
-import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/agent/permission/path_normalizer.dart';
-import 'package:path/path.dart' as p;
 
+import 'package:athena_core/agent/permission/path_normalizer.dart';
 import 'package:athena_core/entity/experience_entity.dart';
+import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/storage/id_generator.dart';
+import 'package:athena_core/util/logger_util.dart';
+import 'package:path/path.dart' as p;
 
 /// 文件系统持久化的经验仓库。
 ///
@@ -22,278 +22,6 @@ import 'package:athena_core/entity/experience_entity.dart';
 /// [homeDir] 可覆盖 `.athena` 的根目录（移动端沙盒没有可靠 `$HOME`，
 /// 由 GUI 装配层传入 Application Support 目录；桌面端不传，维持 `$HOME`）。
 class ExperienceRepository {
-  ExperienceRepository({String? homeDir}) : _homeDir = homeDir;
-
-  final String? _homeDir;
-
-  static String? normalizeWorkspacePath(String? path) =>
-      path == null || path.isEmpty
-      ? null
-      : PathNormalizer.normalizePathForMatch(path);
-
-  /// 无项目限制的记录兼容所有项目；有项目限制的记录必须精确匹配。
-  static bool isInWorkspace(String? recordedPath, String? currentPath) {
-    final recorded = normalizeWorkspacePath(recordedPath);
-    final current = normalizeWorkspacePath(currentPath);
-    return recorded == null || (current != null && p.equals(recorded, current));
-  }
-
-  String get _basePath {
-    final home =
-        _homeDir ??
-        Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '/';
-    return '$home/.athena/experiences';
-  }
-
-  /// shared 经验目录
-  String get _sharedPath => '$_basePath/shared';
-
-  Directory _ensureDir(String path) {
-    final dir = Directory(path);
-    if (!dir.existsSync()) {
-      dir.createSync(recursive: true);
-    }
-    return dir;
-  }
-
-  // === 写入 ===
-
-  /// 保存一条经验。
-  ///
-  /// 若 [scope] 为 "shared"，写入 shared/ 目录，[sentinelId] 强制设为 "shared"。
-  /// 若 [scope] 为 "self"，写入 {sentinelId}/ 目录。
-  Future<ExperienceEntity> save({
-    required String lesson,
-    String context = '',
-    List<String> tags = const [],
-    String source = 'auto',
-    String? sourceChatId,
-    String? sourceMessageId,
-    String? workspacePath,
-    String scope = 'self',
-    required String sentinelId,
-  }) async {
-    final now = DateTime.now();
-    final isShared = scope == 'shared';
-    final dir = isShared ? _sharedPath : '$_basePath/$sentinelId';
-    _ensureDir(dir);
-    final id = const IdGenerator().next();
-    final entity = ExperienceEntity(
-      id: id,
-      createdAt: now,
-      lesson: lesson,
-      context: context,
-      tags: tags,
-      source: source,
-      sourceChatId: sourceChatId,
-      sourceMessageId: sourceMessageId,
-      workspacePath: isShared ? null : normalizeWorkspacePath(workspacePath),
-      scope: isShared ? 'shared' : 'self',
-      sentinelId: isShared ? 'shared' : sentinelId,
-    );
-
-    final file = File('$dir/$id.json');
-    await FileLocking.atomicWriteString(file, _prettyJson(entity.toJson()));
-    return entity;
-  }
-
-  // === 检索 ===
-
-  Future<ExperienceEntity?> getForSentinel(
-    String sentinelId,
-    String id, {
-    String? workspacePath,
-  }) async {
-    final file = _locateFile(sentinelId, id);
-    final entity = file == null ? null : _readFile(file);
-    return entity != null &&
-            (entity.scope == 'shared' ||
-                isInWorkspace(entity.workspacePath, workspacePath))
-        ? entity
-        : null;
-  }
-
-  /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
-  Future<List<ExperienceEntity>> _listPrivate(
-    String sentinelId, {
-    bool includeArchived = false,
-  }) {
-    final dir = Directory('$_basePath/$sentinelId');
-    return _filterArchived(_listDir(dir), includeArchived);
-  }
-
-  /// 列出所有 shared 经验，按时间倒序。
-  Future<List<ExperienceEntity>> listShared({bool includeArchived = false}) {
-    final dir = Directory(_sharedPath);
-    return _filterArchived(_listDir(dir), includeArchived);
-  }
-
-  /// 列出全部经验（所有 Sentinel 私有 + shared），按时间倒序。
-  ///
-  /// 供管理界面使用；常规检索请用 [listForSentinel] / [searchForSentinel]。
-  Future<List<ExperienceEntity>> listAll({bool includeArchived = false}) async {
-    final baseDir = Directory(_basePath);
-    if (!await baseDir.exists()) return const [];
-    final results = <ExperienceEntity>[];
-    await for (final entry in baseDir.list()) {
-      if (entry is! Directory) continue;
-      results.addAll(await _listDir(entry));
-    }
-    final filtered = includeArchived
-        ? results
-        : results
-              .where((e) => e.status != ExperienceEntity.statusArchived)
-              .toList();
-    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return filtered;
-  }
-
-  /// 默认过滤 archived 经验（保留为反例，但不参与常规检索）。
-  Future<List<ExperienceEntity>> _filterArchived(
-    Future<List<ExperienceEntity>> future,
-    bool includeArchived,
-  ) async {
-    final all = await future;
-    if (includeArchived) return all;
-    return all
-        .where((e) => e.status != ExperienceEntity.statusArchived)
-        .toList();
-  }
-
-  /// 获取当前 Sentinel、当前项目可见的私有经验 + 所有 shared 经验。
-  Future<List<ExperienceEntity>> listForSentinel(
-    String sentinelId, {
-    bool includeArchived = false,
-    String? workspacePath,
-  }) async {
-    final results = <ExperienceEntity>[];
-    results.addAll(
-      await listPrivate(
-        sentinelId,
-        includeArchived: includeArchived,
-        workspacePath: workspacePath,
-      ),
-    );
-    results.addAll(await listShared(includeArchived: includeArchived));
-    results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return results;
-  }
-
-  /// 在当前 Sentinel 私有经验 + shared 经验中搜索。
-  ///
-  /// 结果按匹配质量排序（lesson 命中 3 分、tags 命中 2 分、context 命中
-  /// 1 分），同分时按时间倒序——相关但旧的条目不会被新条目挤到后面。
-  Future<List<ExperienceEntity>> searchForSentinel(
-    String sentinelId,
-    String query, {
-    bool includeArchived = false,
-    String? workspacePath,
-  }) async {
-    final all = await listForSentinel(
-      sentinelId,
-      includeArchived: includeArchived,
-      workspacePath: workspacePath,
-    );
-    return _rankByScore(all, query);
-  }
-
-  /// 获取指定 Sentinel、当前项目可见的私有经验（不含 shared）。
-  Future<List<ExperienceEntity>> listPrivate(
-    String sentinelId, {
-    bool includeArchived = false,
-    String? workspacePath,
-  }) async {
-    return (await _listPrivate(
-      sentinelId,
-      includeArchived: includeArchived,
-    )).where((e) => isInWorkspace(e.workspacePath, workspacePath)).toList();
-  }
-
-  /// 在指定 Sentinel 的私有经验中搜索（不含 shared），排序规则同
-  /// [searchForSentinel]。
-  Future<List<ExperienceEntity>> searchPrivate(
-    String sentinelId,
-    String query, {
-    bool includeArchived = false,
-    String? workspacePath,
-  }) async {
-    final all = await listPrivate(
-      sentinelId,
-      includeArchived: includeArchived,
-      workspacePath: workspacePath,
-    );
-    return _rankByScore(all, query);
-  }
-
-  /// 按分词后的匹配质量评分排序：匹配字段越多、权重越高的排前面。
-  List<ExperienceEntity> _rankByScore(
-    List<ExperienceEntity> all,
-    String query,
-  ) {
-    if (query.trim().isEmpty) return all;
-    final scored = <(ExperienceEntity, int)>[];
-    for (final e in all) {
-      final score = _matchScore(e, query);
-      if (score > 0) scored.add((e, score));
-    }
-    scored.sort((a, b) {
-      final byScore = b.$2.compareTo(a.$2);
-      if (byScore != 0) return byScore;
-      return b.$1.createdAt.compareTo(a.$1.createdAt);
-    });
-    return scored.map((e) => e.$1).toList();
-  }
-
-  /// 匹配评分：lesson token 命中 3 分、tags 命中 2 分、context 命中 1 分。
-  static int _matchScore(ExperienceEntity e, String query) {
-    if (e.id == query.trim()) return 1000;
-    final queryTerms = _searchTerms(query);
-    if (queryTerms.isEmpty) return 0;
-
-    final lessonTerms = _searchTerms(e.lesson);
-    final tagTerms = _searchTerms(e.tags.join(' '));
-    final contextTerms = _searchTerms(e.context);
-    var score = 0;
-    for (final term in queryTerms) {
-      if (lessonTerms.contains(term)) score += 3;
-      if (tagTerms.contains(term)) score += 2;
-      if (contextTerms.contains(term)) score += 1;
-    }
-    return score;
-  }
-
-  /// 英文按词、中文按二元字组切分，并丢弃常见虚词。此前用完整用户消息做
-  /// substring，真实长句几乎无法命中短经验；不过直接做所有 token overlap
-  /// 又会因 `please/use/这个` 等词召回无关经验，因此这里保持轻量但偏保守。
-  static Set<String> _searchTerms(String value) {
-    final terms = <String>{};
-    final matches = RegExp(
-      r'[a-z0-9]+|[\u3400-\u9fff]+',
-      caseSensitive: false,
-    ).allMatches(value.toLowerCase());
-    for (final match in matches) {
-      final token = match.group(0)!;
-      final chinese = token.codeUnitAt(0) >= 0x3400;
-      if (!chinese) {
-        if (token.length >= 2 && !_englishStopTerms.contains(token)) {
-          terms.add(token);
-        }
-        continue;
-      }
-      if (token.length <= 2) {
-        if (!_chineseStopTerms.contains(token)) terms.add(token);
-      } else {
-        for (var i = 0; i < token.length - 1; i++) {
-          final pair = token.substring(i, i + 2);
-          if (!_chineseStopTerms.contains(pair)) terms.add(pair);
-        }
-      }
-    }
-    return terms;
-  }
-
   static const _englishStopTerms = {
     'a',
     'an',
@@ -352,46 +80,193 @@ class ExperienceRepository {
     '需要',
   };
 
-  Future<List<ExperienceEntity>> _listDir(Directory dir) async {
-    final entities = <ExperienceEntity>[];
-    if (!await dir.exists()) return entities;
-    await for (final f in dir.list()) {
-      if (f is! File || !f.path.endsWith('.json')) continue;
-      try {
-        final json = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
-        entities.add(ExperienceEntity.fromJson(json));
-      } catch (e) {
-        // 损坏的经验只跳过、不中断整目录，但**不能没有声音**：文件仍在磁盘上
-        // 却从所有检索与副本里消失，没有日志时用户无从查起。口径与技能加载
-        // （SkillLoader）和坏权限规则一致：跳过 + 记日志。
-        LoggerUtil.w('Experience unreadable (${f.path}): $e');
-      }
-    }
-    entities.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return entities;
+  final String? _homeDir;
+
+  ExperienceRepository({String? homeDir}) : _homeDir = homeDir;
+
+  String get _basePath {
+    final home =
+        _homeDir ??
+        Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '/';
+    return '$home/.athena/experiences';
   }
 
-  // === 更新 ===
+  /// shared 经验目录
+  String get _sharedPath => '$_basePath/shared';
 
-  /// 定位经验的 JSON 文件：当前 Sentinel 私有目录与 shared 目录各试一次。
-  /// 返回 null 表示未找到。
-  File? _locateFile(String sentinelId, String id) {
-    if (!_isValidId(id)) return null;
+  /// 按 ID + sentinelId 删除。
+  Future<bool> delete(String sentinelId, String id) async {
+    if (!_isValidId(id)) return false;
+    // 尝试在私有目录和 shared 目录中查找
     for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
       final file = File('$dirPath/$id.json');
-      if (file.existsSync()) return file;
+      if (await file.exists()) {
+        await file.delete();
+        return true;
+      }
     }
-    return null;
+    return false;
   }
 
-  /// 读取单个经验文件；文件损坏返回 null（与 [_listDir] 的容错一致）。
-  ExperienceEntity? _readFile(File file) {
-    try {
-      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      return ExperienceEntity.fromJson(json);
-    } catch (_) {
-      return null;
+  // === 写入 ===
+
+  /// 删除某个 Sentinel 的全部私有经验（shared 不受影响）。
+  ///
+  /// 删除角色时级联调用：角色的 id 是 UUIDv7、不会被复用，留下的私有经验
+  /// 再也进不了任何角色的检索范围，只会在管理页显示成一串裸 id。
+  Future<void> deleteAllPrivate(String sentinelId) async {
+    final dir = Directory('$_basePath/$sentinelId');
+    if (dir.existsSync()) {
+      await dir.delete(recursive: true);
     }
+  }
+
+  // === 检索 ===
+
+  Future<ExperienceEntity?> getForSentinel(
+    String sentinelId,
+    String id, {
+    String? workspacePath,
+  }) async {
+    final file = _locateFile(sentinelId, id);
+    final entity = file == null ? null : _readFile(file);
+    return entity != null &&
+            (entity.scope == 'shared' ||
+                isInWorkspace(entity.workspacePath, workspacePath))
+        ? entity
+        : null;
+  }
+
+  /// 列出全部经验（所有 Sentinel 私有 + shared），按时间倒序。
+  ///
+  /// 供管理界面使用；常规检索请用 [listForSentinel] / [searchForSentinel]。
+  Future<List<ExperienceEntity>> listAll({bool includeArchived = false}) async {
+    final baseDir = Directory(_basePath);
+    if (!await baseDir.exists()) return const [];
+    final results = <ExperienceEntity>[];
+    await for (final entry in baseDir.list()) {
+      if (entry is! Directory) continue;
+      results.addAll(await _listDir(entry));
+    }
+    final filtered = includeArchived
+        ? results
+        : results
+              .where((e) => e.status != ExperienceEntity.statusArchived)
+              .toList();
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
+  }
+
+  /// 获取当前 Sentinel、当前项目可见的私有经验 + 所有 shared 经验。
+  Future<List<ExperienceEntity>> listForSentinel(
+    String sentinelId, {
+    bool includeArchived = false,
+    String? workspacePath,
+  }) async {
+    final results = <ExperienceEntity>[];
+    results.addAll(
+      await listPrivate(
+        sentinelId,
+        includeArchived: includeArchived,
+        workspacePath: workspacePath,
+      ),
+    );
+    results.addAll(await listShared(includeArchived: includeArchived));
+    results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return results;
+  }
+
+  /// 获取指定 Sentinel、当前项目可见的私有经验（不含 shared）。
+  Future<List<ExperienceEntity>> listPrivate(
+    String sentinelId, {
+    bool includeArchived = false,
+    String? workspacePath,
+  }) async {
+    return (await _listPrivate(
+      sentinelId,
+      includeArchived: includeArchived,
+    )).where((e) => isInWorkspace(e.workspacePath, workspacePath)).toList();
+  }
+
+  /// 列出所有 shared 经验，按时间倒序。
+  Future<List<ExperienceEntity>> listShared({bool includeArchived = false}) {
+    final dir = Directory(_sharedPath);
+    return _filterArchived(_listDir(dir), includeArchived);
+  }
+
+  /// 保存一条经验。
+  ///
+  /// 若 [scope] 为 "shared"，写入 shared/ 目录，[sentinelId] 强制设为 "shared"。
+  /// 若 [scope] 为 "self"，写入 {sentinelId}/ 目录。
+  Future<ExperienceEntity> save({
+    required String lesson,
+    String context = '',
+    List<String> tags = const [],
+    String source = 'auto',
+    String? sourceChatId,
+    String? sourceMessageId,
+    String? workspacePath,
+    String scope = 'self',
+    required String sentinelId,
+  }) async {
+    final now = DateTime.now();
+    final isShared = scope == 'shared';
+    final dir = isShared ? _sharedPath : '$_basePath/$sentinelId';
+    _ensureDir(dir);
+    final id = const IdGenerator().next();
+    final entity = ExperienceEntity(
+      id: id,
+      createdAt: now,
+      lesson: lesson,
+      context: context,
+      tags: tags,
+      source: source,
+      sourceChatId: sourceChatId,
+      sourceMessageId: sourceMessageId,
+      workspacePath: isShared ? null : normalizeWorkspacePath(workspacePath),
+      scope: isShared ? 'shared' : 'self',
+      sentinelId: isShared ? 'shared' : sentinelId,
+    );
+
+    final file = File('$dir/$id.json');
+    await FileLocking.atomicWriteString(file, _prettyJson(entity.toJson()));
+    return entity;
+  }
+
+  /// 在当前 Sentinel 私有经验 + shared 经验中搜索。
+  ///
+  /// 结果按匹配质量排序（lesson 命中 3 分、tags 命中 2 分、context 命中
+  /// 1 分），同分时按时间倒序——相关但旧的条目不会被新条目挤到后面。
+  Future<List<ExperienceEntity>> searchForSentinel(
+    String sentinelId,
+    String query, {
+    bool includeArchived = false,
+    String? workspacePath,
+  }) async {
+    final all = await listForSentinel(
+      sentinelId,
+      includeArchived: includeArchived,
+      workspacePath: workspacePath,
+    );
+    return _rankByScore(all, query);
+  }
+
+  /// 在指定 Sentinel 的私有经验中搜索（不含 shared），排序规则同
+  /// [searchForSentinel]。
+  Future<List<ExperienceEntity>> searchPrivate(
+    String sentinelId,
+    String query, {
+    bool includeArchived = false,
+    String? workspacePath,
+  }) async {
+    final all = await listPrivate(
+      sentinelId,
+      includeArchived: includeArchived,
+      workspacePath: workspacePath,
+    );
+    return _rankByScore(all, query);
   }
 
   /// 更新一条经验：仅覆盖提供的字段（未提供的保持原值）。
@@ -453,41 +328,166 @@ class ExperienceRepository {
     return entity;
   }
 
-  // === 管理 ===
+  Directory _ensureDir(String path) {
+    final dir = Directory(path);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    return dir;
+  }
 
-  /// 按 ID + sentinelId 删除。
-  Future<bool> delete(String sentinelId, String id) async {
-    if (!_isValidId(id)) return false;
-    // 尝试在私有目录和 shared 目录中查找
-    for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
-      final file = File('$dirPath/$id.json');
-      if (await file.exists()) {
-        await file.delete();
-        return true;
+  /// 默认过滤 archived 经验（保留为反例，但不参与常规检索）。
+  Future<List<ExperienceEntity>> _filterArchived(
+    Future<List<ExperienceEntity>> future,
+    bool includeArchived,
+  ) async {
+    final all = await future;
+    if (includeArchived) return all;
+    return all
+        .where((e) => e.status != ExperienceEntity.statusArchived)
+        .toList();
+  }
+
+  Future<List<ExperienceEntity>> _listDir(Directory dir) async {
+    final entities = <ExperienceEntity>[];
+    if (!await dir.exists()) return entities;
+    await for (final f in dir.list()) {
+      if (f is! File || !f.path.endsWith('.json')) continue;
+      try {
+        final json = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+        entities.add(ExperienceEntity.fromJson(json));
+      } catch (e) {
+        // 损坏的经验只跳过、不中断整目录，但**不能没有声音**：文件仍在磁盘上
+        // 却从所有检索与副本里消失，没有日志时用户无从查起。口径与技能加载
+        // （SkillLoader）和坏权限规则一致：跳过 + 记日志。
+        LoggerUtil.w('Experience unreadable (${f.path}): $e');
       }
     }
-    return false;
+    entities.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return entities;
   }
 
-  /// 删除某个 Sentinel 的全部私有经验（shared 不受影响）。
-  ///
-  /// 删除角色时级联调用：角色的 id 是 UUIDv7、不会被复用，留下的私有经验
-  /// 再也进不了任何角色的检索范围，只会在管理页显示成一串裸 id。
-  Future<void> deleteAllPrivate(String sentinelId) async {
+  /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
+  Future<List<ExperienceEntity>> _listPrivate(
+    String sentinelId, {
+    bool includeArchived = false,
+  }) {
     final dir = Directory('$_basePath/$sentinelId');
-    if (dir.existsSync()) {
-      await dir.delete(recursive: true);
+    return _filterArchived(_listDir(dir), includeArchived);
+  }
+
+  /// 定位经验的 JSON 文件：当前 Sentinel 私有目录与 shared 目录各试一次。
+  /// 返回 null 表示未找到。
+  File? _locateFile(String sentinelId, String id) {
+    if (!_isValidId(id)) return null;
+    for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
+      final file = File('$dirPath/$id.json');
+      if (file.existsSync()) return file;
+    }
+    return null;
+  }
+
+  /// 按分词后的匹配质量评分排序：匹配字段越多、权重越高的排前面。
+  List<ExperienceEntity> _rankByScore(
+    List<ExperienceEntity> all,
+    String query,
+  ) {
+    if (query.trim().isEmpty) return all;
+    final scored = <(ExperienceEntity, int)>[];
+    for (final e in all) {
+      final score = _matchScore(e, query);
+      if (score > 0) scored.add((e, score));
+    }
+    scored.sort((a, b) {
+      final byScore = b.$2.compareTo(a.$2);
+      if (byScore != 0) return byScore;
+      return b.$1.createdAt.compareTo(a.$1.createdAt);
+    });
+    return scored.map((e) => e.$1).toList();
+  }
+
+  // === 更新 ===
+
+  /// 读取单个经验文件；文件损坏返回 null（与 [_listDir] 的容错一致）。
+  ExperienceEntity? _readFile(File file) {
+    try {
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return ExperienceEntity.fromJson(json);
+    } catch (_) {
+      return null;
     }
   }
 
-  // === 工具 ===
+  /// 无项目限制的记录兼容所有项目；有项目限制的记录必须精确匹配。
+  static bool isInWorkspace(String? recordedPath, String? currentPath) {
+    final recorded = normalizeWorkspacePath(recordedPath);
+    final current = normalizeWorkspacePath(currentPath);
+    return recorded == null || (current != null && p.equals(recorded, current));
+  }
+
+  static String? normalizeWorkspacePath(String? path) =>
+      path == null || path.isEmpty
+      ? null
+      : PathNormalizer.normalizePathForMatch(path);
+
+  // === 管理 ===
 
   /// id 直接拼进文件路径，来自模型的 `experience_id` 必须是单个文件名段：
   /// `../5/<id>` 这样的值会穿越到别的 Sentinel 的私有目录。
   static bool _isValidId(String id) => RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
 
+  /// 匹配评分：lesson token 命中 3 分、tags 命中 2 分、context 命中 1 分。
+  static int _matchScore(ExperienceEntity e, String query) {
+    if (e.id == query.trim()) return 1000;
+    final queryTerms = _searchTerms(query);
+    if (queryTerms.isEmpty) return 0;
+
+    final lessonTerms = _searchTerms(e.lesson);
+    final tagTerms = _searchTerms(e.tags.join(' '));
+    final contextTerms = _searchTerms(e.context);
+    var score = 0;
+    for (final term in queryTerms) {
+      if (lessonTerms.contains(term)) score += 3;
+      if (tagTerms.contains(term)) score += 2;
+      if (contextTerms.contains(term)) score += 1;
+    }
+    return score;
+  }
+
+  // === 工具 ===
+
   static String _prettyJson(Map<String, dynamic> json) {
     const encoder = JsonEncoder.withIndent('  ');
     return encoder.convert(json);
+  }
+
+  /// 英文按词、中文按二元字组切分，并丢弃常见虚词。此前用完整用户消息做
+  /// substring，真实长句几乎无法命中短经验；不过直接做所有 token overlap
+  /// 又会因 `please/use/这个` 等词召回无关经验，因此这里保持轻量但偏保守。
+  static Set<String> _searchTerms(String value) {
+    final terms = <String>{};
+    final matches = RegExp(
+      r'[a-z0-9]+|[\u3400-\u9fff]+',
+      caseSensitive: false,
+    ).allMatches(value.toLowerCase());
+    for (final match in matches) {
+      final token = match.group(0)!;
+      final chinese = token.codeUnitAt(0) >= 0x3400;
+      if (!chinese) {
+        if (token.length >= 2 && !_englishStopTerms.contains(token)) {
+          terms.add(token);
+        }
+        continue;
+      }
+      if (token.length <= 2) {
+        if (!_chineseStopTerms.contains(token)) terms.add(token);
+      } else {
+        for (var i = 0; i < token.length - 1; i++) {
+          final pair = token.substring(i, i + 2);
+          if (!_chineseStopTerms.contains(pair)) terms.add(pair);
+        }
+      }
+    }
+    return terms;
   }
 }

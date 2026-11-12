@@ -12,6 +12,84 @@ class MacWindowButton extends StatefulWidget {
   State<MacWindowButton> createState() => _MacWindowButtonState();
 }
 
+class _CloseButton extends StatelessWidget {
+  final bool hover;
+
+  const _CloseButton({this.hover = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(
+      LucideIcons.x,
+      color: Theme.of(context).colorScheme.onSurface,
+      size: 10.0,
+    );
+    const boxDecoration = BoxDecoration(
+      color: Colors.red,
+      shape: BoxShape.circle,
+    );
+    final container = Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.all(2),
+      child: AnimatedOpacity(
+        opacity: hover ? 1 : 0,
+        duration: AthenaMotion.hover,
+        child: icon,
+      ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: handleTap,
+      child: container,
+    );
+  }
+
+  void handleTap() {
+    WindowUtil.instance.hide();
+  }
+}
+
+class _FullScreenButton extends StatelessWidget {
+  final bool fullScreen;
+  final bool hover;
+  final void Function()? onToggle;
+  const _FullScreenButton({
+    this.fullScreen = false,
+    this.hover = false,
+    this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface;
+    final child = Icon(LucideIcons.maximize2, color: color, size: 10);
+    const boxDecoration = BoxDecoration(
+      color: Colors.green,
+      shape: BoxShape.circle,
+    );
+    final container = Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.all(2),
+      child: AnimatedOpacity(
+        opacity: hover ? 1 : 0,
+        duration: AthenaMotion.hover,
+        child: child,
+      ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: handleTap,
+      child: container,
+    );
+  }
+
+  void handleTap() {
+    windowManager.setFullScreen(!fullScreen);
+    onToggle?.call();
+  }
+}
+
 class _MacWindowButtonState extends State<MacWindowButton> {
   bool fullScreen = false;
   bool hover = false;
@@ -60,43 +138,6 @@ class _MacWindowButtonState extends State<MacWindowButton> {
   }
 }
 
-class _CloseButton extends StatelessWidget {
-  final bool hover;
-
-  const _CloseButton({this.hover = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = Icon(
-      LucideIcons.x,
-      color: Theme.of(context).colorScheme.onSurface,
-      size: 10.0,
-    );
-    const boxDecoration = BoxDecoration(
-      color: Colors.red,
-      shape: BoxShape.circle,
-    );
-    final container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(2),
-      child: AnimatedOpacity(
-        opacity: hover ? 1 : 0,
-        duration: AthenaMotion.hover,
-        child: icon,
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: container,
-    );
-  }
-
-  void handleTap() {
-    WindowUtil.instance.hide();
-  }
-}
-
 class _MinimumButton extends StatelessWidget {
   final bool hover;
 
@@ -129,46 +170,5 @@ class _MinimumButton extends StatelessWidget {
 
   void handleTap() {
     windowManager.minimize();
-  }
-}
-
-class _FullScreenButton extends StatelessWidget {
-  final bool fullScreen;
-  final bool hover;
-  final void Function()? onToggle;
-  const _FullScreenButton({
-    this.fullScreen = false,
-    this.hover = false,
-    this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface;
-    final child = Icon(LucideIcons.maximize2, color: color, size: 10);
-    const boxDecoration = BoxDecoration(
-      color: Colors.green,
-      shape: BoxShape.circle,
-    );
-    final container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(2),
-      child: AnimatedOpacity(
-        opacity: hover ? 1 : 0,
-        duration: AthenaMotion.hover,
-        child: child,
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: container,
-    );
-  }
-
-  void handleTap() {
-    windowManager.setFullScreen(!fullScreen);
-    onToggle?.call();
   }
 }

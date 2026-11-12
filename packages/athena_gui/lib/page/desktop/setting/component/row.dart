@@ -8,68 +8,60 @@
 /// 外壳与分区见 `panel.dart`，行内控件见 `control.dart`。
 library;
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/material.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
-/// 设置行：左侧标签（+ 徽标 + 说明 + 错误），右侧控件。
+/// 外链行：整行可点，跳往站外（About 的仓库、反馈、许可）。
 ///
-/// 标签与辅助说明使用不同字号；多行说明与右侧控件顶端对齐。
-class AthenaSettingsRow extends StatelessWidget {
+/// 与列表行同一套 hover 反馈；不参与多选，也没有选中态与徽标。
+class AthenaSettingsLinkRow extends StatelessWidget {
   final String label;
   final String? description;
-
-  /// 校验错误：显示在说明下方，`dangerText` 色。
-  final String? error;
-
-  /// 标签后面的小徽标（`Custom` 等）。
-  final String? badge;
-
-  /// 右侧控件。
-  final Widget? control;
-
-  /// 说明最多几行（null 不限）。
   final int? descriptionMaxLines;
+  final VoidCallback? onTap;
 
-  const AthenaSettingsRow({
+  const AthenaSettingsLinkRow({
     super.key,
     required this.label,
     this.description,
-    this.error,
-    this.badge,
-    this.control,
     this.descriptionMaxLines,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final labelColumn = _SettingsRowLabel(
-      label: label,
-      description: description,
-      error: error,
-      badge: badge,
-      descriptionMaxLines: descriptionMaxLines,
-    );
-    final row = Row(
-      crossAxisAlignment: description != null && control != null
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.center,
-      children: [
-        Expanded(child: labelColumn),
-        if (control != null) const SizedBox(width: 24),
-        ?control,
-      ],
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AthenaSettings.rowInset,
-        vertical: AthenaSettings.rowPaddingVertical,
+    final colors = context.athenaColors;
+    return _InteractiveRowShell(
+      selected: false,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthenaSettings.rowInset,
+          vertical: AthenaSettings.rowPaddingVertical,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _SettingsRowLabel(
+                label: label,
+                description: description,
+                descriptionMaxLines: descriptionMaxLines,
+              ),
+            ),
+            const SizedBox(width: 24),
+            Icon(
+              AthenaIcons.forward,
+              color: colors.iconSecondary,
+              size: AthenaIcon.inlineSize,
+            ),
+          ],
+        ),
       ),
-      child: row,
     );
   }
 }
@@ -173,51 +165,121 @@ class AthenaSettingsListRow extends StatelessWidget {
   }
 }
 
-/// 外链行：整行可点，跳往站外（About 的仓库、反馈、许可）。
+/// 只读的一段正文（经验的 Lesson / Context），对齐文字列。
+class AthenaSettingsParagraph extends StatelessWidget {
+  final String text;
+  const AthenaSettingsParagraph({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthenaSettings.rowInset,
+        vertical: AthenaSettings.rowLabelGap,
+      ),
+      child: SelectableText(text, style: textStyle),
+    );
+  }
+}
+
+/// 设置行：左侧标签（+ 徽标 + 说明 + 错误），右侧控件。
 ///
-/// 与列表行同一套 hover 反馈；不参与多选，也没有选中态与徽标。
-class AthenaSettingsLinkRow extends StatelessWidget {
+/// 标签与辅助说明使用不同字号；多行说明与右侧控件顶端对齐。
+class AthenaSettingsRow extends StatelessWidget {
   final String label;
   final String? description;
-  final int? descriptionMaxLines;
-  final VoidCallback? onTap;
 
-  const AthenaSettingsLinkRow({
+  /// 校验错误：显示在说明下方，`dangerText` 色。
+  final String? error;
+
+  /// 标签后面的小徽标（`Custom` 等）。
+  final String? badge;
+
+  /// 右侧控件。
+  final Widget? control;
+
+  /// 说明最多几行（null 不限）。
+  final int? descriptionMaxLines;
+
+  const AthenaSettingsRow({
     super.key,
     required this.label,
     this.description,
+    this.error,
+    this.badge,
+    this.control,
     this.descriptionMaxLines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColumn = _SettingsRowLabel(
+      label: label,
+      description: description,
+      error: error,
+      badge: badge,
+      descriptionMaxLines: descriptionMaxLines,
+    );
+    final row = Row(
+      crossAxisAlignment: description != null && control != null
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        Expanded(child: labelColumn),
+        if (control != null) const SizedBox(width: 24),
+        ?control,
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AthenaSettings.rowInset,
+        vertical: AthenaSettings.rowPaddingVertical,
+      ),
+      child: row,
+    );
+  }
+}
+
+/// 可点行（列表行 / 外链行）共用的外壳：hover / 选中底色、圆角与手势。
+///
+/// 两种行的交互一致，只有标签区与尾部不同，因此把这段抽出来共用。
+class _InteractiveRowShell extends StatelessWidget {
+  final Widget child;
+  final bool selected;
+  final VoidCallback? onTap;
+  final void Function(TapUpDetails)? onSecondaryTap;
+
+  const _InteractiveRowShell({
+    required this.child,
+    required this.selected,
     this.onTap,
+    this.onSecondaryTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.athenaColors;
-    return _InteractiveRowShell(
-      selected: false,
+    final interactive = onTap != null || onSecondaryTap != null;
+    if (!interactive && !selected) return child;
+    return AthenaHover(
+      enabled: interactive,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AthenaSettings.rowInset,
-          vertical: AthenaSettings.rowPaddingVertical,
+      onSecondaryTap: onSecondaryTap,
+      cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
+      builder: (context, hover) => AnimatedContainer(
+        duration: AthenaMotion.hover,
+        decoration: BoxDecoration(
+          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+          color: selected
+              ? colors.neutralSelected
+              : hover && interactive
+              ? colors.neutralRule
+              : colors.neutralRule.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SettingsRowLabel(
-                label: label,
-                description: description,
-                descriptionMaxLines: descriptionMaxLines,
-              ),
-            ),
-            const SizedBox(width: 24),
-            Icon(
-              AthenaIcons.forward,
-              color: colors.iconSecondary,
-              size: AthenaIcon.inlineSize,
-            ),
-          ],
-        ),
+        child: child,
       ),
     );
   }
@@ -291,68 +353,6 @@ class _SettingsRowLabel extends StatelessWidget {
         if (error != null) const SizedBox(height: AthenaSettings.rowLabelGap),
         if (error != null) Text(error!, style: errorStyle),
       ],
-    );
-  }
-}
-
-/// 可点行（列表行 / 外链行）共用的外壳：hover / 选中底色、圆角与手势。
-///
-/// 两种行的交互一致，只有标签区与尾部不同，因此把这段抽出来共用。
-class _InteractiveRowShell extends StatelessWidget {
-  final Widget child;
-  final bool selected;
-  final VoidCallback? onTap;
-  final void Function(TapUpDetails)? onSecondaryTap;
-
-  const _InteractiveRowShell({
-    required this.child,
-    required this.selected,
-    this.onTap,
-    this.onSecondaryTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final interactive = onTap != null || onSecondaryTap != null;
-    if (!interactive && !selected) return child;
-    return AthenaHover(
-      enabled: interactive,
-      onTap: onTap,
-      onSecondaryTap: onSecondaryTap,
-      cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
-      builder: (context, hover) => AnimatedContainer(
-        duration: AthenaMotion.hover,
-        decoration: BoxDecoration(
-          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
-          color: selected
-              ? colors.neutralSelected
-              : hover && interactive
-              ? colors.neutralRule
-              : colors.neutralRule.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// 只读的一段正文（经验的 Lesson / Context），对齐文字列。
-class AthenaSettingsParagraph extends StatelessWidget {
-  final String text;
-  const AthenaSettingsParagraph({super.key, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final textStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AthenaSettings.rowInset,
-        vertical: AthenaSettings.rowLabelGap,
-      ),
-      child: SelectableText(text, style: textStyle),
     );
   }
 }

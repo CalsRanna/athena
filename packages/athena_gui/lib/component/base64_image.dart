@@ -55,12 +55,6 @@ class _Base64ImageState extends State<Base64Image> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    bytes = base64Decode(widget.base64);
-  }
-
-  @override
   void didUpdateWidget(Base64Image oldWidget) {
     super.didUpdateWidget(oldWidget);
     // 同一位置复用（列表更新）时 base64 可能变化，必须重新解码，
@@ -68,6 +62,12 @@ class _Base64ImageState extends State<Base64Image> {
     if (oldWidget.base64 != widget.base64) {
       bytes = base64Decode(widget.base64);
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    bytes = base64Decode(widget.base64);
   }
 
   void _openPreviewDialog() {

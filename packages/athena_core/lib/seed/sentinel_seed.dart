@@ -8,8 +8,6 @@ import 'package:athena_core/seed/daedalus_preset_prompt.dart';
 /// 预设 provider/模型种子已由 ModelCatalogService(models.dev)取代,
 /// sentinel 无外部数据源,保留为唯一的内置种子。
 class SentinelSeed {
-  const SentinelSeed();
-
   /// 内置角色清单:名字 → 提示词。
   ///
   /// 按**名字**逐个补齐而不是「一个都没有才建」:新增内置角色时,已有用户
@@ -30,6 +28,8 @@ class SentinelSeed {
           '软件工程, 代码编写, 重构, 调试, 工程实践',
         ),
       ];
+
+  const SentinelSeed();
 
   Future<void> applyIfNeeded({required SentinelRepository sentinelRepo}) async {
     for (final (name, description, prompt, tags) in builtins) {

@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/form_field.dart';
@@ -8,7 +9,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileChatConfigurationPage extends StatefulWidget {
@@ -51,14 +51,6 @@ class _MobileChatConfigurationPageState
     );
   }
 
-  void _storeRetention(bool value) {
-    viewModel.updateRetention(value ? 0 : -1, chat: widget.chat);
-  }
-
-  void _storeTemperature(double value) {
-    viewModel.updateTemperature(value, chat: widget.chat);
-  }
-
   Widget _buildRetentionSwitch() {
     return SignalBuilder(
       builder: (_) {
@@ -90,5 +82,13 @@ class _MobileChatConfigurationPageState
         );
       },
     );
+  }
+
+  void _storeRetention(bool value) {
+    viewModel.updateRetention(value ? 0 : -1, chat: widget.chat);
+  }
+
+  void _storeTemperature(double value) {
+    viewModel.updateTemperature(value, chat: widget.chat);
   }
 }

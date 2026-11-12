@@ -1,10 +1,11 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/run_statistics.dart';
-import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
 
 void main() {
   final startedAt = DateTime(2026, 9, 29, 12);

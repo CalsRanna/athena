@@ -1,7 +1,7 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为青瓷实心块。
 class AthenaCheckbox extends StatefulWidget {

@@ -18,8 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// `flutter.` 前缀过滤（`shared_preferences_foundation` 的 `clear(prefix:)`），
 /// 逐个删与本处「显式清单」的口径一致，也不受前缀约定变化影响。
 class PrefsIntoSettingMigration {
-  const PrefsIntoSettingMigration();
-
   /// 需要搬运的全部键。
   ///
   /// 比「GUI 自己的偏好」长：`AgentSettings` 的键今天也是经
@@ -41,6 +39,8 @@ class PrefsIntoSettingMigration {
     'approval_mode',
     'ai_approval_enabled',
   ];
+
+  const PrefsIntoSettingMigration();
 
   Future<void> run(UserSettingsStore settings) async {
     final SharedPreferences prefs;

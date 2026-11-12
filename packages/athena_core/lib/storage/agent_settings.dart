@@ -6,8 +6,6 @@ import 'package:signals_core/signals_core.dart';
 ///
 /// 持久化走注入的 [UserSettingsStore]（`~/.athena/setting.yaml`，两个前端共用）。
 class AgentSettings {
-  AgentSettings({UserSettingsStore? store}) : _store = store;
-
   static const _keyBackgroundTaskReports = 'background_task_reports';
 
   static const _keyDefaultOutputLimit = 'default_output_limit';
@@ -41,6 +39,8 @@ class AgentSettings {
   /// 未单独配置的模型共用的默认输出上限（设置 → Agent）。
   final defaultOutputLimit = signal(AgentSettings.fallbackOutputLimit);
 
+  AgentSettings({UserSettingsStore? store}) : _store = store;
+
   /// 从存储加载设置（启动时调用）。
   Future<void> init() async {
     final store = _store;
@@ -54,6 +54,18 @@ class AgentSettings {
     if (outputLimit != null && outputLimit > 0) {
       defaultOutputLimit.value = outputLimit;
     }
+  }
+
+  /// 开关后台任务完成后的自动汇报。
+  Future<void> updateBackgroundTaskReports(bool enabled) async {
+    backgroundTaskReports.value = enabled;
+    await _store?.setBool(_keyBackgroundTaskReports, enabled);
+  }
+
+  /// 更新未单独配置的模型共用的默认输出上限。
+  Future<void> updateDefaultOutputLimit(int limit) async {
+    defaultOutputLimit.value = limit;
+    await _store?.setInt(_keyDefaultOutputLimit, limit);
   }
 
   /// 用旧的全局审批设置给 [newChatApprovalMode] 播种一次，然后删掉旧键。
@@ -79,17 +91,5 @@ class AgentSettings {
     }
     await store.remove(_keyLegacyApprovalMode);
     await store.remove(_keyLegacyAiApprovalEnabled);
-  }
-
-  /// 开关后台任务完成后的自动汇报。
-  Future<void> updateBackgroundTaskReports(bool enabled) async {
-    backgroundTaskReports.value = enabled;
-    await _store?.setBool(_keyBackgroundTaskReports, enabled);
-  }
-
-  /// 更新未单独配置的模型共用的默认输出上限。
-  Future<void> updateDefaultOutputLimit(int limit) async {
-    defaultOutputLimit.value = limit;
-    await _store?.setInt(_keyDefaultOutputLimit, limit);
   }
 }

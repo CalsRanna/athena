@@ -1,9 +1,9 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopImageSelector extends StatelessWidget {
   final bool compact;
@@ -40,6 +40,16 @@ class DesktopImageSelector extends StatelessWidget {
     );
   }
 
+  Future<void> selectImages() async {
+    final files = await FilePicker.pickFiles(type: FileType.image);
+    final List<String> images = [];
+    for (var file in files) {
+      if (file.path == null) continue;
+      images.add(file.path!);
+    }
+    onSelected?.call(images);
+  }
+
   Widget _buildCompactButton(BuildContext context) {
     final colors = context.athenaColors;
     final row = Row(
@@ -55,15 +65,5 @@ class DesktopImageSelector extends StatelessWidget {
       ],
     );
     return AthenaSecondaryButton.small(onTap: selectImages, child: row);
-  }
-
-  Future<void> selectImages() async {
-    final files = await FilePicker.pickFiles(type: FileType.image);
-    final List<String> images = [];
-    for (var file in files) {
-      if (file.path == null) continue;
-      images.add(file.path!);
-    }
-    onSelected?.call(images);
   }
 }

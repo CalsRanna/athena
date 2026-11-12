@@ -16,6 +16,15 @@ import 'package:path/path.dart' as p;
 /// 顺序:先备份、再逐文件写入、最后才让原文件退场。中断后重跑幂等(整目录覆盖
 /// 式写入,重复执行结果相同)。
 class SentinelFilesMigration {
+  static const version = 1;
+
+  final File _sentinelsFile;
+
+  final SentinelStore _store;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   SentinelFilesMigration({
     required File sentinelsFile,
     required SentinelStore sentinelStore,
@@ -24,16 +33,8 @@ class SentinelFilesMigration {
        _store = sentinelStore,
        _locks = locks;
 
-  static const version = 1;
-
-  final File _sentinelsFile;
-  final SentinelStore _store;
-
-  /// 锁放哪由它决定,见 [LockRegistry]。
-  final LockRegistry _locks;
-
-  File get _marker => File(p.join(_store.directory.path, '.version'));
   File get _lockFile => _locks.named('sentinel-files-migration');
+  File get _marker => File(p.join(_store.directory.path, '.version'));
 
   Future<void> run() {
     return FileLocking.withFileLock(_lockFile, () async {

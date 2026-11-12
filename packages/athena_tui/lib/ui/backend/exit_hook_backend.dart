@@ -12,17 +12,47 @@ import 'package:nocterm/nocterm.dart';
 /// [beforeExit] 最多等 [timeout]，超时照常退出——收尾是尽力而为，不能让一个
 /// 杀不掉的进程把终端卡住；收尾期间再次请求退出（连按 Ctrl+C）立即退出。
 class ExitHookBackend implements TerminalBackend {
+  final TerminalBackend _inner;
+
+  final Future<void> Function() beforeExit;
+  final Duration timeout;
+  bool _exiting = false;
+
   ExitHookBackend(
     this._inner, {
     required this.beforeExit,
     this.timeout = const Duration(seconds: 5),
   });
 
-  final TerminalBackend _inner;
-  final Future<void> Function() beforeExit;
-  final Duration timeout;
+  @override
+  Stream<List<int>>? get inputStream => _inner.inputStream;
 
-  bool _exiting = false;
+  @override
+  bool get isAvailable => _inner.isAvailable;
+
+  @override
+  Stream<Size>? get resizeStream => _inner.resizeStream;
+
+  @override
+  Stream<void>? get shutdownStream => _inner.shutdownStream;
+
+  @override
+  bool get supportsSize => _inner.supportsSize;
+
+  @override
+  void disableRawMode() => _inner.disableRawMode();
+
+  @override
+  void dispose() => _inner.dispose();
+
+  @override
+  void enableRawMode() => _inner.enableRawMode();
+
+  @override
+  Size getSize() => _inner.getSize();
+
+  @override
+  void notifySizeChanged(Size newSize) => _inner.notifySizeChanged(newSize);
 
   @override
   void requestExit([int exitCode = 0]) {
@@ -41,34 +71,4 @@ class ExitHookBackend implements TerminalBackend {
 
   @override
   void writeRaw(String data) => _inner.writeRaw(data);
-
-  @override
-  Size getSize() => _inner.getSize();
-
-  @override
-  bool get supportsSize => _inner.supportsSize;
-
-  @override
-  Stream<List<int>>? get inputStream => _inner.inputStream;
-
-  @override
-  Stream<Size>? get resizeStream => _inner.resizeStream;
-
-  @override
-  Stream<void>? get shutdownStream => _inner.shutdownStream;
-
-  @override
-  void enableRawMode() => _inner.enableRawMode();
-
-  @override
-  void disableRawMode() => _inner.disableRawMode();
-
-  @override
-  bool get isAvailable => _inner.isAvailable;
-
-  @override
-  void notifySizeChanged(Size newSize) => _inner.notifySizeChanged(newSize);
-
-  @override
-  void dispose() => _inner.dispose();
 }

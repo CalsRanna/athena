@@ -3,19 +3,20 @@ import 'dart:io';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_gui/di.dart';
+import 'package:athena_gui/main.dart';
 import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
+import 'package:athena_gui/page/desktop/setting/appearance_page.dart';
 import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/nav.dart';
 import 'package:athena_gui/page/desktop/setting/component/panel.dart';
-import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:athena_gui/di.dart';
-import 'package:athena_gui/main.dart';
-import 'package:athena_gui/page/desktop/setting/appearance_page.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -24,7 +25,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -23,6 +23,12 @@ class ChatRenameDelegate {
        _modelRepo = modelRepo,
        _supportService = supportService;
 
+  /// 取消指定 chat 的进行中重命名流，防止写入已删除的 chat
+  void cancel(String chatId) {
+    _tokens[chatId]?.cancel();
+    _tokens.remove(chatId);
+  }
+
   /// 自动重命名：取首条用户消息 → AI 生成标题 → 写回数据库
   ///
   /// [onTitle] 在流式生成过程中被反复调用，用于更新 UI。
@@ -88,11 +94,5 @@ class ChatRenameDelegate {
     required String title,
   }) async {
     return _supportService.renameChatManually(chat, title);
-  }
-
-  /// 取消指定 chat 的进行中重命名流，防止写入已删除的 chat
-  void cancel(String chatId) {
-    _tokens[chatId]?.cancel();
-    _tokens.remove(chatId);
   }
 }

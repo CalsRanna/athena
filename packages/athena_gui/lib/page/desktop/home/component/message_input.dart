@@ -1,25 +1,25 @@
 import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_column.dart';
 import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/permission_mode_selector.dart';
-import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_selector.dart';
+import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
@@ -227,6 +227,108 @@ class DesktopMessageInput extends StatelessWidget {
   }
 }
 
+/// composer 的输入容器。
+///
+/// 与移动端共用 12 圆角、贴近表面的柔阴影和 1px 青瓷聚焦边框。
+class _ComposerInputBox extends StatefulWidget {
+  /// 外部持有的焦点节点：容器只监听它来切边框色，不负责 dispose。
+  final FocusNode focusNode;
+  final Widget Function(FocusNode focusNode) builder;
+  const _ComposerInputBox({required this.focusNode, required this.builder});
+
+  @override
+  State<_ComposerInputBox> createState() => _ComposerInputBoxState();
+}
+
+class _ComposerInputBoxState extends State<_ComposerInputBox> {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    return AnimatedContainer(
+      decoration: BoxDecoration(
+        color: colors.surfaceMobile,
+        border: Border.all(
+          color: widget.focusNode.hasFocus
+              ? colors.accent
+              : colors.neutralBorder,
+        ),
+        borderRadius: BorderRadius.circular(AthenaRadius.composer),
+        boxShadow: AthenaShadow.raised(colors.shadow),
+      ),
+      duration: AthenaMotion.hover,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: widget.builder(widget.focusNode),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_ComposerInputBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_handleFocusChanged);
+      widget.focusNode.addListener(_handleFocusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.focusNode.removeListener(_handleFocusChanged);
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(_handleFocusChanged);
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+}
+
+class _ImageProgress extends StatelessWidget {
+  final PendingImageStage stage;
+  const _ImageProgress({required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final failed = stage == PendingImageStage.failed;
+    return Tooltip(
+      message: failed
+          ? 'Could not load image. Remove it and paste again.'
+          : 'Loading image',
+      child: ColoredBox(
+        color: colors.inputBackground,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 24,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  failed ? LucideIcons.imageOff : LucideIcons.image,
+                  // 24 方形容器内的图片占位图标，按容器比例取 12，不套用三档映射
+                  size: 12,
+                  color: failed ? colors.statusError : colors.textWeak,
+                ),
+                if (!failed)
+                  Positioned.fill(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.accent,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Input extends StatefulWidget {
   final TextEditingController controller;
 
@@ -260,44 +362,9 @@ class _Input extends StatefulWidget {
   State<_Input> createState() => _InputState();
 }
 
-class _SendIntent extends Intent {
-  const _SendIntent();
-}
-
-class _NewlineIntent extends Intent {
-  const _NewlineIntent();
-}
-
 class _InputState extends State<_Input> {
   bool _pasting = false;
   final _scrollController = ScrollController();
-
-  @override
-  void didUpdateWidget(_Input oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 换对话（草稿↔对话、对话 A↔对话 B）时重置本组件自己的状态。
-    //
-    // **不能用换 key 来重建**：这个元素承载着 composer 的焦点节点（`focusNode`
-    // 一路传给 TextField）。换 key 会销毁旧的 EditableText 连同它的文本输入连接，
-    // 而焦点节点是同一个对象、焦点自始至终没有变化，新建的 EditableText 只会在
-    // 焦点变化时才重开连接（`EditableText._handleFocusChanged` → `_openInputConnection`），
-    // 于是输入框"看起来聚焦、实际打不进字"——⌘N 新建对话（对话→草稿）后正是
-    // 这个状态，页里那次 `requestFocus` 也救不回来：节点仍持焦，请求会被
-    // FocusNode 当作无变化直接忽略。
-    if (widget.chatId == oldWidget.chatId) return;
-    _pasting = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollController.hasClients) {
-        _scrollController.jumpTo(0);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -405,6 +472,33 @@ class _InputState extends State<_Input> {
     );
   }
 
+  @override
+  void didUpdateWidget(_Input oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 换对话（草稿↔对话、对话 A↔对话 B）时重置本组件自己的状态。
+    //
+    // **不能用换 key 来重建**：这个元素承载着 composer 的焦点节点（`focusNode`
+    // 一路传给 TextField）。换 key 会销毁旧的 EditableText 连同它的文本输入连接，
+    // 而焦点节点是同一个对象、焦点自始至终没有变化，新建的 EditableText 只会在
+    // 焦点变化时才重开连接（`EditableText._handleFocusChanged` → `_openInputConnection`），
+    // 于是输入框"看起来聚焦、实际打不进字"——⌘N 新建对话（对话→草稿）后正是
+    // 这个状态，页里那次 `requestFocus` 也救不回来：节点仍持焦，请求会被
+    // FocusNode 当作无变化直接忽略。
+    if (widget.chatId == oldWidget.chatId) return;
+    _pasting = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   void _insertNewline() {
     if (widget.readOnly) return;
     final controller = widget.controller;
@@ -417,34 +511,6 @@ class _InputState extends State<_Input> {
       selection: TextSelection.collapsed(offset: selection.start + 1),
     );
     _scrollToCaret();
-  }
-
-  /// 多行输入超过可视高度时滚动到光标所在的最新一行
-  /// （TextField 不会自动跟随光标，需在文本变化后手动滚动）。
-  void _scrollToCaret() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) return;
-      final position = _scrollController.position;
-      if (position.maxScrollExtent > 0) {
-        _scrollController.jumpTo(position.maxScrollExtent);
-      }
-    });
-  }
-
-  /// 图片感知粘贴：剪贴板中有图片时全部贴入待发送列表
-  /// （文件管理器多选复制可能有多个图片文件），
-  /// 否则回退到默认的文本粘贴行为。
-  Future<void> _pasteImageAware() async {
-    if (widget.readOnly) return;
-    if (_pasting) return;
-    _pasting = true;
-    try {
-      final pasted = await widget.onPasteImages?.call() ?? false;
-      if (pasted || !mounted) return;
-      await _pasteClipboardText();
-    } finally {
-      _pasting = false;
-    }
   }
 
   Future<void> _pasteClipboardText() async {
@@ -466,6 +532,52 @@ class _InputState extends State<_Input> {
     );
     _scrollToCaret();
   }
+
+  /// 图片感知粘贴：剪贴板中有图片时全部贴入待发送列表
+  /// （文件管理器多选复制可能有多个图片文件），
+  /// 否则回退到默认的文本粘贴行为。
+  Future<void> _pasteImageAware() async {
+    if (widget.readOnly) return;
+    if (_pasting) return;
+    _pasting = true;
+    try {
+      final pasted = await widget.onPasteImages?.call() ?? false;
+      if (pasted || !mounted) return;
+      await _pasteClipboardText();
+    } finally {
+      _pasting = false;
+    }
+  }
+
+  /// 多行输入超过可视高度时滚动到光标所在的最新一行
+  /// （TextField 不会自动跟随光标，需在文本变化后手动滚动）。
+  void _scrollToCaret() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.maxScrollExtent > 0) {
+        _scrollController.jumpTo(position.maxScrollExtent);
+      }
+    });
+  }
+}
+
+class _NewlineActivator extends SingleActivator {
+  const _NewlineActivator() : super(LogicalKeyboardKey.enter, shift: true);
+}
+
+class _NewlineIntent extends Intent {
+  const _NewlineIntent();
+}
+
+class _PasteCtrlActivator extends SingleActivator {
+  const _PasteCtrlActivator()
+    : super(LogicalKeyboardKey.keyV, meta: false, control: true);
+}
+
+class _PasteMacActivator extends SingleActivator {
+  const _PasteMacActivator()
+    : super(LogicalKeyboardKey.keyV, meta: true, control: false);
 }
 
 class _PendingImageStrip extends StatelessWidget {
@@ -540,58 +652,6 @@ class _PendingImageStrip extends StatelessWidget {
   }
 }
 
-class _ImageProgress extends StatelessWidget {
-  final PendingImageStage stage;
-  const _ImageProgress({required this.stage});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final failed = stage == PendingImageStage.failed;
-    return Tooltip(
-      message: failed
-          ? 'Could not load image. Remove it and paste again.'
-          : 'Loading image',
-      child: ColoredBox(
-        color: colors.inputBackground,
-        child: Center(
-          child: SizedBox.square(
-            dimension: 24,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  failed ? LucideIcons.imageOff : LucideIcons.image,
-                  // 24 方形容器内的图片占位图标，按容器比例取 12，不套用三档映射
-                  size: 12,
-                  color: failed ? colors.statusError : colors.textWeak,
-                ),
-                if (!failed)
-                  Positioned.fill(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: colors.accent,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PasteMacActivator extends SingleActivator {
-  const _PasteMacActivator()
-    : super(LogicalKeyboardKey.keyV, meta: true, control: false);
-}
-
-class _PasteCtrlActivator extends SingleActivator {
-  const _PasteCtrlActivator()
-    : super(LogicalKeyboardKey.keyV, meta: false, control: true);
-}
-
 class _SendActivator extends SingleActivator {
   const _SendActivator()
     : super(
@@ -601,21 +661,6 @@ class _SendActivator extends SingleActivator {
         alt: false,
         meta: false,
       );
-}
-
-class _SendNumpadActivator extends SingleActivator {
-  const _SendNumpadActivator()
-    : super(
-        LogicalKeyboardKey.numpadEnter,
-        shift: false,
-        control: false,
-        alt: false,
-        meta: false,
-      );
-}
-
-class _NewlineActivator extends SingleActivator {
-  const _NewlineActivator() : super(LogicalKeyboardKey.enter, shift: true);
 }
 
 class _SendButton extends StatelessWidget {
@@ -658,62 +703,17 @@ class _SendButton extends StatelessWidget {
   }
 }
 
-/// composer 的输入容器。
-///
-/// 与移动端共用 12 圆角、贴近表面的柔阴影和 1px 青瓷聚焦边框。
-class _ComposerInputBox extends StatefulWidget {
-  /// 外部持有的焦点节点：容器只监听它来切边框色，不负责 dispose。
-  final FocusNode focusNode;
-  final Widget Function(FocusNode focusNode) builder;
-  const _ComposerInputBox({required this.focusNode, required this.builder});
-
-  @override
-  State<_ComposerInputBox> createState() => _ComposerInputBoxState();
+class _SendIntent extends Intent {
+  const _SendIntent();
 }
 
-class _ComposerInputBoxState extends State<_ComposerInputBox> {
-  @override
-  void initState() {
-    super.initState();
-    widget.focusNode.addListener(_handleFocusChanged);
-  }
-
-  @override
-  void didUpdateWidget(_ComposerInputBox oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.focusNode != widget.focusNode) {
-      oldWidget.focusNode.removeListener(_handleFocusChanged);
-      widget.focusNode.addListener(_handleFocusChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.focusNode.removeListener(_handleFocusChanged);
-    super.dispose();
-  }
-
-  void _handleFocusChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return AnimatedContainer(
-      decoration: BoxDecoration(
-        color: colors.surfaceMobile,
-        border: Border.all(
-          color: widget.focusNode.hasFocus
-              ? colors.accent
-              : colors.neutralBorder,
-        ),
-        borderRadius: BorderRadius.circular(AthenaRadius.composer),
-        boxShadow: AthenaShadow.raised(colors.shadow),
-      ),
-      duration: AthenaMotion.hover,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: widget.builder(widget.focusNode),
-    );
-  }
+class _SendNumpadActivator extends SingleActivator {
+  const _SendNumpadActivator()
+    : super(
+        LogicalKeyboardKey.numpadEnter,
+        shift: false,
+        control: false,
+        alt: false,
+        meta: false,
+      );
 }

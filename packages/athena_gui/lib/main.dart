@@ -3,16 +3,16 @@ import 'dart:async';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
+import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/storage/file_storage.dart';
+import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/router/router.dart';
-import 'package:athena_core/service/model_catalog_service.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_scroll_behavior.dart';
-import 'package:athena_gui/theme/athena_material_theme.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/theme/athena_scroll_behavior.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/util/platform/single_instance_util.dart';
 import 'package:athena_gui/util/platform/system_tray_util.dart';
 import 'package:athena_gui/util/platform/window_util.dart';
@@ -73,6 +73,15 @@ void main(List<String> args) async {
   }
 }
 
+class AthenaApp extends StatefulWidget {
+  const AthenaApp({super.key});
+
+  @override
+  State<AthenaApp> createState() {
+    return _AthenaAppState();
+  }
+}
+
 abstract final class _AppBootstrap {
   /// 文件存储启动序列:加载存储,再种子内置角色(首次启动)。
   static Future<void> storage() async {
@@ -83,15 +92,6 @@ abstract final class _AppBootstrap {
     await const SentinelSeed().applyIfNeeded(
       sentinelRepo: storage.sentinelRepository,
     );
-  }
-}
-
-class AthenaApp extends StatefulWidget {
-  const AthenaApp({super.key});
-
-  @override
-  State<AthenaApp> createState() {
-    return _AthenaAppState();
   }
 }
 
@@ -174,12 +174,6 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   void onWindowResized() => _saveWindowSize();
 
-  void _saveWindowSize() {
-    WindowUtil.instance.saveWindowSize(
-      GetIt.instance<FileStorage>().userSettings,
-    );
-  }
-
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.keyW &&
@@ -188,5 +182,11 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
       return true;
     }
     return false;
+  }
+
+  void _saveWindowSize() {
+    WindowUtil.instance.saveWindowSize(
+      GetIt.instance<FileStorage>().userSettings,
+    );
   }
 }

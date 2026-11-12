@@ -21,6 +21,15 @@ import 'package:path/path.dart' as p;
 /// `models.json` 不直接删除而是改名:出问题还能把原始数据找回来。它此后不再
 /// 被读取,下次启动也不会再触发本迁移(标记已落盘)。
 class ModelsIntoProvidersMigration {
+  static const version = 1;
+
+  final File _modelsFile;
+
+  final ProviderStore _providerStore;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   ModelsIntoProvidersMigration({
     required File modelsFile,
     required ProviderStore providerStore,
@@ -29,17 +38,9 @@ class ModelsIntoProvidersMigration {
        _providerStore = providerStore,
        _locks = locks;
 
-  static const version = 1;
-
-  final File _modelsFile;
-  final ProviderStore _providerStore;
-
-  /// 锁放哪由它决定,见 [LockRegistry]。
-  final LockRegistry _locks;
-
+  File get _lockFile => _locks.named('models-into-providers-migration');
   File get _marker =>
       File(p.join(_providerStore.directory.path, '.models-version'));
-  File get _lockFile => _locks.named('models-into-providers-migration');
 
   Future<void> run() {
     return FileLocking.withFileLock(_lockFile, () async {

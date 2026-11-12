@@ -1,6 +1,42 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
+
+/// 横向卡片行容器（首页使用）。
+class CardListView extends StatelessWidget {
+  final int itemCount;
+  final Widget Function(BuildContext context, int index) itemBuilder;
+
+  const CardListView({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 卡片高度按当前字号计算：图标行 + 两行标题 + 三行描述 + 内边距。
+    // 160 是常规字号下的下限，大字号时随之增高，卡片内容不会溢出。
+    final scaler = MediaQuery.textScalerOf(context);
+    final titleLine =
+        scaler.scale(AthenaFontSize.section) * AthenaFontSize.bodyHeight;
+    final captionLine =
+        scaler.scale(AthenaFontSize.caption) * AthenaFontSize.captionHeight;
+    final contentHeight =
+        24 + AthenaIcon.regularSize + 4 + titleLine * 2 + 4 + captionLine * 3;
+    final height = contentHeight < 160 ? 160.0 : contentHeight;
+    return SizedBox(
+      height: height,
+      child: ListView.separated(
+        itemBuilder: itemBuilder,
+        itemCount: itemCount,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+      ),
+    );
+  }
+}
 
 /// 首页卡片行中的单张卡片：宽 160、圆角 [AthenaRadius.container]、
 /// `surfaceButtonSecondary` 底 + 1px `border`、图标 + 名称 + 描述。
@@ -59,42 +95,6 @@ class CardTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 横向卡片行容器（首页使用）。
-class CardListView extends StatelessWidget {
-  final int itemCount;
-  final Widget Function(BuildContext context, int index) itemBuilder;
-
-  const CardListView({
-    super.key,
-    required this.itemCount,
-    required this.itemBuilder,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // 卡片高度按当前字号计算：图标行 + 两行标题 + 三行描述 + 内边距。
-    // 160 是常规字号下的下限，大字号时随之增高，卡片内容不会溢出。
-    final scaler = MediaQuery.textScalerOf(context);
-    final titleLine =
-        scaler.scale(AthenaFontSize.section) * AthenaFontSize.bodyHeight;
-    final captionLine =
-        scaler.scale(AthenaFontSize.caption) * AthenaFontSize.captionHeight;
-    final contentHeight =
-        24 + AthenaIcon.regularSize + 4 + titleLine * 2 + 4 + captionLine * 3;
-    final height = contentHeight < 160 ? 160.0 : contentHeight;
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        itemBuilder: itemBuilder,
-        itemCount: itemCount,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
       ),
     );
   }

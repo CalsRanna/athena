@@ -1,6 +1,23 @@
 import 'package:athena_core/entity/model_entity.dart';
 
 abstract final class ModelLabel {
+  /// 上下文窗口的紧凑写法：1,000,000 → `1M`，131,072 → `128K`，200,000 → `200K`。
+  ///
+  /// 只用于展示；编辑框里仍用 `formatContextWindow` 的精确值。
+  static String compactTokens(int tokens) {
+    if (tokens >= 1000000) {
+      final m = tokens / 1000000;
+      final text = m.toStringAsFixed(m == m.roundToDouble() ? 0 : 1);
+      return '${text}M';
+    }
+    if (tokens >= 1000) {
+      final k = tokens / 1024;
+      // 128K（131072）这类二进制档位取整；十进制档位（200,000）同样四舍五入
+      return '${k.round()}K';
+    }
+    return tokens.toString();
+  }
+
   /// 模型行的副标题：`Released 2026-09-10 · 1M context · $0.15/M in · $0.6/M out`。
   ///
   /// 没有任何可显示项时返回 null（行就不画说明）。
@@ -28,22 +45,5 @@ abstract final class ModelLabel {
     if (match == null) return raw.trim();
     final value = match.group(0)!;
     return value.startsWith(r'$') ? value : '\$$value';
-  }
-
-  /// 上下文窗口的紧凑写法：1,000,000 → `1M`，131,072 → `128K`，200,000 → `200K`。
-  ///
-  /// 只用于展示；编辑框里仍用 `formatContextWindow` 的精确值。
-  static String compactTokens(int tokens) {
-    if (tokens >= 1000000) {
-      final m = tokens / 1000000;
-      final text = m.toStringAsFixed(m == m.roundToDouble() ? 0 : 1);
-      return '${text}M';
-    }
-    if (tokens >= 1000) {
-      final k = tokens / 1024;
-      // 128K（131072）这类二进制档位取整；十进制档位（200,000）同样四舍五入
-      return '${k.round()}K';
-    }
-    return tokens.toString();
   }
 }

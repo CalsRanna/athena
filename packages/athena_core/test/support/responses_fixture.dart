@@ -3,14 +3,60 @@ import 'dart:convert';
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
-ProviderEntity responsesProvider() => ProviderEntity(
-  id: '1',
-  name: 'test',
-  baseUrl: 'https://example.test/v1',
-  apiKey: 'test-secret',
-  apiFormat: ApiFormat.responses,
-  createdAt: DateTime(2026),
-);
+List<Map<String, dynamic>> reasoningEvents(Map<String, dynamic> response) {
+  final output = response['output'] as List;
+  return [
+    {
+      'type': 'response.reasoning_summary_text.delta',
+      'output_index': 0,
+      'summary_index': 0,
+      'delta': '先读取',
+    },
+    {
+      'type': 'response.reasoning_summary_text.delta',
+      'output_index': 0,
+      'summary_index': 0,
+      'delta': '配置。',
+    },
+    {
+      'type': 'response.reasoning_summary_text.done',
+      'output_index': 0,
+      'summary_index': 0,
+      'text': '先读取配置。',
+    },
+    {
+      'type': 'response.reasoning_summary_text.done',
+      'output_index': 0,
+      'summary_index': 1,
+      'text': '再验证结果。',
+    },
+    {'type': 'response.output_item.done', 'output_index': 0, 'item': output[0]},
+    {
+      'type': 'response.output_text.delta',
+      'output_index': 1,
+      'content_index': 0,
+      'delta': output[1]['content'][0]['text'],
+    },
+    for (var i = 2; i < output.length; i++) ...[
+      {
+        'type': 'response.output_item.added',
+        'output_index': i,
+        'item': {...output[i] as Map<String, dynamic>, 'arguments': ''},
+      },
+      {
+        'type': 'response.function_call_arguments.delta',
+        'output_index': i,
+        'delta': output[i]['arguments'],
+      },
+    ],
+    {
+      'type': response['status'] == 'incomplete'
+          ? 'response.incomplete'
+          : 'response.completed',
+      'response': response,
+    },
+  ];
+}
 
 Map<String, dynamic> reasoningResponse({
   bool tools = true,
@@ -68,60 +114,14 @@ Map<String, dynamic> reasoningResponse({
     'incomplete_details': {'reason': 'max_output_tokens'},
 };
 
-List<Map<String, dynamic>> reasoningEvents(Map<String, dynamic> response) {
-  final output = response['output'] as List;
-  return [
-    {
-      'type': 'response.reasoning_summary_text.delta',
-      'output_index': 0,
-      'summary_index': 0,
-      'delta': '先读取',
-    },
-    {
-      'type': 'response.reasoning_summary_text.delta',
-      'output_index': 0,
-      'summary_index': 0,
-      'delta': '配置。',
-    },
-    {
-      'type': 'response.reasoning_summary_text.done',
-      'output_index': 0,
-      'summary_index': 0,
-      'text': '先读取配置。',
-    },
-    {
-      'type': 'response.reasoning_summary_text.done',
-      'output_index': 0,
-      'summary_index': 1,
-      'text': '再验证结果。',
-    },
-    {'type': 'response.output_item.done', 'output_index': 0, 'item': output[0]},
-    {
-      'type': 'response.output_text.delta',
-      'output_index': 1,
-      'content_index': 0,
-      'delta': output[1]['content'][0]['text'],
-    },
-    for (var i = 2; i < output.length; i++) ...[
-      {
-        'type': 'response.output_item.added',
-        'output_index': i,
-        'item': {...output[i] as Map<String, dynamic>, 'arguments': ''},
-      },
-      {
-        'type': 'response.function_call_arguments.delta',
-        'output_index': i,
-        'delta': output[i]['arguments'],
-      },
-    ],
-    {
-      'type': response['status'] == 'incomplete'
-          ? 'response.incomplete'
-          : 'response.completed',
-      'response': response,
-    },
-  ];
-}
+ProviderEntity responsesProvider() => ProviderEntity(
+  id: '1',
+  name: 'test',
+  baseUrl: 'https://example.test/v1',
+  apiKey: 'test-secret',
+  apiFormat: ApiFormat.responses,
+  createdAt: DateTime(2026),
+);
 
 String responsesSse(List<Map<String, dynamic>> events) => events
     .map((event) => 'event: ${event['type']}\ndata: ${jsonEncode(event)}\n\n')

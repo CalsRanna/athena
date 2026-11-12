@@ -5,17 +5,8 @@ import 'package:nocterm/nocterm.dart';
 
 /// 输入区:多行输入框 + 底部状态行(流式时显示运行状态)。
 class InputArea extends StatelessComponent {
-  const InputArea({
-    super.key,
-    required this.controller,
-    required this.textController,
-    required this.onSubmitted,
-    required this.onKeyEvent,
-    this.placeholder = '输入消息',
-    this.statusText = '',
-  });
-
   final ChatController controller;
+
   final TextEditingController textController;
   final ValueChanged<String> onSubmitted;
   final KeyEventHandler onKeyEvent;
@@ -25,6 +16,16 @@ class InputArea extends StatelessComponent {
 
   /// 非空时覆盖默认状态行(如 API key 输入提示)。
   final String statusText;
+
+  const InputArea({
+    super.key,
+    required this.controller,
+    required this.textController,
+    required this.onSubmitted,
+    required this.onKeyEvent,
+    this.placeholder = '输入消息',
+    this.statusText = '',
+  });
 
   @override
   Component build(BuildContext context) {

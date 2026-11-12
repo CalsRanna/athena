@@ -83,6 +83,11 @@ void main() {
   });
 }
 
+class _Chats implements ChatRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Client extends LlmClient {
   final events = StreamController<ChatStreamEvent>();
   final started = Completer<void>();
@@ -108,11 +113,6 @@ class _Client extends LlmClient {
     started.complete();
     return events.stream;
   }
-}
-
-class _Chats implements ChatRepository {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _Providers implements ProviderRepository {

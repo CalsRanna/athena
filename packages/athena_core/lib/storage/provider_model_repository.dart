@@ -17,67 +17,36 @@ import 'package:athena_core/storage/provider_store.dart';
 /// 模型自己的 `id` 必须显式存在(不能像 provider 那样由文件名推导):
 /// `sessions/{chatId}.jsonl` 里存的 `model_id` 引用它。
 class ProviderModelRepository implements ModelRepository {
+  final ProviderStore _store;
+
+  final IdGenerator _idGenerator;
   ProviderModelRepository({
     required ProviderStore store,
     IdGenerator idGenerator = const IdGenerator(),
   }) : _store = store,
        _idGenerator = idGenerator;
 
-  final ProviderStore _store;
-  final IdGenerator _idGenerator;
-
   @override
-  Future<List<ModelEntity>> getAllModels() => _store.listAllModels();
-
-  @override
-  Future<ModelEntity?> getModelById(String id) => _store.findModel(id);
-
-  @override
-  Future<List<ModelEntity>> getModelsByProviderId(String providerId) =>
-      _store.readModels(providerId);
-
-  @override
-  Future<ModelEntity?> getModelByNameAndProviderId(
-    String name,
-    String providerId,
-  ) async {
-    for (final model in await _store.readModels(providerId)) {
-      if (model.name == name) return model;
+  Future<void> batchCreateModels(List<ModelEntity> models) async {
+    // 按 provider 分组:同一份 provider 文件只读写一次,而不是每个模型一次
+    final grouped = <String, List<ModelEntity>>{};
+    for (final model in models) {
+      final id = model.id ?? _idGenerator.next();
+      grouped
+          .putIfAbsent(model.providerId, () => [])
+          .add(model.copyWith(id: id));
     }
-    return null;
-  }
-
-  @override
-  Future<ModelEntity?> getModelByModelIdAndProviderId(
-    String modelId,
-    String providerId,
-  ) async {
-    for (final model in await _store.readModels(providerId)) {
-      if (model.modelId == modelId) return model;
+    for (final entry in grouped.entries) {
+      await _store.mutateModels(entry.key, (existing) {
+        existing.addAll(entry.value);
+      });
     }
-    return null;
   }
 
   @override
   Future<String> createModel(ModelEntity model) {
     final id = _idGenerator.next();
     return _append(model.copyWith(id: id)).then((_) => id);
-  }
-
-  @override
-  Future<void> updateModel(ModelEntity model) async {
-    final id = model.id;
-    if (id == null) return;
-    await _store.mutateModels(model.providerId, (models) {
-      final index = models.indexWhere((m) => m.id == id);
-      if (index >= 0) {
-        models[index] = model;
-      } else {
-        // provider 文件在、模型不在(手工编辑删掉了):补回去,与旧的
-        // 「整表替换式更新」语义一致
-        models.add(model);
-      }
-    });
   }
 
   @override
@@ -95,23 +64,54 @@ class ProviderModelRepository implements ModelRepository {
   }
 
   @override
+  Future<List<ModelEntity>> getAllModels() => _store.listAllModels();
+
+  @override
+  Future<ModelEntity?> getModelById(String id) => _store.findModel(id);
+
+  @override
+  Future<ModelEntity?> getModelByModelIdAndProviderId(
+    String modelId,
+    String providerId,
+  ) async {
+    for (final model in await _store.readModels(providerId)) {
+      if (model.modelId == modelId) return model;
+    }
+    return null;
+  }
+
+  @override
+  Future<ModelEntity?> getModelByNameAndProviderId(
+    String name,
+    String providerId,
+  ) async {
+    for (final model in await _store.readModels(providerId)) {
+      if (model.name == name) return model;
+    }
+    return null;
+  }
+
+  @override
+  Future<List<ModelEntity>> getModelsByProviderId(String providerId) =>
+      _store.readModels(providerId);
+
+  @override
   Future<int> getModelsCount() async => (await getAllModels()).length;
 
   @override
-  Future<void> batchCreateModels(List<ModelEntity> models) async {
-    // 按 provider 分组:同一份 provider 文件只读写一次,而不是每个模型一次
-    final grouped = <String, List<ModelEntity>>{};
-    for (final model in models) {
-      final id = model.id ?? _idGenerator.next();
-      grouped
-          .putIfAbsent(model.providerId, () => [])
-          .add(model.copyWith(id: id));
-    }
-    for (final entry in grouped.entries) {
-      await _store.mutateModels(entry.key, (existing) {
-        existing.addAll(entry.value);
-      });
-    }
+  Future<void> updateModel(ModelEntity model) async {
+    final id = model.id;
+    if (id == null) return;
+    await _store.mutateModels(model.providerId, (models) {
+      final index = models.indexWhere((m) => m.id == id);
+      if (index >= 0) {
+        models[index] = model;
+      } else {
+        // provider 文件在、模型不在(手工编辑删掉了):补回去,与旧的
+        // 「整表替换式更新」语义一致
+        models.add(model);
+      }
+    });
   }
 
   /// 追加一个模型到它所属 provider 的文件。

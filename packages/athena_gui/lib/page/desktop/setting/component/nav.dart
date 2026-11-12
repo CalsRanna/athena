@@ -1,9 +1,9 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 固定品牌与搜索框，分组列表可独立滚动。
 class AthenaSettingsNav extends StatelessWidget {
@@ -48,6 +48,60 @@ class AthenaSettingsNav extends StatelessWidget {
   }
 }
 
+/// 导航里的一个分组：小号灰标题 + 若干行。
+///
+/// 分组用辅助字号，与下方导航行的图标列对齐。
+class AthenaSettingsNavGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const AthenaSettingsNavGroup({
+    super.key,
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final titleStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
+    final label = Padding(
+      padding: const EdgeInsets.only(left: 10),
+      child: Text(title, style: titleStyle),
+    );
+    final header = Padding(
+      padding: const EdgeInsets.only(
+        top: AthenaSettings.navGroupTopMargin,
+        bottom: AthenaSettings.navGroupBottomMargin,
+      ),
+      child: label,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [header, ...children],
+    );
+  }
+}
+
+/// 图标与单行标签共用固定的点击区域。当前分区使用青瓷色和中等字重。
+class AthenaSettingsNavItem extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+  const AthenaSettingsNavItem({
+    super.key,
+    required this.label,
+    required this.icon,
+    this.active = false,
+    this.onTap,
+    this.trailing,
+  });
+
+  @override
+  State<AthenaSettingsNavItem> createState() => _AthenaSettingsNavItemState();
+}
+
 /// 导航顶部的搜索框。高 36、宽与行同宽、圆角 8、
 /// 底色 surfaceMobile、描边 neutralBorder，图标与占位跟随语义色。
 class AthenaSettingsSearchField extends StatefulWidget {
@@ -66,27 +120,56 @@ class AthenaSettingsSearchField extends StatefulWidget {
       _AthenaSettingsSearchFieldState();
 }
 
+class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final contentColor = widget.active ? colors.accent : colors.textRowLabel;
+    final textStyle = AthenaTextStyle.row.copyWith(
+      color: contentColor,
+      fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
+    );
+    final children = [
+      Icon(widget.icon, color: contentColor, size: AthenaSettings.navIconSize),
+      const SizedBox(width: AthenaSettings.navIconGap),
+      Expanded(
+        child: Text(
+          widget.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textStyle,
+        ),
+      ),
+      if (widget.trailing != null) widget.trailing!,
+    ];
+    return AthenaHover(
+      onTap: widget.onTap,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
+          color: widget.active
+              ? colors.neutralSelected
+              : hover
+              ? colors.neutralRule
+              : colors.neutralRule.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+        ),
+        duration: AthenaMotion.hover,
+        height: AthenaSettings.navRowHeight,
+        padding: const EdgeInsets.only(
+          left: AthenaSettings.navRowPadding,
+          right: 8,
+        ),
+        child: Row(children: children),
+      ),
+    );
+  }
+}
+
 class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
   final focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    focusNode.addListener(_handleChange);
-    widget.controller.addListener(_handleChange);
-  }
-
-  @override
-  void dispose() {
-    focusNode.removeListener(_handleChange);
-    widget.controller.removeListener(_handleChange);
-    focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleChange() {
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,110 +228,27 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
     );
   }
 
+  @override
+  void dispose() {
+    focusNode.removeListener(_handleChange);
+    widget.controller.removeListener(_handleChange);
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    focusNode.addListener(_handleChange);
+    widget.controller.addListener(_handleChange);
+  }
+
   void _clear() {
     widget.controller.clear();
     widget.onChanged?.call('');
   }
-}
 
-/// 导航里的一个分组：小号灰标题 + 若干行。
-///
-/// 分组用辅助字号，与下方导航行的图标列对齐。
-class AthenaSettingsNavGroup extends StatelessWidget {
-  final String title;
-  final List<Widget> children;
-  const AthenaSettingsNavGroup({
-    super.key,
-    required this.title,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final titleStyle = AthenaTextStyle.caption.copyWith(color: colors.textWeak);
-    final label = Padding(
-      padding: const EdgeInsets.only(left: 10),
-      child: Text(title, style: titleStyle),
-    );
-    final header = Padding(
-      padding: const EdgeInsets.only(
-        top: AthenaSettings.navGroupTopMargin,
-        bottom: AthenaSettings.navGroupBottomMargin,
-      ),
-      child: label,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [header, ...children],
-    );
-  }
-}
-
-/// 图标与单行标签共用固定的点击区域。当前分区使用青瓷色和中等字重。
-class AthenaSettingsNavItem extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final bool active;
-  final VoidCallback? onTap;
-  final Widget? trailing;
-  const AthenaSettingsNavItem({
-    super.key,
-    required this.label,
-    required this.icon,
-    this.active = false,
-    this.onTap,
-    this.trailing,
-  });
-
-  @override
-  State<AthenaSettingsNavItem> createState() => _AthenaSettingsNavItemState();
-}
-
-class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final contentColor = widget.active ? colors.accent : colors.textRowLabel;
-    final textStyle = AthenaTextStyle.row.copyWith(
-      color: contentColor,
-      fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
-    );
-    final children = [
-      Icon(widget.icon, color: contentColor, size: AthenaSettings.navIconSize),
-      const SizedBox(width: AthenaSettings.navIconGap),
-      Expanded(
-        child: Text(
-          widget.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
-        ),
-      ),
-      if (widget.trailing != null) widget.trailing!,
-    ];
-    return AthenaHover(
-      onTap: widget.onTap,
-      cursor: SystemMouseCursors.click,
-      builder: (context, hover) => AnimatedContainer(
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
-          color: widget.active
-              ? colors.neutralSelected
-              : hover
-              ? colors.neutralRule
-              : colors.neutralRule.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-        ),
-        duration: AthenaMotion.hover,
-        height: AthenaSettings.navRowHeight,
-        padding: const EdgeInsets.only(
-          left: AthenaSettings.navRowPadding,
-          right: 8,
-        ),
-        child: Row(children: children),
-      ),
-    );
+  void _handleChange() {
+    if (mounted) setState(() {});
   }
 }

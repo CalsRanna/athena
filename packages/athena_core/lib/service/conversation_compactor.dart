@@ -16,18 +16,6 @@ import 'package:openai_dart/openai_dart.dart';
 
 /// Compresses a complete history snapshot, updating one durable step throughout.
 class ConversationCompactor {
-  ConversationCompactor({
-    required MessageRepository repository,
-    required ChatMessageConverter converter,
-    required ChatCompletionsService chatService,
-  }) : _repository = repository,
-       _converter = converter,
-       _chatService = chatService;
-
-  final MessageRepository _repository;
-  final ChatMessageConverter _converter;
-  final ChatCompletionsService _chatService;
-
   /// 尾部原文规模的绝对上限，与 Codex 的 `COMPACT_USER_MESSAGE_MAX_TOKENS`
   /// 取同一量级：最近的内容是任务现场，只留摘要会丢形态。
   static const int _maxTailTokens = 20000;
@@ -44,6 +32,20 @@ class ConversationCompactor {
   /// 摘要是模型可见的正文，所以用英文；它提示下游"这里丢过内容"，
   /// 而不是无声地少一段。
   static const String _truncationMark = '\n[truncated]';
+
+  final MessageRepository _repository;
+
+  final ChatMessageConverter _converter;
+
+  final ChatCompletionsService _chatService;
+
+  ConversationCompactor({
+    required MessageRepository repository,
+    required ChatMessageConverter converter,
+    required ChatCompletionsService chatService,
+  }) : _repository = repository,
+       _converter = converter,
+       _chatService = chatService;
 
   Stream<ContextCompactionUpdate> compact({
     required ContextCompactionRequest request,
@@ -224,10 +226,6 @@ class ConversationCompactor {
     }
   }
 
-  /// 摘要的绝对上限（token 估算口径）：模型给的窗口比例上限。
-  int _summaryCap(int contextWindow) =>
-      min(4096, max(128, contextWindow ~/ 10));
-
   /// 把摘要裁到 [allowance] 以内（估算口径），裁过的结果带 [_truncationMark]。
   ///
   /// 提示词里给模型的"不超过 N 个 token"是估算口径，模型偶尔会超一点点。
@@ -255,47 +253,26 @@ class ConversationCompactor {
     return fitted;
   }
 
-  /// 摘要长度上限（token 估算口径）：模型给的绝对上限与覆盖内容的 1/4 取小。
+  /// 取出 `<summary>` 块，丢掉 `<analysis>` 草稿。
   ///
-  /// 取 1/4 是为了让替换真的节省上下文（摘要自身也占上下文，留 4 倍收缩比
-  /// 才划算）。历史很大时 1/4 远超绝对上限，行为与只有绝对上限时一致。
-  int _summaryAllowance(
-    List<List<ChatMessage>> groups,
-    ContextBudget budget,
-    int contextWindow,
-  ) {
-    final cap = _summaryCap(contextWindow);
-    final covered = budget.estimate([
-      for (final group in groups) ...group,
-    ], null);
-    return min(cap, max(128, covered ~/ 4));
-  }
-
-  /// 尾部原文条数：从最新往回累积，直到再加一条就超出 [tailBudget]。
-  ///
-  /// 最近的内容是任务现场（最新用户请求、刚读到的文件、刚跑完的命令），一件不剩
-  /// 地换成摘要会丢掉它的形态。Codex 是同一取舍（`build_compacted_history` 按
-  /// 20k token 保留最近的用户消息原文），这里不限角色：助手的结论与最近一批工具
-  /// 结果同样是恢复任务所需的。
-  ///
-  /// 尾部让位规则：被覆盖的前缀小于 [_minCoverTokens] 时，摘要预算的下限
-  /// （`max(128, )`）不再随覆盖内容收缩，"摘要比被替换内容还长"会让提交守卫拒绝
-  /// 压缩。全部记录都放得下时前缀就是 0，同样落回这条退化路径——此时没有更早的
-  /// 历史可摘要，行为与保留尾部之前一致。该循环同时保证前缀非空。
-  int _tailLength(List<int> tokens, int tailBudget) {
-    final total = tokens.fold<int>(0, (sum, token) => sum + token);
-    var kept = 0;
-    var tailTokens = 0;
-    for (var i = tokens.length - 1; i >= 0; i--) {
-      if (tailTokens + tokens[i] > tailBudget) break;
-      tailTokens += tokens[i];
-      kept++;
-    }
-    while (kept > 0 && total - tailTokens < _minCoverTokens) {
-      tailTokens -= tokens[tokens.length - kept];
-      kept--;
-    }
-    return kept;
+  /// 草稿是给模型自己梳理用的（结构化提示词要求它先分析再总结），注入上下文时
+  /// 必须丢掉：留着既占预算，又把"推理过程"变成后续轮次当真的历史。
+  /// 模型没按格式输出时不得丢内容：有 `<summary>` 块就取块内，否则只剥 `<analysis>`，
+  /// 再不行就原样使用。
+  String _stripAnalysis(String text) {
+    final block = RegExp(
+      '<summary>([\\s\\S]*?)</summary>',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final inner = block?.group(1)?.trim();
+    if (inner != null && inner.isNotEmpty) return inner;
+    final withoutAnalysis = text
+        .replaceAll(
+          RegExp('<analysis>[\\s\\S]*?</analysis>', caseSensitive: false),
+          '',
+        )
+        .trim();
+    return withoutAnalysis.isEmpty ? text : withoutAnalysis;
   }
 
   Future<String> _summarize(
@@ -390,6 +367,26 @@ class ConversationCompactor {
     }
   }
 
+  /// 摘要长度上限（token 估算口径）：模型给的绝对上限与覆盖内容的 1/4 取小。
+  ///
+  /// 取 1/4 是为了让替换真的节省上下文（摘要自身也占上下文，留 4 倍收缩比
+  /// 才划算）。历史很大时 1/4 远超绝对上限，行为与只有绝对上限时一致。
+  int _summaryAllowance(
+    List<List<ChatMessage>> groups,
+    ContextBudget budget,
+    int contextWindow,
+  ) {
+    final cap = _summaryCap(contextWindow);
+    final covered = budget.estimate([
+      for (final group in groups) ...group,
+    ], null);
+    return min(cap, max(128, covered ~/ 4));
+  }
+
+  /// 摘要的绝对上限（token 估算口径）：模型给的窗口比例上限。
+  int _summaryCap(int contextWindow) =>
+      min(4096, max(128, contextWindow ~/ 10));
+
   List<ChatMessage> _summaryRequest(List<ChatMessage> messages, int allowance) {
     Object? withoutImageData(Object? value) {
       if (value is Map) {
@@ -428,25 +425,30 @@ class ConversationCompactor {
     ];
   }
 
-  /// 取出 `<summary>` 块，丢掉 `<analysis>` 草稿。
+  /// 尾部原文条数：从最新往回累积，直到再加一条就超出 [tailBudget]。
   ///
-  /// 草稿是给模型自己梳理用的（结构化提示词要求它先分析再总结），注入上下文时
-  /// 必须丢掉：留着既占预算，又把"推理过程"变成后续轮次当真的历史。
-  /// 模型没按格式输出时不得丢内容：有 `<summary>` 块就取块内，否则只剥 `<analysis>`，
-  /// 再不行就原样使用。
-  String _stripAnalysis(String text) {
-    final block = RegExp(
-      '<summary>([\\s\\S]*?)</summary>',
-      caseSensitive: false,
-    ).firstMatch(text);
-    final inner = block?.group(1)?.trim();
-    if (inner != null && inner.isNotEmpty) return inner;
-    final withoutAnalysis = text
-        .replaceAll(
-          RegExp('<analysis>[\\s\\S]*?</analysis>', caseSensitive: false),
-          '',
-        )
-        .trim();
-    return withoutAnalysis.isEmpty ? text : withoutAnalysis;
+  /// 最近的内容是任务现场（最新用户请求、刚读到的文件、刚跑完的命令），一件不剩
+  /// 地换成摘要会丢掉它的形态。Codex 是同一取舍（`build_compacted_history` 按
+  /// 20k token 保留最近的用户消息原文），这里不限角色：助手的结论与最近一批工具
+  /// 结果同样是恢复任务所需的。
+  ///
+  /// 尾部让位规则：被覆盖的前缀小于 [_minCoverTokens] 时，摘要预算的下限
+  /// （`max(128, )`）不再随覆盖内容收缩，"摘要比被替换内容还长"会让提交守卫拒绝
+  /// 压缩。全部记录都放得下时前缀就是 0，同样落回这条退化路径——此时没有更早的
+  /// 历史可摘要，行为与保留尾部之前一致。该循环同时保证前缀非空。
+  int _tailLength(List<int> tokens, int tailBudget) {
+    final total = tokens.fold<int>(0, (sum, token) => sum + token);
+    var kept = 0;
+    var tailTokens = 0;
+    for (var i = tokens.length - 1; i >= 0; i--) {
+      if (tailTokens + tokens[i] > tailBudget) break;
+      tailTokens += tokens[i];
+      kept++;
+    }
+    while (kept > 0 && total - tailTokens < _minCoverTokens) {
+      tailTokens -= tokens[tokens.length - kept];
+      kept--;
+    }
+    return kept;
   }
 }

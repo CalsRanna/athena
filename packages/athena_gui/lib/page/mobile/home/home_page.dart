@@ -1,3 +1,5 @@
+import 'package:athena_gui/component/experience_format.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/home/component/card_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
 import 'package:athena_gui/page/mobile/home/component/recent_chat_list_view.dart';
@@ -17,8 +19,6 @@ import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
-import 'package:athena_gui/component/experience_format.dart';
 
 @RoutePage()
 class MobileHomePage extends StatefulWidget {
@@ -34,25 +34,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
   final experienceViewModel = GetIt.instance<ExperienceViewModel>();
 
   @override
-  void initState() {
-    super.initState();
-    _initializeViewModels();
-  }
-
-  Future<void> _initializeViewModels() async {
-    try {
-      await GetIt.instance<SettingViewModel>().initSignals();
-      await chatViewModel.getChats();
-      await sentinelViewModel.getSentinels();
-      await experienceViewModel.load();
-    } catch (e) {
-      if (mounted) {
-        AthenaDialog.error('Failed to load home data. Please try again.');
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final children = [
       const MobileHomeWelcome(),
@@ -65,6 +46,24 @@ class _MobileHomePageState extends State<MobileHomePage> {
       child: Column(spacing: 24, children: children),
     );
     return AthenaScaffold(body: body);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeViewModels();
+  }
+
+  void navigateChatList(BuildContext context) {
+    const MobileChatListRoute().push<void>(context);
+  }
+
+  void navigateExperienceList(BuildContext context) {
+    const MobileExperienceListRoute().push<void>(context);
+  }
+
+  void navigateSentinelList(BuildContext context) {
+    const MobileSentinelListRoute().push<void>(context);
   }
 
   Widget _buildExperiencesListView() {
@@ -113,21 +112,6 @@ class _MobileHomePageState extends State<MobileHomePage> {
     );
   }
 
-  void navigateExperienceList(BuildContext context) {
-    const MobileExperienceListRoute().push<void>(context);
-  }
-
-  Widget _buildSentinelListView() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 8,
-      children: [
-        SectionTitle('Sentinel', onTap: () => navigateSentinelList(context)),
-        SentinelListView(sentinelViewModel: sentinelViewModel),
-      ],
-    );
-  }
-
   Widget _buildRecentChatListView() {
     return Column(
       spacing: 8,
@@ -143,11 +127,27 @@ class _MobileHomePageState extends State<MobileHomePage> {
     );
   }
 
-  void navigateChatList(BuildContext context) {
-    const MobileChatListRoute().push<void>(context);
+  Widget _buildSentinelListView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
+      children: [
+        SectionTitle('Sentinel', onTap: () => navigateSentinelList(context)),
+        SentinelListView(sentinelViewModel: sentinelViewModel),
+      ],
+    );
   }
 
-  void navigateSentinelList(BuildContext context) {
-    const MobileSentinelListRoute().push<void>(context);
+  Future<void> _initializeViewModels() async {
+    try {
+      await GetIt.instance<SettingViewModel>().initSignals();
+      await chatViewModel.getChats();
+      await sentinelViewModel.getSentinels();
+      await experienceViewModel.load();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load home data. Please try again.');
+      }
+    }
   }
 }

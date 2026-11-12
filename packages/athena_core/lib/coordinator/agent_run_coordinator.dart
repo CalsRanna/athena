@@ -5,33 +5,33 @@ import 'dart:io';
 import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
-import 'package:athena_core/agent/task/background_task.dart';
-import 'package:athena_core/agent/experience/experience_prompt.dart';
-import 'package:athena_core/agent/experience/experience_digest.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
+import 'package:athena_core/agent/experience/experience_digest.dart';
+import 'package:athena_core/agent/experience/experience_prompt.dart';
+import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
-import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/runtime_context.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/rewind_result.dart';
-import 'package:athena_core/repository/session_rewind_repository.dart';
 import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store.dart';
-import 'package:athena_core/service/chat_message_converter.dart';
-import 'package:athena_core/service/conversation_compactor.dart';
+import 'package:athena_core/repository/session_rewind_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_update_service.dart';
+import 'package:athena_core/service/conversation_compactor.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:openai_dart/openai_dart.dart' show ChatMessage;
@@ -69,81 +69,6 @@ class AgentRunCoordinator {
 
   final Map<String, Completer<void>> _rewinds = {};
   final Map<String, Completer<void>> _starting = {};
-
-  bool isRewindingChat(String chatId) => _rewinds.containsKey(chatId);
-
-  Future<SessionActivityLease?> _claimSession(String chatId) async {
-    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) {
-      throw StateError('Session is busy in another operation.');
-    }
-    final started = Completer<void>();
-    _starting[chatId] = started;
-    SessionActivityLease? lease;
-    try {
-      final repository = _messageRepo;
-      if (repository is SessionRewindRepository) {
-        lease = await (repository as SessionRewindRepository)
-            .acquireSessionActivity(chatId);
-      }
-      if (isRewindingChat(chatId)) {
-        await lease?.release();
-        throw StateError('Session is being rewound.');
-      }
-      return lease;
-    } finally {
-      _starting.remove(chatId);
-      started.complete();
-    }
-  }
-
-  /// 先关闭接续入口，再等待旧 run 落库。普通 stop 会接续排队输入，不能
-  /// 用 stop + 删消息模拟回退。失败时排队输入仍保留，成功后只保留前缀。
-  Future<RewindResult> rewindToUserMessage(
-    String chatId,
-    String messageId,
-  ) async {
-    if (isRewindingChat(chatId)) {
-      throw StateError('Session is already being rewound.');
-    }
-    final target = await _messageRepo.getMessageById(chatId, messageId);
-    if (target == null || target.role != 'user') {
-      throw ArgumentError('Rewind target must be an existing user message.');
-    }
-    if (isRewindingChat(chatId)) {
-      throw StateError('Session is already being rewound.');
-    }
-    final barrier = Completer<void>();
-    _rewinds[chatId] = barrier;
-    SessionActivityLease? lease;
-    try {
-      await _starting[chatId]?.future;
-      final settled = settledOf(chatId);
-      _cancelTokenByChat[chatId]?.cancel();
-      final runId = _runIdByChat[chatId];
-      if (runId != null) _agentService.abort(runId);
-      await settled?.timeout(const Duration(seconds: 30));
-      await _agentService.backgroundTasks.stopChatTasks(chatId);
-      final repository = _messageRepo;
-      if (repository is! SessionRewindRepository) {
-        throw UnsupportedError('Session repository does not support rewind.');
-      }
-      lease = await (repository as SessionRewindRepository)
-          .acquireSessionActivity(chatId);
-      final result = await _chatStore.rewindToUserMessage(chatId, messageId);
-      _reportCutoffs[chatId] = result.chat.rewoundAt;
-      final kept = result.turnStartIds.toSet();
-      _pendingInputs[chatId]?.removeWhere((m) => !kept.contains(m.id));
-      _pendingReports.remove(chatId);
-      return result;
-    } finally {
-      try {
-        await lease?.release();
-      } finally {
-        _rewinds.remove(chatId);
-        barrier.complete();
-      }
-    }
-  }
 
   /// 正在流式运行的对话 id 集合（支持多对话同时运行）。
   final Set<String> _streamingChatIds = {};
@@ -198,6 +123,8 @@ class AgentRunCoordinator {
 
   StreamSubscription<BackgroundTask>? _taskCompletionSub;
 
+  final Map<String, DateTime?> _reportCutoffs = {};
+
   AgentRunCoordinator({
     required AgentService agentService,
     required ChatStore chatStore,
@@ -243,37 +170,102 @@ class AgentRunCoordinator {
   /// 内部发起的 run（自动汇报）的事件流。
   Stream<InternalRunEvent> get internalEvents => _internalEvents.stream;
 
-  Future<void> dispose() async {
-    _taskCompletionSub?.cancel();
-    await _internalEvents.close();
-  }
-
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   Set<String> get streamingChatIds => _streamingChatIds;
 
-  /// 指定对话是否正在流式运行。
-  bool isStreamingChat(String chatId) => _streamingChatIds.contains(chatId);
-
-  /// 等待指定对话的 run 完成后 resolve 的 Future（无运行返回 null）。
-  Future<void>? settledOf(String chatId) {
-    return _settledByChat[chatId]?.future;
-  }
-
-  /// 指定对话当前正在流式生成的消息快照；未在流式中返回 null。
-  ///
-  /// 用于 UI 切换到运行中的对话时恢复实时进度（DB 里只有迭代边界前的旧态）。
-  MessageEntity? liveMessage(String chatId) => _liveMessages[chatId];
-
-  /// 运行中切换审批档位：落库与 UI 同步由调用方完成，这里只改本轮 run
-  /// 权限门读取的值。
-  void updateApprovalMode(String chatId, ApprovalMode mode) {
-    _approvalModeByChat[chatId] = mode;
+  Future<void> dispose() async {
+    _taskCompletionSub?.cancel();
+    await _internalEvents.close();
   }
 
   /// 指定会话当前是否为 Bypass。审批回调据此在切档瞬间直接放行，
   /// 不经 UI 再弹一次卡片。
   bool isBypassPermissions(String chatId) =>
       _approvalModeByChat[chatId] == ApprovalMode.bypass;
+
+  bool isRewindingChat(String chatId) => _rewinds.containsKey(chatId);
+
+  /// 指定对话是否正在流式运行。
+  bool isStreamingChat(String chatId) => _streamingChatIds.contains(chatId);
+
+  /// 指定对话当前正在流式生成的消息快照；未在流式中返回 null。
+  ///
+  /// 用于 UI 切换到运行中的对话时恢复实时进度（DB 里只有迭代边界前的旧态）。
+  MessageEntity? liveMessage(String chatId) => _liveMessages[chatId];
+
+  /// 运行中输入：落库并排队，当前 run 结束后自动接续为新 run。
+  ///
+  /// 返回落库后的消息（调用方据此立即显示）；无活跃 run 时返回 null，
+  /// 调用方应走 [send] 正常发送。
+  Future<MessageEntity?> queueInput(
+    String chatId,
+    MessageEntity message,
+  ) async {
+    if (isRewindingChat(chatId)) throw StateError('Session is being rewound.');
+    if (!_runIdByChat.containsKey(chatId)) return null;
+    final stored = await _messageRepo.storeMessage(message);
+    final pending = _pendingInputs.putIfAbsent(chatId, () => []);
+    pending.add(stored);
+    // 竞态：storeMessage 落库期间 run 可能已结束（接续检查已执行过），
+    // 队列里这条消息将无人消费——撤销落库并返回 null，交由调用方
+    // 等待收尾后走 send 正常路径（该路径只落库一次）。
+    if (!_runIdByChat.containsKey(chatId)) {
+      pending.remove(stored);
+      if (pending.isEmpty) _pendingInputs.remove(chatId);
+      await _messageRepo.deleteMessages(stored.chatId, {stored.id!});
+      return null;
+    }
+    return stored;
+  }
+
+  /// 先关闭接续入口，再等待旧 run 落库。普通 stop 会接续排队输入，不能
+  /// 用 stop + 删消息模拟回退。失败时排队输入仍保留，成功后只保留前缀。
+  Future<RewindResult> rewindToUserMessage(
+    String chatId,
+    String messageId,
+  ) async {
+    if (isRewindingChat(chatId)) {
+      throw StateError('Session is already being rewound.');
+    }
+    final target = await _messageRepo.getMessageById(chatId, messageId);
+    if (target == null || target.role != 'user') {
+      throw ArgumentError('Rewind target must be an existing user message.');
+    }
+    if (isRewindingChat(chatId)) {
+      throw StateError('Session is already being rewound.');
+    }
+    final barrier = Completer<void>();
+    _rewinds[chatId] = barrier;
+    SessionActivityLease? lease;
+    try {
+      await _starting[chatId]?.future;
+      final settled = settledOf(chatId);
+      _cancelTokenByChat[chatId]?.cancel();
+      final runId = _runIdByChat[chatId];
+      if (runId != null) _agentService.abort(runId);
+      await settled?.timeout(const Duration(seconds: 30));
+      await _agentService.backgroundTasks.stopChatTasks(chatId);
+      final repository = _messageRepo;
+      if (repository is! SessionRewindRepository) {
+        throw UnsupportedError('Session repository does not support rewind.');
+      }
+      lease = await (repository as SessionRewindRepository)
+          .acquireSessionActivity(chatId);
+      final result = await _chatStore.rewindToUserMessage(chatId, messageId);
+      _reportCutoffs[chatId] = result.chat.rewoundAt;
+      final kept = result.turnStartIds.toSet();
+      _pendingInputs[chatId]?.removeWhere((m) => !kept.contains(m.id));
+      _pendingReports.remove(chatId);
+      return result;
+    } finally {
+      try {
+        await lease?.release();
+      } finally {
+        _rewinds.remove(chatId);
+        barrier.complete();
+      }
+    }
+  }
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -553,50 +545,9 @@ class AgentRunCoordinator {
     await _drainPendingReport(chatId);
   }
 
-  /// run 还没开始就失败（模型 / provider 找不到）时，把错误作为一条 assistant
-  /// 消息落进会话：与运行中出错（[ChatStore.recordErrorOnMessage]）
-  /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
-  /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
-  Future<RunEvent> _recordSetupError(
-    String chatId,
-    String message,
-    RunStatistics statistics,
-  ) async {
-    final placeholder = await _chatStore.appendAssistantPlaceholder(
-      chatId,
-      runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
-    );
-    final failed = await _chatStore.recordErrorOnMessage(placeholder, message);
-    return RunAssistantAppended(failed);
-  }
-
-  /// 把该会话排队中的用户消息接续成新 run，产出它的事件流。
-  ///
-  /// [send] 与内部汇报 run 的收尾共用：排队对用户的承诺是「消息不丢」，
-  /// 不能因为排队期间跑的是汇报 run 就断掉——汇报 run 不走 [send]，
-  /// 没有那一段收尾。
-  Stream<RunEvent> _continuePendingInputs(
-    String chatId, {
-    required bool jsonMode,
-  }) async* {
-    await _rewinds[chatId]?.future;
-    final pending = _pendingInputs[chatId];
-    if (pending == null || pending.isEmpty) return;
-    // 排队期间用户可能改过档位、模型或工作文件夹：按落库后的最新会话行
-    // 起 run，而不是入队那一刻的快照。
-    final latest = await _chatRepo.getChatById(chatId);
-    if (latest == null) {
-      // 删除竞态防护：chat 已删除则丢弃排队消息
-      _pendingInputs.remove(chatId);
-      return;
-    }
-    final next = pending.removeAt(0);
-    yield* send(
-      message: next,
-      chat: latest,
-      jsonMode: jsonMode,
-      persistUserMessage: false,
-    );
+  /// 等待指定对话的 run 完成后 resolve 的 Future（无运行返回 null）。
+  Future<void>? settledOf(String chatId) {
+    return _settledByChat[chatId]?.future;
   }
 
   /// 停止指定对话的 Agent 循环。
@@ -617,281 +568,26 @@ class AgentRunCoordinator {
     }
   }
 
-  /// 运行中输入：落库并排队，当前 run 结束后自动接续为新 run。
-  ///
-  /// 返回落库后的消息（调用方据此立即显示）；无活跃 run 时返回 null，
-  /// 调用方应走 [send] 正常发送。
-  Future<MessageEntity?> queueInput(
+  /// 运行中切换审批档位：落库与 UI 同步由调用方完成，这里只改本轮 run
+  /// 权限门读取的值。
+  void updateApprovalMode(String chatId, ApprovalMode mode) {
+    _approvalModeByChat[chatId] = mode;
+  }
+
+  Future<bool> _askPermission(
     String chatId,
-    MessageEntity message,
+    String toolName,
+    String arguments,
+    CancelToken cancelToken,
   ) async {
-    if (isRewindingChat(chatId)) throw StateError('Session is being rewound.');
-    if (!_runIdByChat.containsKey(chatId)) return null;
-    final stored = await _messageRepo.storeMessage(message);
-    final pending = _pendingInputs.putIfAbsent(chatId, () => []);
-    pending.add(stored);
-    // 竞态：storeMessage 落库期间 run 可能已结束（接续检查已执行过），
-    // 队列里这条消息将无人消费——撤销落库并返回 null，交由调用方
-    // 等待收尾后走 send 正常路径（该路径只落库一次）。
-    if (!_runIdByChat.containsKey(chatId)) {
-      pending.remove(stored);
-      if (pending.isEmpty) _pendingInputs.remove(chatId);
-      await _messageRepo.deleteMessages(stored.chatId, {stored.id!});
-      return null;
-    }
-    return stored;
-  }
-
-  // ─── 后台任务汇报 ─────────────────────────────────────────
-
-  /// 后台任务结束的回调：决定「现在汇报」还是「攒到会话空闲再汇报」。
-  void _onBackgroundTaskCompleted(BackgroundTask task) {
-    if (isRewindingChat(task.chatId)) return;
-    if (!task.shouldReportCompletion) return;
-    if (!_agentSettings.backgroundTaskReports.value) return;
-    final chatId = task.chatId;
-    _pendingReports.putIfAbsent(chatId, () => []).add(task);
-    unawaited(_drainPendingReport(chatId));
-  }
-
-  final Map<String, DateTime?> _reportCutoffs = {};
-
-  List<BackgroundTask> _pendingBackgroundTasks(String chatId) => [
-    for (final task in _pendingReports[chatId] ?? const <BackgroundTask>[])
-      if (_reportCutoffs[chatId] == null ||
-          task.startedAt.isAfter(_reportCutoffs[chatId]!))
-        task,
-  ];
-
-  /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
-  Future<void> _drainPendingReport(String chatId) async {
-    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) return;
-    if (_reportingChatIds.contains(chatId)) return;
-    if (_streamingChatIds.contains(chatId)) return;
-    if (_pendingReports[chatId]?.isNotEmpty != true) return;
-
-    // 先确认会话还在，再清队列：读失败时任务留在待汇报里等下一次收尾，
-    // 不静默丢掉（汇报是附加路径，但「什么都没发生」最难排查）。
-    ChatEntity? chat;
-    try {
-      chat = await _chatRepo.getChatById(chatId);
-    } catch (e) {
-      LoggerUtil.w('Background task report deferred: $e');
-      return;
-    }
-    if (chat == null) {
-      _pendingReports.remove(chatId);
-      return;
-    }
-
-    // 仓库读取期间可能启动了 run 或确认了通知，不能使用读取前的队列快照。
-    if (isRewindingChat(chatId) || _streamingChatIds.contains(chatId)) return;
-    final pending = _pendingReports
-        .remove(chatId)
-        ?.where(
-          (task) =>
-              chat!.rewoundAt == null ||
-              task.startedAt.isAfter(chat.rewoundAt!),
-        )
-        .toList();
-    if (pending == null || pending.isEmpty) return;
-    try {
-      await _runReport(chat, List.of(pending));
-    } catch (error) {
-      _pendingReports.putIfAbsent(chatId, () => []).addAll(pending);
-      LoggerUtil.w('Background report deferred: $error');
-    }
-  }
-
-  /// 自动汇报回合。
-  ///
-  /// 与 [send] 的关键差异（都是「用户不在场」这一条的推论）：
-  /// - **不落用户消息**：汇报内容（构建日志、命令 stdout）是外部文本，
-  ///   以 user 角色进历史会让它成为 AI 审批的授权依据
-  ///   （PermissionReviewContext 只读 user/assistant 正文）。任务输出只以
-  ///   `background_task` 工具结果的形态进入上下文，天然不是授权来源。
-  /// - **沿用该会话的审批模式**：工具调用仍由手动 / AI 审核 / 所有权限处理；
-  ///   AI 审核只使用原始对话，任务输出不能成为授权依据。
-  /// - **不能再启动后台任务**：避免「任务→汇报→任务」的无限链。
-  Future<void> _runReport(ChatEntity chat, List<BackgroundTask> tasks) async {
-    final chatId = chat.id!;
-    // chat 来自仓库读取，是用户刚改过档位后的最新一行。
-    _approvalModeByChat[chatId] = chat.approvalMode;
-    if (_runIdByChat.containsKey(chatId)) {
-      // 期间有人抢先起了 run（用户消息等）：把任务放回待汇报，run 收尾时再来。
-      _pendingReports.putIfAbsent(chatId, () => []).addAll(tasks);
-      return;
-    }
-
-    final activity = await _claimSession(chatId);
-    if (isRewindingChat(chatId)) {
-      await activity?.release();
-      throw StateError('Session is being rewound.');
-    }
-    final runId = ++_nextRunId;
-    final statistics = RunStatistics(
-      id: const IdGenerator().next(),
-      startedAt: DateTime.now(),
+    final decision = await _permissionPrompt(
+      chatId,
+      toolName,
+      arguments,
+      cancelToken,
     );
-    final cancelToken = CancelToken();
-    final settled = Completer<void>();
-    _reportingChatIds.add(chatId);
-    _streamingChatIds.add(chatId);
-    _runIdByChat[chatId] = runId;
-    _cancelTokenByChat[chatId] = cancelToken;
-    _settledByChat[chatId] = settled;
-    _workspaceByChat[chatId] = _resolveWorkspace(chat);
-
-    void emit(RunEvent event) {
-      if (!_internalEvents.isClosed) {
-        _internalEvents.add(InternalRunEvent(chatId, event));
-      }
-    }
-
-    try {
-      _reportCutoffs[chatId] = (await _chatRepo.getChatById(chatId))?.rewoundAt;
-      cancelToken.throwIfCancelled();
-      tasks = tasks
-          .where(
-            (task) =>
-                _reportCutoffs[chatId] == null ||
-                task.startedAt.isAfter(_reportCutoffs[chatId]!),
-          )
-          .toList();
-      if (tasks.isEmpty) return;
-      emit(const RunIterationChanged(0));
-      emit(const RunToolNameChanged(null));
-
-      final model = await _modelRepo.getModelById(chat.modelId);
-      cancelToken.throwIfCancelled();
-      if (model == null) return;
-      final provider = await _supportService.getProviderForModel(
-        model.providerId,
-      );
-      cancelToken.throwIfCancelled();
-      if (provider == null) return;
-
-      final sentinelKey = chat.hasSentinel
-          ? chat.sentinelId.toString()
-          : _directChatSentinelKey;
-      final digestMessages = await ExperienceDigest.messagesForSentinel(
-        repository: _experienceRepository,
-        sentinelId: sentinelKey,
-        workspacePath: chat.workspacePath,
-      );
-      cancelToken.throwIfCancelled();
-      final sentinel = chat.sentinelId == null
-          ? null
-          : await _sentinelRepo.getSentinelById(chat.sentinelId!);
-      cancelToken.throwIfCancelled();
-      final persistedMessages = await _messageService.buildMessages(
-        chat: chat,
-        sentinel: sentinel,
-        includeReasoning: model.reasoning,
-      );
-      cancelToken.throwIfCancelled();
-      final baseMessages = [
-        ...persistedMessages,
-        ...?digestMessages,
-        // 汇报说明作为本轮最后一条 user 消息（不落库）：汇报回合不写用户
-        // 消息，历史以上一轮的 assistant 回答结尾，直接发出去 Messages 协议
-        // 会当作 prefill 拒绝（部分兼容端同样要求末条是 user / tool），其余
-        // 模型则会接着续写上一条回答。它只含固定说明与任务命令，不含任务
-        // 输出；AI 审核读的是落库的对话，这条不会成为授权依据。
-        ChatMessage.user(_backgroundReportPrompt(tasks)),
-      ];
-      // 始终构建审核上下文：档位可能在运行中切到 Auto，权限门要能立即用上。
-      final reviewContext = PermissionReviewContext.fromMessages(
-        await _messageRepo.getMessagesByChatId(chatId),
-      );
-      cancelToken.throwIfCancelled();
-
-      final assistantMessage = await _chatStore.appendAssistantPlaceholder(
-        chatId,
-        runStatistics: statistics,
-      );
-      _liveMessages[chatId] = assistantMessage;
-      emit(RunAssistantAppended(assistantMessage));
-
-      final stream = _agentService.run(
-        runId: runId,
-        chat: chat,
-        provider: provider,
-        model: model,
-        baseMessages: baseMessages,
-        currentMessageId: () => _liveMessages[chatId]?.id,
-        experiencePrompt: ExperiencePrompt.hint,
-        // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
-        // 汇报说明在上面的末条 user 消息里，不能顶替掉它
-        runtimePrompt: _runtimeEnvironment == null
-            ? null
-            : RuntimeContext.runtimeContextPrompt(
-                _runtimeEnvironment,
-                workspace: _workspaceByChat[chatId],
-              ),
-        sentinelId: sentinelKey,
-        hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
-        enabledTools: sentinel?.enabledTools?.toSet(),
-        permissionService: _permissionService,
-        permissionReviewContext: reviewContext,
-        currentApprovalMode: () =>
-            _approvalModeByChat[chatId] ?? chat.approvalMode,
-        onPermission: (toolName, arguments) =>
-            _askPermission(chatId, toolName, arguments, cancelToken),
-        cancelToken: cancelToken,
-        workspace: _workspaceByChat[chatId],
-        allowReflection: false,
-        allowBackgroundTasks: false,
-        pendingBackgroundTasks: () => _pendingBackgroundTasks(chatId),
-      );
-
-      await for (final event in _consumeStream(
-        chat,
-        assistantMessage,
-        stream,
-        cancelToken,
-      )) {
-        emit(event);
-      }
-
-      await _chatStore.updateChatTimestamp(chat);
-      emit(const RunListReload());
-    } on CancelledException {
-      // 用户取消/删除会话：_consumeStream 已把取消状态落库。
-    } catch (e) {
-      // 汇报是附加路径：失败不能影响主流程，也不能留下一个半截的占位。
-      LoggerUtil.w('Background task report run failed: $e');
-      final live = _liveMessages[chatId];
-      if (live != null && live.content.isEmpty) {
-        await _chatStore.recordErrorOnMessage(live, e);
-      }
-    } finally {
-      if (_runIdByChat[chatId] == runId) {
-        _streamingChatIds.remove(chatId);
-        _runIdByChat.remove(chatId);
-        _cancelTokenByChat.remove(chatId);
-        _settledByChat.remove(chatId);
-        _liveMessages.remove(chatId);
-        _workspaceByChat.remove(chatId);
-      }
-      _reportingChatIds.remove(chatId);
-      try {
-        await activity?.release();
-      } finally {
-        if (!settled.isCompleted) settled.complete();
-      }
-    }
-
-    // 汇报期间用户可能发过消息：TUI 那条路径会把它落库进协调层的排队队列，
-    // 而汇报 run 不走 send，所以这里补一次接续，别让用户的消息等到下次发言。
-    await for (final event in _continuePendingInputs(chatId, jsonMode: false)) {
-      emit(event);
-    }
-
-    // 汇报期间又有任务结束（同一会话的另一个后台任务）：它会被挡在
-    // _reportingChatIds 外而留在待汇报里，这里补一次接续。
-    // 递归有界：汇报回合不允许启动后台任务，所以它自己不会制造新的完成事件。
-    await _drainPendingReport(chatId);
+    cancelToken.throwIfCancelled();
+    return decision.approved;
   }
 
   /// 汇报回合的说明（作为请求末尾的 user 消息发送，不进持久化历史）。
@@ -923,7 +619,58 @@ class AgentRunCoordinator {
     return buffer.toString().trimRight();
   }
 
-  // ─── 内部 ─────────────────────────────────────────────────
+  // ─── 后台任务汇报 ─────────────────────────────────────────
+
+  Future<SessionActivityLease?> _claimSession(String chatId) async {
+    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) {
+      throw StateError('Session is busy in another operation.');
+    }
+    final started = Completer<void>();
+    _starting[chatId] = started;
+    SessionActivityLease? lease;
+    try {
+      final repository = _messageRepo;
+      if (repository is SessionRewindRepository) {
+        lease = await (repository as SessionRewindRepository)
+            .acquireSessionActivity(chatId);
+      }
+      if (isRewindingChat(chatId)) {
+        await lease?.release();
+        throw StateError('Session is being rewound.');
+      }
+      return lease;
+    } finally {
+      _starting.remove(chatId);
+      started.complete();
+    }
+  }
+
+  /// 为已宣布但无对应结果的工具调用合成结果（追加到 [toolResultsJson]），
+  /// 保证落库的 assistant 消息 tool_calls 永远被 tool 消息全覆盖。
+  ///
+  /// [toolCallsJson]/[toolResultsJson] 是 `_consumeStream` 的流式累积缓冲。
+  MessageEntity _closeOpenToolCalls(
+    MessageEntity msg,
+    String reason,
+    List<Map<String, dynamic>> toolCallsJson,
+    List<Map<String, dynamic>> toolResultsJson,
+  ) {
+    final covered = toolResultsJson.map((t) => t['id']).toSet();
+    var changed = false;
+    for (final tc in toolCallsJson) {
+      final id = tc['id'] as String;
+      if (!covered.contains(id)) {
+        toolResultsJson.add({
+          'id': id,
+          'name': tc['name'],
+          'result': 'Error: $reason',
+        });
+        changed = true;
+      }
+    }
+    if (!changed) return msg;
+    return msg.copyWith(toolResults: jsonEncode(toolResultsJson));
+  }
 
   /// 消费 Agent 流，产出 [RunEvent]。
   ///
@@ -1230,31 +977,109 @@ class AgentRunCoordinator {
     }
   }
 
-  /// 为已宣布但无对应结果的工具调用合成结果（追加到 [toolResultsJson]），
-  /// 保证落库的 assistant 消息 tool_calls 永远被 tool 消息全覆盖。
+  /// 把该会话排队中的用户消息接续成新 run，产出它的事件流。
   ///
-  /// [toolCallsJson]/[toolResultsJson] 是 `_consumeStream` 的流式累积缓冲。
-  MessageEntity _closeOpenToolCalls(
-    MessageEntity msg,
-    String reason,
-    List<Map<String, dynamic>> toolCallsJson,
-    List<Map<String, dynamic>> toolResultsJson,
-  ) {
-    final covered = toolResultsJson.map((t) => t['id']).toSet();
-    var changed = false;
-    for (final tc in toolCallsJson) {
-      final id = tc['id'] as String;
-      if (!covered.contains(id)) {
-        toolResultsJson.add({
-          'id': id,
-          'name': tc['name'],
-          'result': 'Error: $reason',
-        });
-        changed = true;
-      }
+  /// [send] 与内部汇报 run 的收尾共用：排队对用户的承诺是「消息不丢」，
+  /// 不能因为排队期间跑的是汇报 run 就断掉——汇报 run 不走 [send]，
+  /// 没有那一段收尾。
+  Stream<RunEvent> _continuePendingInputs(
+    String chatId, {
+    required bool jsonMode,
+  }) async* {
+    await _rewinds[chatId]?.future;
+    final pending = _pendingInputs[chatId];
+    if (pending == null || pending.isEmpty) return;
+    // 排队期间用户可能改过档位、模型或工作文件夹：按落库后的最新会话行
+    // 起 run，而不是入队那一刻的快照。
+    final latest = await _chatRepo.getChatById(chatId);
+    if (latest == null) {
+      // 删除竞态防护：chat 已删除则丢弃排队消息
+      _pendingInputs.remove(chatId);
+      return;
     }
-    if (!changed) return msg;
-    return msg.copyWith(toolResults: jsonEncode(toolResultsJson));
+    final next = pending.removeAt(0);
+    yield* send(
+      message: next,
+      chat: latest,
+      jsonMode: jsonMode,
+      persistUserMessage: false,
+    );
+  }
+
+  /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
+  Future<void> _drainPendingReport(String chatId) async {
+    if (isRewindingChat(chatId) || _starting.containsKey(chatId)) return;
+    if (_reportingChatIds.contains(chatId)) return;
+    if (_streamingChatIds.contains(chatId)) return;
+    if (_pendingReports[chatId]?.isNotEmpty != true) return;
+
+    // 先确认会话还在，再清队列：读失败时任务留在待汇报里等下一次收尾，
+    // 不静默丢掉（汇报是附加路径，但「什么都没发生」最难排查）。
+    ChatEntity? chat;
+    try {
+      chat = await _chatRepo.getChatById(chatId);
+    } catch (e) {
+      LoggerUtil.w('Background task report deferred: $e');
+      return;
+    }
+    if (chat == null) {
+      _pendingReports.remove(chatId);
+      return;
+    }
+
+    // 仓库读取期间可能启动了 run 或确认了通知，不能使用读取前的队列快照。
+    if (isRewindingChat(chatId) || _streamingChatIds.contains(chatId)) return;
+    final pending = _pendingReports
+        .remove(chatId)
+        ?.where(
+          (task) =>
+              chat!.rewoundAt == null ||
+              task.startedAt.isAfter(chat.rewoundAt!),
+        )
+        .toList();
+    if (pending == null || pending.isEmpty) return;
+    try {
+      await _runReport(chat, List.of(pending));
+    } catch (error) {
+      _pendingReports.putIfAbsent(chatId, () => []).addAll(pending);
+      LoggerUtil.w('Background report deferred: $error');
+    }
+  }
+
+  /// 后台任务结束的回调：决定「现在汇报」还是「攒到会话空闲再汇报」。
+  void _onBackgroundTaskCompleted(BackgroundTask task) {
+    if (isRewindingChat(task.chatId)) return;
+    if (!task.shouldReportCompletion) return;
+    if (!_agentSettings.backgroundTaskReports.value) return;
+    final chatId = task.chatId;
+    _pendingReports.putIfAbsent(chatId, () => []).add(task);
+    unawaited(_drainPendingReport(chatId));
+  }
+
+  // ─── 内部 ─────────────────────────────────────────────────
+
+  List<BackgroundTask> _pendingBackgroundTasks(String chatId) => [
+    for (final task in _pendingReports[chatId] ?? const <BackgroundTask>[])
+      if (_reportCutoffs[chatId] == null ||
+          task.startedAt.isAfter(_reportCutoffs[chatId]!))
+        task,
+  ];
+
+  /// run 还没开始就失败（模型 / provider 找不到）时，把错误作为一条 assistant
+  /// 消息落进会话：与运行中出错（[ChatStore.recordErrorOnMessage]）
+  /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
+  /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
+  Future<RunEvent> _recordSetupError(
+    String chatId,
+    String message,
+    RunStatistics statistics,
+  ) async {
+    final placeholder = await _chatStore.appendAssistantPlaceholder(
+      chatId,
+      runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+    );
+    final failed = await _chatStore.recordErrorOnMessage(placeholder, message);
+    return RunAssistantAppended(failed);
   }
 
   // ─── 权限 ──────────────────────────────────────────────────
@@ -1279,19 +1104,194 @@ class AgentRunCoordinator {
     }
   }
 
-  Future<bool> _askPermission(
-    String chatId,
-    String toolName,
-    String arguments,
-    CancelToken cancelToken,
-  ) async {
-    final decision = await _permissionPrompt(
-      chatId,
-      toolName,
-      arguments,
-      cancelToken,
+  /// 自动汇报回合。
+  ///
+  /// 与 [send] 的关键差异（都是「用户不在场」这一条的推论）：
+  /// - **不落用户消息**：汇报内容（构建日志、命令 stdout）是外部文本，
+  ///   以 user 角色进历史会让它成为 AI 审批的授权依据
+  ///   （PermissionReviewContext 只读 user/assistant 正文）。任务输出只以
+  ///   `background_task` 工具结果的形态进入上下文，天然不是授权来源。
+  /// - **沿用该会话的审批模式**：工具调用仍由手动 / AI 审核 / 所有权限处理；
+  ///   AI 审核只使用原始对话，任务输出不能成为授权依据。
+  /// - **不能再启动后台任务**：避免「任务→汇报→任务」的无限链。
+  Future<void> _runReport(ChatEntity chat, List<BackgroundTask> tasks) async {
+    final chatId = chat.id!;
+    // chat 来自仓库读取，是用户刚改过档位后的最新一行。
+    _approvalModeByChat[chatId] = chat.approvalMode;
+    if (_runIdByChat.containsKey(chatId)) {
+      // 期间有人抢先起了 run（用户消息等）：把任务放回待汇报，run 收尾时再来。
+      _pendingReports.putIfAbsent(chatId, () => []).addAll(tasks);
+      return;
+    }
+
+    final activity = await _claimSession(chatId);
+    if (isRewindingChat(chatId)) {
+      await activity?.release();
+      throw StateError('Session is being rewound.');
+    }
+    final runId = ++_nextRunId;
+    final statistics = RunStatistics(
+      id: const IdGenerator().next(),
+      startedAt: DateTime.now(),
     );
-    cancelToken.throwIfCancelled();
-    return decision.approved;
+    final cancelToken = CancelToken();
+    final settled = Completer<void>();
+    _reportingChatIds.add(chatId);
+    _streamingChatIds.add(chatId);
+    _runIdByChat[chatId] = runId;
+    _cancelTokenByChat[chatId] = cancelToken;
+    _settledByChat[chatId] = settled;
+    _workspaceByChat[chatId] = _resolveWorkspace(chat);
+
+    void emit(RunEvent event) {
+      if (!_internalEvents.isClosed) {
+        _internalEvents.add(InternalRunEvent(chatId, event));
+      }
+    }
+
+    try {
+      _reportCutoffs[chatId] = (await _chatRepo.getChatById(chatId))?.rewoundAt;
+      cancelToken.throwIfCancelled();
+      tasks = tasks
+          .where(
+            (task) =>
+                _reportCutoffs[chatId] == null ||
+                task.startedAt.isAfter(_reportCutoffs[chatId]!),
+          )
+          .toList();
+      if (tasks.isEmpty) return;
+      emit(const RunIterationChanged(0));
+      emit(const RunToolNameChanged(null));
+
+      final model = await _modelRepo.getModelById(chat.modelId);
+      cancelToken.throwIfCancelled();
+      if (model == null) return;
+      final provider = await _supportService.getProviderForModel(
+        model.providerId,
+      );
+      cancelToken.throwIfCancelled();
+      if (provider == null) return;
+
+      final sentinelKey = chat.hasSentinel
+          ? chat.sentinelId.toString()
+          : _directChatSentinelKey;
+      final digestMessages = await ExperienceDigest.messagesForSentinel(
+        repository: _experienceRepository,
+        sentinelId: sentinelKey,
+        workspacePath: chat.workspacePath,
+      );
+      cancelToken.throwIfCancelled();
+      final sentinel = chat.sentinelId == null
+          ? null
+          : await _sentinelRepo.getSentinelById(chat.sentinelId!);
+      cancelToken.throwIfCancelled();
+      final persistedMessages = await _messageService.buildMessages(
+        chat: chat,
+        sentinel: sentinel,
+        includeReasoning: model.reasoning,
+      );
+      cancelToken.throwIfCancelled();
+      final baseMessages = [
+        ...persistedMessages,
+        ...?digestMessages,
+        // 汇报说明作为本轮最后一条 user 消息（不落库）：汇报回合不写用户
+        // 消息，历史以上一轮的 assistant 回答结尾，直接发出去 Messages 协议
+        // 会当作 prefill 拒绝（部分兼容端同样要求末条是 user / tool），其余
+        // 模型则会接着续写上一条回答。它只含固定说明与任务命令，不含任务
+        // 输出；AI 审核读的是落库的对话，这条不会成为授权依据。
+        ChatMessage.user(_backgroundReportPrompt(tasks)),
+      ];
+      // 始终构建审核上下文：档位可能在运行中切到 Auto，权限门要能立即用上。
+      final reviewContext = PermissionReviewContext.fromMessages(
+        await _messageRepo.getMessagesByChatId(chatId),
+      );
+      cancelToken.throwIfCancelled();
+
+      final assistantMessage = await _chatStore.appendAssistantPlaceholder(
+        chatId,
+        runStatistics: statistics,
+      );
+      _liveMessages[chatId] = assistantMessage;
+      emit(RunAssistantAppended(assistantMessage));
+
+      final stream = _agentService.run(
+        runId: runId,
+        chat: chat,
+        provider: provider,
+        model: model,
+        baseMessages: baseMessages,
+        currentMessageId: () => _liveMessages[chatId]?.id,
+        experiencePrompt: ExperiencePrompt.hint,
+        // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
+        // 汇报说明在上面的末条 user 消息里，不能顶替掉它
+        runtimePrompt: _runtimeEnvironment == null
+            ? null
+            : RuntimeContext.runtimeContextPrompt(
+                _runtimeEnvironment,
+                workspace: _workspaceByChat[chatId],
+              ),
+        sentinelId: sentinelKey,
+        hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
+        enabledTools: sentinel?.enabledTools?.toSet(),
+        permissionService: _permissionService,
+        permissionReviewContext: reviewContext,
+        currentApprovalMode: () =>
+            _approvalModeByChat[chatId] ?? chat.approvalMode,
+        onPermission: (toolName, arguments) =>
+            _askPermission(chatId, toolName, arguments, cancelToken),
+        cancelToken: cancelToken,
+        workspace: _workspaceByChat[chatId],
+        allowReflection: false,
+        allowBackgroundTasks: false,
+        pendingBackgroundTasks: () => _pendingBackgroundTasks(chatId),
+      );
+
+      await for (final event in _consumeStream(
+        chat,
+        assistantMessage,
+        stream,
+        cancelToken,
+      )) {
+        emit(event);
+      }
+
+      await _chatStore.updateChatTimestamp(chat);
+      emit(const RunListReload());
+    } on CancelledException {
+      // 用户取消/删除会话：_consumeStream 已把取消状态落库。
+    } catch (e) {
+      // 汇报是附加路径：失败不能影响主流程，也不能留下一个半截的占位。
+      LoggerUtil.w('Background task report run failed: $e');
+      final live = _liveMessages[chatId];
+      if (live != null && live.content.isEmpty) {
+        await _chatStore.recordErrorOnMessage(live, e);
+      }
+    } finally {
+      if (_runIdByChat[chatId] == runId) {
+        _streamingChatIds.remove(chatId);
+        _runIdByChat.remove(chatId);
+        _cancelTokenByChat.remove(chatId);
+        _settledByChat.remove(chatId);
+        _liveMessages.remove(chatId);
+        _workspaceByChat.remove(chatId);
+      }
+      _reportingChatIds.remove(chatId);
+      try {
+        await activity?.release();
+      } finally {
+        if (!settled.isCompleted) settled.complete();
+      }
+    }
+
+    // 汇报期间用户可能发过消息：TUI 那条路径会把它落库进协调层的排队队列，
+    // 而汇报 run 不走 send，所以这里补一次接续，别让用户的消息等到下次发言。
+    await for (final event in _continuePendingInputs(chatId, jsonMode: false)) {
+      emit(event);
+    }
+
+    // 汇报期间又有任务结束（同一会话的另一个后台任务）：它会被挡在
+    // _reportingChatIds 外而留在待汇报里，这里补一次接续。
+    // 递归有界：汇报回合不允许启动后台任务，所以它自己不会制造新的完成事件。
+    await _drainPendingReport(chatId);
   }
 }

@@ -7,16 +7,16 @@ import 'package:nocterm/nocterm.dart';
 /// [visible] 为 false 时不渲染内容。过滤逻辑在 app 层(监听输入框),
 /// 本组件只负责渲染,不做按键处理。
 class CommandSuggestions extends StatelessComponent {
+  final bool visible;
+
+  /// (命令, 描述) 列表,已按输入前缀过滤。
+  final List<(String, String)> commands;
+
   const CommandSuggestions({
     super.key,
     required this.visible,
     required this.commands,
   });
-
-  final bool visible;
-
-  /// (命令, 描述) 列表,已按输入前缀过滤。
-  final List<(String, String)> commands;
 
   @override
   Component build(BuildContext context) {

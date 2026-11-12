@@ -42,6 +42,36 @@ abstract final class AtomicFileWrite {
         (temporary) => temporary.writeAsBytes(content, flush: true),
       );
 
+  /// 把权限位套到 [path] 上。
+  ///
+  /// dart:io 没有 chmod，只能起一个进程。用八进制字符串而不是数字：`chmod` 把
+  /// 纯数字参数当十进制解释，传 493 会得到另一个模式。
+  static Future<void> _applyMode(String path, int mode) async {
+    final result = await Process.run('chmod', [mode.toRadixString(8), path]);
+    if (result.exitCode != 0) {
+      throw FileSystemException(
+        'chmod ${mode.toRadixString(8)} failed: ${result.stderr}',
+        path,
+      );
+    }
+  }
+
+  /// 目标已存在时的权限位（只取低 12 位，不含文件类型）；否则 null。
+  ///
+  /// Windows 没有 POSIX 权限位，直接返回 null 用默认权限——那里的符号链接创建
+  /// 还需要额外权限，本节防的那类替换风险本来就低得多。
+  static int? _existingMode(File target) {
+    if (Platform.isWindows) return null;
+    try {
+      final stat = target.statSync();
+      if (stat.type == FileSystemEntityType.notFound) return null;
+      return stat.mode & 0xFFF;
+    } catch (_) {
+      // 取不到就当新文件：给默认权限总好过让整次写入失败
+      return null;
+    }
+  }
+
   static Future<void> _replaceContentAtomically(
     File target,
     Future<void> Function(File temporary) write,
@@ -65,36 +95,6 @@ abstract final class AtomicFileWrite {
         // 临时文件可能压根没建成；清理失败也不能盖住原始错误
       }
       rethrow;
-    }
-  }
-
-  /// 目标已存在时的权限位（只取低 12 位，不含文件类型）；否则 null。
-  ///
-  /// Windows 没有 POSIX 权限位，直接返回 null 用默认权限——那里的符号链接创建
-  /// 还需要额外权限，本节防的那类替换风险本来就低得多。
-  static int? _existingMode(File target) {
-    if (Platform.isWindows) return null;
-    try {
-      final stat = target.statSync();
-      if (stat.type == FileSystemEntityType.notFound) return null;
-      return stat.mode & 0xFFF;
-    } catch (_) {
-      // 取不到就当新文件：给默认权限总好过让整次写入失败
-      return null;
-    }
-  }
-
-  /// 把权限位套到 [path] 上。
-  ///
-  /// dart:io 没有 chmod，只能起一个进程。用八进制字符串而不是数字：`chmod` 把
-  /// 纯数字参数当十进制解释，传 493 会得到另一个模式。
-  static Future<void> _applyMode(String path, int mode) async {
-    final result = await Process.run('chmod', [mode.toRadixString(8), path]);
-    if (result.exitCode != 0) {
-      throw FileSystemException(
-        'chmod ${mode.toRadixString(8)} failed: ${result.stderr}',
-        path,
-      );
     }
   }
 }

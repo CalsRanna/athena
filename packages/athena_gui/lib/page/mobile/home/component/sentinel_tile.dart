@@ -1,9 +1,8 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class SentinelTile extends StatelessWidget {
   final SentinelEntity sentinel;

@@ -250,12 +250,6 @@ void main() {
   });
 }
 
-class _SentRun {
-  _SentRun(this.message, this.chat);
-  final MessageEntity message;
-  final ChatEntity chat;
-}
-
 /// 只实现 ChatViewModel 用到的那部分协调层接口；run 的进度由用例推进。
 class _FakeStreamDelegate implements AgentStreamDelegate {
   final Map<String, Completer<void>> settled = {};
@@ -265,15 +259,7 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
   final _internal = StreamController<InternalRunEvent>.broadcast(sync: true);
   StreamController<RunEvent>? _held;
 
-  void emitInternal(String chatId, RunEvent event) =>
-      _internal.add(InternalRunEvent(chatId, event));
-
-  /// 下一次 send 的事件流保持打开，直到返回的控制器被关闭。
-  StreamController<RunEvent> holdNextSend() =>
-      _held = StreamController<RunEvent>();
-
-  @override
-  Stream<InternalRunEvent> get internalEvents => _internal.stream;
+  int _nextMessageId = 1000;
 
   @override
   Stream<ApprovalRequest> get approvalRequests => const Stream.empty();
@@ -282,18 +268,26 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
   Stream<ElicitRequest> get elicitRequests => const Stream.empty();
 
   @override
+  Stream<InternalRunEvent> get internalEvents => _internal.stream;
+
+  @override
   Set<String> get streamingChatIds => settled.keys.toSet();
+
+  void emitInternal(String chatId, RunEvent event) =>
+      _internal.add(InternalRunEvent(chatId, event));
+
+  /// 下一次 send 的事件流保持打开，直到返回的控制器被关闭。
+  StreamController<RunEvent> holdNextSend() =>
+      _held = StreamController<RunEvent>();
 
   @override
   bool isStreamingChat(String chatId) => settled.containsKey(chatId);
 
   @override
-  Future<void>? settledOf(String chatId) => settled[chatId]?.future;
-
-  @override
   MessageEntity? liveMessage(String chatId) => null;
 
-  int _nextMessageId = 1000;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   /// 与真实协调层一样先报「用户消息已落库」：ChatViewModel 据此把它移出排队区。
   @override
@@ -312,9 +306,15 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
   }
 
   @override
-  void stop(String chatId, {bool stopBackgroundTasks = true}) =>
-      onStop?.call(chatId);
+  Future<void>? settledOf(String chatId) => settled[chatId]?.future;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  void stop(String chatId, {bool stopBackgroundTasks = true}) =>
+      onStop?.call(chatId);
+}
+
+class _SentRun {
+  final MessageEntity message;
+  final ChatEntity chat;
+  _SentRun(this.message, this.chat);
 }

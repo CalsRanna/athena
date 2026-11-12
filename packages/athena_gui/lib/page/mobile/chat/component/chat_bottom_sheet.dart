@@ -1,24 +1,23 @@
 import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_gui/component/approval_mode_label.dart';
-import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/component/approval_mode_label.dart';
+import 'package:athena_gui/page/mobile/chat/component/approval_mode_dialog.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_configuration_dialog.dart';
 import 'package:athena_gui/page/mobile/chat/component/model_selector.dart';
+import 'package:athena_gui/page/mobile/chat/component/reasoning_effort_dialog.dart';
 import 'package:athena_gui/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/view_model/provider_view_model.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
+import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/page/mobile/chat/component/approval_mode_dialog.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/mobile/chat/component/reasoning_effort_dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort.dart';
 import 'package:flutter/widgets.dart';
-
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -54,46 +53,19 @@ class MobileChatBottomSheet extends StatefulWidget {
 }
 
 class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
-  ChatViewModel get chatViewModel => widget.chatViewModel;
-  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
-  ModelViewModel get modelViewModel => widget.modelViewModel;
-  ProviderViewModel get providerViewModel => widget.providerViewModel;
-
   late final _sentinelId = signal<String?>(null);
   late final _modelId = signal<String>('');
   late final _temperature = signal<double>(1.0);
   late final _retention = signal<int>(-1);
+
   late final _reasoningEffort = signal<String>(
     ChatEntity.defaultReasoningEffort,
   );
   late final _approvalMode = signal<ApprovalMode>(ApprovalMode.defaultMode);
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize from chat if exists, otherwise from viewModel's current values
-    if (widget.chat != null) {
-      _sentinelId.value = widget.chat!.sentinelId;
-      _modelId.value = widget.chat!.modelId;
-      _temperature.value = widget.chat!.temperature;
-      _retention.value = widget.chat!.retention;
-      _reasoningEffort.value = widget.chat!.reasoningEffort;
-      _approvalMode.value = widget.chat!.approvalMode;
-    } else {
-      _sentinelId.value =
-          (chatViewModel.currentSentinel.value ??
-                  sentinelViewModel.defaultSentinel.value)
-              .id;
-      _modelId.value =
-          chatViewModel.currentModel.value?.id ??
-          modelViewModel.enabledModels.value.firstOrNull?.id ??
-          '';
-      _temperature.value = chatViewModel.currentTemperature.value;
-      _retention.value = chatViewModel.currentRetention.value;
-      _reasoningEffort.value = chatViewModel.currentReasoningEffort.value;
-      _approvalMode.value = chatViewModel.currentApprovalMode.value;
-    }
-  }
+  ChatViewModel get chatViewModel => widget.chatViewModel;
+  ModelViewModel get modelViewModel => widget.modelViewModel;
+  ProviderViewModel get providerViewModel => widget.providerViewModel;
+  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -174,15 +146,42 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize from chat if exists, otherwise from viewModel's current values
+    if (widget.chat != null) {
+      _sentinelId.value = widget.chat!.sentinelId;
+      _modelId.value = widget.chat!.modelId;
+      _temperature.value = widget.chat!.temperature;
+      _retention.value = widget.chat!.retention;
+      _reasoningEffort.value = widget.chat!.reasoningEffort;
+      _approvalMode.value = widget.chat!.approvalMode;
+    } else {
+      _sentinelId.value =
+          (chatViewModel.currentSentinel.value ??
+                  sentinelViewModel.defaultSentinel.value)
+              .id;
+      _modelId.value =
+          chatViewModel.currentModel.value?.id ??
+          modelViewModel.enabledModels.value.firstOrNull?.id ??
+          '';
+      _temperature.value = chatViewModel.currentTemperature.value;
+      _retention.value = chatViewModel.currentRetention.value;
+      _reasoningEffort.value = chatViewModel.currentReasoningEffort.value;
+      _approvalMode.value = chatViewModel.currentApprovalMode.value;
+    }
+  }
+
   void navigateChatConfiguration() {
     if (widget.chat == null) return;
     MobileChatConfigurationRoute(chat: widget.chat!).push<void>(context);
   }
 
-  void openModelSelectorDialog() {
-    final dialog = MobileModelDialog(
-      groupedModels: modelViewModel.groupedEnabledModels.value,
-      onTap: _updateModel,
+  void openApprovalModeDialog() {
+    final dialog = MobileApprovalModeDialog(
+      current: _approvalMode.value,
+      onTap: _updateApprovalMode,
     );
     AthenaDialog.show(dialog);
   }
@@ -204,32 +203,20 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     AthenaDialog.show(dialog);
   }
 
+  void openModelSelectorDialog() {
+    final dialog = MobileModelDialog(
+      groupedModels: modelViewModel.groupedEnabledModels.value,
+      onTap: _updateModel,
+    );
+    AthenaDialog.show(dialog);
+  }
+
   void openReasoningEffortDialog() {
     final dialog = MobileReasoningEffortDialog(
       current: _reasoningEffort.value,
       onTap: _updateReasoningEffort,
     );
     AthenaDialog.show(dialog);
-  }
-
-  void _updateReasoningEffort(String value) {
-    widget.onReasoningEffortChanged?.call(value);
-    _reasoningEffort.value = value;
-    AthenaDialog.dismiss();
-  }
-
-  void openApprovalModeDialog() {
-    final dialog = MobileApprovalModeDialog(
-      current: _approvalMode.value,
-      onTap: _updateApprovalMode,
-    );
-    AthenaDialog.show(dialog);
-  }
-
-  void _updateApprovalMode(ApprovalMode mode) {
-    widget.onApprovalModeChanged?.call(mode);
-    _approvalMode.value = mode;
-    AthenaDialog.dismiss();
   }
 
   void openSentinelSelectorDialog() {
@@ -240,10 +227,22 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     AthenaDialog.show(dialog);
   }
 
+  void _updateApprovalMode(ApprovalMode mode) {
+    widget.onApprovalModeChanged?.call(mode);
+    _approvalMode.value = mode;
+    AthenaDialog.dismiss();
+  }
+
   void _updateModel(ModelEntity model) {
     widget.onModelChanged?.call(model);
     AthenaDialog.dismiss();
     _modelId.value = model.id ?? '';
+  }
+
+  void _updateReasoningEffort(String value) {
+    widget.onReasoningEffortChanged?.call(value);
+    _reasoningEffort.value = value;
+    AthenaDialog.dismiss();
   }
 
   void _updateSentinel(SentinelEntity sentinel) {

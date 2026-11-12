@@ -3,17 +3,13 @@ import 'dart:async';
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
+import 'package:athena_core/service/messages_adapter.dart';
 import 'package:athena_core/service/responses_adapter.dart';
 import 'package:athena_core/service/retry.dart';
 import 'package:athena_core/util/cancellable_stream.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
-
-/// 创建 [OpenAIClient] 的工厂签名。可通过构造参数注入，便于测试。
-typedef OpenAIClientFactory =
-    OpenAIClient Function({required String apiKey, required String? baseUrl});
 
 /// 创建 [anthropic.AnthropicClient] 的工厂签名。可通过构造参数注入，便于测试。
 typedef AnthropicClientFactory =
@@ -21,6 +17,10 @@ typedef AnthropicClientFactory =
       required String apiKey,
       required String baseUrl,
     });
+
+/// 创建 [OpenAIClient] 的工厂签名。可通过构造参数注入，便于测试。
+typedef OpenAIClientFactory =
+    OpenAIClient Function({required String apiKey, required String? baseUrl});
 
 /// 统一的 LLM API 客户端。
 ///
@@ -32,11 +32,6 @@ typedef AnthropicClientFactory =
 /// Messages 分别经 `responses_adapter.dart` / `messages_adapter.dart` 做形状
 /// 转换，对外仍是 Chat Completions 的请求与事件类型（上层不感知协议差异）。
 class LlmClient {
-  final OpenAIClientFactory _clientFactory;
-  final AnthropicClientFactory _anthropicClientFactory;
-  RetryConfig _retryConfig;
-  final Duration _streamIdleTimeout;
-
   /// 流式 chunk 之间的空闲超时：连接保持但无数据到达（WiFi 断流、
   /// 代理挂起等）时终止流，避免 `await for` 永久挂起。
   static const streamIdleTimeout = Duration(minutes: 2);
@@ -45,6 +40,12 @@ class LlmClient {
   /// 连接建立但服务端无响应（代理/中转挂起）会让请求永不返回，
   /// 造成上游 `isGenerating` 等状态永久卡死。
   static const fetchTimeout = Duration(minutes: 2);
+  final OpenAIClientFactory _clientFactory;
+  final AnthropicClientFactory _anthropicClientFactory;
+
+  RetryConfig _retryConfig;
+
+  final Duration _streamIdleTimeout;
 
   LlmClient({
     RetryConfig retryConfig = const RetryConfig(),
@@ -57,57 +58,32 @@ class LlmClient {
            anthropicClientFactory ?? _defaultAnthropicClientFactory,
        _streamIdleTimeout = streamIdleTimeout;
 
-  void updateRetryConfig(RetryConfig config) {
-    _retryConfig = config;
-  }
-
-  static OpenAIClient _defaultClientFactory({
-    required String apiKey,
-    required String? baseUrl,
+  /// 非流式完成请求。自动创建 client → 重试 → close。
+  Future<ChatCompletion> fetch({
+    required ProviderEntity provider,
+    required ChatCompletionCreateRequest request,
+    Future<void>? cancelSignal,
   }) {
-    return OpenAIClient.withApiKey(
-      apiKey,
-      baseUrl: baseUrl,
-      defaultHeaders: {
-        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-        'X-Title': 'Athena',
-      },
-    );
-  }
-
-  OpenAIClient _createClient(String apiKey, String? baseUrl) {
-    return _clientFactory(apiKey: apiKey, baseUrl: baseUrl);
-  }
-
-  static anthropic.AnthropicClient _defaultAnthropicClientFactory({
-    required String apiKey,
-    required String baseUrl,
-  }) {
-    return anthropic.AnthropicClient(
-      config: anthropic.AnthropicConfig(
-        authProvider: anthropic.ApiKeyProvider(apiKey),
-        baseUrl: baseUrl,
-        timeout: fetchTimeout,
-      ),
-    );
-  }
-
-  anthropic.AnthropicClient _createAnthropicClient(ProviderEntity provider) {
-    return _anthropicClientFactory(
-      apiKey: provider.apiKey,
-      baseUrl: _anthropicBaseUrl(provider.baseUrl),
-    );
-  }
-
-  /// Messages 的请求路径由 SDK 拼成 `baseUrl + /v1/messages`，而 Athena 的
-  /// provider 地址沿 OpenAI 兼容写法带 `/v1`（Anthropic 的兼容端点也是
-  /// `https://api.anthropic.com/v1`）。不剥掉就会拼出 `/v1/v1/messages`。
-  static String _anthropicBaseUrl(String baseUrl) {
-    var url = baseUrl.trim();
-    while (url.endsWith('/')) {
-      url = url.substring(0, url.length - 1);
+    switch (provider.apiFormat) {
+      case ApiFormat.chatCompletions:
+        return _fetchChatCompletions(
+          provider: provider,
+          request: request,
+          cancelSignal: cancelSignal,
+        );
+      case ApiFormat.responses:
+        return _fetchResponses(
+          provider: provider,
+          request: request,
+          cancelSignal: cancelSignal,
+        );
+      case ApiFormat.messages:
+        return _fetchMessages(
+          provider: provider,
+          request: request,
+          cancelSignal: cancelSignal,
+        );
     }
-    return url.endsWith('/v1') ? url.substring(0, url.length - 3) : url;
   }
 
   /// 流式完成请求。自动创建 client → 重试 → close。
@@ -156,62 +132,19 @@ class LlmClient {
     }, cancelSignal);
   }
 
-  Stream<ChatStreamEvent> _streamChatCompletions({
-    required ProviderEntity provider,
-    required ChatCompletionCreateRequest request,
-    Future<void>? cancelSignal,
-  }) async* {
-    final client = _createClient(provider.apiKey, provider.baseUrl);
-    try {
-      yield* Retry.retryStream(
-        () => LlmClient.withIdleTimeout(
-          ChatCompletionsState.normalizeChatCompletionsStream(
-            client.chat.completions.createStream(
-              ChatCompletionsState.restoreChatCompletionsRequest(
-                request,
-                provider,
-              ),
-              abortTrigger: cancelSignal,
-            ),
-            provider,
-            request.model,
-          ),
-          _streamIdleTimeout,
-        ),
-        config: _retryConfig,
-        abort: cancelSignal,
-      );
-    } finally {
-      client.close();
-    }
+  void updateRetryConfig(RetryConfig config) {
+    _retryConfig = config;
   }
 
-  /// 非流式完成请求。自动创建 client → 重试 → close。
-  Future<ChatCompletion> fetch({
-    required ProviderEntity provider,
-    required ChatCompletionCreateRequest request,
-    Future<void>? cancelSignal,
-  }) {
-    switch (provider.apiFormat) {
-      case ApiFormat.chatCompletions:
-        return _fetchChatCompletions(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-        );
-      case ApiFormat.responses:
-        return _fetchResponses(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-        );
-      case ApiFormat.messages:
-        return _fetchMessages(
-          provider: provider,
-          request: request,
-          cancelSignal: cancelSignal,
-        );
-    }
+  anthropic.AnthropicClient _createAnthropicClient(ProviderEntity provider) {
+    return _anthropicClientFactory(
+      apiKey: provider.apiKey,
+      baseUrl: _anthropicBaseUrl(provider.baseUrl),
+    );
+  }
+
+  OpenAIClient _createClient(String apiKey, String? baseUrl) {
+    return _clientFactory(apiKey: apiKey, baseUrl: baseUrl);
   }
 
   Future<ChatCompletion> _fetchChatCompletions({
@@ -244,31 +177,28 @@ class LlmClient {
     }
   }
 
-  Stream<ChatStreamEvent> _streamResponses({
+  Future<ChatCompletion> _fetchMessages({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
-  }) async* {
-    final client = _createClient(provider.apiKey, provider.baseUrl);
+  }) async {
+    final nativeRequest = MessagesAdapter.toMessageRequest(
+      request,
+      provider: provider,
+    );
+    final client = _createAnthropicClient(provider);
     try {
-      yield* Retry.retryStream(
-        () => LlmClient.withIdleTimeout(
-          ResponsesAdapter.normalizeResponsesStream(
-            client.responses.createStream(
-              ResponsesAdapter.toResponseRequest(
-                request,
-                stream: true,
-                provider: provider,
-              ),
-              abortTrigger: cancelSignal,
-            ),
-            provider: provider,
-            model: request.model,
-          ),
-          _streamIdleTimeout,
-        ),
+      final message = await Retry.retry(
+        () => client.messages
+            .create(nativeRequest, abortTrigger: cancelSignal)
+            .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
+      );
+      return MessagesAdapter.messageToChatCompletion(
+        message,
+        provider: provider,
+        request: nativeRequest,
       );
     } finally {
       client.close();
@@ -292,6 +222,36 @@ class LlmClient {
               .timeout(fetchTimeout),
           provider: provider,
           model: request.model,
+        ),
+        config: _retryConfig,
+        abort: cancelSignal,
+      );
+    } finally {
+      client.close();
+    }
+  }
+
+  Stream<ChatStreamEvent> _streamChatCompletions({
+    required ProviderEntity provider,
+    required ChatCompletionCreateRequest request,
+    Future<void>? cancelSignal,
+  }) async* {
+    final client = _createClient(provider.apiKey, provider.baseUrl);
+    try {
+      yield* Retry.retryStream(
+        () => LlmClient.withIdleTimeout(
+          ChatCompletionsState.normalizeChatCompletionsStream(
+            client.chat.completions.createStream(
+              ChatCompletionsState.restoreChatCompletionsRequest(
+                request,
+                provider,
+              ),
+              abortTrigger: cancelSignal,
+            ),
+            provider,
+            request.model,
+          ),
+          _streamIdleTimeout,
         ),
         config: _retryConfig,
         abort: cancelSignal,
@@ -339,28 +299,31 @@ class LlmClient {
     }
   }
 
-  Future<ChatCompletion> _fetchMessages({
+  Stream<ChatStreamEvent> _streamResponses({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
-  }) async {
-    final nativeRequest = MessagesAdapter.toMessageRequest(
-      request,
-      provider: provider,
-    );
-    final client = _createAnthropicClient(provider);
+  }) async* {
+    final client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      final message = await Retry.retry(
-        () => client.messages
-            .create(nativeRequest, abortTrigger: cancelSignal)
-            .timeout(fetchTimeout),
+      yield* Retry.retryStream(
+        () => LlmClient.withIdleTimeout(
+          ResponsesAdapter.normalizeResponsesStream(
+            client.responses.createStream(
+              ResponsesAdapter.toResponseRequest(
+                request,
+                stream: true,
+                provider: provider,
+              ),
+              abortTrigger: cancelSignal,
+            ),
+            provider: provider,
+            model: request.model,
+          ),
+          _streamIdleTimeout,
+        ),
         config: _retryConfig,
         abort: cancelSignal,
-      );
-      return MessagesAdapter.messageToChatCompletion(
-        message,
-        provider: provider,
-        request: nativeRequest,
       );
     } finally {
       client.close();
@@ -411,5 +374,43 @@ class LlmClient {
       unawaited(sub.cancel());
     };
     return controller.stream;
+  }
+
+  /// Messages 的请求路径由 SDK 拼成 `baseUrl + /v1/messages`，而 Athena 的
+  /// provider 地址沿 OpenAI 兼容写法带 `/v1`（Anthropic 的兼容端点也是
+  /// `https://api.anthropic.com/v1`）。不剥掉就会拼出 `/v1/v1/messages`。
+  static String _anthropicBaseUrl(String baseUrl) {
+    var url = baseUrl.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return url.endsWith('/v1') ? url.substring(0, url.length - 3) : url;
+  }
+
+  static anthropic.AnthropicClient _defaultAnthropicClientFactory({
+    required String apiKey,
+    required String baseUrl,
+  }) {
+    return anthropic.AnthropicClient(
+      config: anthropic.AnthropicConfig(
+        authProvider: anthropic.ApiKeyProvider(apiKey),
+        baseUrl: baseUrl,
+        timeout: fetchTimeout,
+      ),
+    );
+  }
+
+  static OpenAIClient _defaultClientFactory({
+    required String apiKey,
+    required String? baseUrl,
+  }) {
+    return OpenAIClient.withApiKey(
+      apiKey,
+      baseUrl: baseUrl,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
+    );
   }
 }

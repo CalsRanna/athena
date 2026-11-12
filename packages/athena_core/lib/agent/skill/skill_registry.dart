@@ -10,6 +10,12 @@ class SkillRegistry {
   /// Level 1 技能列表最大条数。超过此数量后，仅显示最近使用的技能。
   static const int maxLevel1Skills = 20;
 
+  static String get _homePath {
+    return Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '/';
+  }
+
   final SkillLoader _loader = SkillLoader();
   final Map<String, Skill> _skills = {};
 
@@ -37,25 +43,11 @@ class SkillRegistry {
   /// 访问时间的落盘是否启用（未 loadAll 过时为 false，避免误写文件）。
   bool _usageLoaded = false;
 
-  void loadAll({String? homeDir}) {
-    _homeDir = homeDir ?? _homePath;
+  List<Skill> get all => {..._skills, ..._builtinSkills}.values.toList();
 
-    _skills.clear();
-    _skillAccessTimestamps.removeWhere(
-      (k, _) => !_builtinSkills.containsKey(k),
-    );
-
-    final userSkillsPath = '$_homeDir/.athena/skills';
-    final userSkills = _loader.loadFromDirectory(userSkillsPath);
-    for (final skill in userSkills) {
-      _skills[skill.name] = skill;
-    }
-    _loadUsage();
-  }
-
-  void registerBuiltin(Skill skill) {
-    _builtinSkills[skill.name] = skill;
-    _skillAccessTimestamps[skill.name] = DateTime.now().millisecondsSinceEpoch;
+  Skill? get currentContext {
+    if (_contextStack.isEmpty) return null;
+    return _builtinSkills[_contextStack.last] ?? _skills[_contextStack.last];
   }
 
   String get level1Prompt {
@@ -97,46 +89,16 @@ class SkillRegistry {
     return buffer.toString();
   }
 
-  String? getLevel2Content(String name) {
-    _noteAccess(name);
-    return _builtinSkills[name]?.body ?? _skills[name]?.body;
-  }
+  /// 用户级 Skill 根目录（`{homeDir}/.athena/skills`）。
+  ///
+  /// 以最近一次 [loadAll] 的 homeDir 为准；新建 Skill 的落盘目录由此计算。
+  String get skillsDirectory => '${_homeDir ?? _homePath}/.athena/skills';
 
-  Skill? get(String name) {
-    _noteAccess(name);
-    return _builtinSkills[name] ?? _skills[name];
-  }
-
-  List<Skill> get all => {..._skills, ..._builtinSkills}.values.toList();
-
-  void pushContext(String skillName) {
-    _contextStack.add(skillName);
-  }
-
-  void popContext() {
-    if (_contextStack.isNotEmpty) _contextStack.removeLast();
-  }
+  /// 访问时间文件：与技能目录同级，`skills/.usage.json`。
+  File get _usageFile => File(p.join(skillsDirectory, '.usage.json'));
 
   void clearContext() {
     _contextStack.clear();
-  }
-
-  /// 用户新建或编辑 Skill 后重新加载单个文件（写入即生效，无需全量 reload）。
-  void reloadSkill(String skillName, String directoryPath) {
-    final skillFile = File('$directoryPath/SKILL.md');
-    if (!skillFile.existsSync()) {
-      _skills.remove(skillName);
-      return;
-    }
-    final skill = _loader.parseSkillFile(skillFile);
-    if (skill == null) return;
-    _skills[skillName] = skill;
-  }
-
-  /// 重新扫描用户级 Skill 目录（复用最近一次 [loadAll] 的 homeDir）。
-  /// 内置 Skill 不受影响。
-  void reload() {
-    loadAll(homeDir: _homeDir);
   }
 
   /// 删除用户级 Skill：删除其目录并从内存移除。
@@ -156,24 +118,61 @@ class SkillRegistry {
     return true;
   }
 
-  /// 用户级 Skill 根目录（`{homeDir}/.athena/skills`）。
-  ///
-  /// 以最近一次 [loadAll] 的 homeDir 为准；新建 Skill 的落盘目录由此计算。
-  String get skillsDirectory => '${_homeDir ?? _homePath}/.athena/skills';
-
-  Skill? get currentContext {
-    if (_contextStack.isEmpty) return null;
-    return _builtinSkills[_contextStack.last] ?? _skills[_contextStack.last];
+  Skill? get(String name) {
+    _noteAccess(name);
+    return _builtinSkills[name] ?? _skills[name];
   }
 
-  /// 访问时间文件：与技能目录同级，`skills/.usage.json`。
-  File get _usageFile => File(p.join(skillsDirectory, '.usage.json'));
+  String? getLevel2Content(String name) {
+    _noteAccess(name);
+    return _builtinSkills[name]?.body ?? _skills[name]?.body;
+  }
 
-  void _noteAccess(String name) {
-    _skillAccessTimestamps[name] = DateTime.now().millisecondsSinceEpoch;
-    // 加载技能是低频动作（一次 run 通常几次），写一个小 JSON 的代价远低于
-    // 顺序漂移带来的缓存失效。失败不阻断：内存值仍然生效。
-    if (_usageLoaded) _saveUsage();
+  void loadAll({String? homeDir}) {
+    _homeDir = homeDir ?? _homePath;
+
+    _skills.clear();
+    _skillAccessTimestamps.removeWhere(
+      (k, _) => !_builtinSkills.containsKey(k),
+    );
+
+    final userSkillsPath = '$_homeDir/.athena/skills';
+    final userSkills = _loader.loadFromDirectory(userSkillsPath);
+    for (final skill in userSkills) {
+      _skills[skill.name] = skill;
+    }
+    _loadUsage();
+  }
+
+  void popContext() {
+    if (_contextStack.isNotEmpty) _contextStack.removeLast();
+  }
+
+  void pushContext(String skillName) {
+    _contextStack.add(skillName);
+  }
+
+  void registerBuiltin(Skill skill) {
+    _builtinSkills[skill.name] = skill;
+    _skillAccessTimestamps[skill.name] = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  /// 重新扫描用户级 Skill 目录（复用最近一次 [loadAll] 的 homeDir）。
+  /// 内置 Skill 不受影响。
+  void reload() {
+    loadAll(homeDir: _homeDir);
+  }
+
+  /// 用户新建或编辑 Skill 后重新加载单个文件（写入即生效，无需全量 reload）。
+  void reloadSkill(String skillName, String directoryPath) {
+    final skillFile = File('$directoryPath/SKILL.md');
+    if (!skillFile.existsSync()) {
+      _skills.remove(skillName);
+      return;
+    }
+    final skill = _loader.parseSkillFile(skillFile);
+    if (skill == null) return;
+    _skills[skillName] = skill;
   }
 
   void _loadUsage() {
@@ -193,6 +192,13 @@ class SkillRegistry {
     }
   }
 
+  void _noteAccess(String name) {
+    _skillAccessTimestamps[name] = DateTime.now().millisecondsSinceEpoch;
+    // 加载技能是低频动作（一次 run 通常几次），写一个小 JSON 的代价远低于
+    // 顺序漂移带来的缓存失效。失败不阻断：内存值仍然生效。
+    if (_usageLoaded) _saveUsage();
+  }
+
   void _saveUsage() {
     try {
       // 只留当前存在的技能（含内置），避免文件随时间无界增长。
@@ -207,11 +213,5 @@ class SkillRegistry {
       // 排序信号写不进去不该让 skill 工具报错；下次访问会重试。
       LoggerUtil.w('Failed to persist skill usage (${_usageFile.path}): $e');
     }
-  }
-
-  static String get _homePath {
-    return Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '/';
   }
 }

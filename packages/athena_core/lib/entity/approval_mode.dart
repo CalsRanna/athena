@@ -22,10 +22,10 @@ enum ApprovalMode {
   /// （见 `AgentSettings.init`）播种一次，此后不再变化。
   static const defaultMode = ApprovalMode.auto;
 
-  const ApprovalMode(this.key);
-
   /// 持久化用的稳定标识。
   final String key;
+
+  const ApprovalMode(this.key);
 
   static ApprovalMode? fromKey(String? key) {
     for (final mode in values) {

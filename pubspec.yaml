@@ -8,6 +8,10 @@
 name: _
 publish_to: none
 
+dev_dependencies:
+  # tool/sort_members.dart 通过它启动 analysis server 执行 edit.sortMembers。
+  analysis_server_lib: ^0.2.5
+
 environment:
   # 与 athena_core / athena_tui 的下限一致；athena_gui 要求 >=3.13.0，
   # 由它自己的 environment 声明，整体解析取各包约束的交集。

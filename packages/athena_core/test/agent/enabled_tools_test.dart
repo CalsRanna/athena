@@ -14,42 +14,6 @@ import 'package:test/test.dart';
 
 import '../support/fake_tool.dart';
 
-/// 记录每次请求实际带上的工具名。
-class _FakeChatService implements ChatCompletionsService {
-  final requestedToolNames = <List<String>>[];
-
-  @override
-  Stream<ChatStreamEvent> getCompletion({
-    required ChatEntity chat,
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    List<Tool>? tools,
-    ResponseFormat? responseFormat,
-    Future<void>? cancelSignal,
-    int? outputRoom,
-  }) async* {
-    requestedToolNames.add([
-      for (final tool in tools ?? const <Tool>[]) tool.function.name,
-    ]);
-    yield const ChatStreamEvent(
-      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
-    );
-    yield const ChatStreamEvent(
-      choices: [
-        ChatStreamChoice(
-          index: 0,
-          delta: ChatDelta(),
-          finishReason: FinishReason.stop,
-        ),
-      ],
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 void main() {
   final now = DateTime.now();
 
@@ -172,4 +136,40 @@ void main() {
     expect(result.status, ToolResultStatus.success);
     expect(result.rawResult, 'ok');
   });
+}
+
+/// 记录每次请求实际带上的工具名。
+class _FakeChatService implements ChatCompletionsService {
+  final requestedToolNames = <List<String>>[];
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
+    int? outputRoom,
+  }) async* {
+    requestedToolNames.add([
+      for (final tool in tools ?? const <Tool>[]) tool.function.name,
+    ]);
+    yield const ChatStreamEvent(
+      choices: [ChatStreamChoice(index: 0, delta: ChatDelta(content: 'ok'))],
+    );
+    yield const ChatStreamEvent(
+      choices: [
+        ChatStreamChoice(
+          index: 0,
+          delta: ChatDelta(),
+          finishReason: FinishReason.stop,
+        ),
+      ],
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

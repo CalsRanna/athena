@@ -1,10 +1,12 @@
 import 'dart:async';
 
-import 'package:athena_gui/component/message_sliver.dart';
-import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_gui/component/elicit_card.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/component/message_sliver.dart';
+import 'package:athena_gui/component/permission_card.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -13,8 +15,6 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
-import 'package:athena_gui/component/elicit_card.dart';
-import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -47,42 +47,14 @@ class MessageListView extends StatefulWidget {
 class _MessageListViewState extends State<MessageListView> {
   static const double _loadOlderThreshold = 120;
 
-  ChatViewModel get viewModel => widget.viewModel;
-  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
-  MessageListScrollController get controller => widget.controller;
   String? _displayedChatId;
 
   /// 是否显示「回到底部」。用户向上翻历史时出现，回到底部后消失。
   final _showJumpToBottom = ValueNotifier<bool>(false);
+  MessageListScrollController get controller => widget.controller;
+  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
 
-  @override
-  void dispose() {
-    _showJumpToBottom.dispose();
-    super.dispose();
-  }
-
-  void _updateJumpToBottom(ScrollMetrics metrics) {
-    final show = metrics.extentAfter > 200;
-    if (_showJumpToBottom.value != show) _showJumpToBottom.value = show;
-  }
-
-  bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.depth == 0) {
-      _updateJumpToBottom(notification.metrics);
-    }
-    if (notification.depth != 0 ||
-        notification is! ScrollUpdateNotification ||
-        (notification.scrollDelta ?? 0) >= 0 ||
-        notification.metrics.extentBefore > _loadOlderThreshold ||
-        !viewModel.hasOlderMessages) {
-      return false;
-    }
-
-    unawaited(
-      controller.preservePositionWhilePrepending(viewModel.loadOlderMessages),
-    );
-    return false;
-  }
+  ChatViewModel get viewModel => widget.viewModel;
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +231,12 @@ class _MessageListViewState extends State<MessageListView> {
     await viewModel.deleteMessage(message);
   }
 
+  @override
+  void dispose() {
+    _showJumpToBottom.dispose();
+    super.dispose();
+  }
+
   void openBottomSheet(MessageEntity message) {
     HapticFeedback.heavyImpact();
     AthenaDialog.show(
@@ -302,5 +280,28 @@ class _MessageListViewState extends State<MessageListView> {
     if (!viewModel.isStreamingChat(widget.chat.id!)) return false;
     AthenaDialog.info('Please wait for the current session to finish.');
     return true;
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth == 0) {
+      _updateJumpToBottom(notification.metrics);
+    }
+    if (notification.depth != 0 ||
+        notification is! ScrollUpdateNotification ||
+        (notification.scrollDelta ?? 0) >= 0 ||
+        notification.metrics.extentBefore > _loadOlderThreshold ||
+        !viewModel.hasOlderMessages) {
+      return false;
+    }
+
+    unawaited(
+      controller.preservePositionWhilePrepending(viewModel.loadOlderMessages),
+    );
+    return false;
+  }
+
+  void _updateJumpToBottom(ScrollMetrics metrics) {
+    final show = metrics.extentAfter > 200;
+    if (_showJumpToBottom.value != show) _showJumpToBottom.value = show;
   }
 }

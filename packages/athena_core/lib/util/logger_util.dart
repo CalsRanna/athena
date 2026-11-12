@@ -12,6 +12,15 @@ abstract final class LoggerUtil {
     _logger.d(message, time: time, error: error, stackTrace: stackTrace);
   }
 
+  static void e(
+    dynamic message, {
+    DateTime? time,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    _logger.e(message, time: time, error: error, stackTrace: stackTrace);
+  }
+
   static void i(
     dynamic message, {
     DateTime? time,
@@ -28,15 +37,6 @@ abstract final class LoggerUtil {
     StackTrace? stackTrace,
   }) {
     _logger.w(message, time: time, error: error, stackTrace: stackTrace);
-  }
-
-  static void e(
-    dynamic message, {
-    DateTime? time,
-    Object? error,
-    StackTrace? stackTrace,
-  }) {
-    _logger.e(message, time: time, error: error, stackTrace: stackTrace);
   }
 }
 

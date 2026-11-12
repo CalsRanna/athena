@@ -1,12 +1,37 @@
 import 'package:openai_dart/openai_dart.dart';
 
-/// 单次工具调用的结构化结果。
-enum ToolResultStatus {
-  success,
-  invalidArguments,
-  blocked,
-  executionError,
-  modelTruncated,
+/// Execution status is independent of model-visible text.
+class ToolExecutionResult {
+  final String text;
+
+  /// 需要模型看到的图片（如 `file_read` 读到的图片文件）。
+  final List<ToolResultImage> images;
+
+  final ToolResultStatus status;
+
+  final int? exitCode;
+
+  const ToolExecutionResult.error(this.text, {this.exitCode})
+    : status = ToolResultStatus.executionError,
+      images = const [];
+  const ToolExecutionResult.success(
+    this.text, {
+    this.images = const [],
+    this.exitCode,
+  }) : status = ToolResultStatus.success;
+}
+
+/// 可供 Reflection 使用的工具失败证据。
+class ToolFailure {
+  final String toolName;
+  final ToolResultStatus status;
+  final String message;
+
+  const ToolFailure({
+    required this.toolName,
+    required this.status,
+    required this.message,
+  });
 }
 
 /// 工具返回的图片，随工具结果一起进入模型上下文。
@@ -36,40 +61,6 @@ class ToolResultImage {
   }
 }
 
-/// Execution status is independent of model-visible text.
-class ToolExecutionResult {
-  const ToolExecutionResult.success(
-    this.text, {
-    this.images = const [],
-    this.exitCode,
-  }) : status = ToolResultStatus.success;
-
-  const ToolExecutionResult.error(this.text, {this.exitCode})
-    : status = ToolResultStatus.executionError,
-      images = const [];
-
-  final String text;
-
-  /// 需要模型看到的图片（如 `file_read` 读到的图片文件）。
-  final List<ToolResultImage> images;
-
-  final ToolResultStatus status;
-  final int? exitCode;
-}
-
-/// 可供 Reflection 使用的工具失败证据。
-class ToolFailure {
-  final String toolName;
-  final ToolResultStatus status;
-  final String message;
-
-  const ToolFailure({
-    required this.toolName,
-    required this.status,
-    required this.message,
-  });
-}
-
 abstract final class ToolResultImages {
   /// 合成图片消息的正文标记，用于把它和真实用户输入区分开。
   static const toolResultImagesMarker =
@@ -88,4 +79,13 @@ abstract final class ToolResultImages {
         ContentPart.imageBase64(data: image.data, mediaType: image.mediaType),
     ]);
   }
+}
+
+/// 单次工具调用的结构化结果。
+enum ToolResultStatus {
+  success,
+  invalidArguments,
+  blocked,
+  executionError,
+  modelTruncated,
 }

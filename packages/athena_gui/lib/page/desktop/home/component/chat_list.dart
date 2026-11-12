@@ -1,18 +1,18 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
+import 'package:athena_gui/page/desktop/home/component/status_dot.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/hover.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class DesktopChatListView extends StatelessWidget {
   final void Function()? onCreateChat;
@@ -70,6 +70,33 @@ class DesktopChatListView extends StatelessWidget {
     );
   }
 
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.athenaColors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          'No sessions yet',
+          style: AthenaTextStyle.caption.copyWith(
+            color: colors.textWeak,
+            decoration: TextDecoration.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupLabel(BuildContext context, String label) {
+    final colors = context.athenaColors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
+      child: Text(
+        label,
+        style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
+      ),
+    );
+  }
+
   /// 置顶会话与其余会话分两组；[index] 始终是它在原始列表里的绝对下标，
   /// 供多选/范围选择复用。
   List<_SidebarItem> _buildSidebarItems(List<ChatEntity> chats) {
@@ -84,17 +111,6 @@ class DesktopChatListView extends StatelessWidget {
       if (pinned.isNotEmpty) ...[const _SidebarGroup('Pinned'), ...pinned],
       if (rest.isNotEmpty) ...[const _SidebarGroup('Recent'), ...rest],
     ];
-  }
-
-  Widget _buildGroupLabel(BuildContext context, String label) {
-    final colors = context.athenaColors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
-      child: Text(
-        label,
-        style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
-      ),
-    );
   }
 
   void _handleBatchDelete(
@@ -128,6 +144,36 @@ class DesktopChatListView extends StatelessWidget {
       viewModel.selection.lastSelectedIndex.value = index;
       onSelected?.call(chat);
     }
+  }
+
+  Widget _itemBuilder(
+    BuildContext context,
+    List<ChatEntity> chats,
+    int index,
+    ChatEntity chat,
+  ) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
+    return SignalBuilder(
+      builder: (context) {
+        final selectedChat = chatViewModel.currentChat.value;
+        final selectedIds = chatViewModel.selection.selectedChatIds.value;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: _ChatTile(
+            active: selectedChat?.id == chat.id,
+            chat: chat,
+            streaming: chatViewModel.isStreamingChat(chat.id!),
+            unread: chat.unread,
+            onTap: () => _handleTap(chatViewModel, chat, index),
+            onSecondaryTap: (details) =>
+                _openContextMenu(context, details, chat, chats),
+            selected: selectedIds.contains(chat.id),
+            onMore: (offset) =>
+                _openContextMenuAt(context, offset, chat, chats),
+          ),
+        );
+      },
+    );
   }
 
   void _openContextMenu(
@@ -165,51 +211,53 @@ class DesktopChatListView extends StatelessWidget {
       DesktopContextMenuManager.instance.show(context, contextMenu);
     }
   }
+}
 
-  Widget _buildEmpty(BuildContext context) {
-    final colors = context.athenaColors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          'No sessions yet',
-          style: AthenaTextStyle.caption.copyWith(
-            color: colors.textWeak,
-            decoration: TextDecoration.none,
-          ),
+/// 会话行的右键菜单：右键与行尾的 `⋮` 按钮共用。
+class _ChatContextMenu extends StatelessWidget {
+  final ChatEntity chat;
+  final bool multiSelect;
+  final Offset offset;
+  final void Function()? onAutoRenamed;
+  final void Function()? onDestroyed;
+  final void Function()? onManualRenamed;
+  final void Function()? onPinned;
+
+  const _ChatContextMenu({
+    required this.chat,
+    this.multiSelect = false,
+    required this.offset,
+    this.onAutoRenamed,
+    this.onDestroyed,
+    this.onManualRenamed,
+    this.onPinned,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pinText = chat.pinned ? 'Unpin' : 'Pin';
+    final renameSubmenu = DesktopContextMenuTileWithSubmenu(
+      text: 'Rename',
+      enabled: !multiSelect,
+      submenuItems: [
+        DesktopContextMenuSubItem(text: 'Auto Rename', onTap: onAutoRenamed),
+        DesktopContextMenuSubItem(
+          text: 'Manual Rename',
+          onTap: onManualRenamed,
         ),
+      ],
+    );
+    final children = [
+      DesktopContextMenuTile(
+        text: pinText,
+        onTap: onPinned,
+        enabled: !multiSelect,
       ),
-    );
-  }
-
-  Widget _itemBuilder(
-    BuildContext context,
-    List<ChatEntity> chats,
-    int index,
-    ChatEntity chat,
-  ) {
-    final chatViewModel = GetIt.instance<ChatViewModel>();
-    return SignalBuilder(
-      builder: (context) {
-        final selectedChat = chatViewModel.currentChat.value;
-        final selectedIds = chatViewModel.selection.selectedChatIds.value;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: _ChatTile(
-            active: selectedChat?.id == chat.id,
-            chat: chat,
-            streaming: chatViewModel.isStreamingChat(chat.id!),
-            unread: chat.unread,
-            onTap: () => _handleTap(chatViewModel, chat, index),
-            onSecondaryTap: (details) =>
-                _openContextMenu(context, details, chat, chats),
-            selected: selectedIds.contains(chat.id),
-            onMore: (offset) =>
-                _openContextMenuAt(context, offset, chat, chats),
-          ),
-        );
-      },
-    );
+      renameSubmenu,
+      const DesktopContextMenuSeparator(),
+      DesktopContextMenuTile(text: 'Delete', danger: true, onTap: onDestroyed),
+    ];
+    return DesktopContextMenu(offset: offset, width: 140, children: children);
   }
 }
 
@@ -319,57 +367,29 @@ class _MoreButton extends StatelessWidget {
   }
 }
 
-/// 会话行的右键菜单：右键与行尾的 `⋮` 按钮共用。
-class _ChatContextMenu extends StatelessWidget {
-  final ChatEntity chat;
-  final bool multiSelect;
-  final Offset offset;
-  final void Function()? onAutoRenamed;
-  final void Function()? onDestroyed;
-  final void Function()? onManualRenamed;
-  final void Function()? onPinned;
-
-  const _ChatContextMenu({
-    required this.chat,
-    this.multiSelect = false,
-    required this.offset,
-    this.onAutoRenamed,
-    this.onDestroyed,
-    this.onManualRenamed,
-    this.onPinned,
-  });
+/// 行尾的快捷键提示（macOS `⌘N` / 其余 `Ctrl+N`，只在 hover 时可见）。
+///
+/// 文案取自 [DesktopHomeShortcuts.newChatLabel]，不在这里重写平台判断。
+/// 样式 `caption` + `textSecondary`：提示是辅助信息要弱一档，但得能从
+/// hover 底（`surfaceHover`）上读出来——`textWeak` 在浅色下只有 3.2:1，
+/// 12 号小字不合格，`textSecondary` 浅色 4.6:1 / 深色 5.7:1。
+class _ShortcutHint extends StatelessWidget {
+  const _ShortcutHint();
 
   @override
   Widget build(BuildContext context) {
-    final pinText = chat.pinned ? 'Unpin' : 'Pin';
-    final renameSubmenu = DesktopContextMenuTileWithSubmenu(
-      text: 'Rename',
-      enabled: !multiSelect,
-      submenuItems: [
-        DesktopContextMenuSubItem(text: 'Auto Rename', onTap: onAutoRenamed),
-        DesktopContextMenuSubItem(
-          text: 'Manual Rename',
-          onTap: onManualRenamed,
-        ),
-      ],
+    final colors = context.athenaColors;
+    return Text(
+      DesktopHomeShortcuts.newChatLabel(context),
+      style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
     );
-    final children = [
-      DesktopContextMenuTile(
-        text: pinText,
-        onTap: onPinned,
-        enabled: !multiSelect,
-      ),
-      renameSubmenu,
-      const DesktopContextMenuSeparator(),
-      DesktopContextMenuTile(text: 'Delete', danger: true, onTap: onDestroyed),
-    ];
-    return DesktopContextMenu(offset: offset, width: 140, children: children);
   }
 }
 
-/// 侧栏列表项：分组标题或一条会话。[index] 是会话在原始列表中的绝对下标。
-sealed class _SidebarItem {
-  const _SidebarItem();
+class _SidebarEntry extends _SidebarItem {
+  final int index;
+  final ChatEntity chat;
+  const _SidebarEntry({required this.index, required this.chat});
 }
 
 class _SidebarGroup extends _SidebarItem {
@@ -377,10 +397,9 @@ class _SidebarGroup extends _SidebarItem {
   const _SidebarGroup(this.label);
 }
 
-class _SidebarEntry extends _SidebarItem {
-  final int index;
-  final ChatEntity chat;
-  const _SidebarEntry({required this.index, required this.chat});
+/// 侧栏列表项：分组标题或一条会话。[index] 是会话在原始列表中的绝对下标。
+sealed class _SidebarItem {
+  const _SidebarItem();
 }
 
 /// 侧栏顶部导航块。
@@ -436,25 +455,6 @@ class _SidebarNav extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// 行尾的快捷键提示（macOS `⌘N` / 其余 `Ctrl+N`，只在 hover 时可见）。
-///
-/// 文案取自 [DesktopHomeShortcuts.newChatLabel]，不在这里重写平台判断。
-/// 样式 `caption` + `textSecondary`：提示是辅助信息要弱一档，但得能从
-/// hover 底（`surfaceHover`）上读出来——`textWeak` 在浅色下只有 3.2:1，
-/// 12 号小字不合格，`textSecondary` 浅色 4.6:1 / 深色 5.7:1。
-class _ShortcutHint extends StatelessWidget {
-  const _ShortcutHint();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    return Text(
-      DesktopHomeShortcuts.newChatLabel(context),
-      style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
     );
   }
 }

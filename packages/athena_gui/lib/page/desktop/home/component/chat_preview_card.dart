@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 悬浮预览卡：鼠标停在轮次条上时，在条右侧弹出的一张浮层（唯一使用处见
 /// `turn_indicator.dart`）。
@@ -95,13 +95,6 @@ class ChatPreviewCard extends StatelessWidget {
 /// 卡片刻意不带遮罩层：它不像右键菜单那样要吃掉"点外面关闭"的手势，指针
 /// 停在锚点上才是它的常态。
 class DesktopChatPreviewManager {
-  /// 正在显示的卡。
-  OverlayEntry? _entry;
-  GlobalKey<_PreviewCardOverlayState>? _key;
-
-  /// 正在播退场动画、还没摘掉的卡（指针已移开，卡片还在淡出）。
-  OverlayEntry? _hidingEntry;
-  Object? _owner;
   static final DesktopChatPreviewManager instance = DesktopChatPreviewManager();
 
   /// 卡片与锚点行的间距。
@@ -115,6 +108,37 @@ class DesktopChatPreviewManager {
 
   /// 退场时长。比进场短：指针已经移开，收卡要跟手。
   static const Duration hideDuration = AthenaMotion.fast;
+
+  /// 正在显示的卡。
+  OverlayEntry? _entry;
+
+  GlobalKey<_PreviewCardOverlayState>? _key;
+
+  /// 正在播退场动画、还没摘掉的卡（指针已移开，卡片还在淡出）。
+  OverlayEntry? _hidingEntry;
+
+  Object? _owner;
+
+  /// 收卡：先播退场动画，播完再摘掉浮层。已经在收卡、或控件已不可用时直接摘。
+  void dismiss() {
+    final entry = _entry;
+    if (entry == null) return;
+    final state = _key?.currentState;
+    _entry = null;
+    _owner = null;
+    if (state == null || !state.hide()) {
+      entry.remove();
+      return;
+    }
+    // 退场期间这张卡仍挂在浮层上，播完由 _handleHidden 摘除
+    _hidingEntry = entry;
+  }
+
+  /// 只关掉 [owner] 自己那张卡（别的行刚弹出的卡不动）。
+  void dismissFor(Object owner) {
+    if (!identical(_owner, owner)) return;
+    dismiss();
+  }
 
   /// 在 [anchor]（锚点的全局矩形）右侧弹出预览卡；右侧/下侧放不下时回退。
   void show(
@@ -162,33 +186,6 @@ class DesktopChatPreviewManager {
     Overlay.of(context).insert(entry);
   }
 
-  /// 只关掉 [owner] 自己那张卡（别的行刚弹出的卡不动）。
-  void dismissFor(Object owner) {
-    if (!identical(_owner, owner)) return;
-    dismiss();
-  }
-
-  /// 收卡：先播退场动画，播完再摘掉浮层。已经在收卡、或控件已不可用时直接摘。
-  void dismiss() {
-    final entry = _entry;
-    if (entry == null) return;
-    final state = _key?.currentState;
-    _entry = null;
-    _owner = null;
-    if (state == null || !state.hide()) {
-      entry.remove();
-      return;
-    }
-    // 退场期间这张卡仍挂在浮层上，播完由 _handleHidden 摘除
-    _hidingEntry = entry;
-  }
-
-  /// 退场动画播完：把还在淡出的那张摘掉。
-  void _handleHidden() {
-    _hidingEntry?.remove();
-    _hidingEntry = null;
-  }
-
   /// 立刻摘掉所有卡片（显示中的与还在淡出的），不播动画。
   void _clear() {
     _entry?.remove();
@@ -197,6 +194,12 @@ class DesktopChatPreviewManager {
     _hidingEntry = null;
     _key = null;
     _owner = null;
+  }
+
+  /// 退场动画播完：把还在淡出的那张摘掉。
+  void _handleHidden() {
+    _hidingEntry?.remove();
+    _hidingEntry = null;
   }
 }
 
@@ -235,9 +238,21 @@ class _PreviewCardOverlayState extends State<_PreviewCardOverlay>
   bool _hiding = false;
 
   @override
-  void initState() {
-    super.initState();
-    _controller.forward();
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _progress,
+      child: SlideTransition(
+        // 位移取卡片高度的百分比：0.06 约 6px，够看出"浮起来"又不飘
+        position: Tween(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(_progress),
+        child: ScaleTransition(
+          scale: Tween(begin: 0.98, end: 1.0).animate(_progress),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 
   @override
@@ -259,20 +274,8 @@ class _PreviewCardOverlayState extends State<_PreviewCardOverlay>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _progress,
-      child: SlideTransition(
-        // 位移取卡片高度的百分比：0.06 约 6px，够看出"浮起来"又不飘
-        position: Tween(
-          begin: const Offset(0, 0.06),
-          end: Offset.zero,
-        ).animate(_progress),
-        child: ScaleTransition(
-          scale: Tween(begin: 0.98, end: 1.0).animate(_progress),
-          child: widget.child,
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    _controller.forward();
   }
 }

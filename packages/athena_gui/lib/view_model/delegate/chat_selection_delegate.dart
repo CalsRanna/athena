@@ -21,19 +21,14 @@ class ChatSelectionDelegate {
     lastSelectedIndex.value = null;
   }
 
-  /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
-  void toggleChatSelection(String chatId, int index) {
-    final newSet = Set<String>.from(selectedChatIds.value);
-    if (newSet.contains(chatId)) {
-      newSet.remove(chatId);
-      if (newSet.isEmpty) {
-        lastSelectedIndex.value = null;
+  /// 初始化 lastSelectedIndex
+  void initLastSelectedIndex(ChatEntity? currentChat, List<ChatEntity> chats) {
+    if (lastSelectedIndex.value == null && currentChat != null) {
+      final index = chats.indexWhere((c) => c.id == currentChat.id);
+      if (index >= 0) {
+        lastSelectedIndex.value = index;
       }
-    } else {
-      newSet.add(chatId);
-      lastSelectedIndex.value = index;
     }
-    selectedChatIds.value = newSet;
   }
 
   /// 范围选择 (Shift+Click)
@@ -75,16 +70,6 @@ class ChatSelectionDelegate {
     selectedChatIds.value = newSet;
   }
 
-  /// 初始化 lastSelectedIndex
-  void initLastSelectedIndex(ChatEntity? currentChat, List<ChatEntity> chats) {
-    if (lastSelectedIndex.value == null && currentChat != null) {
-      final index = chats.indexWhere((c) => c.id == currentChat.id);
-      if (index >= 0) {
-        lastSelectedIndex.value = index;
-      }
-    }
-  }
-
   /// 开始 AI 重命名
   void startRenaming(String chatId) {
     renamingChatIds.value = {...renamingChatIds.value, chatId};
@@ -95,5 +80,20 @@ class ChatSelectionDelegate {
     final newSet = Set<String>.from(renamingChatIds.value);
     newSet.remove(chatId);
     renamingChatIds.value = newSet;
+  }
+
+  /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
+  void toggleChatSelection(String chatId, int index) {
+    final newSet = Set<String>.from(selectedChatIds.value);
+    if (newSet.contains(chatId)) {
+      newSet.remove(chatId);
+      if (newSet.isEmpty) {
+        lastSelectedIndex.value = null;
+      }
+    } else {
+      newSet.add(chatId);
+      lastSelectedIndex.value = index;
+    }
+    selectedChatIds.value = newSet;
   }
 }

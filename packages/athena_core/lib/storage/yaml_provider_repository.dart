@@ -19,37 +19,36 @@ import 'package:athena_core/storage/provider_store.dart';
 /// 顺序来自目录、不稳定,必须有确定的排序键。按名字排还有一个好处:用户新增
 /// provider 时不必考虑它排在哪儿,叫什么都决定了位置。
 class YamlProviderRepository implements ProviderRepository {
+  final ProviderStore _store;
+
+  final IdGenerator _idGenerator;
   YamlProviderRepository({
     required ProviderStore store,
     IdGenerator idGenerator = const IdGenerator(),
   }) : _store = store,
        _idGenerator = idGenerator;
 
-  final ProviderStore _store;
-  final IdGenerator _idGenerator;
-
-  /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
-  Future<void> load() async {}
-
-  /// 用户可见列表按名字排,大小写不敏感(避免 `deepseek` 与 `Deep Seek`
-  /// 被拆到列表两端);同名时按 id 兜底,保证顺序稳定且与文件系统无关。
-  static int _byName(ProviderEntity a, ProviderEntity b) {
-    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    if (byName != 0) return byName;
-    return (a.id ?? '').compareTo(b.id ?? '');
+  @override
+  Future<void> batchStoreProviders(List<ProviderEntity> providers) async {
+    for (final provider in providers) {
+      final id = provider.id ?? _idGenerator.next();
+      await _store.write(provider.copyWith(id: id));
+    }
   }
 
-  Future<List<ProviderEntity>> _sorted() async {
-    final all = await _store.list();
-    all.sort(_byName);
-    return all;
+  @override
+  /// 清空全部 provider。**模型随 provider 文件消失**,不再单独清理。
+  Future<void> deleteAllProviders() async {
+    for (final id in await _store.providerIds()) {
+      await _store.delete(id);
+    }
   }
+
+  @override
+  Future<void> deleteProvider(String id) => _store.delete(id);
 
   @override
   Future<List<ProviderEntity>> getAllProviders() => _sorted();
-
-  @override
-  Future<ProviderEntity?> getProviderById(String id) => _store.read(id);
 
   @override
   Future<List<ProviderEntity>> getEnabledProviders() async {
@@ -60,18 +59,36 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
+  Future<ProviderEntity?> getPresetProviderByName(String name) async {
+    for (final provider in await getAllProviders()) {
+      if (provider.name == name && provider.isPreset) return provider;
+    }
+    return null;
+  }
+
+  @override
+  Future<ProviderEntity?> getProviderById(String id) => _store.read(id);
+
+  @override
+  Future<ProviderEntity?> getProviderByName(String name) async {
+    for (final provider in await getAllProviders()) {
+      if (provider.name == name) return provider;
+    }
+    return null;
+  }
+
+  @override
+  Future<int> getProvidersCount() async => (await _sorted()).length;
+
+  /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
+  Future<void> load() async {}
+
+  @override
   Future<String> storeProvider(ProviderEntity provider) async {
     final id = provider.id ?? _idGenerator.next();
     // 已带 id(更新、批量写入)时覆盖同名文件;否则写入刚生成的新 id。
     await _store.write(provider.copyWith(id: id));
     return id;
-  }
-
-  @override
-  Future<void> updateProvider(ProviderEntity provider) async {
-    final id = provider.id;
-    if (id == null) return;
-    await _store.write(provider);
   }
 
   @override
@@ -97,40 +114,23 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
-  Future<void> deleteProvider(String id) => _store.delete(id);
-
-  @override
-  Future<int> getProvidersCount() async => (await _sorted()).length;
-
-  @override
-  Future<void> batchStoreProviders(List<ProviderEntity> providers) async {
-    for (final provider in providers) {
-      final id = provider.id ?? _idGenerator.next();
-      await _store.write(provider.copyWith(id: id));
-    }
+  Future<void> updateProvider(ProviderEntity provider) async {
+    final id = provider.id;
+    if (id == null) return;
+    await _store.write(provider);
   }
 
-  @override
-  Future<ProviderEntity?> getProviderByName(String name) async {
-    for (final provider in await getAllProviders()) {
-      if (provider.name == name) return provider;
-    }
-    return null;
+  Future<List<ProviderEntity>> _sorted() async {
+    final all = await _store.list();
+    all.sort(_byName);
+    return all;
   }
 
-  @override
-  Future<ProviderEntity?> getPresetProviderByName(String name) async {
-    for (final provider in await getAllProviders()) {
-      if (provider.name == name && provider.isPreset) return provider;
-    }
-    return null;
-  }
-
-  @override
-  /// 清空全部 provider。**模型随 provider 文件消失**,不再单独清理。
-  Future<void> deleteAllProviders() async {
-    for (final id in await _store.providerIds()) {
-      await _store.delete(id);
-    }
+  /// 用户可见列表按名字排,大小写不敏感(避免 `deepseek` 与 `Deep Seek`
+  /// 被拆到列表两端);同名时按 id 兜底,保证顺序稳定且与文件系统无关。
+  static int _byName(ProviderEntity a, ProviderEntity b) {
+    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    if (byName != 0) return byName;
+    return (a.id ?? '').compareTo(b.id ?? '');
   }
 }

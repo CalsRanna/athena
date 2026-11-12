@@ -1,17 +1,16 @@
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
-import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_turn.dart';
+import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_material_theme.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/athena_test_scope.dart';
-
-import 'package:athena_gui/theme/athena_material_theme.dart';
-import 'package:athena_gui/theme/athena_theme.dart';
 
 /// 轮次条的两条硬要求：
 /// 1. **一条 = 一轮**，长度与颜色共用同一套公式（[TurnIndicator.barWidthFor] /

@@ -1,14 +1,25 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/setting/component/nav.dart';
+import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/page/desktop/setting/component/nav.dart';
-import 'package:athena_gui/page/desktop/setting/component/panel.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
+
+/// 桌面端设置面板。
+///
+/// 八个分区共用同一浮层，集合页在右侧内容区钻取详情。
+@RoutePage()
+class DesktopSettingPage extends StatefulWidget {
+  const DesktopSettingPage({super.key});
+
+  @override
+  State<DesktopSettingPage> createState() => _DesktopSettingPageState();
+}
 
 /// 设置分区。
 ///
@@ -23,38 +34,6 @@ enum SettingSection {
   appearance,
   data,
   about,
-}
-
-class _SettingEntry {
-  final SettingSection section;
-  final String label;
-  final IconData icon;
-
-  /// 搜索时额外命中的关键词（分区里的行标签），让「api key」也能找到 Providers。
-  final List<String> keywords;
-  const _SettingEntry(
-    this.section,
-    this.label,
-    this.icon, {
-    this.keywords = const [],
-  });
-}
-
-class _SettingGroup {
-  final String title;
-  final List<_SettingEntry> entries;
-  const _SettingGroup(this.title, this.entries);
-}
-
-/// 桌面端设置面板。
-///
-/// 八个分区共用同一浮层，集合页在右侧内容区钻取详情。
-@RoutePage()
-class DesktopSettingPage extends StatefulWidget {
-  const DesktopSettingPage({super.key});
-
-  @override
-  State<DesktopSettingPage> createState() => _DesktopSettingPageState();
 }
 
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
@@ -140,12 +119,12 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   var query = '';
 
   @override
-  void initState() {
-    super.initState();
-    // 设置页也可能被**外部**入口直接推入（侧栏页脚的 About 就是
-    // `DesktopSettingAboutRoute().push(...)`）。这时不能假定停在
-    // Providers——否则左栏会高亮错行。
-    section = _sectionFromRouter() ?? SettingSection.provider;
+  Widget build(BuildContext context) {
+    return AthenaSettingsPanel(
+      onClose: () => Navigator.of(context).maybePop(),
+      nav: _buildNav(context),
+      content: const AutoRouter(),
+    );
   }
 
   @override
@@ -155,20 +134,28 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AthenaSettingsPanel(
-      onClose: () => Navigator.of(context).maybePop(),
-      nav: _buildNav(context),
-      content: const AutoRouter(),
-    );
+  void initState() {
+    super.initState();
+    // 设置页也可能被**外部**入口直接推入（侧栏页脚的 About 就是
+    // `DesktopSettingAboutRoute().push(...)`）。这时不能假定停在
+    // Providers——否则左栏会高亮错行。
+    section = _sectionFromRouter() ?? SettingSection.provider;
   }
 
-  Widget _buildNav(BuildContext context) {
-    final search = AthenaSettingsSearchField(
-      controller: searchController,
-      onChanged: _handleSearch,
-    );
-    return AthenaSettingsNav(search: search, children: _buildGroups(context));
+  void openSection(SettingSection section) {
+    if (section == this.section) return;
+    setState(() => this.section = section);
+    final route = switch (section) {
+      SettingSection.provider => const DesktopSettingProviderRoute(),
+      SettingSection.agent => const DesktopSettingAgentRoute(),
+      SettingSection.sentinel => const DesktopSettingSentinelRoute(),
+      SettingSection.skill => const DesktopSettingSkillRoute(),
+      SettingSection.experience => const DesktopSettingExperienceRoute(),
+      SettingSection.appearance => const DesktopSettingAppearanceRoute(),
+      SettingSection.data => const DesktopSettingDataRoute(),
+      SettingSection.about => const DesktopSettingAboutRoute(),
+    };
+    AutoRouter.of(context).replace(route);
   }
 
   List<Widget> _buildGroups(BuildContext context) {
@@ -191,6 +178,14 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     return visible;
   }
 
+  Widget _buildNav(BuildContext context) {
+    final search = AthenaSettingsSearchField(
+      controller: searchController,
+      onChanged: _handleSearch,
+    );
+    return AthenaSettingsNav(search: search, children: _buildGroups(context));
+  }
+
   Widget _buildNoResult(BuildContext context) {
     final colors = context.athenaColors;
     final textStyle = AthenaTextStyle.row.copyWith(color: colors.textWeak);
@@ -203,15 +198,14 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     );
   }
 
-  /// 从路由栈里读出当前打开的分区。
-  SettingSection? _sectionFromRouter() {
-    for (final match in AthenaRouter.router.currentSegments.reversed) {
-      if (match.name != DesktopSettingRoute.name) continue;
-      final children = match.children;
-      if (children == null || children.isEmpty) return null;
-      return _sectionFromName(children.last.name);
-    }
-    return null;
+  void _handleSearch(String value) {
+    setState(() => query = value.trim().toLowerCase());
+  }
+
+  bool _matches(_SettingEntry entry) {
+    if (query.isEmpty) return true;
+    if (entry.label.toLowerCase().contains(query)) return true;
+    return entry.keywords.any((keyword) => keyword.contains(query));
   }
 
   SettingSection? _sectionFromName(String? name) {
@@ -234,29 +228,35 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     return null;
   }
 
-  bool _matches(_SettingEntry entry) {
-    if (query.isEmpty) return true;
-    if (entry.label.toLowerCase().contains(query)) return true;
-    return entry.keywords.any((keyword) => keyword.contains(query));
+  /// 从路由栈里读出当前打开的分区。
+  SettingSection? _sectionFromRouter() {
+    for (final match in AthenaRouter.router.currentSegments.reversed) {
+      if (match.name != DesktopSettingRoute.name) continue;
+      final children = match.children;
+      if (children == null || children.isEmpty) return null;
+      return _sectionFromName(children.last.name);
+    }
+    return null;
   }
+}
 
-  void _handleSearch(String value) {
-    setState(() => query = value.trim().toLowerCase());
-  }
+class _SettingEntry {
+  final SettingSection section;
+  final String label;
+  final IconData icon;
 
-  void openSection(SettingSection section) {
-    if (section == this.section) return;
-    setState(() => this.section = section);
-    final route = switch (section) {
-      SettingSection.provider => const DesktopSettingProviderRoute(),
-      SettingSection.agent => const DesktopSettingAgentRoute(),
-      SettingSection.sentinel => const DesktopSettingSentinelRoute(),
-      SettingSection.skill => const DesktopSettingSkillRoute(),
-      SettingSection.experience => const DesktopSettingExperienceRoute(),
-      SettingSection.appearance => const DesktopSettingAppearanceRoute(),
-      SettingSection.data => const DesktopSettingDataRoute(),
-      SettingSection.about => const DesktopSettingAboutRoute(),
-    };
-    AutoRouter.of(context).replace(route);
-  }
+  /// 搜索时额外命中的关键词（分区里的行标签），让「api key」也能找到 Providers。
+  final List<String> keywords;
+  const _SettingEntry(
+    this.section,
+    this.label,
+    this.icon, {
+    this.keywords = const [],
+  });
+}
+
+class _SettingGroup {
+  final String title;
+  final List<_SettingEntry> entries;
+  const _SettingGroup(this.title, this.entries);
 }

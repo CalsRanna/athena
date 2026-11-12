@@ -1,6 +1,6 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/widgets.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class AthenaBottomSheetTile extends StatelessWidget {
   final bool enabled;

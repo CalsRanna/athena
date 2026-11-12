@@ -175,23 +175,13 @@ void main() {
   });
 }
 
-ModelCatalogService _service(FileStorage storage, {http.Client? client}) {
-  return ModelCatalogService(
-    modelRepository: storage.modelRepository,
-    providerRepository: storage.providerRepository,
-    chatRepository: storage.sessionRepository,
-    cacheFilePath: storage.catalogCacheFile.path,
-    httpClient: client,
-  );
-}
-
-ProviderEntity _openai() => ProviderEntity(
-  name: 'OpenAI',
-  baseUrl: 'https://api.openai.com/v1/',
-  apiKey: 'test-key',
-  enabled: true,
-  isPreset: true,
-  createdAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
+Future<void> _cache(
+  FileStorage storage,
+  Map<String, dynamic> data,
+  DateTime fetchedAt,
+) => FileLocking.atomicWriteString(
+  storage.catalogCacheFile,
+  jsonEncode({'fetched_at': fetchedAt.millisecondsSinceEpoch, 'data': data}),
 );
 
 Map<String, dynamic> _catalog(String id, Object? npm) => {
@@ -207,11 +197,21 @@ Map<String, dynamic> _catalog(String id, Object? npm) => {
   },
 };
 
-Future<void> _cache(
-  FileStorage storage,
-  Map<String, dynamic> data,
-  DateTime fetchedAt,
-) => FileLocking.atomicWriteString(
-  storage.catalogCacheFile,
-  jsonEncode({'fetched_at': fetchedAt.millisecondsSinceEpoch, 'data': data}),
+ProviderEntity _openai() => ProviderEntity(
+  name: 'OpenAI',
+  baseUrl: 'https://api.openai.com/v1/',
+  apiKey: 'test-key',
+  enabled: true,
+  isPreset: true,
+  createdAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
 );
+
+ModelCatalogService _service(FileStorage storage, {http.Client? client}) {
+  return ModelCatalogService(
+    modelRepository: storage.modelRepository,
+    providerRepository: storage.providerRepository,
+    chatRepository: storage.sessionRepository,
+    cacheFilePath: storage.catalogCacheFile.path,
+    httpClient: client,
+  );
+}

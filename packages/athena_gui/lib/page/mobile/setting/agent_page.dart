@@ -36,14 +36,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   String? outputLimitError;
 
   @override
-  void dispose() {
-    retriesController.dispose();
-    outputLimitController.dispose();
-    braveApiKeyController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AthenaScaffold(
       appBar: const AthenaAppBar(title: Text('Agent')),
@@ -61,6 +53,14 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    retriesController.dispose();
+    outputLimitController.dispose();
+    braveApiKeyController.dispose();
+    super.dispose();
   }
 
   Widget _buildRequestSection(BuildContext context) {
@@ -174,15 +174,10 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     );
   }
 
-  Future<void> _commitRetries() async {
-    final value = int.tryParse(retriesController.text.trim());
-    if (value == null || value < 1) {
-      setState(() => retriesError = 'Enter a whole number of at least 1.');
-      return;
-    }
-    setState(() => retriesError = null);
-    if (value == viewModel.maxRetries.value) return;
-    await viewModel.updateMaxRetries(value);
+  Future<void> _commitBraveApiKey() async {
+    final value = braveApiKeyController.text.trim();
+    if (value == viewModel.braveApiKey.value) return;
+    await viewModel.updateBraveApiKey(value);
   }
 
   Future<void> _commitOutputLimit() async {
@@ -198,9 +193,14 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     await viewModel.updateDefaultOutputLimit(value);
   }
 
-  Future<void> _commitBraveApiKey() async {
-    final value = braveApiKeyController.text.trim();
-    if (value == viewModel.braveApiKey.value) return;
-    await viewModel.updateBraveApiKey(value);
+  Future<void> _commitRetries() async {
+    final value = int.tryParse(retriesController.text.trim());
+    if (value == null || value < 1) {
+      setState(() => retriesError = 'Enter a whole number of at least 1.');
+      return;
+    }
+    setState(() => retriesError = null);
+    if (value == viewModel.maxRetries.value) return;
+    await viewModel.updateMaxRetries(value);
   }
 }

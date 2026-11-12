@@ -5,42 +5,112 @@ import 'package:athena_core/agent/agent_event.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/context_budget.dart';
 import 'package:athena_core/agent/context_compaction.dart';
-import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart'
     show ElicitChannel, ElicitChannelAware, ElicitPrompt;
-import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_core/entity/compaction_step.dart';
-import 'package:athena_core/agent/runtime_context.dart';
-import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/experience/reflection.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/project_instructions.dart';
 import 'package:athena_core/agent/run_outcome.dart';
-import 'package:athena_core/agent/tool/run_workspace.dart';
-import 'package:athena_core/agent/tool/tool_result.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/task/background_task.dart';
+import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
     show CancellableTool, ToolArguments;
+import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/tool/tool_set.dart' show ToolSet;
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
-import 'package:athena_core/service/responses_state.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/completion_details.dart';
 import 'package:athena_core/service/messages_state.dart';
+import 'package:athena_core/service/responses_state.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-typedef PermissionCallback =
-    Future<bool> Function(String toolName, String arguments);
+/// 首轮请求的消息布局（纯函数：同样输入得到同样布局，便于单测固定块顺序）。
+///
+/// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
+///   [sentinel, experience-hint, skill, experience catalog, project?, runtime-with-date, history...]
+///
+/// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
+/// true 时首个 system 是 sentinel，其后的 system 是稳定的 Experience 目录；
+/// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
+/// 包括按覆盖范围定位的 compact 摘要。
+/// - experience hint / skill 插在 sentinel 之后、经验目录之前。
+/// - project（工作文件夹根目录的 AGENTS.md）与 runtime 都是随外部状态变化的
+///   块，放在最靠后：前缀缓存只在前缀相同的部分命中，块越靠后，它变化时被
+///   重算的 token 越少。
+/// - runtime + date 保持「最后一条 system 消息、紧接对话历史之前」。
+///
+/// 返回的两个下标供 run 循环在每次请求前就地刷新对应消息（runtime 跨天、
+/// project 被用户编辑）。压缩会原样保留全部 system 消息并保持相对顺序
+/// （ConversationCompactor 的 candidate 由 `whereType<SystemMessage>()` 构造），
+/// 所以下标在压缩后依然有效。
+({List<ChatMessage> messages, int runtimeMessageIndex, int projectMessageIndex})
+layoutPromptMessages({
+  required List<ChatMessage> base,
+  required String runtimeText,
+  required bool hasSentinelPrompt,
+  String? skillPrompt,
+  String? experiencePrompt,
+  String? projectPrompt,
+}) {
+  var sentinelEnd = -1;
+  if (hasSentinelPrompt) {
+    for (var i = 0; i < base.length; i++) {
+      if (base[i] is SystemMessage) {
+        sentinelEnd = i;
+        break;
+      }
+    }
+  }
+
+  final injectedBlocks = <ChatMessage>[
+    if (experiencePrompt != null && experiencePrompt.isNotEmpty)
+      ChatMessage.system(experiencePrompt),
+    if (skillPrompt != null && skillPrompt.isNotEmpty)
+      ChatMessage.system(skillPrompt),
+  ];
+
+  final head = <ChatMessage>[];
+  final summaries = <ChatMessage>[];
+  final history = <ChatMessage>[];
+  for (var i = 0; i < base.length; i++) {
+    final m = base[i];
+    if (i == sentinelEnd) {
+      head.add(m); // sentinel
+    } else if (m is SystemMessage) {
+      summaries.add(m); // 稳定的附加上下文（experience digest）
+    } else {
+      history.add(m);
+    }
+  }
+
+  final lead = <ChatMessage>[...head, ...injectedBlocks, ...summaries];
+  final hasProject = projectPrompt != null && projectPrompt.isNotEmpty;
+  return (
+    messages: [
+      ...lead,
+      if (hasProject) ChatMessage.system(projectPrompt),
+      ChatMessage.system(runtimeText),
+      ...history,
+    ],
+    runtimeMessageIndex: lead.length + (hasProject ? 1 : 0),
+    projectMessageIndex: hasProject ? lead.length : -1,
+  );
+}
 
 /// beforeToolCall 上下文。
 typedef BeforeToolCallContext = ({
@@ -53,17 +123,12 @@ typedef BeforeToolCallContext = ({
 /// beforeToolCall 返回结果。
 typedef BeforeToolCallResult = ({bool block, String reason});
 
+typedef PermissionCallback =
+    Future<bool> Function(String toolName, String arguments);
+
 /// 工具执行前的权限门：返回 { block: true } 则拒绝执行。
 typedef PermissionGate =
     Future<BeforeToolCallResult> Function(BeforeToolCallContext ctx);
-
-/// 单个 Agent run 的运行时状态（按 [runId] 隔离，支持多 run 并发）。
-class _AgentRunState {
-  _AgentRunState({CancelToken? token}) : cancelToken = token ?? CancelToken();
-
-  final CancelToken cancelToken;
-  final Completer<void> settled = Completer<void>();
-}
 
 class AgentService {
   /// 并行工具执行的并发上限，防止模型一轮发大量并行调用时瞬时打爆。
@@ -77,18 +142,6 @@ class AgentService {
 
   // ─── 运行时状态（按 runId 隔离，多 run 可并发）────────────────
   final Map<int, _AgentRunState> _runs = {};
-
-  /// 当前是否有 Agent 循环在运行（任一 run）。
-  bool get isRunning => _runs.isNotEmpty;
-
-  /// 后台任务登记表（工具与协调层共用同一份）。
-  BackgroundTaskService get backgroundTasks => _toolRegistry.backgroundTasks;
-
-  /// 指定 run 的取消令牌（可能为 null）。
-  CancelToken? cancelTokenOf(int runId) => _runs[runId]?.cancelToken;
-
-  /// 等待指定 run 完成后 resolve 的 Future。
-  Future<void>? settledOf(int runId) => _runs[runId]?.settled.future;
 
   AgentService({
     required ChatCompletionsService chatService,
@@ -105,172 +158,19 @@ class AgentService {
     _toolRegistry.register(ToolOutputReadTool(_toolRegistry.outputStore));
   }
 
+  /// 后台任务登记表（工具与协调层共用同一份）。
+  BackgroundTaskService get backgroundTasks => _toolRegistry.backgroundTasks;
+
+  /// 当前是否有 Agent 循环在运行（任一 run）。
+  bool get isRunning => _runs.isNotEmpty;
+
   /// 取消指定 run 的 Agent 循环。
   void abort(int runId) {
     _runs[runId]?.cancelToken.cancel();
   }
 
-  Stream<AgentEvent> run({
-    required int runId,
-    required ChatEntity chat,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    required List<ChatMessage> baseMessages,
-
-    /// 协调层在迭代切换时创建新消息，因此执行工具时再读取当前标识。
-    String? Function()? currentMessageId,
-    Future<List<ExperienceEntity>> Function(String query)? recallExperiences,
-
-    /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
-    String? skillPrompt,
-    String? experiencePrompt,
-    String? runtimePrompt,
-    ContextCompactionCallback? onCompact,
-    String? sentinelId,
-    bool hasSentinelPrompt = true,
-    PermissionCallback? onPermission,
-    PermissionService? permissionService,
-    PermissionReviewContext? permissionReviewContext,
-
-    /// 读取当前审批档位：权限门在每次工具调用前调用它，因此运行中切换
-    /// 档位立即生效；deny 规则仍生效。
-    ApprovalMode Function()? currentApprovalMode,
-
-    /// 本次 run 的工作文件夹（已校验存在的绝对路径）。
-    /// null = 不指定：shell 默认用户主目录、文件工具相对路径按进程当前
-    /// 目录解析（与引入本能力之前一致）。
-    String? workspace,
-
-    /// 提问回调（「你要哪个」），与审批回调（「要不要做」）分开。
-    /// null = 本会话没有提问 UI，ask_user_question 会降级为「按假定继续」。
-    ElicitPrompt? onElicit,
-    CancelToken? cancelToken,
-    bool jsonMode = false,
-
-    /// 自动汇报回合不触发失败反思，避免为附加汇报写入经验。
-    bool allowReflection = true,
-
-    /// 本轮是否允许启动后台任务。false 时 shell 的 background=true 直接
-    /// 被拒——否则「任务完成→自动汇报→再启任务」会形成无限链。
-    bool allowBackgroundTasks = true,
-
-    /// 请求前读取所属会话的待通知任务；完整响应后用
-    /// [AgentBackgroundTasksNotifiedEvent] 确认，失败时仍由宿主保留待汇报项。
-    List<BackgroundTask> Function()? pendingBackgroundTasks,
-
-    /// 本角色允许的工具名；null = 不限制。与 [ToolSet.kUndeactivatableToolNames]
-    /// 求并集后生效：模型看到的 schema 与执行闸门共用这份集合。
-    Set<String>? enabledTools,
-  }) async* {
-    if (_runs.containsKey(runId)) {
-      throw StateError('Agent run $runId is already active.');
-    }
-
-    final state = _AgentRunState(token: cancelToken);
-    _runs[runId] = state;
-    final token = state.cancelToken;
-
-    // 本次 run 的有效工具集：角色配置 + 与系统块强耦合的常开工具。
-    // 模型 schema、执行查找与反思通道都走这一个视图，避免三处口径漂移。
-    final registry = _toolRegistry.filtered(
-      enabled: enabledTools == null
-          ? null
-          : {...enabledTools, ...ToolSet.kUndeactivatableToolNames},
-    );
-
-    // 会话级权限缓存按 run 隔离：仅清空本 run 的
-    permissionService?.resetSession(runId);
-
-    // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
-    // 本轮就会带上可用技能清单；显式传入可覆盖。
-    if (skillPrompt == null) _skillRegistry?.reload();
-    final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
-
-    // 工作文件夹根目录的项目约定（AGENTS.md）：存在即全文注入、不裁剪。
-    // 与其它稳定目录同一约定——只拼入本次请求，不落库。用户可能在 run 进行中
-    // 编辑它，所以把快照交给循环在每次请求前复核 size/mtime。
-    final projectInstructions = ProjectInstructions.load(workspace);
-    final prompts = layoutPromptMessages(
-      base: baseMessages,
-      runtimeText: _runtimePromptWithDate(runtimePrompt),
-      hasSentinelPrompt: hasSentinelPrompt,
-      skillPrompt: effectiveSkillPrompt,
-      experiencePrompt: experiencePrompt,
-      projectPrompt: projectInstructions?.prompt,
-    );
-    _skillRegistry?.clearContext();
-
-    // 权限门：权限检查 + 审批回调，工具执行前逐调用拦截
-    final userAnswers = <Map<String, Object?>>[];
-    final permissionGate = _buildPermissionGate(
-      runId: runId,
-      permissionService: permissionService,
-      onPermission: onPermission,
-      cancelToken: token,
-      reviewContext: permissionReviewContext,
-      userAnswers: userAnswers,
-      currentApprovalMode: currentApprovalMode,
-      provider: provider,
-      model: model,
-      sentinelId: sentinelId,
-      workspace: workspace,
-      registry: registry,
-    );
-
-    // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
-    // 无 onElicit 时通道不可用，工具据此降级而不是空等。
-    final elicitChannel = ElicitChannel(
-      chatId: chat.id ?? '',
-      prompt: onElicit,
-      cancelToken: token,
-      onAnswered: (questions, answers) {
-        for (final question in questions) {
-          final answer = answers[question.question];
-          if (answer != null && answer.trim().isNotEmpty) {
-            userAnswers.add({'question': question.question, 'answer': answer});
-          }
-        }
-      },
-    );
-
-    try {
-      yield* _AgentLoop(
-        service: this,
-        state: state,
-        chat: chat,
-        provider: provider,
-        model: model,
-        messages: prompts.messages,
-        currentMessageId: currentMessageId,
-        recallExperiences: recallExperiences,
-        runtimeMessageIndex: prompts.runtimeMessageIndex,
-        runtimePrompt: runtimePrompt,
-        projectMessageIndex: prompts.projectMessageIndex,
-        projectInstructions: projectInstructions,
-        onCompact: onCompact,
-        runId: runId,
-        sentinelId: sentinelId,
-        jsonMode: jsonMode,
-        registry: registry,
-        permissionGate: permissionGate,
-        permissionService: permissionService,
-        onPermission: onPermission,
-        elicitChannel: elicitChannel,
-        workspace: workspace,
-        allowReflection: allowReflection,
-        currentApprovalMode: currentApprovalMode,
-        allowBackgroundTasks: allowBackgroundTasks,
-        pendingBackgroundTasks: pendingBackgroundTasks,
-      ).run();
-    } on CancelledException {
-      rethrow;
-    } finally {
-      _skillRegistry?.clearContext();
-      permissionService?.resetSession(runId);
-      _runs.remove(runId);
-      if (!state.settled.isCompleted) state.settled.complete();
-    }
-  }
+  /// 指定 run 的取消令牌（可能为 null）。
+  CancelToken? cancelTokenOf(int runId) => _runs[runId]?.cancelToken;
 
   /// 执行单个工具调用：参数校验 → 权限门 → 执行。
   ///
@@ -481,21 +381,165 @@ class AgentService {
     return result(rawResult, status, images: images);
   }
 
-  void _logUsage(Usage? usage) {
-    // 纯 Dart 等价于 kDebugMode（flutter/foundation 的 kDebugMode = !kReleaseMode）
-    if (const bool.fromEnvironment('dart.vm.product')) return;
-    if (usage != null) {
-      LoggerUtil.d(
-        'agent usage: prompt=${usage.promptTokens} '
-        'completion=${usage.completionTokens} '
-        'total=${usage.totalTokens} '
-        'cached=${usage.promptTokensDetails?.cachedTokens}',
-      );
-    } else {
-      LoggerUtil.w(
-        'agent usage: provider 返回的流中未携带 usage（多数是该 '
-        'provider/model 不支持 stream_options.include_usage）',
-      );
+  Stream<AgentEvent> run({
+    required int runId,
+    required ChatEntity chat,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    required List<ChatMessage> baseMessages,
+
+    /// 协调层在迭代切换时创建新消息，因此执行工具时再读取当前标识。
+    String? Function()? currentMessageId,
+    Future<List<ExperienceEntity>> Function(String query)? recallExperiences,
+
+    /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
+    String? skillPrompt,
+    String? experiencePrompt,
+    String? runtimePrompt,
+    ContextCompactionCallback? onCompact,
+    String? sentinelId,
+    bool hasSentinelPrompt = true,
+    PermissionCallback? onPermission,
+    PermissionService? permissionService,
+    PermissionReviewContext? permissionReviewContext,
+
+    /// 读取当前审批档位：权限门在每次工具调用前调用它，因此运行中切换
+    /// 档位立即生效；deny 规则仍生效。
+    ApprovalMode Function()? currentApprovalMode,
+
+    /// 本次 run 的工作文件夹（已校验存在的绝对路径）。
+    /// null = 不指定：shell 默认用户主目录、文件工具相对路径按进程当前
+    /// 目录解析（与引入本能力之前一致）。
+    String? workspace,
+
+    /// 提问回调（「你要哪个」），与审批回调（「要不要做」）分开。
+    /// null = 本会话没有提问 UI，ask_user_question 会降级为「按假定继续」。
+    ElicitPrompt? onElicit,
+    CancelToken? cancelToken,
+    bool jsonMode = false,
+
+    /// 自动汇报回合不触发失败反思，避免为附加汇报写入经验。
+    bool allowReflection = true,
+
+    /// 本轮是否允许启动后台任务。false 时 shell 的 background=true 直接
+    /// 被拒——否则「任务完成→自动汇报→再启任务」会形成无限链。
+    bool allowBackgroundTasks = true,
+
+    /// 请求前读取所属会话的待通知任务；完整响应后用
+    /// [AgentBackgroundTasksNotifiedEvent] 确认，失败时仍由宿主保留待汇报项。
+    List<BackgroundTask> Function()? pendingBackgroundTasks,
+
+    /// 本角色允许的工具名；null = 不限制。与 [ToolSet.kUndeactivatableToolNames]
+    /// 求并集后生效：模型看到的 schema 与执行闸门共用这份集合。
+    Set<String>? enabledTools,
+  }) async* {
+    if (_runs.containsKey(runId)) {
+      throw StateError('Agent run $runId is already active.');
+    }
+
+    final state = _AgentRunState(token: cancelToken);
+    _runs[runId] = state;
+    final token = state.cancelToken;
+
+    // 本次 run 的有效工具集：角色配置 + 与系统块强耦合的常开工具。
+    // 模型 schema、执行查找与反思通道都走这一个视图，避免三处口径漂移。
+    final registry = _toolRegistry.filtered(
+      enabled: enabledTools == null
+          ? null
+          : {...enabledTools, ...ToolSet.kUndeactivatableToolNames},
+    );
+
+    // 会话级权限缓存按 run 隔离：仅清空本 run 的
+    permissionService?.resetSession(runId);
+
+    // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
+    // 本轮就会带上可用技能清单；显式传入可覆盖。
+    if (skillPrompt == null) _skillRegistry?.reload();
+    final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
+
+    // 工作文件夹根目录的项目约定（AGENTS.md）：存在即全文注入、不裁剪。
+    // 与其它稳定目录同一约定——只拼入本次请求，不落库。用户可能在 run 进行中
+    // 编辑它，所以把快照交给循环在每次请求前复核 size/mtime。
+    final projectInstructions = ProjectInstructions.load(workspace);
+    final prompts = layoutPromptMessages(
+      base: baseMessages,
+      runtimeText: _runtimePromptWithDate(runtimePrompt),
+      hasSentinelPrompt: hasSentinelPrompt,
+      skillPrompt: effectiveSkillPrompt,
+      experiencePrompt: experiencePrompt,
+      projectPrompt: projectInstructions?.prompt,
+    );
+    _skillRegistry?.clearContext();
+
+    // 权限门：权限检查 + 审批回调，工具执行前逐调用拦截
+    final userAnswers = <Map<String, Object?>>[];
+    final permissionGate = _buildPermissionGate(
+      runId: runId,
+      permissionService: permissionService,
+      onPermission: onPermission,
+      cancelToken: token,
+      reviewContext: permissionReviewContext,
+      userAnswers: userAnswers,
+      currentApprovalMode: currentApprovalMode,
+      provider: provider,
+      model: model,
+      sentinelId: sentinelId,
+      workspace: workspace,
+      registry: registry,
+    );
+
+    // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
+    // 无 onElicit 时通道不可用，工具据此降级而不是空等。
+    final elicitChannel = ElicitChannel(
+      chatId: chat.id ?? '',
+      prompt: onElicit,
+      cancelToken: token,
+      onAnswered: (questions, answers) {
+        for (final question in questions) {
+          final answer = answers[question.question];
+          if (answer != null && answer.trim().isNotEmpty) {
+            userAnswers.add({'question': question.question, 'answer': answer});
+          }
+        }
+      },
+    );
+
+    try {
+      yield* _AgentLoop(
+        service: this,
+        state: state,
+        chat: chat,
+        provider: provider,
+        model: model,
+        messages: prompts.messages,
+        currentMessageId: currentMessageId,
+        recallExperiences: recallExperiences,
+        runtimeMessageIndex: prompts.runtimeMessageIndex,
+        runtimePrompt: runtimePrompt,
+        projectMessageIndex: prompts.projectMessageIndex,
+        projectInstructions: projectInstructions,
+        onCompact: onCompact,
+        runId: runId,
+        sentinelId: sentinelId,
+        jsonMode: jsonMode,
+        registry: registry,
+        permissionGate: permissionGate,
+        permissionService: permissionService,
+        onPermission: onPermission,
+        elicitChannel: elicitChannel,
+        workspace: workspace,
+        allowReflection: allowReflection,
+        currentApprovalMode: currentApprovalMode,
+        allowBackgroundTasks: allowBackgroundTasks,
+        pendingBackgroundTasks: pendingBackgroundTasks,
+      ).run();
+    } on CancelledException {
+      rethrow;
+    } finally {
+      _skillRegistry?.clearContext();
+      permissionService?.resetSession(runId);
+      _runs.remove(runId);
+      if (!state.settled.isCompleted) state.settled.complete();
     }
   }
 
@@ -552,6 +596,9 @@ class AgentService {
     }
     return parallelCalls;
   }
+
+  /// 等待指定 run 完成后 resolve 的 Future。
+  Future<void>? settledOf(int runId) => _runs[runId]?.settled.future;
 
   /// 构建工具执行前的权限门：权限检查 + 审批回调。
   PermissionGate? _buildPermissionGate({
@@ -674,22 +721,6 @@ class AgentService {
     };
   }
 
-  /// 权限服务缺席时的兜底（库被无权限装配调用，如自定义宿主只装了
-  /// AgentService）。有审批回调时交给宿主，其余直接拒绝。
-  static PermissionVerdict _verdictWithoutPermissionService(
-    PermissionCallback? onPermission,
-  ) {
-    if (onPermission != null) return PermissionVerdict.prompt;
-    return PermissionVerdict.deny;
-  }
-
-  String _runtimePromptWithDate(String? runtimePrompt) {
-    final date = RuntimeContext.currentDatePrompt(_now());
-    return runtimePrompt == null || runtimePrompt.isEmpty
-        ? date
-        : '$runtimePrompt\n$date';
-  }
-
   /// 从本次 run 的工具视图构建 OpenAI Tool 列表。
   List<Tool>? _buildTools(ToolRegistry registry) {
     final defs = registry.definitions;
@@ -704,79 +735,64 @@ class AgentService {
         )
         .toList();
   }
+
+  void _logUsage(Usage? usage) {
+    // 纯 Dart 等价于 kDebugMode（flutter/foundation 的 kDebugMode = !kReleaseMode）
+    if (const bool.fromEnvironment('dart.vm.product')) return;
+    if (usage != null) {
+      LoggerUtil.d(
+        'agent usage: prompt=${usage.promptTokens} '
+        'completion=${usage.completionTokens} '
+        'total=${usage.totalTokens} '
+        'cached=${usage.promptTokensDetails?.cachedTokens}',
+      );
+    } else {
+      LoggerUtil.w(
+        'agent usage: provider 返回的流中未携带 usage（多数是该 '
+        'provider/model 不支持 stream_options.include_usage）',
+      );
+    }
+  }
+
+  String _runtimePromptWithDate(String? runtimePrompt) {
+    final date = RuntimeContext.currentDatePrompt(_now());
+    return runtimePrompt == null || runtimePrompt.isEmpty
+        ? date
+        : '$runtimePrompt\n$date';
+  }
+
+  /// 权限服务缺席时的兜底（库被无权限装配调用，如自定义宿主只装了
+  /// AgentService）。有审批回调时交给宿主，其余直接拒绝。
+  static PermissionVerdict _verdictWithoutPermissionService(
+    PermissionCallback? onPermission,
+  ) {
+    if (onPermission != null) return PermissionVerdict.prompt;
+    return PermissionVerdict.deny;
+  }
 }
 
-/// 首轮请求的消息布局（纯函数：同样输入得到同样布局，便于单测固定块顺序）。
+/// 工具执行内部结果：不进入公开事件流，仅供测试与循环内部复用。
 ///
-/// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
-///   [sentinel, experience-hint, skill, experience catalog, project?, runtime-with-date, history...]
-///
-/// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
-/// true 时首个 system 是 sentinel，其后的 system 是稳定的 Experience 目录；
-/// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
-/// 包括按覆盖范围定位的 compact 摘要。
-/// - experience hint / skill 插在 sentinel 之后、经验目录之前。
-/// - project（工作文件夹根目录的 AGENTS.md）与 runtime 都是随外部状态变化的
-///   块，放在最靠后：前缀缓存只在前缀相同的部分命中，块越靠后，它变化时被
-///   重算的 token 越少。
-/// - runtime + date 保持「最后一条 system 消息、紧接对话历史之前」。
-///
-/// 返回的两个下标供 run 循环在每次请求前就地刷新对应消息（runtime 跨天、
-/// project 被用户编辑）。压缩会原样保留全部 system 消息并保持相对顺序
-/// （ConversationCompactor 的 candidate 由 `whereType<SystemMessage>()` 构造），
-/// 所以下标在压缩后依然有效。
-({List<ChatMessage> messages, int runtimeMessageIndex, int projectMessageIndex})
-layoutPromptMessages({
-  required List<ChatMessage> base,
-  required String runtimeText,
-  required bool hasSentinelPrompt,
-  String? skillPrompt,
-  String? experiencePrompt,
-  String? projectPrompt,
-}) {
-  var sentinelEnd = -1;
-  if (hasSentinelPrompt) {
-    for (var i = 0; i < base.length; i++) {
-      if (base[i] is SystemMessage) {
-        sentinelEnd = i;
-        break;
-      }
-    }
-  }
+/// 留在本库而不是随 [AgentEvent] 一起抽到 agent_event.dart：`@visibleForTesting`
+/// 只允许声明库内部与测试使用，而消费方（[AgentService.executeToolCallInternal]
+/// 与循环）都在本库。
+@visibleForTesting
+class ToolCallResultInternal {
+  final AgentToolResultEvent event;
+  final String processedResult;
+  final String rawResult;
+  final ToolResultStatus status;
 
-  final injectedBlocks = <ChatMessage>[
-    if (experiencePrompt != null && experiencePrompt.isNotEmpty)
-      ChatMessage.system(experiencePrompt),
-    if (skillPrompt != null && skillPrompt.isNotEmpty)
-      ChatMessage.system(skillPrompt),
-  ];
+  /// 需要模型看到的图片；非视觉模型已在执行路径里剔除。
+  final List<ToolResultImage> images;
 
-  final head = <ChatMessage>[];
-  final summaries = <ChatMessage>[];
-  final history = <ChatMessage>[];
-  for (var i = 0; i < base.length; i++) {
-    final m = base[i];
-    if (i == sentinelEnd) {
-      head.add(m); // sentinel
-    } else if (m is SystemMessage) {
-      summaries.add(m); // 稳定的附加上下文（experience digest）
-    } else {
-      history.add(m);
-    }
-  }
-
-  final lead = <ChatMessage>[...head, ...injectedBlocks, ...summaries];
-  final hasProject = projectPrompt != null && projectPrompt.isNotEmpty;
-  return (
-    messages: [
-      ...lead,
-      if (hasProject) ChatMessage.system(projectPrompt),
-      ChatMessage.system(runtimeText),
-      ...history,
-    ],
-    runtimeMessageIndex: lead.length + (hasProject ? 1 : 0),
-    projectMessageIndex: hasProject ? lead.length : -1,
-  );
+  const ToolCallResultInternal({
+    required this.event,
+    required this.processedResult,
+    required this.rawResult,
+    required this.status,
+    this.images = const [],
+  });
 }
 
 /// 单次 Agent run 的驱动循环（外层 followUp 循环 + 内层工具迭代）。
@@ -785,6 +801,67 @@ layoutPromptMessages({
 /// （流式消费、截断保护、串行/并行执行、反思、outcome 汇总）收拢到
 /// 职责单一的私有类；[AgentService.run] 仅负责 run 状态注册与清理。
 class _AgentLoop {
+  final AgentService _service;
+
+  final _AgentRunState _state;
+  final ChatEntity _chat;
+  final ProviderEntity _provider;
+  final ModelEntity _model;
+  final ContextBudget _budget;
+  final int _runtimeMessageIndex;
+  final String? _runtimePrompt;
+
+  /// 注入的项目约定块下标；-1 表示本次 run 未注入。
+  final int _projectMessageIndex;
+
+  /// 已注入的项目约定快照（随文件变化更新）。
+  ProjectInstructions? _projectInstructions;
+
+  final ContextCompactionCallback? _onCompact;
+
+  /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
+  final List<ChatMessage> _messages;
+
+  final String? Function()? _currentMessageId;
+  final Future<List<ExperienceEntity>> Function(String)? _recallExperiences;
+  final int _runId;
+  final String? _sentinelId;
+  final bool _jsonMode;
+
+  /// 本次 run 的有效工具视图（已按角色配置过滤）。
+  final ToolRegistry _registry;
+
+  final PermissionGate? _permissionGate;
+  final PermissionService? _permissionService;
+  final PermissionCallback? _onPermission;
+  final ElicitChannel _elicitChannel;
+
+  /// 本次 run 的工作文件夹（相对路径解析基准），null = 不指定。
+  final String? _workspace;
+
+  /// 自动汇报跳过失败反思；审批模式独立决定工具的放行方式。
+  final bool _allowReflection;
+
+  final ApprovalMode Function()? _currentApprovalMode;
+
+  /// 本轮是否允许启动后台任务。
+  final bool _allowBackgroundTasks;
+
+  final List<BackgroundTask> Function()? _pendingBackgroundTasks;
+  final Set<String> _unacknowledgedBackgroundTaskIds = {};
+  int _iterationsExecuted = 0;
+
+  final List<ToolFailure> _toolFailures = [];
+
+  final List<Map<String, dynamic>> _reflectionToolResults = [];
+  var _reflectionAttempted = false;
+
+  /// 本 run 内是否已有一次压缩没能完成。
+  ///
+  /// 失败后不再自动压缩：同一个 run 里历史只多一条助手消息，同样的输入只会得到
+  /// 同样的结果，而每次尝试都要把整段历史再发给摘要模型一次（长历史下这是最贵的
+  /// 请求）。失败原因留在压缩卡片里；用户下一条消息就是新 run，标志随之重置。
+  var _compactionFailed = false;
   _AgentLoop({
     required AgentService service,
     required _AgentRunState state,
@@ -845,62 +922,7 @@ class _AgentLoop {
        _allowBackgroundTasks = allowBackgroundTasks,
        _pendingBackgroundTasks = pendingBackgroundTasks;
 
-  final AgentService _service;
-  final _AgentRunState _state;
-  final ChatEntity _chat;
-  final ProviderEntity _provider;
-  final ModelEntity _model;
-  final ContextBudget _budget;
-  final int _runtimeMessageIndex;
-  final String? _runtimePrompt;
-
-  /// 注入的项目约定块下标；-1 表示本次 run 未注入。
-  final int _projectMessageIndex;
-
-  /// 已注入的项目约定快照（随文件变化更新）。
-  ProjectInstructions? _projectInstructions;
-  final ContextCompactionCallback? _onCompact;
-
-  /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
-  final List<ChatMessage> _messages;
-  final String? Function()? _currentMessageId;
-  final Future<List<ExperienceEntity>> Function(String)? _recallExperiences;
-  final int _runId;
-  final String? _sentinelId;
-  final bool _jsonMode;
-
-  /// 本次 run 的有效工具视图（已按角色配置过滤）。
-  final ToolRegistry _registry;
-  final PermissionGate? _permissionGate;
-  final PermissionService? _permissionService;
-  final PermissionCallback? _onPermission;
-  final ElicitChannel _elicitChannel;
-
-  /// 本次 run 的工作文件夹（相对路径解析基准），null = 不指定。
-  final String? _workspace;
-
-  /// 自动汇报跳过失败反思；审批模式独立决定工具的放行方式。
-  final bool _allowReflection;
-  final ApprovalMode Function()? _currentApprovalMode;
-
-  /// 本轮是否允许启动后台任务。
-  final bool _allowBackgroundTasks;
-  final List<BackgroundTask> Function()? _pendingBackgroundTasks;
-  final Set<String> _unacknowledgedBackgroundTaskIds = {};
-
   CancelToken get _token => _state.cancelToken;
-
-  int _iterationsExecuted = 0;
-  final List<ToolFailure> _toolFailures = [];
-  final List<Map<String, dynamic>> _reflectionToolResults = [];
-  var _reflectionAttempted = false;
-
-  /// 本 run 内是否已有一次压缩没能完成。
-  ///
-  /// 失败后不再自动压缩：同一个 run 里历史只多一条助手消息，同样的输入只会得到
-  /// 同样的结果，而每次尝试都要把整段历史再发给摘要模型一次（长历史下这是最贵的
-  /// 请求）。失败原因留在压缩卡片里；用户下一条消息就是新 run，标志随之重置。
-  var _compactionFailed = false;
 
   /// 执行整个 run：单层工具迭代循环，结束后触发反思并产出 outcome。
   ///
@@ -996,6 +1018,271 @@ class _AgentLoop {
       LoggerUtil.w('Compact: 本 run 不再自动压缩（上一次停在 ${last.phase.name}）');
     }
     _token.throwIfCancelled();
+  }
+
+  /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
+  Future<_ToolExecutionData> _executeOneTool({
+    required ToolCall tc,
+    String? experienceSource,
+  }) async {
+    final result = await _service.executeToolCallInternal(
+      toolCall: tc,
+      cancelToken: _token,
+      sentinelId: _sentinelId,
+      permissionGate: _permissionGate,
+      elicitChannel: _elicitChannel,
+      workspace: _workspace,
+      experienceWorkspace: _chat.workspacePath,
+      chatId: _chat.id,
+      messageId: _currentMessageId?.call(),
+      allowBackgroundTasks: _allowBackgroundTasks,
+      experienceSource: experienceSource,
+      supportsVision: _model.vision,
+      toolRegistry: _registry,
+    );
+    _reflectionToolResults.add(
+      ReflectionPrompt.toolResult(
+        tool: tc.function.name,
+        arguments: tc.function.arguments,
+        status: result.status,
+        result: result.rawResult,
+      ),
+    );
+    if (_reflectionToolResults.length > 8) {
+      _reflectionToolResults.removeAt(0);
+    }
+    return _ToolExecutionData(
+      event: result.event,
+      toolMessage: ChatMessage.tool(
+        toolCallId: tc.id,
+        content: result.processedResult,
+      ),
+      images: result.images,
+      record: {
+        'id': tc.id,
+        'name': tc.function.name,
+        'arguments': tc.function.arguments,
+        'result': result.rawResult,
+        'modelResult': result.processedResult,
+        if (result.event.outputId != null) 'outputId': result.event.outputId,
+        'status': result.status.name,
+      },
+    );
+  }
+
+  /// 并行执行单个工具，受 [semaphore] 限流。
+  Future<_ToolExecutionData> _executeParallelOne({
+    required ToolCall tc,
+    required _AsyncSemaphore semaphore,
+  }) async {
+    await semaphore.acquire();
+    try {
+      return await _executeOneTool(tc: tc);
+    } finally {
+      semaphore.release();
+    }
+  }
+
+  /// 执行一轮的工具调用：分组（可并行 / 串行）→ 串行段 → 并行段 →
+  /// iterationComplete。
+  Stream<AgentEvent> _executeToolCalls(
+    List<ToolCall> toolCalls,
+    String content,
+  ) async* {
+    final toolCallDataList = <Map<String, dynamic>>[];
+    final resultImages = <ToolResultImage>[];
+
+    // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
+    // 审批的调用）进入串行组
+    final parallelCalls = _service.selectParallelCalls(
+      toolCalls,
+      runId: _runId,
+      permissionService: _permissionService,
+      onPermission: _onPermission,
+      workspace: _workspace,
+      bypassPermissions: _currentApprovalMode?.call() == ApprovalMode.bypass,
+      toolRegistry: _registry,
+    );
+    final sequentialCalls = [
+      for (final tc in toolCalls)
+        if (!parallelCalls.contains(tc)) tc,
+    ];
+
+    // 串行执行（弹窗审批天然逐个出现）
+    for (final tc in sequentialCalls) {
+      yield AgentEvent.toolExecutionStart(
+        id: tc.id,
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      );
+      final data = await _executeOneTool(tc: tc);
+      yield data.event;
+      _messages.add(data.toolMessage);
+      resultImages.addAll(data.images);
+      toolCallDataList.add(data.record);
+      _recordFailure(data.event);
+    }
+
+    // 并行执行：信号量限流 + 取消优先 + 结果渐进式产出
+    if (parallelCalls.isNotEmpty) {
+      for (final tc in parallelCalls) {
+        yield AgentEvent.toolExecutionStart(
+          id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        );
+      }
+
+      final semaphore = _AsyncSemaphore(AgentService._maxParallelTools);
+      final futures = <Future<_ToolExecutionData>>{
+        for (final tc in parallelCalls)
+          _executeParallelOne(tc: tc, semaphore: semaphore),
+      };
+
+      while (futures.isNotEmpty) {
+        // 每轮取最快完成的工具；取消信号优先返回，不等待卡住的工具
+        final first = await Future.any([
+          for (final f in futures) f.then((r) => (f: f, r: r)),
+          _token.whenCancelled.then((_) => null),
+        ]);
+        if (first == null) {
+          // 取消：排空在飞的工具 Future（最多 2s），吞掉结果与错误，
+          // 避免孤立 Future 继续执行副作用或产生未处理异常；
+          // 已在执行的工具无法中断（工具级取消另行排期）。
+          await Future.wait(
+            futures.map((f) => f.then((_) {}, onError: (_) {})),
+          ).timeout(const Duration(seconds: 2), onTimeout: () => []);
+          _token.throwIfCancelled();
+        }
+        futures.remove(first!.f);
+        yield first.r.event;
+        _messages.add(first.r.toolMessage);
+        resultImages.addAll(first.r.images);
+        toolCallDataList.add(first.r.record);
+        _recordFailure(first.r.event);
+      }
+    }
+
+    // 图片只能在整批工具消息之后追加：Chat Completions 要求所有 tool
+    // 消息紧跟带 tool_calls 的 assistant，中间插入其它角色会被判非法。
+    final imageMessage = ToolResultImages.toolResultImagesMessage(resultImages);
+    if (imageMessage != null) _messages.add(imageMessage);
+
+    yield AgentEvent.iterationComplete(
+      toolCalls: toolCallDataList,
+      content: content,
+    );
+  }
+
+  /// 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用。
+  ///
+  /// 产出逐条的 modelTruncated 错误结果与 iterationComplete，
+  /// 供模型在下一轮以完整参数重新发起。
+  Stream<AgentEvent> _handleTruncated(
+    List<ToolCall> toolCalls,
+    String content,
+  ) async* {
+    final toolCallDataList = <Map<String, dynamic>>[];
+    for (final tc in toolCalls) {
+      const msg =
+          'Error: Tool call was not executed because the '
+          'response hit the output token limit. Its arguments may be '
+          'truncated. Re-issue the tool call with complete arguments.';
+      yield AgentEvent.toolResult(
+        id: tc.id,
+        name: tc.function.name,
+        result: msg,
+        status: ToolResultStatus.modelTruncated,
+      );
+      _toolFailures.add(
+        ToolFailure(
+          toolName: tc.function.name,
+          status: ToolResultStatus.modelTruncated,
+          message: msg,
+        ),
+      );
+      _messages.add(ChatMessage.tool(toolCallId: tc.id, content: msg));
+      toolCallDataList.add({
+        'id': tc.id,
+        'name': tc.function.name,
+        'arguments': tc.function.arguments,
+        'result': msg,
+      });
+    }
+    yield AgentEvent.iterationComplete(
+      toolCalls: toolCallDataList,
+      content: content,
+    );
+  }
+
+  String _latestUserTask() {
+    for (final message in _messages.reversed) {
+      if (message is! UserMessage) continue;
+      // 工具结果图片是引擎合成的请求片段，不是用户输入；把它当成任务
+      // 描述会让反思拿到一句「Images returned by...」。
+      final content = message.content;
+      if (content is UserPartsContent && content.parts.isNotEmpty) {
+        final first = content.parts.first;
+        if (first is TextContentPart &&
+            first.text == ToolResultImages.toolResultImagesMarker) {
+          continue;
+        }
+      }
+      return '${message.content}';
+    }
+    return '';
+  }
+
+  /// 反思通道：失败可归因时让模型提炼长期经验，
+  /// 经 experience_learn 标准工具路径（校验/审批/执行）写入。
+  ///
+  /// 只在迭代循环自然结束（模型主动结束）后调用，所以终止原因恒为
+  /// [AgentRunTermination.completed]；取消与错误在循环里直接冒出，到不了这里。
+  Stream<AgentEvent> _maybeReflect(String finalResponse) async* {
+    var outcome = AgentRunOutcome(
+      termination: AgentRunTermination.completed,
+      iterations: _iterationsExecuted,
+      toolFailures: List.unmodifiable(_toolFailures),
+    );
+    if (ReflectionPolicy.shouldReflect(outcome) &&
+        // 自动汇报是附加路径，不为汇报失败额外生成经验。
+        _allowReflection &&
+        _registry.get('experience_learn') != null) {
+      _reflectionAttempted = true;
+      try {
+        yield* _runReflection(
+          outcome: outcome,
+          task: _latestUserTask(),
+          finalResponse: finalResponse,
+          iteration: _iterationsExecuted,
+        );
+      } on CancelledException {
+        rethrow;
+      } catch (e) {
+        // Reflection 是附加学习路径；失败不能把原任务改写成运行错误。
+        LoggerUtil.w('Reflection skipped after failure: $e');
+      }
+    }
+    outcome = AgentRunOutcome(
+      termination: AgentRunTermination.completed,
+      iterations: _iterationsExecuted,
+      toolFailures: List.unmodifiable(_toolFailures),
+      reflectionAttempted: _reflectionAttempted,
+    );
+    yield AgentEvent.outcome(outcome);
+  }
+
+  void _recordFailure(AgentToolResultEvent event) {
+    if (event.status == ToolResultStatus.success) {
+      return;
+    }
+    _toolFailures.add(
+      ToolFailure(
+        toolName: event.name,
+        status: event.status,
+        message: event.result,
+      ),
+    );
   }
 
   /// 单轮迭代：取消检查 → LLM 流式 → 追加 assistant 消息
@@ -1169,6 +1456,73 @@ class _AgentLoop {
     yield* _executeToolCalls(toolCalls, st.accumulator.content);
   }
 
+  /// 失败反思：仅做一次 LLM 提案调用，经验写入完全复用普通工具路径。
+  Stream<AgentEvent> _runReflection({
+    required AgentRunOutcome outcome,
+    required String task,
+    required String finalResponse,
+    required int iteration,
+  }) async* {
+    _token.throwIfCancelled();
+    final related =
+        (await _recallExperiences?.call(task) ?? <ExperienceEntity>[])
+            .take(5)
+            .toList();
+    _token.throwIfCancelled();
+    final response = await _service._chatService.complete(
+      messages: [
+        ChatMessage.system(ReflectionPrompt.system),
+        ChatMessage.user(
+          ReflectionPrompt.input(
+            outcome: outcome,
+            task: task,
+            toolResults: _reflectionToolResults,
+            finalResponse: finalResponse,
+            relatedExperiences: related,
+          ),
+        ),
+      ],
+      provider: _provider,
+      model: _model,
+      cancelSignal: _token.whenCancelled,
+    );
+    _token.throwIfCancelled();
+
+    final proposal = ReflectionProposal.tryParse(
+      response,
+      allowedExperienceIds: related.map((e) => e.id).toSet(),
+    );
+    if (proposal == null) return;
+
+    final arguments = jsonEncode(proposal.toToolArguments());
+    final id = 'reflection_$iteration';
+    final toolCall = ToolCall(
+      id: id,
+      type: 'function',
+      function: FunctionCall(name: 'experience_learn', arguments: arguments),
+    );
+
+    // Reflection 只生成标准工具调用；参数校验、权限审批与执行完全复用
+    // 普通 Agent 工具路径，不直接写 ExperienceRepository。
+    yield AgentEvent.turnStart(iteration: iteration);
+    yield AgentEvent.toolCall(
+      id: id,
+      name: 'experience_learn',
+      arguments: arguments,
+    );
+    yield AgentEvent.toolExecutionStart(
+      id: id,
+      name: 'experience_learn',
+      arguments: arguments,
+    );
+    final data = await _executeOneTool(
+      tc: toolCall,
+      experienceSource: 'reflection',
+    );
+    yield data.event;
+    yield AgentEvent.iterationComplete(toolCalls: [data.record], content: '');
+  }
+
   /// 仅 LLM 流式消费：reasoning / tool_calls 分片 / text 实时产出事件，
   /// 流异常归一化（取消优先于底层错误），累积结果写入 [st.accumulator]。
   Stream<AgentEvent> _streamTurn(
@@ -1309,376 +1663,14 @@ class _AgentLoop {
       );
     }
   }
-
-  /// 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用。
-  ///
-  /// 产出逐条的 modelTruncated 错误结果与 iterationComplete，
-  /// 供模型在下一轮以完整参数重新发起。
-  Stream<AgentEvent> _handleTruncated(
-    List<ToolCall> toolCalls,
-    String content,
-  ) async* {
-    final toolCallDataList = <Map<String, dynamic>>[];
-    for (final tc in toolCalls) {
-      const msg =
-          'Error: Tool call was not executed because the '
-          'response hit the output token limit. Its arguments may be '
-          'truncated. Re-issue the tool call with complete arguments.';
-      yield AgentEvent.toolResult(
-        id: tc.id,
-        name: tc.function.name,
-        result: msg,
-        status: ToolResultStatus.modelTruncated,
-      );
-      _toolFailures.add(
-        ToolFailure(
-          toolName: tc.function.name,
-          status: ToolResultStatus.modelTruncated,
-          message: msg,
-        ),
-      );
-      _messages.add(ChatMessage.tool(toolCallId: tc.id, content: msg));
-      toolCallDataList.add({
-        'id': tc.id,
-        'name': tc.function.name,
-        'arguments': tc.function.arguments,
-        'result': msg,
-      });
-    }
-    yield AgentEvent.iterationComplete(
-      toolCalls: toolCallDataList,
-      content: content,
-    );
-  }
-
-  /// 执行一轮的工具调用：分组（可并行 / 串行）→ 串行段 → 并行段 →
-  /// iterationComplete。
-  Stream<AgentEvent> _executeToolCalls(
-    List<ToolCall> toolCalls,
-    String content,
-  ) async* {
-    final toolCallDataList = <Map<String, dynamic>>[];
-    final resultImages = <ToolResultImage>[];
-
-    // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
-    // 审批的调用）进入串行组
-    final parallelCalls = _service.selectParallelCalls(
-      toolCalls,
-      runId: _runId,
-      permissionService: _permissionService,
-      onPermission: _onPermission,
-      workspace: _workspace,
-      bypassPermissions: _currentApprovalMode?.call() == ApprovalMode.bypass,
-      toolRegistry: _registry,
-    );
-    final sequentialCalls = [
-      for (final tc in toolCalls)
-        if (!parallelCalls.contains(tc)) tc,
-    ];
-
-    // 串行执行（弹窗审批天然逐个出现）
-    for (final tc in sequentialCalls) {
-      yield AgentEvent.toolExecutionStart(
-        id: tc.id,
-        name: tc.function.name,
-        arguments: tc.function.arguments,
-      );
-      final data = await _executeOneTool(tc: tc);
-      yield data.event;
-      _messages.add(data.toolMessage);
-      resultImages.addAll(data.images);
-      toolCallDataList.add(data.record);
-      _recordFailure(data.event);
-    }
-
-    // 并行执行：信号量限流 + 取消优先 + 结果渐进式产出
-    if (parallelCalls.isNotEmpty) {
-      for (final tc in parallelCalls) {
-        yield AgentEvent.toolExecutionStart(
-          id: tc.id,
-          name: tc.function.name,
-          arguments: tc.function.arguments,
-        );
-      }
-
-      final semaphore = _AsyncSemaphore(AgentService._maxParallelTools);
-      final futures = <Future<_ToolExecutionData>>{
-        for (final tc in parallelCalls)
-          _executeParallelOne(tc: tc, semaphore: semaphore),
-      };
-
-      while (futures.isNotEmpty) {
-        // 每轮取最快完成的工具；取消信号优先返回，不等待卡住的工具
-        final first = await Future.any([
-          for (final f in futures) f.then((r) => (f: f, r: r)),
-          _token.whenCancelled.then((_) => null),
-        ]);
-        if (first == null) {
-          // 取消：排空在飞的工具 Future（最多 2s），吞掉结果与错误，
-          // 避免孤立 Future 继续执行副作用或产生未处理异常；
-          // 已在执行的工具无法中断（工具级取消另行排期）。
-          await Future.wait(
-            futures.map((f) => f.then((_) {}, onError: (_) {})),
-          ).timeout(const Duration(seconds: 2), onTimeout: () => []);
-          _token.throwIfCancelled();
-        }
-        futures.remove(first!.f);
-        yield first.r.event;
-        _messages.add(first.r.toolMessage);
-        resultImages.addAll(first.r.images);
-        toolCallDataList.add(first.r.record);
-        _recordFailure(first.r.event);
-      }
-    }
-
-    // 图片只能在整批工具消息之后追加：Chat Completions 要求所有 tool
-    // 消息紧跟带 tool_calls 的 assistant，中间插入其它角色会被判非法。
-    final imageMessage = ToolResultImages.toolResultImagesMessage(resultImages);
-    if (imageMessage != null) _messages.add(imageMessage);
-
-    yield AgentEvent.iterationComplete(
-      toolCalls: toolCallDataList,
-      content: content,
-    );
-  }
-
-  /// 反思通道：失败可归因时让模型提炼长期经验，
-  /// 经 experience_learn 标准工具路径（校验/审批/执行）写入。
-  ///
-  /// 只在迭代循环自然结束（模型主动结束）后调用，所以终止原因恒为
-  /// [AgentRunTermination.completed]；取消与错误在循环里直接冒出，到不了这里。
-  Stream<AgentEvent> _maybeReflect(String finalResponse) async* {
-    var outcome = AgentRunOutcome(
-      termination: AgentRunTermination.completed,
-      iterations: _iterationsExecuted,
-      toolFailures: List.unmodifiable(_toolFailures),
-    );
-    if (ReflectionPolicy.shouldReflect(outcome) &&
-        // 自动汇报是附加路径，不为汇报失败额外生成经验。
-        _allowReflection &&
-        _registry.get('experience_learn') != null) {
-      _reflectionAttempted = true;
-      try {
-        yield* _runReflection(
-          outcome: outcome,
-          task: _latestUserTask(),
-          finalResponse: finalResponse,
-          iteration: _iterationsExecuted,
-        );
-      } on CancelledException {
-        rethrow;
-      } catch (e) {
-        // Reflection 是附加学习路径；失败不能把原任务改写成运行错误。
-        LoggerUtil.w('Reflection skipped after failure: $e');
-      }
-    }
-    outcome = AgentRunOutcome(
-      termination: AgentRunTermination.completed,
-      iterations: _iterationsExecuted,
-      toolFailures: List.unmodifiable(_toolFailures),
-      reflectionAttempted: _reflectionAttempted,
-    );
-    yield AgentEvent.outcome(outcome);
-  }
-
-  /// 失败反思：仅做一次 LLM 提案调用，经验写入完全复用普通工具路径。
-  Stream<AgentEvent> _runReflection({
-    required AgentRunOutcome outcome,
-    required String task,
-    required String finalResponse,
-    required int iteration,
-  }) async* {
-    _token.throwIfCancelled();
-    final related =
-        (await _recallExperiences?.call(task) ?? <ExperienceEntity>[])
-            .take(5)
-            .toList();
-    _token.throwIfCancelled();
-    final response = await _service._chatService.complete(
-      messages: [
-        ChatMessage.system(ReflectionPrompt.system),
-        ChatMessage.user(
-          ReflectionPrompt.input(
-            outcome: outcome,
-            task: task,
-            toolResults: _reflectionToolResults,
-            finalResponse: finalResponse,
-            relatedExperiences: related,
-          ),
-        ),
-      ],
-      provider: _provider,
-      model: _model,
-      cancelSignal: _token.whenCancelled,
-    );
-    _token.throwIfCancelled();
-
-    final proposal = ReflectionProposal.tryParse(
-      response,
-      allowedExperienceIds: related.map((e) => e.id).toSet(),
-    );
-    if (proposal == null) return;
-
-    final arguments = jsonEncode(proposal.toToolArguments());
-    final id = 'reflection_$iteration';
-    final toolCall = ToolCall(
-      id: id,
-      type: 'function',
-      function: FunctionCall(name: 'experience_learn', arguments: arguments),
-    );
-
-    // Reflection 只生成标准工具调用；参数校验、权限审批与执行完全复用
-    // 普通 Agent 工具路径，不直接写 ExperienceRepository。
-    yield AgentEvent.turnStart(iteration: iteration);
-    yield AgentEvent.toolCall(
-      id: id,
-      name: 'experience_learn',
-      arguments: arguments,
-    );
-    yield AgentEvent.toolExecutionStart(
-      id: id,
-      name: 'experience_learn',
-      arguments: arguments,
-    );
-    final data = await _executeOneTool(
-      tc: toolCall,
-      experienceSource: 'reflection',
-    );
-    yield data.event;
-    yield AgentEvent.iterationComplete(toolCalls: [data.record], content: '');
-  }
-
-  /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
-  Future<_ToolExecutionData> _executeOneTool({
-    required ToolCall tc,
-    String? experienceSource,
-  }) async {
-    final result = await _service.executeToolCallInternal(
-      toolCall: tc,
-      cancelToken: _token,
-      sentinelId: _sentinelId,
-      permissionGate: _permissionGate,
-      elicitChannel: _elicitChannel,
-      workspace: _workspace,
-      experienceWorkspace: _chat.workspacePath,
-      chatId: _chat.id,
-      messageId: _currentMessageId?.call(),
-      allowBackgroundTasks: _allowBackgroundTasks,
-      experienceSource: experienceSource,
-      supportsVision: _model.vision,
-      toolRegistry: _registry,
-    );
-    _reflectionToolResults.add(
-      ReflectionPrompt.toolResult(
-        tool: tc.function.name,
-        arguments: tc.function.arguments,
-        status: result.status,
-        result: result.rawResult,
-      ),
-    );
-    if (_reflectionToolResults.length > 8) {
-      _reflectionToolResults.removeAt(0);
-    }
-    return _ToolExecutionData(
-      event: result.event,
-      toolMessage: ChatMessage.tool(
-        toolCallId: tc.id,
-        content: result.processedResult,
-      ),
-      images: result.images,
-      record: {
-        'id': tc.id,
-        'name': tc.function.name,
-        'arguments': tc.function.arguments,
-        'result': result.rawResult,
-        'modelResult': result.processedResult,
-        if (result.event.outputId != null) 'outputId': result.event.outputId,
-        'status': result.status.name,
-      },
-    );
-  }
-
-  /// 并行执行单个工具，受 [semaphore] 限流。
-  Future<_ToolExecutionData> _executeParallelOne({
-    required ToolCall tc,
-    required _AsyncSemaphore semaphore,
-  }) async {
-    await semaphore.acquire();
-    try {
-      return await _executeOneTool(tc: tc);
-    } finally {
-      semaphore.release();
-    }
-  }
-
-  void _recordFailure(AgentToolResultEvent event) {
-    if (event.status == ToolResultStatus.success) {
-      return;
-    }
-    _toolFailures.add(
-      ToolFailure(
-        toolName: event.name,
-        status: event.status,
-        message: event.result,
-      ),
-    );
-  }
-
-  String _latestUserTask() {
-    for (final message in _messages.reversed) {
-      if (message is! UserMessage) continue;
-      // 工具结果图片是引擎合成的请求片段，不是用户输入；把它当成任务
-      // 描述会让反思拿到一句「Images returned by...」。
-      final content = message.content;
-      if (content is UserPartsContent && content.parts.isNotEmpty) {
-        final first = content.parts.first;
-        if (first is TextContentPart &&
-            first.text == ToolResultImages.toolResultImagesMarker) {
-          continue;
-        }
-      }
-      return '${message.content}';
-    }
-    return '';
-  }
 }
 
-/// 工具执行内部结果：不进入公开事件流，仅供测试与循环内部复用。
-///
-/// 留在本库而不是随 [AgentEvent] 一起抽到 agent_event.dart：`@visibleForTesting`
-/// 只允许声明库内部与测试使用，而消费方（[AgentService.executeToolCallInternal]
-/// 与循环）都在本库。
-@visibleForTesting
-class ToolCallResultInternal {
-  final AgentToolResultEvent event;
-  final String processedResult;
-  final String rawResult;
-  final ToolResultStatus status;
+/// 单个 Agent run 的运行时状态（按 [runId] 隔离，支持多 run 并发）。
+class _AgentRunState {
+  final CancelToken cancelToken;
 
-  /// 需要模型看到的图片；非视觉模型已在执行路径里剔除。
-  final List<ToolResultImage> images;
-
-  const ToolCallResultInternal({
-    required this.event,
-    required this.processedResult,
-    required this.rawResult,
-    required this.status,
-    this.images = const [],
-  });
-}
-
-/// 单轮迭代的局部状态：LLM 流累积器与"模型主动结束"标志。
-///
-/// [_AgentLoop._runIteration] 经 [_AgentLoop._streamTurn] 共享累积器,
-/// 避免把一轮的临时字段散落在循环类上。
-class _TurnState {
-  final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
-  ResponsesState? responsesState;
-  MessagesState? messagesState;
-  ChatCompletionsState? chatCompletionsState;
-
-  /// 模型未发起工具调用、主动结束本轮。
-  bool done = false;
+  final Completer<void> settled = Completer<void>();
+  _AgentRunState({CancelToken? token}) : cancelToken = token ?? CancelToken();
 }
 
 /// 简单的异步信号量，限制并发执行数（FIFO 公平）。
@@ -1728,4 +1720,18 @@ class _ToolExecutionData {
     this.images = const [],
     required this.record,
   });
+}
+
+/// 单轮迭代的局部状态：LLM 流累积器与"模型主动结束"标志。
+///
+/// [_AgentLoop._runIteration] 经 [_AgentLoop._streamTurn] 共享累积器,
+/// 避免把一轮的临时字段散落在循环类上。
+class _TurnState {
+  final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
+  ResponsesState? responsesState;
+  MessagesState? messagesState;
+  ChatCompletionsState? chatCompletionsState;
+
+  /// 模型未发起工具调用、主动结束本轮。
+  bool done = false;
 }

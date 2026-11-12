@@ -11,13 +11,13 @@ class AthenaWorkspaceTextSize extends InheritedWidget {
     required super.child,
   });
 
+  @override
+  bool updateShouldNotify(AthenaWorkspaceTextSize oldWidget) =>
+      size != oldWidget.size;
+
   static AthenaTextSize of(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<AthenaWorkspaceTextSize>()
           ?.size ??
       AthenaTextSize.medium;
-
-  @override
-  bool updateShouldNotify(AthenaWorkspaceTextSize oldWidget) =>
-      size != oldWidget.size;
 }

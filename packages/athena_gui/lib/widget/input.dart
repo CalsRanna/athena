@@ -1,8 +1,8 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 标准输入框：小圆角（[AthenaRadius.control]）+ 1px 实线边框 + 平涂底色。
 ///
@@ -62,29 +62,6 @@ class _AthenaInputState extends State<AthenaInput> {
 
   /// 是否已切换成明文。只在 [AthenaInput.obscureText] 为真时有意义。
   bool revealed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    focusNode.addListener(_handleFocusChange);
-    if (widget.autoFocus) {
-      focusNode.requestFocus();
-    }
-  }
-
-  @override
-  void dispose() {
-    focusNode.removeListener(_handleFocusChange);
-    focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleFocusChange() {
-    if (!focusNode.hasFocus) {
-      widget.onBlur?.call();
-    }
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,9 +128,32 @@ class _AthenaInputState extends State<AthenaInput> {
     );
   }
 
+  @override
+  void dispose() {
+    focusNode.removeListener(_handleFocusChange);
+    focusNode.dispose();
+    super.dispose();
+  }
+
   void handleTapOutside(PointerDownEvent event) {
     if (focusNode.hasFocus) {
       focusNode.unfocus();
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    focusNode.addListener(_handleFocusChange);
+    if (widget.autoFocus) {
+      focusNode.requestFocus();
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!focusNode.hasFocus) {
+      widget.onBlur?.call();
+    }
+    if (mounted) setState(() {});
   }
 }

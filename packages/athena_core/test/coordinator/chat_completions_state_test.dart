@@ -2,30 +2,30 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
-import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/tool/tool_interface.dart' as agent;
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart' as agent;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
-import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/service/chat_completions_state.dart';
-import 'package:athena_core/entity/api_format.dart';
-import 'package:athena_core/storage/agent_settings.dart';
-import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/service/retry.dart';
+import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -746,9 +746,9 @@ class _Echo extends agent.Tool {
   int failuresRemaining = 0;
   Duration delay = Duration.zero;
   @override
-  String get name => 'echo';
-  @override
   String get description => 'Echo a test value.';
+  @override
+  String get name => 'echo';
   @override
   Map<String, dynamic> get parameters => {
     'type': 'object',

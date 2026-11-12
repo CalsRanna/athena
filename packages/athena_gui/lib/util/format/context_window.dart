@@ -6,6 +6,27 @@
 library;
 
 abstract final class ContextWindow {
+  /// 把 token 数格式化为简洁字符串：≥1M 显示"M"，≥1024 显示"K"，否则原值。
+  static String formatContextWindow(int tokens) {
+    if (tokens >= 1024 * 1024 && tokens % (1024 * 1024) == 0) {
+      return '${tokens ~/ (1024 * 1024)}M';
+    }
+    if (tokens >= 1024 && tokens % 1024 == 0) {
+      return '${tokens ~/ 1024}K';
+    }
+    if (tokens >= 1000) {
+      // 千分位展示，保持可读
+      final s = tokens.toString();
+      final buf = StringBuffer();
+      for (var i = 0; i < s.length; i++) {
+        if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+        buf.write(s[i]);
+      }
+      return buf.toString();
+    }
+    return tokens.toString();
+  }
+
   /// 把旧 context_window 文本解析为 token 数。
   /// 支持："200,000 context"、"64K context"、"128K"、"1M"、纯粹千分位数字。
   /// 解析失败回退 0。
@@ -29,26 +50,5 @@ abstract final class ContextWindow {
     // 纯数字（含千分位）
     final digits = s.replaceAll(',', '');
     return int.tryParse(digits) ?? 0;
-  }
-
-  /// 把 token 数格式化为简洁字符串：≥1M 显示"M"，≥1024 显示"K"，否则原值。
-  static String formatContextWindow(int tokens) {
-    if (tokens >= 1024 * 1024 && tokens % (1024 * 1024) == 0) {
-      return '${tokens ~/ (1024 * 1024)}M';
-    }
-    if (tokens >= 1024 && tokens % 1024 == 0) {
-      return '${tokens ~/ 1024}K';
-    }
-    if (tokens >= 1000) {
-      // 千分位展示，保持可读
-      final s = tokens.toString();
-      final buf = StringBuffer();
-      for (var i = 0; i < s.length; i++) {
-        if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-        buf.write(s[i]);
-      }
-      return buf.toString();
-    }
-    return tokens.toString();
   }
 }

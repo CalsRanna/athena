@@ -4,9 +4,10 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/component/tool_config.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/page/mobile/chat/component/model_selector.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/component/tool_config.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -22,7 +23,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileSentinelFormPage extends StatefulWidget {
@@ -46,6 +46,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   /// 当前平台实际注册的工具；表单只展示真实存在的。
   late final List<Tool> registeredTools = GetIt.instance<ToolRegistry>().all;
+
+  List<String>? get _enabledToolsForSave =>
+      enabledToolsDraft == null ? null : (enabledToolsDraft!.toList()..sort());
 
   @override
   Widget build(BuildContext context) {
@@ -126,127 +129,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       body: SafeArea(top: false, child: column),
     );
   }
-
-  Widget _buildButtons(BuildContext context) {
-    final isPreset = widget.sentinel?.isPreset ?? false;
-    final children = [
-      Expanded(child: _buildStoreButton(context)),
-      if (!isPreset) ...[
-        const SizedBox(width: 8),
-        Expanded(child: _buildGenerateButton(context)),
-      ],
-    ];
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(children: children),
-    );
-  }
-
-  Widget _buildToolsSection(BuildContext context) {
-    final colors = context.athenaColors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AthenaFormTileLabel.large(title: 'Tools'),
-        const SizedBox(height: 8),
-        Text(
-          'Choose which tools this Sentinel can use. Tools marked Always on '
-          'are required by the engine.',
-          style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
-        ),
-        const SizedBox(height: 8),
-        for (final tool in ToolConfig.orderedToolsForConfig(registeredTools))
-          _buildToolRow(context, tool),
-      ],
-    );
-  }
-
-  Widget _buildToolRow(BuildContext context, Tool tool) {
-    final colors = context.athenaColors;
-    final locked = ToolSet.kUndeactivatableToolNames.contains(tool.name);
-    final copy = ToolConfig.kToolConfigCopy[tool.name];
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        copy?.$1 ?? tool.name,
-                        style: AthenaTextStyle.row.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (locked) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        'Always on',
-                        style: AthenaTextStyle.caption.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  copy?.$2 ?? tool.description.split('\n').first,
-                  style: AthenaTextStyle.caption.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: AthenaSwitch(
-              value: _isToolOn(tool.name),
-              onChanged: locked
-                  ? null
-                  : (enabled) => _setToolEnabled(tool.name, enabled),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _isToolOn(String name) =>
-      ToolSet.kUndeactivatableToolNames.contains(name) ||
-      (enabledToolsDraft?.contains(name) ?? true);
-
-  void _setToolEnabled(String name, bool enabled) {
-    final all = registeredTools.map((tool) => tool.name).toSet();
-    final next = {
-      ...?enabledToolsDraft,
-      // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
-      // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
-      if (enabledToolsDraft == null) ...all,
-      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
-      ...ToolSet.kUndeactivatableToolNames,
-    };
-    if (enabled) {
-      next.add(name);
-    } else {
-      next.remove(name);
-    }
-    setState(() {
-      // 全部选中等价于「不限制」：存回 null，新增工具才会自动出现。
-      enabledToolsDraft = next.containsAll(all) ? null : next;
-    });
-  }
-
-  List<String>? get _enabledToolsForSave =>
-      enabledToolsDraft == null ? null : (enabledToolsDraft!.toList()..sort());
 
   @override
   void dispose() {
@@ -345,6 +227,28 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     _update();
   }
 
+  Widget _buildButtons(BuildContext context) {
+    final isPreset = widget.sentinel?.isPreset ?? false;
+    final children = [
+      Expanded(child: _buildStoreButton(context)),
+      if (!isPreset) ...[
+        const SizedBox(width: 8),
+        Expanded(child: _buildGenerateButton(context)),
+      ],
+    ];
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(children: children),
+    );
+  }
+
+  Widget _buildGenerateButton(BuildContext context) {
+    return AthenaPrimaryButton(
+      onTap: generateSentinel,
+      child: const Center(child: Text('Generate')),
+    );
+  }
+
   /// 标签行右端的「生成」星标，点一下让模型填这个字段。
   Widget _buildGenerateIcon(VoidCallback onTap) {
     final colors = context.athenaColors;
@@ -359,18 +263,140 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     );
   }
 
-  Widget _buildGenerateButton(BuildContext context) {
-    return AthenaPrimaryButton(
-      onTap: generateSentinel,
-      child: const Center(child: Text('Generate')),
-    );
-  }
-
   Widget _buildStoreButton(BuildContext context) {
     return AthenaPrimaryButton(
       onTap: storeSentinel,
       child: const Center(child: Text('Store')),
     );
+  }
+
+  Widget _buildToolRow(BuildContext context, Tool tool) {
+    final colors = context.athenaColors;
+    final locked = ToolSet.kUndeactivatableToolNames.contains(tool.name);
+    final copy = ToolConfig.kToolConfigCopy[tool.name];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        copy?.$1 ?? tool.name,
+                        style: AthenaTextStyle.row.copyWith(
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (locked) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        'Always on',
+                        style: AthenaTextStyle.caption.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  copy?.$2 ?? tool.description.split('\n').first,
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: AthenaSwitch(
+              value: _isToolOn(tool.name),
+              onChanged: locked
+                  ? null
+                  : (enabled) => _setToolEnabled(tool.name, enabled),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolsSection(BuildContext context) {
+    final colors = context.athenaColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AthenaFormTileLabel.large(title: 'Tools'),
+        const SizedBox(height: 8),
+        Text(
+          'Choose which tools this Sentinel can use. Tools marked Always on '
+          'are required by the engine.',
+          style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        for (final tool in ToolConfig.orderedToolsForConfig(registeredTools))
+          _buildToolRow(context, tool),
+      ],
+    );
+  }
+
+  bool _isToolOn(String name) =>
+      ToolSet.kUndeactivatableToolNames.contains(name) ||
+      (enabledToolsDraft?.contains(name) ?? true);
+
+  /// 生成前让用户选模型：每次生成都重新选，不记忆也不落设置。
+  ///
+  /// 选中后先关掉选择面板再执行 [onPicked]；点外部关掉面板则什么都不发生。
+  Future<void> _pickModel(
+    Future<void> Function(String modelId) onPicked,
+  ) async {
+    final modelViewModel = GetIt.instance<ModelViewModel>();
+    // 用户可能刚在 Providers 里启用了一家，保证面板里是最新的模型。
+    await modelViewModel.loadEnabledModels();
+    if (!mounted) return;
+    final grouped = modelViewModel.groupedEnabledModels.value;
+    if (grouped.isEmpty) {
+      AthenaDialog.warning('No enabled models found');
+      return;
+    }
+    AthenaDialog.show(
+      MobileModelDialog(
+        groupedModels: grouped,
+        onTap: (model) {
+          AthenaDialog.dismiss();
+          unawaited(onPicked(model.id!));
+        },
+      ),
+    );
+  }
+
+  void _setToolEnabled(String name, bool enabled) {
+    final all = registeredTools.map((tool) => tool.name).toSet();
+    final next = {
+      ...?enabledToolsDraft,
+      // 从「全部」收窄时补上目录里的全部已知工具，而不只是当前平台注册的：
+      // 否则在移动端关掉一个工具，会把桌面端的文件与 Shell 工具一起写掉。
+      if (enabledToolsDraft == null) ...all,
+      if (enabledToolsDraft == null) ...ToolConfig.kToolConfigOrder,
+      ...ToolSet.kUndeactivatableToolNames,
+    };
+    if (enabled) {
+      next.add(name);
+    } else {
+      next.remove(name);
+    }
+    setState(() {
+      // 全部选中等价于「不限制」：存回 null，新增工具才会自动出现。
+      enabledToolsDraft = next.containsAll(all) ? null : next;
+    });
   }
 
   Future<void> _store() async {
@@ -415,31 +441,5 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     if (descriptionController.text.isEmpty) return 'Description is required';
     if (promptController.text.isEmpty) return 'Prompt is required';
     return null;
-  }
-
-  /// 生成前让用户选模型：每次生成都重新选，不记忆也不落设置。
-  ///
-  /// 选中后先关掉选择面板再执行 [onPicked]；点外部关掉面板则什么都不发生。
-  Future<void> _pickModel(
-    Future<void> Function(String modelId) onPicked,
-  ) async {
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    // 用户可能刚在 Providers 里启用了一家，保证面板里是最新的模型。
-    await modelViewModel.loadEnabledModels();
-    if (!mounted) return;
-    final grouped = modelViewModel.groupedEnabledModels.value;
-    if (grouped.isEmpty) {
-      AthenaDialog.warning('No enabled models found');
-      return;
-    }
-    AthenaDialog.show(
-      MobileModelDialog(
-        groupedModels: grouped,
-        onTap: (model) {
-          AthenaDialog.dismiss();
-          unawaited(onPicked(model.id!));
-        },
-      ),
-    );
   }
 }

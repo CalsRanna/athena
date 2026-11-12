@@ -30,30 +30,6 @@ abstract final class ExperienceCapacity {
   /// 长度固定，所以这条预留是精确的而不是近似。
   static const int _idWidth = 36;
 
-  /// 一条已存在的经验在目录里渲染成的单行（不含换行）。
-  ///
-  /// 写入端的预算检查与注入端的渲染共用这一个函数——两处各写一份格式，
-  /// 迟早在「检查说没超，注入却截断」上漂移。
-  static String renderEntry(ExperienceEntity entity) => _line(
-    id: entity.id,
-    shared: entity.scope == 'shared',
-    date: _formatDate(entity.createdAt),
-    lesson: entity.lesson,
-  );
-
-  /// 一条**尚未写入**的经验将占用的目录字符数。
-  ///
-  /// 日期与 id 都是定宽，因此结果与实际写入后逐字节等长。
-  static int pendingEntryChars({required String lesson, required bool shared}) {
-    final placeholder = _line(
-      id: 'x' * _idWidth,
-      shared: shared,
-      date: _formatDate(DateTime(2000)),
-      lesson: lesson,
-    );
-    return placeholder.length + 1;
-  }
-
   /// 当前集合渲染成目录后的字符数（不含开头说明与截断提示）。
   static int catalogChars(Iterable<ExperienceEntity> experiences) =>
       experiences.fold(0, (sum, e) => sum + renderEntry(e).length + 1);
@@ -83,6 +59,30 @@ abstract final class ExperienceCapacity {
     return after > maxCatalogChars && (replacing == null || after > before);
   }
 
+  /// 一条**尚未写入**的经验将占用的目录字符数。
+  ///
+  /// 日期与 id 都是定宽，因此结果与实际写入后逐字节等长。
+  static int pendingEntryChars({required String lesson, required bool shared}) {
+    final placeholder = _line(
+      id: 'x' * _idWidth,
+      shared: shared,
+      date: _formatDate(DateTime(2000)),
+      lesson: lesson,
+    );
+    return placeholder.length + 1;
+  }
+
+  /// 一条已存在的经验在目录里渲染成的单行（不含换行）。
+  ///
+  /// 写入端的预算检查与注入端的渲染共用这一个函数——两处各写一份格式，
+  /// 迟早在「检查说没超，注入却截断」上漂移。
+  static String renderEntry(ExperienceEntity entity) => _line(
+    id: entity.id,
+    shared: entity.scope == 'shared',
+    date: _formatDate(entity.createdAt),
+    lesson: entity.lesson,
+  );
+
   /// 取预算内的前缀，返回保留项与被丢弃的条数。
   ///
   /// 调用方必须按**保留优先级**排好序（最近的在前）。只在注入端使用，
@@ -103,6 +103,9 @@ abstract final class ExperienceCapacity {
     return (kept: sortedByPriority, dropped: 0);
   }
 
+  static String _formatDate(DateTime date) =>
+      '${date.year}-${_pad(date.month)}-${_pad(date.day)}';
+
   static String _line({
     required String id,
     required bool shared,
@@ -115,9 +118,6 @@ abstract final class ExperienceCapacity {
     final text = lesson.replaceAll(RegExp(r'\s+'), ' ').trim();
     return '- [$id] ($origin, $date) $text';
   }
-
-  static String _formatDate(DateTime date) =>
-      '${date.year}-${_pad(date.month)}-${_pad(date.day)}';
 
   static String _pad(int n) => n.toString().padLeft(2, '0');
 }

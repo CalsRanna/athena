@@ -10,26 +10,32 @@ import 'package:athena_core/storage/sentinel_store.dart';
 /// 的排序键。这与 provider 一致;与旧的「JSON 数组插入顺序」不同,但角色列表
 /// 本来就按名字认人(种子只建一个 Athena)。
 class YamlSentinelRepository implements SentinelRepository {
+  final SentinelStore _store;
+
+  final IdGenerator _idGenerator;
   YamlSentinelRepository({
     required SentinelStore store,
     IdGenerator idGenerator = const IdGenerator(),
   }) : _store = store,
        _idGenerator = idGenerator;
 
-  final SentinelStore _store;
-  final IdGenerator _idGenerator;
-
-  static int _byName(SentinelEntity a, SentinelEntity b) {
-    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    if (byName != 0) return byName;
-    return (a.id ?? '').compareTo(b.id ?? '');
+  @override
+  Future<void> batchCreateSentinels(List<SentinelEntity> sentinels) async {
+    for (final sentinel in sentinels) {
+      final id = sentinel.id ?? _idGenerator.next();
+      await _store.write(sentinel.copyWith(id: id));
+    }
   }
 
-  Future<List<SentinelEntity>> _sorted() async {
-    final all = await _store.list();
-    all.sort(_byName);
-    return all;
+  @override
+  Future<String> createSentinel(SentinelEntity sentinel) async {
+    final id = sentinel.id ?? _idGenerator.next();
+    await _store.write(sentinel.copyWith(id: id));
+    return id;
   }
+
+  @override
+  Future<void> deleteSentinel(String id) => _store.delete(id);
 
   @override
   Future<List<SentinelEntity>> getAllSentinels() => _sorted();
@@ -46,11 +52,7 @@ class YamlSentinelRepository implements SentinelRepository {
   }
 
   @override
-  Future<String> createSentinel(SentinelEntity sentinel) async {
-    final id = sentinel.id ?? _idGenerator.next();
-    await _store.write(sentinel.copyWith(id: id));
-    return id;
-  }
+  Future<int> getSentinelsCount() => _store.count();
 
   @override
   Future<void> updateSentinel(SentinelEntity sentinel) async {
@@ -59,17 +61,15 @@ class YamlSentinelRepository implements SentinelRepository {
     await _store.write(sentinel);
   }
 
-  @override
-  Future<void> deleteSentinel(String id) => _store.delete(id);
+  Future<List<SentinelEntity>> _sorted() async {
+    final all = await _store.list();
+    all.sort(_byName);
+    return all;
+  }
 
-  @override
-  Future<int> getSentinelsCount() => _store.count();
-
-  @override
-  Future<void> batchCreateSentinels(List<SentinelEntity> sentinels) async {
-    for (final sentinel in sentinels) {
-      final id = sentinel.id ?? _idGenerator.next();
-      await _store.write(sentinel.copyWith(id: id));
-    }
+  static int _byName(SentinelEntity a, SentinelEntity b) {
+    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    if (byName != 0) return byName;
+    return (a.id ?? '').compareTo(b.id ?? '');
   }
 }

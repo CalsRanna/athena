@@ -12,19 +12,19 @@ import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
-import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
-import 'package:athena_core/storage/chat_store.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:http/http.dart' as http;
@@ -837,6 +837,16 @@ void main() {
   });
 }
 
+Map<String, dynamic> _finish(String reason) => {
+  'id': 'c',
+  'object': 'chat.completion.chunk',
+  'created': 0,
+  'model': 'fake-model',
+  'choices': [
+    {'index': 0, 'delta': <String, dynamic>{}, 'finish_reason': reason},
+  ],
+};
+
 // ─── 脚本化的假 LLM ────────────────────────────────────────
 
 Map<String, dynamic> _text(String content) => {
@@ -880,16 +890,6 @@ Map<String, dynamic> _toolCall({
   ],
 };
 
-Map<String, dynamic> _finish(String reason) => {
-  'id': 'c',
-  'object': 'chat.completion.chunk',
-  'created': 0,
-  'model': 'fake-model',
-  'choices': [
-    {'index': 0, 'delta': <String, dynamic>{}, 'finish_reason': reason},
-  ],
-};
-
 /// 带 usage 的尾包（`stream_options.include_usage` 的形状）。
 Map<String, dynamic> _usage(int promptTokens, {int? cachedTokens}) => {
   'id': 'c',
@@ -908,13 +908,11 @@ Map<String, dynamic> _usage(int promptTokens, {int? cachedTokens}) => {
 
 /// 按请求顺序返回预置的 SSE 分片，并记录每次请求体。
 class _ScriptedLlm {
-  _ScriptedLlm(this._script);
-
   final List<List<Map<String, dynamic>>> _script;
+
   final List<Map<String, dynamic>> requests = [];
   int _served = 0;
   Future<void> Function(int index)? beforeResponse;
-
   late final http.Client client = MockClient.streaming((
     request,
     bodyStream,
@@ -962,4 +960,6 @@ class _ScriptedLlm {
       headers: {'content-type': 'text/event-stream'},
     );
   });
+
+  _ScriptedLlm(this._script);
 }

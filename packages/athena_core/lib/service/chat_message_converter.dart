@@ -7,9 +7,9 @@ import 'package:athena_core/entity/conversation_summary.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/service/responses_state.dart';
-import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/service/chat_completions_state.dart';
+import 'package:athena_core/service/messages_state.dart';
+import 'package:athena_core/service/responses_state.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 消息格式转换与上下文组装。
@@ -73,12 +73,6 @@ class ChatMessageConverter {
     }
 
     return wrapped;
-  }
-
-  /// 判断是否为聊天的第一条用户消息（用于自动重命名触发）
-  Future<bool> isFirstUserMessage(String chatId) async {
-    final messages = await _messageRepository.getMessagesByChatId(chatId);
-    return messages.where((m) => m.role == 'user').length == 1;
   }
 
   /// Converts one persisted record as a complete assistant/tool batch.
@@ -233,6 +227,12 @@ class ChatMessageConverter {
         }
         return [ChatMessage.user(msg.content)];
     }
+  }
+
+  /// 判断是否为聊天的第一条用户消息（用于自动重命名触发）
+  Future<bool> isFirstUserMessage(String chatId) async {
+    final messages = await _messageRepository.getMessagesByChatId(chatId);
+    return messages.where((m) => m.role == 'user').length == 1;
   }
 
   /// 按文件头识别 base64 图片的媒体类型。

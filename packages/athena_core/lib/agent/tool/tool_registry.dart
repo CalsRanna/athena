@@ -5,6 +5,21 @@ import 'package:athena_core/agent/tool/tool_output_store.dart';
 export 'package:athena_core/agent/tool/tool_interface.dart' show ExecutionMode;
 
 class ToolRegistry {
+  final ToolOutputStore outputStore;
+
+  /// 后台任务登记表：与 [outputStore] 同级——两者都是「一次工具调用之外
+  /// 仍然存在的资源」，由注册表持有，工具与协调层共用同一份。
+  final BackgroundTaskService backgroundTasks;
+
+  final Map<String, Tool> _tools;
+
+  /// 本视图相对完整注册表被排除的工具名；完整注册表为 null。
+  final Set<String>? _excluded;
+
+  /// OpenAI tool definitions 缓存：工具集在一次 run 内不变，而 Agent
+  /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。
+  List<Map<String, dynamic>>? _definitions;
+
   ToolRegistry({
     ToolOutputStore? outputStore,
     BackgroundTaskService? backgroundTasks,
@@ -21,16 +36,10 @@ class ToolRegistry {
     Set<String>? excluded,
   }) : _excluded = excluded;
 
-  final ToolOutputStore outputStore;
+  List<Tool> get all => _tools.values.toList();
 
-  /// 后台任务登记表：与 [outputStore] 同级——两者都是「一次工具调用之外
-  /// 仍然存在的资源」，由注册表持有，工具与协调层共用同一份。
-  final BackgroundTaskService backgroundTasks;
-
-  final Map<String, Tool> _tools;
-
-  /// 本视图相对完整注册表被排除的工具名；完整注册表为 null。
-  final Set<String>? _excluded;
+  List<Map<String, dynamic>> get definitions =>
+      _definitions ??= _tools.values.map(definitionOf).toList();
 
   /// 生成一次 run 的受限视图：只保留 [enabled] 中的工具（null = 不限制）。
   ///
@@ -53,12 +62,10 @@ class ToolRegistry {
     );
   }
 
+  Tool? get(String name) => _tools[name];
+
   /// 该工具名是否因本次 run 的工具配置而被排除。
   bool isExcluded(String name) => _excluded?.contains(name) ?? false;
-
-  /// OpenAI tool definitions 缓存：工具集在一次 run 内不变，而 Agent
-  /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。
-  List<Map<String, dynamic>>? _definitions;
 
   void register(Tool tool) {
     _tools[tool.name] = tool;
@@ -70,10 +77,6 @@ class ToolRegistry {
       register(tool);
     }
   }
-
-  Tool? get(String name) => _tools[name];
-
-  List<Tool> get all => _tools.values.toList();
 
   /// 单个工具的 OpenAI function schema。
   static Map<String, dynamic> definitionOf(Tool tool) => {
@@ -117,7 +120,4 @@ class ToolRegistry {
       'required': required,
     };
   }
-
-  List<Map<String, dynamic>> get definitions =>
-      _definitions ??= _tools.values.map(definitionOf).toList();
 }

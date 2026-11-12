@@ -32,26 +32,37 @@ import 'package:athena_core/storage/yaml_entity_directory.dart';
 /// 本类只管「一个 provider 文件里的 provider 与它的模型」;跨 provider 的查询
 /// 与排序在仓储层。
 class ProviderStore {
-  ProviderStore({required Directory directory, required LockRegistry locks})
-    : _directory = YamlEntityDirectory(directory: directory, locks: locks);
+  static const _modelsKey = 'models';
 
   final YamlEntityDirectory _directory;
 
-  static const _modelsKey = 'models';
+  ProviderStore({required Directory directory, required LockRegistry locks})
+    : _directory = YamlEntityDirectory(directory: directory, locks: locks);
 
   Directory get directory => _directory.directory;
 
-  static bool isValidId(String id) => YamlEntityDirectory.isValidId(id);
+  /// provider 文件数。只数文件、不解析内容。不加锁。
+  Future<int> count() => _directory.count();
 
   // ---------------------------------------------------------------------------
   // provider
   // ---------------------------------------------------------------------------
 
-  /// 目录下全部 provider 的 id(不解析文件内容)。
+  /// 删除整个 provider 文件——它名下的模型随文件一起消失。
   ///
-  /// 清空全部 provider、把旧 `models.json` 归位到各 provider 文件这类整表
-  /// 操作要先知道有哪些文件;这里只要文件名,不必把每个文件解析成实体。
-  Future<List<String>> providerIds() => _directory.listIds();
+  /// 这就是「模型属于 provider」的直接结果:不再需要先删模型再删 provider 的
+  /// 两步操作,也不会在第一步失败后留下孤儿模型。
+  Future<void> delete(String id) => _directory.deleteRaw(id);
+
+  /// 按模型自身的 id 查找(跨全部 provider)。找不到返回 null。
+  Future<ModelEntity?> findModel(String modelId) async {
+    for (final id in await _directory.listIds()) {
+      for (final model in await readModels(id)) {
+        if (model.id == modelId) return model;
+      }
+    }
+    return null;
+  }
 
   /// 全部 provider(按文件名列举,顺序不定;排序由仓储层决定)。
   Future<List<ProviderEntity>> list() async {
@@ -63,28 +74,17 @@ class ProviderStore {
     return entities;
   }
 
-  /// 读取单个 provider(不含模型);不存在或损坏返回 null。
-  Future<ProviderEntity?> read(String id) async {
-    final raw = await _directory.readRaw(id);
-    return raw == null ? null : parseProvider(id, raw);
-  }
-
-  /// 覆盖写入 provider(不存在则创建),**保留文件里已有的 [modelsKey] 段**。
+  /// 全部 provider 的全部模型。
   ///
-  /// 保留模型段是必须的:仓储层到处用 `copyWith` 改 provider 的一个字段再整体
-  /// 写回(改 key、改名、启停、格式同步),而 [ProviderEntity] 不持有模型。
-  /// 若这里直接覆盖,那些调用会把模型段整段抹掉。
-  Future<void> write(ProviderEntity provider) {
-    final id = provider.id;
-    if (id == null || !isValidId(id)) {
-      throw ArgumentError('Invalid provider id: $id');
+  /// 每轮对话都要按 id 找模型,而模型 id 本身不含 provider 信息,只能逐个文件
+  /// 找。实测 12 个 provider / 156 个模型一次全扫约 3ms,可以接受;真要更快就
+  /// 得引入索引,那是另一回事。
+  Future<List<ModelEntity>> listAllModels() async {
+    final models = <ModelEntity>[];
+    for (final id in await _directory.listIds()) {
+      models.addAll(await readModels(id));
     }
-    return _directory.upsertRaw(id, (current) {
-      final raw = encodeProvider(provider);
-      final models = current[_modelsKey];
-      if (models != null) raw[_modelsKey] = models;
-      return raw;
-    });
+    return models;
   }
 
   /// 读-改-写单个 provider,**保留文件里已有的 [modelsKey] 段**。
@@ -111,46 +111,6 @@ class ProviderStore {
           return raw;
         })
         .then((_) => wrote);
-  }
-
-  /// 删除整个 provider 文件——它名下的模型随文件一起消失。
-  ///
-  /// 这就是「模型属于 provider」的直接结果:不再需要先删模型再删 provider 的
-  /// 两步操作,也不会在第一步失败后留下孤儿模型。
-  Future<void> delete(String id) => _directory.deleteRaw(id);
-
-  // ---------------------------------------------------------------------------
-  // provider 名下的模型
-  // ---------------------------------------------------------------------------
-
-  /// 全部 provider 的全部模型。
-  ///
-  /// 每轮对话都要按 id 找模型,而模型 id 本身不含 provider 信息,只能逐个文件
-  /// 找。实测 12 个 provider / 156 个模型一次全扫约 3ms,可以接受;真要更快就
-  /// 得引入索引,那是另一回事。
-  Future<List<ModelEntity>> listAllModels() async {
-    final models = <ModelEntity>[];
-    for (final id in await _directory.listIds()) {
-      models.addAll(await readModels(id));
-    }
-    return models;
-  }
-
-  /// 某个 provider 名下的模型;文件不存在或损坏返回空列表。
-  Future<List<ModelEntity>> readModels(String providerId) async {
-    final raw = await _directory.readRaw(providerId);
-    if (raw == null) return const [];
-    return parseModels(providerId, raw[_modelsKey]);
-  }
-
-  /// 按模型自身的 id 查找(跨全部 provider)。找不到返回 null。
-  Future<ModelEntity?> findModel(String modelId) async {
-    for (final id in await _directory.listIds()) {
-      for (final model in await readModels(id)) {
-        if (model.id == modelId) return model;
-      }
-    }
-    return null;
   }
 
   /// 在 [providerId] 的文件里对模型列表做一次读-改-写,返回 [transform] 的结果。
@@ -181,6 +141,29 @@ class ProviderStore {
     return result;
   }
 
+  // ---------------------------------------------------------------------------
+  // provider 名下的模型
+  // ---------------------------------------------------------------------------
+
+  /// 目录下全部 provider 的 id(不解析文件内容)。
+  ///
+  /// 清空全部 provider、把旧 `models.json` 归位到各 provider 文件这类整表
+  /// 操作要先知道有哪些文件;这里只要文件名,不必把每个文件解析成实体。
+  Future<List<String>> providerIds() => _directory.listIds();
+
+  /// 读取单个 provider(不含模型);不存在或损坏返回 null。
+  Future<ProviderEntity?> read(String id) async {
+    final raw = await _directory.readRaw(id);
+    return raw == null ? null : parseProvider(id, raw);
+  }
+
+  /// 某个 provider 名下的模型;文件不存在或损坏返回空列表。
+  Future<List<ModelEntity>> readModels(String providerId) async {
+    final raw = await _directory.readRaw(providerId);
+    if (raw == null) return const [];
+    return parseModels(providerId, raw[_modelsKey]);
+  }
+
   /// 用 [models] 整体替换某个 provider 文件里的模型段。
   Future<void> replaceModelsOf(String providerId, List<ModelEntity> models) {
     return _directory.mutateRaw(providerId, (current) {
@@ -189,37 +172,47 @@ class ProviderStore {
     });
   }
 
-  /// provider 文件数。只数文件、不解析内容。不加锁。
-  Future<int> count() => _directory.count();
+  /// 覆盖写入 provider(不存在则创建),**保留文件里已有的 [modelsKey] 段**。
+  ///
+  /// 保留模型段是必须的:仓储层到处用 `copyWith` 改 provider 的一个字段再整体
+  /// 写回(改 key、改名、启停、格式同步),而 [ProviderEntity] 不持有模型。
+  /// 若这里直接覆盖,那些调用会把模型段整段抹掉。
+  Future<void> write(ProviderEntity provider) {
+    final id = provider.id;
+    if (id == null || !isValidId(id)) {
+      throw ArgumentError('Invalid provider id: $id');
+    }
+    return _directory.upsertRaw(id, (current) {
+      final raw = encodeProvider(provider);
+      final models = current[_modelsKey];
+      if (models != null) raw[_modelsKey] = models;
+      return raw;
+    });
+  }
+
+  /// 模型 → 文件映射。键名与 JSON 备份的 `toJson()` 不同(那边是下划线),
+  /// 这里是给人看的 YAML,用 camelCase 与 provider 的其余字段保持一致。
+  ///
+  /// `providerId` 不写出:它就是所属文件名,写出来只会和文件名不一致。
+  static Map<String, dynamic> encodeModel(ModelEntity model) => {
+    'id': model.id,
+    'name': model.name,
+    'modelId': model.modelId,
+    'contextWindow': model.contextWindow,
+    'outputLimit': model.outputLimit,
+    'inputPrice': model.inputPrice,
+    'outputPrice': model.outputPrice,
+    'releasedAt': model.releasedAt,
+    'reasoning': model.reasoning,
+    'vision': model.vision,
+    'isPreset': model.isPreset,
+    'createdAt': model.createdAt.toIso8601String(),
+    'updatedAt': model.updatedAt.toIso8601String(),
+  };
 
   // ---------------------------------------------------------------------------
   // 解析与编码
   // ---------------------------------------------------------------------------
-
-  /// provider 文件的 YAML 映射 → 实体。
-  ///
-  /// 字段缺失或类型不符一律降级(空串 / false / 纪元时间)而不是抛错:这个目录
-  /// 标明可以手工编辑,一处笔误不该让整个 provider 消失。
-  static ProviderEntity parseProvider(String id, Map raw) {
-    return ProviderEntity(
-      id: id,
-      // 防御:手工编辑可能写入非字符串值(如裸数字被 YAML 解析为 int),
-      // 降级为空串而不是抛类型错误
-      name: raw['name'] is String ? raw['name'] as String : '',
-      baseUrl: raw['baseUrl'] is String ? raw['baseUrl'] as String : '',
-      apiKey: raw['apiKey'] is String ? raw['apiKey'] as String : '',
-      apiFormat: ApiFormat.tryParse(raw['apiFormat']),
-      apiFormatAuto: raw['apiFormatAuto'] is bool
-          ? raw['apiFormatAuto'] as bool
-          : null,
-      enabled: raw['enabled'] == true,
-      isPreset: raw['isPreset'] == true,
-      createdAt: raw['createdAt'] is String
-          ? DateTime.tryParse(raw['createdAt'] as String) ??
-                DateTime.fromMillisecondsSinceEpoch(0)
-          : DateTime.fromMillisecondsSinceEpoch(0),
-    );
-  }
 
   /// 实体 → 文件映射的标量部分(不含模型;模型由 [encodeModel] 逐条展开)。
   static Map<String, dynamic> encodeProvider(ProviderEntity provider) => {
@@ -233,6 +226,8 @@ class ProviderStore {
     'isPreset': provider.isPreset,
     'createdAt': provider.createdAt.toIso8601String(),
   };
+
+  static bool isValidId(String id) => YamlEntityDirectory.isValidId(id);
 
   /// [modelsKey] 下的原始列表 → 实体。
   ///
@@ -286,23 +281,28 @@ class ProviderStore {
     return models;
   }
 
-  /// 模型 → 文件映射。键名与 JSON 备份的 `toJson()` 不同(那边是下划线),
-  /// 这里是给人看的 YAML,用 camelCase 与 provider 的其余字段保持一致。
+  /// provider 文件的 YAML 映射 → 实体。
   ///
-  /// `providerId` 不写出:它就是所属文件名,写出来只会和文件名不一致。
-  static Map<String, dynamic> encodeModel(ModelEntity model) => {
-    'id': model.id,
-    'name': model.name,
-    'modelId': model.modelId,
-    'contextWindow': model.contextWindow,
-    'outputLimit': model.outputLimit,
-    'inputPrice': model.inputPrice,
-    'outputPrice': model.outputPrice,
-    'releasedAt': model.releasedAt,
-    'reasoning': model.reasoning,
-    'vision': model.vision,
-    'isPreset': model.isPreset,
-    'createdAt': model.createdAt.toIso8601String(),
-    'updatedAt': model.updatedAt.toIso8601String(),
-  };
+  /// 字段缺失或类型不符一律降级(空串 / false / 纪元时间)而不是抛错:这个目录
+  /// 标明可以手工编辑,一处笔误不该让整个 provider 消失。
+  static ProviderEntity parseProvider(String id, Map raw) {
+    return ProviderEntity(
+      id: id,
+      // 防御:手工编辑可能写入非字符串值(如裸数字被 YAML 解析为 int),
+      // 降级为空串而不是抛类型错误
+      name: raw['name'] is String ? raw['name'] as String : '',
+      baseUrl: raw['baseUrl'] is String ? raw['baseUrl'] as String : '',
+      apiKey: raw['apiKey'] is String ? raw['apiKey'] as String : '',
+      apiFormat: ApiFormat.tryParse(raw['apiFormat']),
+      apiFormatAuto: raw['apiFormatAuto'] is bool
+          ? raw['apiFormatAuto'] as bool
+          : null,
+      enabled: raw['enabled'] == true,
+      isPreset: raw['isPreset'] == true,
+      createdAt: raw['createdAt'] is String
+          ? DateTime.tryParse(raw['createdAt'] as String) ??
+                DateTime.fromMillisecondsSinceEpoch(0)
+          : DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
 }

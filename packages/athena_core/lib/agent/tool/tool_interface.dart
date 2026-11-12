@@ -3,6 +3,18 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 export 'package:athena_core/agent/tool/tool_result.dart'
     show ToolExecutionResult;
 
+/// 可在 run 停止时主动释放外部资源的工具。
+///
+/// 单独建模，避免所有短暂的本地工具都被迫实现取消参数。Shell、网络请求等
+/// 可能长时间阻塞的工具实现此接口，由 Agent 在执行时传入 run 的取消信号。
+abstract interface class CancellableTool {
+  Future<ToolExecutionResult> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String partialResult)? onUpdate,
+    required Future<void> cancelSignal,
+  });
+}
+
 /// 工具执行模式。
 enum ExecutionMode {
   /// 串行执行：每次只执行一个工具。
@@ -13,18 +25,25 @@ enum ExecutionMode {
 }
 
 abstract class Tool {
-  String get name;
   String get description;
-  Map<String, dynamic> get parameters; // JSON Schema
 
   /// 执行模式。默认串行，文件读取/搜索/抓取可标记为 parallel。
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  String get name;
+
+  Map<String, dynamic> get parameters; // JSON Schema
 
   /// 本次调用是否可并行执行。默认取 [executionMode]。
   ///
   /// 需要按参数动态判断的工具可覆写此方法；shell 工具统一串行。
   bool canExecuteParallel(Map<String, dynamic> args) =>
       executionMode == ExecutionMode.parallel;
+
+  /// Text-only entry point for callers that do not need execution status.
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String partialResult)? onUpdate,
+  }) async => (await executeResult(args, onUpdate: onUpdate)).text;
 
   /// 执行工具。
   ///
@@ -33,24 +52,6 @@ abstract class Tool {
   Future<ToolExecutionResult> executeResult(
     Map<String, dynamic> args, {
     void Function(String partialResult)? onUpdate,
-  });
-
-  /// Text-only entry point for callers that do not need execution status.
-  Future<String> execute(
-    Map<String, dynamic> args, {
-    void Function(String partialResult)? onUpdate,
-  }) async => (await executeResult(args, onUpdate: onUpdate)).text;
-}
-
-/// 可在 run 停止时主动释放外部资源的工具。
-///
-/// 单独建模，避免所有短暂的本地工具都被迫实现取消参数。Shell、网络请求等
-/// 可能长时间阻塞的工具实现此接口，由 Agent 在执行时传入 run 的取消信号。
-abstract interface class CancellableTool {
-  Future<ToolExecutionResult> executeCancellable(
-    Map<String, dynamic> args, {
-    void Function(String partialResult)? onUpdate,
-    required Future<void> cancelSignal,
   });
 }
 

@@ -1,10 +1,10 @@
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 步骤类卡片（工具 / 推理 / 压缩 / 步骤组）共用的视觉原语。
 ///
@@ -47,6 +47,134 @@ class StepHeader extends StatefulWidget {
 
   @override
   State<StepHeader> createState() => _StepHeaderState();
+}
+
+/// 仅在步骤执行期间为头部前景提供低对比度的流动高光。
+class StepHeaderShimmer extends StatefulWidget {
+  final bool active;
+  final Widget child;
+
+  const StepHeaderShimmer({
+    super.key,
+    required this.active,
+    required this.child,
+  });
+
+  @override
+  State<StepHeaderShimmer> createState() => _StepHeaderShimmerState();
+
+  /// shimmer 颜色：由主题的页面前景色只调透明度得来的高光与底光。
+  ///
+  /// `srcIn` 会把子树整块换成这里的颜色，所以**不能写死白色**：卡面无底板后
+  /// 这些 header 直接坐在页面底色上，浅色主题里写死的白就是「白底白字」，
+  /// 折叠头整个看不见（深色主题下 `textPrimary` 本就是白，观感不变）。
+  @visibleForTesting
+  static ({Color base, Color highlight}) colorsFor(AthenaColors colors) {
+    final shimmer = colors.textPrimary;
+    return (
+      base: shimmer.withValues(alpha: 0.45),
+      highlight: shimmer.withValues(alpha: 0.95),
+    );
+  }
+}
+
+/// 展开后的结果正文：与代码块同族、最多 10 行、`Error:` 前缀标红；点击整块收起。
+class StepResultBody extends StatelessWidget {
+  final String text;
+  final VoidCallback? onTap;
+
+  const StepResultBody({super.key, required this.text, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.athenaColors;
+    final isError = text.startsWith('Error:');
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Text(
+          text,
+          maxLines: 10,
+          overflow: TextOverflow.ellipsis,
+          style: AthenaWorkspaceTextSize.of(context).code.copyWith(
+            color: isError ? colors.statusError : colors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepHeaderShimmerState extends State<StepHeaderShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _animationsDisabled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active || _animationsDisabled) return widget.child;
+    final colors = context.athenaColors;
+    final (:base, :highlight) = StepHeaderShimmer.colorsFor(colors);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final offset = -2.0 + (_controller.value * 4.0);
+        return ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment(offset - 1, 0),
+            end: Alignment(offset + 1, 0),
+            colors: [base, highlight, base],
+            stops: const [0.25, 0.5, 0.75],
+          ).createShader(bounds),
+          child: child,
+        );
+      },
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _animationsDisabled =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(StepHeaderShimmer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncAnimation();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AthenaMotion.cycle,
+    );
+  }
+
+  void _syncAnimation() {
+    if (widget.active && !_animationsDisabled) {
+      if (!_controller.isAnimating) _controller.repeat();
+      return;
+    }
+    _controller
+      ..stop()
+      ..value = 0;
+  }
 }
 
 class _StepHeaderState extends State<StepHeader> {
@@ -112,134 +240,6 @@ class _StepHeaderState extends State<StepHeader> {
               ),
             );
           },
-        );
-      },
-    );
-  }
-}
-
-/// 展开后的结果正文：与代码块同族、最多 10 行、`Error:` 前缀标红；点击整块收起。
-class StepResultBody extends StatelessWidget {
-  final String text;
-  final VoidCallback? onTap;
-
-  const StepResultBody({super.key, required this.text, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.athenaColors;
-    final isError = text.startsWith('Error:');
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Text(
-          text,
-          maxLines: 10,
-          overflow: TextOverflow.ellipsis,
-          style: AthenaWorkspaceTextSize.of(context).code.copyWith(
-            color: isError ? colors.statusError : colors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 仅在步骤执行期间为头部前景提供低对比度的流动高光。
-class StepHeaderShimmer extends StatefulWidget {
-  final bool active;
-  final Widget child;
-
-  const StepHeaderShimmer({
-    super.key,
-    required this.active,
-    required this.child,
-  });
-
-  /// shimmer 颜色：由主题的页面前景色只调透明度得来的高光与底光。
-  ///
-  /// `srcIn` 会把子树整块换成这里的颜色，所以**不能写死白色**：卡面无底板后
-  /// 这些 header 直接坐在页面底色上，浅色主题里写死的白就是「白底白字」，
-  /// 折叠头整个看不见（深色主题下 `textPrimary` 本就是白，观感不变）。
-  @visibleForTesting
-  static ({Color base, Color highlight}) colorsFor(AthenaColors colors) {
-    final shimmer = colors.textPrimary;
-    return (
-      base: shimmer.withValues(alpha: 0.45),
-      highlight: shimmer.withValues(alpha: 0.95),
-    );
-  }
-
-  @override
-  State<StepHeaderShimmer> createState() => _StepHeaderShimmerState();
-}
-
-class _StepHeaderShimmerState extends State<StepHeaderShimmer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  bool _animationsDisabled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: AthenaMotion.cycle,
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _animationsDisabled =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    _syncAnimation();
-  }
-
-  @override
-  void didUpdateWidget(StepHeaderShimmer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active) _syncAnimation();
-  }
-
-  void _syncAnimation() {
-    if (widget.active && !_animationsDisabled) {
-      if (!_controller.isAnimating) _controller.repeat();
-      return;
-    }
-    _controller
-      ..stop()
-      ..value = 0;
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.active || _animationsDisabled) return widget.child;
-    final colors = context.athenaColors;
-    final (:base, :highlight) = StepHeaderShimmer.colorsFor(colors);
-
-    return AnimatedBuilder(
-      animation: _controller,
-      child: widget.child,
-      builder: (context, child) {
-        final offset = -2.0 + (_controller.value * 4.0);
-        return ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (bounds) => LinearGradient(
-            begin: Alignment(offset - 1, 0),
-            end: Alignment(offset + 1, 0),
-            colors: [base, highlight, base],
-            stops: const [0.25, 0.5, 0.75],
-          ).createShader(bounds),
-          child: child,
         );
       },
     );

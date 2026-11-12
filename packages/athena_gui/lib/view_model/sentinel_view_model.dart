@@ -1,13 +1,13 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
+import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
-import 'package:athena_core/seed/sentinel_seed.dart';
+import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
@@ -23,38 +23,6 @@ class SentinelViewModel {
     prompt: '',
     isPreset: true,
   );
-
-  final SentinelRepository _sentinelRepository;
-  final ProviderRepository _providerRepository;
-  final ModelRepository _modelRepository;
-  final SentinelService _sentinelService;
-  final ExperienceRepository _experienceRepository;
-
-  SentinelViewModel({
-    required SentinelRepository sentinelRepository,
-    required ProviderRepository providerRepository,
-    required ModelRepository modelRepository,
-    required SentinelService sentinelService,
-    required ExperienceRepository experienceRepository,
-  }) : _sentinelRepository = sentinelRepository,
-       _providerRepository = providerRepository,
-       _modelRepository = modelRepository,
-       _sentinelService = sentinelService,
-       _experienceRepository = experienceRepository;
-
-  // Signals 状态
-  final sentinels = listSignal<SentinelEntity>([]);
-  final isLoading = signal(false);
-  final isGenerating = signal(false);
-  final error = signal<String?>(null);
-
-  // Computed signals
-  late final defaultSentinel = computed(() {
-    return sentinels.value
-            .where((s) => s.name == SentinelEntity.athenaName)
-            .firstOrNull ??
-        defaultSentinelEntity;
-  });
 
   static const defaultName = SentinelEntity.athenaName;
 
@@ -74,6 +42,28 @@ class SentinelViewModel {
     );
   }
 
+  final SentinelRepository _sentinelRepository;
+  final ProviderRepository _providerRepository;
+  final ModelRepository _modelRepository;
+
+  final SentinelService _sentinelService;
+
+  final ExperienceRepository _experienceRepository;
+  // Signals 状态
+  final sentinels = listSignal<SentinelEntity>([]);
+  final isLoading = signal(false);
+  final isGenerating = signal(false);
+
+  final error = signal<String?>(null);
+
+  // Computed signals
+  late final defaultSentinel = computed(() {
+    return sentinels.value
+            .where((s) => s.name == SentinelEntity.athenaName)
+            .firstOrNull ??
+        defaultSentinelEntity;
+  });
+
   late final tags = computed(() {
     final allTags = <String>[];
     for (var sentinel in sentinels.value) {
@@ -84,28 +74,57 @@ class SentinelViewModel {
     return sortedTags;
   });
 
-  // 业务方法
-  Future<void> getSentinels() async {
+  SentinelViewModel({
+    required SentinelRepository sentinelRepository,
+    required ProviderRepository providerRepository,
+    required ModelRepository modelRepository,
+    required SentinelService sentinelService,
+    required ExperienceRepository experienceRepository,
+  }) : _sentinelRepository = sentinelRepository,
+       _providerRepository = providerRepository,
+       _modelRepository = modelRepository,
+       _sentinelService = sentinelService,
+       _experienceRepository = experienceRepository;
+
+  /// 新建角色;成功返回带 id 的实体(设置页据此直接打开它)。
+  Future<SentinelEntity?> createSentinel(SentinelEntity sentinel) async {
     isLoading.value = true;
     error.value = null;
     try {
-      var loadedSentinels = await _sentinelRepository.getAllSentinels();
+      final id = await _sentinelRepository.createSentinel(sentinel);
+      final created = sentinel.copyWith(id: id);
+      sentinels.value = [...sentinels.value, created];
+      return created;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-      // 如果没有 sentinel,创建默认的
-      if (loadedSentinels.isEmpty) {
-        var entity = defaultSentinelEntity;
-        final id = await _sentinelRepository.createSentinel(entity);
-        entity = entity.copyWith(id: id);
-        loadedSentinels = [entity];
-      } else {
-        // 预设角色仅白名单内的展示,其余隐藏(数据仍在库中,聊天引用可解析);
-        // 过滤后为空时用默认实体兜底,保证聊天页始终有可选角色
-        var visible = loadedSentinels.where((s) => s.isListVisible).toList();
-        if (visible.isEmpty) visible = [defaultSentinelEntity];
-        loadedSentinels = visible;
+  /// 删除角色，并级联清理只属于它的数据。
+  ///
+  /// 角色 id 是 UUIDv7、不会被复用，所以它名下的私有经验在角色删除后再也
+  /// 进不了任何角色的检索范围——留下只是无主的垃圾（管理页还会把它们显示成
+  /// 一串裸 id）。shared 经验不属于任何角色，不受影响。
+  ///
+  /// 顺序是「先删角色，再清理附件」：角色本身删除失败时附件仍在，可重试；
+  /// 反过来则会先丢掉数据却留下一个还能用的角色。附件清理失败只记日志——
+  /// 角色已经删掉，报错也无法回滚，不该让界面显示成删除失败。
+  Future<void> deleteSentinel(SentinelEntity sentinel) async {
+    final id = sentinel.id;
+    if (id == null) return;
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await _sentinelRepository.deleteSentinel(id);
+      sentinels.value = sentinels.value.where((s) => s.id != id).toList();
+      try {
+        await _experienceRepository.deleteAllPrivate(id);
+      } catch (e) {
+        LoggerUtil.w('Failed to clean up data of deleted sentinel $id: $e');
       }
-
-      sentinels.value = loadedSentinels;
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -113,47 +132,20 @@ class SentinelViewModel {
     }
   }
 
-  Future<SentinelEntity?> getSentinelById(String id) async {
-    try {
-      return await _sentinelRepository.getSentinelById(id);
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  /// 按名称查找 sentinel（先查内存信号，再查数据库）
-  Future<SentinelEntity?> getSentinelByName(String name) async {
-    // 优先从已加载列表查找
-    final match = sentinels.value.cast<SentinelEntity?>().firstWhere(
-      (s) => s!.name == name,
-      orElse: () => null,
-    );
-    if (match != null) return match;
-    // 回退到数据库
-    return await _sentinelRepository.getSentinelByName(name);
-  }
-
-  Future<SentinelEntity> getFirstSentinel() async {
-    if (sentinels.value.isEmpty) {
-      await getSentinels();
-    }
-    return sentinels.value.firstOrNull ?? defaultSentinel.value;
-  }
-
-  /// 仅生成并返回 Sentinel 名称
-  Future<String?> generateSentinelName(
+  Future<SentinelEntity?> generateSentinel(
     String prompt, {
     required String modelId,
   }) async {
     isGenerating.value = true;
     error.value = null;
     try {
+      // 获取模型和提供商
       final model = await _modelRepository.getModelById(modelId);
       if (model == null) {
         error.value = 'Model not found';
         return null;
       }
+
       final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
@@ -161,11 +153,15 @@ class SentinelViewModel {
         error.value = 'Provider not found';
         return null;
       }
-      return await _sentinelService.generateName(
+
+      // 生成 sentinel 元数据
+      final sentinel = await _sentinelService.generate(
         prompt,
         provider: provider,
         model: model,
       );
+
+      return sentinel;
     } catch (e) {
       error.value = e.toString();
       return null;
@@ -209,20 +205,19 @@ class SentinelViewModel {
     }
   }
 
-  Future<SentinelEntity?> generateSentinel(
+  /// 仅生成并返回 Sentinel 名称
+  Future<String?> generateSentinelName(
     String prompt, {
     required String modelId,
   }) async {
     isGenerating.value = true;
     error.value = null;
     try {
-      // 获取模型和提供商
       final model = await _modelRepository.getModelById(modelId);
       if (model == null) {
         error.value = 'Model not found';
         return null;
       }
-
       final provider = await _providerRepository.getProviderById(
         model.providerId,
       );
@@ -230,15 +225,11 @@ class SentinelViewModel {
         error.value = 'Provider not found';
         return null;
       }
-
-      // 生成 sentinel 元数据
-      final sentinel = await _sentinelService.generate(
+      return await _sentinelService.generateName(
         prompt,
         provider: provider,
         model: model,
       );
-
-      return sentinel;
     } catch (e) {
       error.value = e.toString();
       return null;
@@ -247,18 +238,58 @@ class SentinelViewModel {
     }
   }
 
-  /// 新建角色;成功返回带 id 的实体(设置页据此直接打开它)。
-  Future<SentinelEntity?> createSentinel(SentinelEntity sentinel) async {
-    isLoading.value = true;
-    error.value = null;
+  Future<SentinelEntity> getFirstSentinel() async {
+    if (sentinels.value.isEmpty) {
+      await getSentinels();
+    }
+    return sentinels.value.firstOrNull ?? defaultSentinel.value;
+  }
+
+  Future<SentinelEntity?> getSentinelById(String id) async {
     try {
-      final id = await _sentinelRepository.createSentinel(sentinel);
-      final created = sentinel.copyWith(id: id);
-      sentinels.value = [...sentinels.value, created];
-      return created;
+      return await _sentinelRepository.getSentinelById(id);
     } catch (e) {
       error.value = e.toString();
       return null;
+    }
+  }
+
+  /// 按名称查找 sentinel（先查内存信号，再查数据库）
+  Future<SentinelEntity?> getSentinelByName(String name) async {
+    // 优先从已加载列表查找
+    final match = sentinels.value.cast<SentinelEntity?>().firstWhere(
+      (s) => s!.name == name,
+      orElse: () => null,
+    );
+    if (match != null) return match;
+    // 回退到数据库
+    return await _sentinelRepository.getSentinelByName(name);
+  }
+
+  // 业务方法
+  Future<void> getSentinels() async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      var loadedSentinels = await _sentinelRepository.getAllSentinels();
+
+      // 如果没有 sentinel,创建默认的
+      if (loadedSentinels.isEmpty) {
+        var entity = defaultSentinelEntity;
+        final id = await _sentinelRepository.createSentinel(entity);
+        entity = entity.copyWith(id: id);
+        loadedSentinels = [entity];
+      } else {
+        // 预设角色仅白名单内的展示,其余隐藏(数据仍在库中,聊天引用可解析);
+        // 过滤后为空时用默认实体兜底,保证聊天页始终有可选角色
+        var visible = loadedSentinels.where((s) => s.isListVisible).toList();
+        if (visible.isEmpty) visible = [defaultSentinelEntity];
+        loadedSentinels = visible;
+      }
+
+      sentinels.value = loadedSentinels;
+    } catch (e) {
+      error.value = e.toString();
     } finally {
       isLoading.value = false;
     }
@@ -270,35 +301,6 @@ class SentinelViewModel {
     try {
       await _sentinelRepository.updateSentinel(sentinel);
       sentinels.replaceWhere((s) => s.id == sentinel.id, sentinel);
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// 删除角色，并级联清理只属于它的数据。
-  ///
-  /// 角色 id 是 UUIDv7、不会被复用，所以它名下的私有经验在角色删除后再也
-  /// 进不了任何角色的检索范围——留下只是无主的垃圾（管理页还会把它们显示成
-  /// 一串裸 id）。shared 经验不属于任何角色，不受影响。
-  ///
-  /// 顺序是「先删角色，再清理附件」：角色本身删除失败时附件仍在，可重试；
-  /// 反过来则会先丢掉数据却留下一个还能用的角色。附件清理失败只记日志——
-  /// 角色已经删掉，报错也无法回滚，不该让界面显示成删除失败。
-  Future<void> deleteSentinel(SentinelEntity sentinel) async {
-    final id = sentinel.id;
-    if (id == null) return;
-    isLoading.value = true;
-    error.value = null;
-    try {
-      await _sentinelRepository.deleteSentinel(id);
-      sentinels.value = sentinels.value.where((s) => s.id != id).toList();
-      try {
-        await _experienceRepository.deleteAllPrivate(id);
-      } catch (e) {
-        LoggerUtil.w('Failed to clean up data of deleted sentinel $id: $e');
-      }
     } catch (e) {
       error.value = e.toString();
     } finally {

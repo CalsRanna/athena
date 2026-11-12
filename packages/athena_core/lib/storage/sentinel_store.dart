@@ -14,14 +14,18 @@ import 'package:athena_core/storage/yaml_entity_directory.dart';
 /// `sentinels/by-id/{id}/history/` 的快照目录都引用它。所以角色**改名字不能换
 /// 文件**——与 provider 一致但理由更强,改名必须原地改写而不是改名文件。
 class SentinelStore {
+  final YamlEntityDirectory _directory;
+
   SentinelStore({required Directory directory, required LockRegistry locks})
     : _directory = YamlEntityDirectory(directory: directory, locks: locks);
 
-  final YamlEntityDirectory _directory;
-
   Directory get directory => _directory.directory;
 
-  static bool isValidId(String id) => YamlEntityDirectory.isValidId(id);
+  /// 角色文件数。只数文件、不解析内容;不加锁。
+  Future<int> count() => _directory.count();
+
+  /// 删除单个角色(不存在视为成功)。
+  Future<void> delete(String id) => _directory.deleteRaw(id);
 
   /// 全部角色(按文件名列举,顺序不定)。
   Future<List<SentinelEntity>> list() async {
@@ -31,21 +35,6 @@ class SentinelStore {
       if (entity != null) entities.add(entity);
     }
     return entities;
-  }
-
-  /// 读取单个角色;不存在或损坏返回 null。
-  Future<SentinelEntity?> read(String id) async {
-    final raw = await _directory.readRaw(id);
-    return raw == null ? null : parse(id, raw);
-  }
-
-  /// 覆盖写入(不存在则创建)。
-  Future<void> write(SentinelEntity sentinel) {
-    final id = sentinel.id;
-    if (id == null || !isValidId(id)) {
-      throw ArgumentError('Invalid sentinel id: $id');
-    }
-    return _directory.writeRaw(id, encode(sentinel));
   }
 
   /// 读-改-写单个角色;文件不存在时不做任何事(不复活已删除的角色)。
@@ -63,8 +52,11 @@ class SentinelStore {
     return wrote;
   }
 
-  /// 删除单个角色(不存在视为成功)。
-  Future<void> delete(String id) => _directory.deleteRaw(id);
+  /// 读取单个角色;不存在或损坏返回 null。
+  Future<SentinelEntity?> read(String id) async {
+    final raw = await _directory.readRaw(id);
+    return raw == null ? null : parse(id, raw);
+  }
 
   /// 整目录替换为 [sentinels](迁移用)。每个实体的 id 必须非空。
   Future<void> replaceAll(List<SentinelEntity> sentinels) {
@@ -78,8 +70,26 @@ class SentinelStore {
     ]);
   }
 
-  /// 角色文件数。只数文件、不解析内容;不加锁。
-  Future<int> count() => _directory.count();
+  /// 覆盖写入(不存在则创建)。
+  Future<void> write(SentinelEntity sentinel) {
+    final id = sentinel.id;
+    if (id == null || !isValidId(id)) {
+      throw ArgumentError('Invalid sentinel id: $id');
+    }
+    return _directory.writeRaw(id, encode(sentinel));
+  }
+
+  static Map<String, dynamic> encode(SentinelEntity sentinel) => {
+    'id': sentinel.id,
+    'name': sentinel.name,
+    'description': sentinel.description,
+    'prompt': sentinel.prompt,
+    'tags': sentinel.tags,
+    'isPreset': sentinel.isPreset,
+    if (sentinel.enabledTools != null) 'enabledTools': sentinel.enabledTools,
+  };
+
+  static bool isValidId(String id) => YamlEntityDirectory.isValidId(id);
 
   /// 角色文件的 YAML 映射 → 实体。字段缺失按空串 / false 降级(手工编辑容错)。
   static SentinelEntity parse(String id, Map raw) {
@@ -95,14 +105,4 @@ class SentinelStore {
       enabledTools: SentinelEntity.parseToolNames(raw['enabledTools']),
     );
   }
-
-  static Map<String, dynamic> encode(SentinelEntity sentinel) => {
-    'id': sentinel.id,
-    'name': sentinel.name,
-    'description': sentinel.description,
-    'prompt': sentinel.prompt,
-    'tags': sentinel.tags,
-    'isPreset': sentinel.isPreset,
-    if (sentinel.enabledTools != null) 'enabledTools': sentinel.enabledTools,
-  };
 }

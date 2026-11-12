@@ -78,14 +78,14 @@ void main() {
 }
 
 class _ObservedFile implements File {
-  _ObservedFile(this.file);
   final File file;
   final List<int> starts = [];
   int bytesRead = 0;
+  _ObservedFile(this.file);
   @override
   String get path => file.path;
   @override
-  Future<FileStat> stat() => file.stat();
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   @override
   Stream<List<int>> openRead([int? start, int? end]) {
     starts.add(start ?? 0);
@@ -96,5 +96,5 @@ class _ObservedFile implements File {
   }
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Future<FileStat> stat() => file.stat();
 }

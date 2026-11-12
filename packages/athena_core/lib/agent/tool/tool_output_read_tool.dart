@@ -1,18 +1,12 @@
-import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 
 /// Reads only saved tool results, including on mobile without filesystem tools.
 class ToolOutputReadTool extends Tool implements CancellableTool {
-  ToolOutputReadTool(this.store);
-
   final ToolOutputStore store;
 
-  @override
-  String get name => 'tool_output_read';
-
-  @override
-  ExecutionMode get executionMode => ExecutionMode.parallel;
+  ToolOutputReadTool(this.store);
 
   @override
   String get description =>
@@ -20,6 +14,12 @@ class ToolOutputReadTool extends Tool implements CancellableTool {
       'original command or request again. offset and limit count Unicode '
       'characters (not lines or bytes), so even a long single line can be '
       'read in continuous pages. Use the returned next offset to continue.';
+
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
+
+  @override
+  String get name => 'tool_output_read';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -42,17 +42,17 @@ class ToolOutputReadTool extends Tool implements CancellableTool {
   };
 
   @override
-  Future<ToolExecutionResult> executeResult(
-    Map<String, dynamic> args, {
-    void Function(String)? onUpdate,
-  }) => _execute(args);
-
-  @override
   Future<ToolExecutionResult> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
   }) => _execute(args, cancelSignal: cancelSignal);
+
+  @override
+  Future<ToolExecutionResult> executeResult(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) => _execute(args);
 
   Future<ToolExecutionResult> _execute(
     Map<String, dynamic> args, {

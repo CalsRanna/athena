@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 
@@ -25,12 +25,6 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
   String? error;
 
   late final viewModel = GetIt.instance<SentinelViewModel>();
-
-  @override
-  void dispose() {
-    nameController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +56,12 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
 
   void cancelDialog() {
     AthenaDialog.dismiss();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
   }
 
   Future<void> storeSentinel() async {

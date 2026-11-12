@@ -16,17 +16,11 @@ class ChatEntity {
   /// 新会话的推理强度。
   static const defaultReasoningEffort = 'high';
 
-  /// 把存储里的值收敛到 [reasoningEfforts]：null 与已去掉的旧档位
-  /// （default / none / minimal）都回到默认档。
-  static String normalizeReasoningEffort(String? value) =>
-      reasoningEfforts.contains(value) ? value! : defaultReasoningEffort;
-
-  /// 把存储里的值收敛到已知档位：null（早期会话文件没有这一列）与无法
-  /// 识别的键都回 [ApprovalMode.defaultMode]。
-  static ApprovalMode normalizeApprovalMode(String? value) =>
-      ApprovalMode.fromKey(value) ?? ApprovalMode.defaultMode;
+  /// 哨兵:区分「未传参(保留原值)」与「显式置 null」。
+  static const _unset = Object();
 
   final String? id;
+
   final String title;
   final String modelId;
   final String? sentinelId;
@@ -41,6 +35,7 @@ class ChatEntity {
 
   /// 上下文保留策略。0 = 无历史（每次独立请求），-1 = 自动管理（compact）。
   final int retention;
+
   final bool pinned;
 
   /// 跑完时用户不在该会话、之后还没点进来过。侧栏行尾据此显示未读圆点，
@@ -74,11 +69,9 @@ class ChatEntity {
 
   /// Invalidates background reports from work started before the last rewind.
   final DateTime? rewoundAt;
+
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  bool get hasSentinel => sentinelId != noSentinelId;
-
   const ChatEntity({
     this.id,
     required this.title,
@@ -125,31 +118,7 @@ class ChatEntity {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      if (id != null) 'id': id,
-      'title': title,
-      'model_id': modelId,
-      'sentinel_id': sentinelId,
-      'temperature': temperature,
-      'reasoning_effort': reasoningEffort,
-      'retention': retention,
-      'pinned': pinned ? 1 : 0,
-      'unread': unread ? 1 : 0,
-      'context_tokens': contextTokens,
-      'cached_tokens': cachedTokens,
-      // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
-      // 条件写法会让「清空工作文件夹」落不了库。
-      'workspace_path': workspacePath,
-      'approval_mode': approvalMode.key,
-      if (rewoundAt != null) 'rewound_at': rewoundAt!.millisecondsSinceEpoch,
-      'created_at': createdAt.millisecondsSinceEpoch,
-      'updated_at': updatedAt.millisecondsSinceEpoch,
-    };
-  }
-
-  /// 哨兵:区分「未传参(保留原值)」与「显式置 null」。
-  static const _unset = Object();
+  bool get hasSentinel => sentinelId != noSentinelId;
 
   ChatEntity copyWith({
     String? id,
@@ -192,4 +161,37 @@ class ChatEntity {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id != null) 'id': id,
+      'title': title,
+      'model_id': modelId,
+      'sentinel_id': sentinelId,
+      'temperature': temperature,
+      'reasoning_effort': reasoningEffort,
+      'retention': retention,
+      'pinned': pinned ? 1 : 0,
+      'unread': unread ? 1 : 0,
+      'context_tokens': contextTokens,
+      'cached_tokens': cachedTokens,
+      // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
+      // 条件写法会让「清空工作文件夹」落不了库。
+      'workspace_path': workspacePath,
+      'approval_mode': approvalMode.key,
+      if (rewoundAt != null) 'rewound_at': rewoundAt!.millisecondsSinceEpoch,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'updated_at': updatedAt.millisecondsSinceEpoch,
+    };
+  }
+
+  /// 把存储里的值收敛到已知档位：null（早期会话文件没有这一列）与无法
+  /// 识别的键都回 [ApprovalMode.defaultMode]。
+  static ApprovalMode normalizeApprovalMode(String? value) =>
+      ApprovalMode.fromKey(value) ?? ApprovalMode.defaultMode;
+
+  /// 把存储里的值收敛到 [reasoningEfforts]：null 与已去掉的旧档位
+  /// （default / none / minimal）都回到默认档。
+  static String normalizeReasoningEffort(String? value) =>
+      reasoningEfforts.contains(value) ? value! : defaultReasoningEffort;
 }

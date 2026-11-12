@@ -1,5 +1,7 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_actions.dart';
 import 'package:athena_gui/page/desktop/setting/component/form_field.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -8,10 +10,8 @@ import 'package:athena_gui/util/format/model_form.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/checkbox.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/page/desktop/setting/component/control.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 /// 新建 / 编辑模型的对话框。
 ///
@@ -40,39 +40,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   String? nameError;
 
   late final viewModel = GetIt.instance<ModelViewModel>();
-
-  @override
-  void initState() {
-    super.initState();
-    valueController.text = widget.model?.modelId ?? '';
-    nameController.text = widget.model?.name ?? '';
-    releasedAtController.text = ModelForm.stripModelReleasedAt(
-      widget.model?.releasedAt ?? '',
-    );
-    final cw = widget.model?.contextWindow ?? 0;
-    contextController.text = cw > 0
-        ? ContextWindow.formatContextWindow(cw)
-        : '';
-    inputController.text = ModelForm.stripModelPrice(
-      widget.model?.inputPrice ?? '',
-    );
-    outputController.text = ModelForm.stripModelPrice(
-      widget.model?.outputPrice ?? '',
-    );
-    supportReasoning = widget.model?.reasoning ?? false;
-    supportVisual = widget.model?.vision ?? false;
-  }
-
-  @override
-  void dispose() {
-    valueController.dispose();
-    nameController.dispose();
-    releasedAtController.dispose();
-    contextController.dispose();
-    inputController.dispose();
-    outputController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -170,36 +137,41 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     );
   }
 
-  Widget _buildCapabilities(BuildContext context) {
-    final colors = context.athenaColors;
-    final labelStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
-    final reasoning = AthenaCheckboxGroup(
-      checkbox: AthenaCheckbox(
-        value: supportReasoning,
-        onChanged: (value) => setState(() => supportReasoning = value),
-      ),
-      onTap: () => setState(() => supportReasoning = !supportReasoning),
-      trailing: Text('Reasoning', style: labelStyle),
-    );
-    final vision = AthenaCheckboxGroup(
-      checkbox: AthenaCheckbox(
-        value: supportVisual,
-        onChanged: (value) => setState(() => supportVisual = value),
-      ),
-      onTap: () => setState(() => supportVisual = !supportVisual),
-      trailing: Text('Vision', style: labelStyle),
-    );
-    return DesktopSettingFormField(
-      label: 'Capabilities',
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Wrap(spacing: 20, runSpacing: 8, children: [reasoning, vision]),
-      ),
-    );
-  }
-
   void cancelDialog() {
     AthenaDialog.dismiss();
+  }
+
+  @override
+  void dispose() {
+    valueController.dispose();
+    nameController.dispose();
+    releasedAtController.dispose();
+    contextController.dispose();
+    inputController.dispose();
+    outputController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    valueController.text = widget.model?.modelId ?? '';
+    nameController.text = widget.model?.name ?? '';
+    releasedAtController.text = ModelForm.stripModelReleasedAt(
+      widget.model?.releasedAt ?? '',
+    );
+    final cw = widget.model?.contextWindow ?? 0;
+    contextController.text = cw > 0
+        ? ContextWindow.formatContextWindow(cw)
+        : '';
+    inputController.text = ModelForm.stripModelPrice(
+      widget.model?.inputPrice ?? '',
+    );
+    outputController.text = ModelForm.stripModelPrice(
+      widget.model?.outputPrice ?? '',
+    );
+    supportReasoning = widget.model?.reasoning ?? false;
+    supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> storeModel() async {
@@ -242,5 +214,33 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       await viewModel.updateModel(copiedModel);
     }
     if (mounted) AthenaDialog.dismiss();
+  }
+
+  Widget _buildCapabilities(BuildContext context) {
+    final colors = context.athenaColors;
+    final labelStyle = AthenaTextStyle.row.copyWith(color: colors.textPrimary);
+    final reasoning = AthenaCheckboxGroup(
+      checkbox: AthenaCheckbox(
+        value: supportReasoning,
+        onChanged: (value) => setState(() => supportReasoning = value),
+      ),
+      onTap: () => setState(() => supportReasoning = !supportReasoning),
+      trailing: Text('Reasoning', style: labelStyle),
+    );
+    final vision = AthenaCheckboxGroup(
+      checkbox: AthenaCheckbox(
+        value: supportVisual,
+        onChanged: (value) => setState(() => supportVisual = value),
+      ),
+      onTap: () => setState(() => supportVisual = !supportVisual),
+      trailing: Text('Vision', style: labelStyle),
+    );
+    return DesktopSettingFormField(
+      label: 'Capabilities',
+      child: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Wrap(spacing: 20, runSpacing: 8, children: [reasoning, vision]),
+      ),
+    );
   }
 }

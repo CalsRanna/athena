@@ -18,36 +18,6 @@ import 'package:openai_dart/openai_dart.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-/// 摘要调用只在这一层被替换：压缩的其它部分（存储、覆盖范围、提交守卫）
-/// 都是真的，所以用例能覆盖"摘要比被替换内容还长 → 压缩被拒绝"这类路径。
-class _FakeSummaryService implements ChatCompletionsService {
-  _FakeSummaryService(this.summary);
-
-  final String summary;
-  final requests = <List<ChatMessage>>[];
-
-  @override
-  Future<String> complete({
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    Future<void>? cancelSignal,
-  }) async {
-    requests.add(messages);
-    return summary;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// 摘要提示词里声明的目标长度。
-int _targetTokensOf(List<ChatMessage> request) {
-  final system = request.first as SystemMessage;
-  final match = RegExp(r'不超过 (\d+) 个 token').firstMatch(system.content)!;
-  return int.parse(match.group(1)!);
-}
-
 void main() {
   late Directory tmp;
   late FileStorage storage;
@@ -389,4 +359,34 @@ void main() {
         ((last.messages![1] as UserMessage).content as UserTextContent).text;
     expect(injected, contains('只有草稿'));
   });
+}
+
+/// 摘要提示词里声明的目标长度。
+int _targetTokensOf(List<ChatMessage> request) {
+  final system = request.first as SystemMessage;
+  final match = RegExp(r'不超过 (\d+) 个 token').firstMatch(system.content)!;
+  return int.parse(match.group(1)!);
+}
+
+/// 摘要调用只在这一层被替换：压缩的其它部分（存储、覆盖范围、提交守卫）
+/// 都是真的，所以用例能覆盖"摘要比被替换内容还长 → 压缩被拒绝"这类路径。
+class _FakeSummaryService implements ChatCompletionsService {
+  final String summary;
+
+  final requests = <List<ChatMessage>>[];
+  _FakeSummaryService(this.summary);
+
+  @override
+  Future<String> complete({
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    Future<void>? cancelSignal,
+  }) async {
+    requests.add(messages);
+    return summary;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

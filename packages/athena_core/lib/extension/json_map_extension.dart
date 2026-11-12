@@ -1,44 +1,6 @@
 import 'dart:convert';
 
 extension JsonMapExtension on Map<String, dynamic> {
-  String getString(String key, {String defaultValue = ''}) {
-    final value = this[key];
-    if (value == null) return defaultValue;
-    if (value is String) return value;
-    return value.toString();
-  }
-
-  String? getStringOrNull(String key) {
-    final value = this[key];
-    if (value == null) return null;
-    if (value is String && value.isNotEmpty) return value;
-    return null;
-  }
-
-  int getInt(String key, {int defaultValue = 0}) {
-    final value = this[key];
-    if (value == null) return defaultValue;
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value.toString()) ?? defaultValue;
-  }
-
-  int? getIntOrNull(String key) {
-    final value = this[key];
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value.toString());
-  }
-
-  double getDouble(String key, {double defaultValue = 0.0}) {
-    final value = this[key];
-    if (value == null) return defaultValue;
-    if (value is int) return value.toDouble();
-    if (value is num) return value.toDouble();
-    return value as double;
-  }
-
   bool getBool(String key, {bool defaultValue = false}) {
     final value = this[key];
     if (value == null) return defaultValue;
@@ -57,6 +19,30 @@ extension JsonMapExtension on Map<String, dynamic> {
     final value = this[key];
     if (value == null) return null;
     return DateTime.fromMillisecondsSinceEpoch(value as int);
+  }
+
+  double getDouble(String key, {double defaultValue = 0.0}) {
+    final value = this[key];
+    if (value == null) return defaultValue;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    return value as double;
+  }
+
+  int getInt(String key, {int defaultValue = 0}) {
+    final value = this[key];
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? defaultValue;
+  }
+
+  int? getIntOrNull(String key) {
+    final value = this[key];
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   List<T> getList<T>(String key) {
@@ -93,5 +79,19 @@ extension JsonMapExtension on Map<String, dynamic> {
       return Map<K, V>.from(value);
     }
     return {};
+  }
+
+  String getString(String key, {String defaultValue = ''}) {
+    final value = this[key];
+    if (value == null) return defaultValue;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  String? getStringOrNull(String key) {
+    final value = this[key];
+    if (value == null) return null;
+    if (value is String && value.isNotEmpty) return value;
+    return null;
   }
 }

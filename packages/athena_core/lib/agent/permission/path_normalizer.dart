@@ -3,6 +3,44 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 abstract final class PathNormalizer {
+  /// 写入禁区：凭据目录与应用数据目录，技能文件除外（见 CONVENTIONS.md §12.5）。
+  /// `permissions.json` 等应用配置仍由仓储管理。只拦写入而不像读取那样连 `.env`
+  /// 一并拦截——写 `.env` 不会把密钥带进上下文，仍按正常审批处理。
+  static bool isProtectedWritePath(String normalizedPath) {
+    final segments = p.split(normalizedPath);
+    for (var i = 0; i < segments.length; i++) {
+      final lower = segments[i].toLowerCase();
+      if (lower == '.ssh' || lower == '.aws') return true;
+      if (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// 判断归一化后的绝对路径是否触及敏感凭据位置（.ssh / .aws / .athena /
+  /// .env* / credentials / id_rsa / id_ed25519）。
+  ///
+  /// 按路径段精确匹配,避免子串误伤（如 `my.credentials.txt` 不算——
+  /// 段名是 `my.credentials.txt`,不是 `credentials`）。
+  static bool isSensitivePath(String normalizedPath) {
+    final segments = p.split(normalizedPath);
+    for (var i = 0; i < segments.length; i++) {
+      final lower = segments[i].toLowerCase();
+      if (lower == '.ssh' ||
+          lower == '.aws' ||
+          (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) ||
+          lower == 'credentials' ||
+          lower == 'id_rsa' ||
+          lower == 'id_ed25519' ||
+          lower == '.env' ||
+          lower.startsWith('.env.')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// 归一化文件路径,使权限匹配与工具执行使用同一条路径。
   ///
   /// - 分隔符统一为 '/'（Windows 反斜杠 → 正斜杠）
@@ -19,6 +57,20 @@ abstract final class PathNormalizer {
     }
     // Windows 上 p.normalize/join 返回反斜杠分隔，统一为正斜杠
     return abs.replaceAll('\\', '/');
+  }
+
+  static String protectedWritePathError(String path) =>
+      'Error: Blocked: writing to credential or Athena data directories '
+      '($path) is not allowed. Athena data is managed by its own tools.';
+
+  /// 执行前复核路径：[path] 应已由 `applyRunWorkspace` 解析为真实路径。
+  ///
+  /// 返回 null 表示路径仍指向审批时的位置；否则返回解析后的真实路径——
+  /// 说明审批之后链接被替换（或调用方传入了未解析的路径），调用方应拒绝执行，
+  /// 让新的真实路径重新走一遍审批。
+  static String? realPathChangedSinceApproval(String path) {
+    final real = PathNormalizer.resolveRealPathSync(path);
+    return real == PathNormalizer.normalizePathForMatch(path) ? null : real;
   }
 
   /// 同步解析符号链接，得到调用真正会读写的路径（Windows 下为 best-effort）。
@@ -88,6 +140,31 @@ abstract final class PathNormalizer {
     }
   }
 
+  /// [PathNormalizer.realPathChangedSinceApproval] 命中时回给模型的错误：让它用真实路径
+  /// 重新发起调用，从而按真实目标重新审批。
+  static String symlinkChangedError(String path, String realPath) =>
+      'Error: $path resolves through a symbolic link to $realPath, which was '
+      'not the path reviewed for this call. Call the tool again with the real '
+      'path if you still intend to access it.';
+
+  /// 执行前的路径复核：**无法确定真实目标时拒绝执行**。
+  ///
+  /// 与 [PathNormalizer.resolveRealPathSync] 的「解析不了就退回词法路径」不同——那个折中是给规则匹配
+  /// 用的（规则要能匹配上总比一条都匹配不上好）。而执行前必须能确定目标：路径上有
+  /// 不可穿越的目录时，审批卡、会话缓存与 deny 规则全都基于**词法路径**判断过一遍，
+  /// 文件真正落到哪里却是未知的（链接可能指向别处），这时继续执行就是把未知当已知。
+  ///
+  /// 只应在**文件工具执行前**调用（一次调用一次），不要放进权限判定那条热路径——
+  /// 那里每条规则的 pattern 与 key 都要解析一次路径，代价会被放大。
+  static String? unresolvablePathError(String path) {
+    final reason = PathNormalizer.unresolvablePathReason(path);
+    if (reason == null) return null;
+    return 'Error: Blocked: cannot determine the real path of $path because '
+        '$reason. Approval, deny rules and the audit trail were all computed '
+        'from the literal path, so this call is refused. Fix the permissions of '
+        'the directories leading to it, or use a path that is fully searchable.';
+  }
+
   /// 路径上有**不可穿越**的目录时返回原因，否则返回 null。
   ///
   /// 判据只要一次系统调用：对「最深的那个存在着的祖先目录」探测一个不存在的子项。
@@ -129,83 +206,6 @@ abstract final class PathNormalizer {
       if (parent == current || current.isEmpty) return null; // 走到根，没发现问题
       current = parent;
     }
-  }
-
-  /// 执行前的路径复核：**无法确定真实目标时拒绝执行**。
-  ///
-  /// 与 [PathNormalizer.resolveRealPathSync] 的「解析不了就退回词法路径」不同——那个折中是给规则匹配
-  /// 用的（规则要能匹配上总比一条都匹配不上好）。而执行前必须能确定目标：路径上有
-  /// 不可穿越的目录时，审批卡、会话缓存与 deny 规则全都基于**词法路径**判断过一遍，
-  /// 文件真正落到哪里却是未知的（链接可能指向别处），这时继续执行就是把未知当已知。
-  ///
-  /// 只应在**文件工具执行前**调用（一次调用一次），不要放进权限判定那条热路径——
-  /// 那里每条规则的 pattern 与 key 都要解析一次路径，代价会被放大。
-  static String? unresolvablePathError(String path) {
-    final reason = PathNormalizer.unresolvablePathReason(path);
-    if (reason == null) return null;
-    return 'Error: Blocked: cannot determine the real path of $path because '
-        '$reason. Approval, deny rules and the audit trail were all computed '
-        'from the literal path, so this call is refused. Fix the permissions of '
-        'the directories leading to it, or use a path that is fully searchable.';
-  }
-
-  /// 执行前复核路径：[path] 应已由 `applyRunWorkspace` 解析为真实路径。
-  ///
-  /// 返回 null 表示路径仍指向审批时的位置；否则返回解析后的真实路径——
-  /// 说明审批之后链接被替换（或调用方传入了未解析的路径），调用方应拒绝执行，
-  /// 让新的真实路径重新走一遍审批。
-  static String? realPathChangedSinceApproval(String path) {
-    final real = PathNormalizer.resolveRealPathSync(path);
-    return real == PathNormalizer.normalizePathForMatch(path) ? null : real;
-  }
-
-  /// [PathNormalizer.realPathChangedSinceApproval] 命中时回给模型的错误：让它用真实路径
-  /// 重新发起调用，从而按真实目标重新审批。
-  static String symlinkChangedError(String path, String realPath) =>
-      'Error: $path resolves through a symbolic link to $realPath, which was '
-      'not the path reviewed for this call. Call the tool again with the real '
-      'path if you still intend to access it.';
-
-  static String protectedWritePathError(String path) =>
-      'Error: Blocked: writing to credential or Athena data directories '
-      '($path) is not allowed. Athena data is managed by its own tools.';
-
-  /// 写入禁区：凭据目录与应用数据目录，技能文件除外（见 CONVENTIONS.md §12.5）。
-  /// `permissions.json` 等应用配置仍由仓储管理。只拦写入而不像读取那样连 `.env`
-  /// 一并拦截——写 `.env` 不会把密钥带进上下文，仍按正常审批处理。
-  static bool isProtectedWritePath(String normalizedPath) {
-    final segments = p.split(normalizedPath);
-    for (var i = 0; i < segments.length; i++) {
-      final lower = segments[i].toLowerCase();
-      if (lower == '.ssh' || lower == '.aws') return true;
-      if (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /// 判断归一化后的绝对路径是否触及敏感凭据位置（.ssh / .aws / .athena /
-  /// .env* / credentials / id_rsa / id_ed25519）。
-  ///
-  /// 按路径段精确匹配,避免子串误伤（如 `my.credentials.txt` 不算——
-  /// 段名是 `my.credentials.txt`,不是 `credentials`）。
-  static bool isSensitivePath(String normalizedPath) {
-    final segments = p.split(normalizedPath);
-    for (var i = 0; i < segments.length; i++) {
-      final lower = segments[i].toLowerCase();
-      if (lower == '.ssh' ||
-          lower == '.aws' ||
-          (lower == '.athena' && !PathNormalizer._isSkillFile(segments, i)) ||
-          lower == 'credentials' ||
-          lower == 'id_rsa' ||
-          lower == 'id_ed25519' ||
-          lower == '.env' ||
-          lower.startsWith('.env.')) {
-        return true;
-      }
-    }
-    return false;
   }
 
   // 仅放行 skills/<name>/ 下的文件；skills/.usage.json 等目录元数据仍受保护。

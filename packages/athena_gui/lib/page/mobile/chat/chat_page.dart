@@ -3,12 +3,13 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena_gui/component/chat_error_dialog_listener.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/queued_messages.dart';
-import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
+import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -26,7 +27,6 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class MobileChatPage extends StatefulWidget {
@@ -77,105 +77,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     );
   }
 
-  Widget _buildTitle() {
-    return SignalBuilder(
-      builder: (context) {
-        final colors = context.athenaColors;
-        final chat = _resolveChat();
-        final isRenaming =
-            chat != null &&
-            viewModel.selection.renamingChatIds.value.contains(chat.id);
-        String title;
-        if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
-          title = viewModel.selection.renamingTitle.value;
-        } else {
-          title = chat?.title ?? 'New Session';
-          if (title.isEmpty) title = 'New Session';
-        }
-
-        if (isRenaming) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(child: Text(title, textAlign: TextAlign.center)),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ],
-          );
-        }
-        return Text(title, textAlign: TextAlign.center);
-      },
-    );
-  }
-
-  Widget _buildContent() {
-    return SignalBuilder(
-      builder: (context) {
-        final chat = _resolveChat();
-        final sentinel = _resolveSentinel(chat);
-
-        if (chat != null) {
-          final model = modelViewModel.models.value
-              .where((m) => m.id == chat.modelId)
-              .firstOrNull;
-          return MessageListView(
-            key: ValueKey(chat.id),
-            chat: chat,
-            viewModel: viewModel,
-            sentinelViewModel: sentinelViewModel,
-            controller: scrollController,
-            model: model,
-            onChatTitleChanged: (_) {},
-            onRewind: rewindMessage,
-          );
-        }
-        return SentinelPlaceholder(sentinel: sentinel);
-      },
-    );
-  }
-
-  ChatEntity? _resolveChat() {
-    final requestedChat = widget.chat;
-    final currentChat = viewModel.currentChat.value;
-    if (requestedChat == null) {
-      // 新对话页：还没切到草稿态时 currentChat 是来源对话，按草稿处理；
-      // 首条消息建出的新对话 id 不同，照常显示
-      if (_draftPending && currentChat?.id == _openedFrom?.id) return null;
-      return currentChat;
-    }
-    if (currentChat?.id != requestedChat.id) {
-      return viewModel.chats.value
-              .where((chat) => chat.id == requestedChat.id)
-              .firstOrNull ??
-          requestedChat;
-    }
-    return currentChat;
-  }
-
-  SentinelEntity? _resolveSentinel(ChatEntity? chat) {
-    if (chat != null && !chat.hasSentinel) {
-      return SentinelViewModel.directChatSentinel;
-    }
-    SentinelEntity? sentinel;
-    if (chat != null) {
-      sentinel = sentinelViewModel.sentinels.value
-          .where((s) => s.id == chat.sentinelId)
-          .firstOrNull;
-    } else {
-      sentinel = sentinelViewModel.defaultSentinel.value;
-    }
-    sentinel ??= viewModel.currentSentinel.value;
-    sentinel ??= sentinelViewModel.defaultSentinel.value;
-    return sentinel;
-  }
-
   @override
   void dispose() {
     controller.dispose();
@@ -194,36 +95,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     _initializeViewModels();
   }
 
-  Future<void> _initializeViewModels() async {
-    try {
-      await modelViewModel.initSignals();
-      await sentinelViewModel.getSentinels();
-      if (widget.chat != null) {
-        await viewModel.selectChat(widget.chat!);
-      } else {
-        // 上面两段 IO 期间用户可能已经发出首条消息、建好了新对话：不能再把
-        // 它卸掉回草稿
-        if (viewModel.currentChat.value?.id != _openedFrom?.id) return;
-        // 移动端没有侧栏选中态，"当前对话"就是最近打开的那条；工作文件夹在
-        // 移动端没有作用（不注册 shell / 文件工具），所以只继承角色。
-        await viewModel.prepareNewChatDraft(
-          inheritFrom: _openedFrom,
-          inheritWorkspace: false,
-        );
-        // 入口注入的专属 Sentinel：作为新聊天的角色
-        if (widget.sentinel != null) {
-          viewModel.updateCurrentSentinel(widget.sentinel!);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        AthenaDialog.error('Failed to load session. Please try again.');
-      }
-    } finally {
-      if (mounted && _draftPending) setState(() => _draftPending = false);
-    }
-  }
-
   void openBottomSheet(ChatEntity? chat) {
     final mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
@@ -239,6 +110,21 @@ class _MobileChatPageState extends State<MobileChatPage> {
       onApprovalModeChanged: (mode) => updateApprovalMode(mode),
     );
     AthenaDialog.show(mobileChatBottomSheet);
+  }
+
+  Future<void> pickImages() async {
+    if (viewModel.isCurrentChatRewinding.value) return;
+    try {
+      final files = await FilePicker.pickFiles(type: FileType.image);
+      final paths = [
+        for (final file in files)
+          if (file.path != null) file.path!,
+      ];
+      if (paths.isEmpty) return;
+      await viewModel.addPendingImages(paths);
+    } catch (e) {
+      if (mounted) AthenaDialog.error('Unable to pick images: $e');
+    }
   }
 
   Future<void> rewindMessage(MessageEntity message) async {
@@ -307,27 +193,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (chat != null) viewModel.stopGenerating(chat.id!);
   }
 
-  Future<void> pickImages() async {
-    if (viewModel.isCurrentChatRewinding.value) return;
-    try {
-      final files = await FilePicker.pickFiles(type: FileType.image);
-      final paths = [
-        for (final file in files)
-          if (file.path != null) file.path!,
-      ];
-      if (paths.isEmpty) return;
-      await viewModel.addPendingImages(paths);
-    } catch (e) {
-      if (mounted) AthenaDialog.error('Unable to pick images: $e');
-    }
-  }
-
-  Future<void> updateRetention(int value) async {
+  Future<void> updateApprovalMode(ApprovalMode mode) async {
     final chat = viewModel.currentChat.value;
     if (chat != null) {
-      await viewModel.updateRetention(value, chat: chat);
+      await viewModel.updateApprovalMode(mode, chat: chat);
     } else {
-      viewModel.updateCurrentRetention(value);
+      viewModel.updateCurrentApprovalMode(mode);
     }
   }
 
@@ -337,6 +208,24 @@ class _MobileChatPageState extends State<MobileChatPage> {
       await viewModel.updateModel(model, chat: chat);
     } else {
       await viewModel.updateCurrentModel(model);
+    }
+  }
+
+  Future<void> updateReasoningEffort(String value) async {
+    final chat = viewModel.currentChat.value;
+    if (chat != null) {
+      await viewModel.updateReasoningEffort(value, chat: chat);
+    } else {
+      viewModel.updateCurrentReasoningEffort(value);
+    }
+  }
+
+  Future<void> updateRetention(int value) async {
+    final chat = viewModel.currentChat.value;
+    if (chat != null) {
+      await viewModel.updateRetention(value, chat: chat);
+    } else {
+      viewModel.updateCurrentRetention(value);
     }
   }
 
@@ -358,62 +247,29 @@ class _MobileChatPageState extends State<MobileChatPage> {
     }
   }
 
-  Future<void> updateReasoningEffort(String value) async {
-    final chat = viewModel.currentChat.value;
-    if (chat != null) {
-      await viewModel.updateReasoningEffort(value, chat: chat);
-    } else {
-      viewModel.updateCurrentReasoningEffort(value);
-    }
-  }
+  Widget _buildContent() {
+    return SignalBuilder(
+      builder: (context) {
+        final chat = _resolveChat();
+        final sentinel = _resolveSentinel(chat);
 
-  Future<void> updateApprovalMode(ApprovalMode mode) async {
-    final chat = viewModel.currentChat.value;
-    if (chat != null) {
-      await viewModel.updateApprovalMode(mode, chat: chat);
-    } else {
-      viewModel.updateCurrentApprovalMode(mode);
-    }
-  }
-
-  Widget _buildPendingImage(PendingImage image) {
-    final colors = context.athenaColors;
-    final Widget preview;
-    if (image.bytes != null) {
-      preview = Image.memory(
-        image.bytes!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Center(
-          child: Icon(
-            LucideIcons.imageOff,
-            size: AthenaIcon.regularSize,
-            color: colors.textSecondary,
-          ),
-        ),
-      );
-    } else if (image.stage == PendingImageStage.failed) {
-      preview = Center(
-        child: Icon(
-          LucideIcons.imageOff,
-          size: AthenaIcon.regularSize,
-          color: colors.textSecondary,
-        ),
-      );
-    } else {
-      preview = Center(
-        child: SizedBox(
-          width: AthenaIcon.regularSize,
-          height: AthenaIcon.regularSize,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: colors.textSecondary,
-          ),
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AthenaRadius.control),
-      child: ColoredBox(color: colors.surfaceDeep, child: preview),
+        if (chat != null) {
+          final model = modelViewModel.models.value
+              .where((m) => m.id == chat.modelId)
+              .firstOrNull;
+          return MessageListView(
+            key: ValueKey(chat.id),
+            chat: chat,
+            viewModel: viewModel,
+            sentinelViewModel: sentinelViewModel,
+            controller: scrollController,
+            model: model,
+            onChatTitleChanged: (_) {},
+            onRewind: rewindMessage,
+          );
+        }
+        return SentinelPlaceholder(sentinel: sentinel);
+      },
     );
   }
 
@@ -486,5 +342,149 @@ class _MobileChatPageState extends State<MobileChatPage> {
         return SafeArea(top: false, child: padding);
       },
     );
+  }
+
+  Widget _buildPendingImage(PendingImage image) {
+    final colors = context.athenaColors;
+    final Widget preview;
+    if (image.bytes != null) {
+      preview = Image.memory(
+        image.bytes!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Center(
+          child: Icon(
+            LucideIcons.imageOff,
+            size: AthenaIcon.regularSize,
+            color: colors.textSecondary,
+          ),
+        ),
+      );
+    } else if (image.stage == PendingImageStage.failed) {
+      preview = Center(
+        child: Icon(
+          LucideIcons.imageOff,
+          size: AthenaIcon.regularSize,
+          color: colors.textSecondary,
+        ),
+      );
+    } else {
+      preview = Center(
+        child: SizedBox(
+          width: AthenaIcon.regularSize,
+          height: AthenaIcon.regularSize,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: colors.textSecondary,
+          ),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AthenaRadius.control),
+      child: ColoredBox(color: colors.surfaceDeep, child: preview),
+    );
+  }
+
+  Widget _buildTitle() {
+    return SignalBuilder(
+      builder: (context) {
+        final colors = context.athenaColors;
+        final chat = _resolveChat();
+        final isRenaming =
+            chat != null &&
+            viewModel.selection.renamingChatIds.value.contains(chat.id);
+        String title;
+        if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
+          title = viewModel.selection.renamingTitle.value;
+        } else {
+          title = chat?.title ?? 'New Session';
+          if (title.isEmpty) title = 'New Session';
+        }
+
+        if (isRenaming) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(child: Text(title, textAlign: TextAlign.center)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.textPrimary,
+                ),
+              ),
+            ],
+          );
+        }
+        return Text(title, textAlign: TextAlign.center);
+      },
+    );
+  }
+
+  Future<void> _initializeViewModels() async {
+    try {
+      await modelViewModel.initSignals();
+      await sentinelViewModel.getSentinels();
+      if (widget.chat != null) {
+        await viewModel.selectChat(widget.chat!);
+      } else {
+        // 上面两段 IO 期间用户可能已经发出首条消息、建好了新对话：不能再把
+        // 它卸掉回草稿
+        if (viewModel.currentChat.value?.id != _openedFrom?.id) return;
+        // 移动端没有侧栏选中态，"当前对话"就是最近打开的那条；工作文件夹在
+        // 移动端没有作用（不注册 shell / 文件工具），所以只继承角色。
+        await viewModel.prepareNewChatDraft(
+          inheritFrom: _openedFrom,
+          inheritWorkspace: false,
+        );
+        // 入口注入的专属 Sentinel：作为新聊天的角色
+        if (widget.sentinel != null) {
+          viewModel.updateCurrentSentinel(widget.sentinel!);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load session. Please try again.');
+      }
+    } finally {
+      if (mounted && _draftPending) setState(() => _draftPending = false);
+    }
+  }
+
+  ChatEntity? _resolveChat() {
+    final requestedChat = widget.chat;
+    final currentChat = viewModel.currentChat.value;
+    if (requestedChat == null) {
+      // 新对话页：还没切到草稿态时 currentChat 是来源对话，按草稿处理；
+      // 首条消息建出的新对话 id 不同，照常显示
+      if (_draftPending && currentChat?.id == _openedFrom?.id) return null;
+      return currentChat;
+    }
+    if (currentChat?.id != requestedChat.id) {
+      return viewModel.chats.value
+              .where((chat) => chat.id == requestedChat.id)
+              .firstOrNull ??
+          requestedChat;
+    }
+    return currentChat;
+  }
+
+  SentinelEntity? _resolveSentinel(ChatEntity? chat) {
+    if (chat != null && !chat.hasSentinel) {
+      return SentinelViewModel.directChatSentinel;
+    }
+    SentinelEntity? sentinel;
+    if (chat != null) {
+      sentinel = sentinelViewModel.sentinels.value
+          .where((s) => s.id == chat.sentinelId)
+          .firstOrNull;
+    } else {
+      sentinel = sentinelViewModel.defaultSentinel.value;
+    }
+    sentinel ??= viewModel.currentSentinel.value;
+    sentinel ??= sentinelViewModel.defaultSentinel.value;
+    return sentinel;
   }
 }

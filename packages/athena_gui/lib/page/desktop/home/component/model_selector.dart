@@ -1,9 +1,9 @@
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/composer_selection_menu.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 

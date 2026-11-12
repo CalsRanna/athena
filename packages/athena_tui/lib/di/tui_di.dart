@@ -6,36 +6,82 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/task/background_task.dart';
-import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/chat_store.dart';
-import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/storage/agent_settings.dart';
-import 'package:athena_tui/bridge/tui_agent_bridge.dart';
-import 'package:athena_core/seed/sentinel_seed.dart';
+import 'package:athena_core/storage/chat_store.dart';
+import 'package:athena_core/storage/experience_repository.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
-import 'package:path/path.dart' as p;
+import 'package:athena_core/util/logger_util.dart';
+import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
+import 'package:path/path.dart' as p;
 
 /// TUI 组合根:手写依赖装配(镜像 athena_gui 的 di.dart,不用 GetIt)。
 ///
 /// 数据目录默认 `~/.athena/`(与 GUI 共享,布局见 [FileStorage]),
 /// 可通过 [dataDirectory] 覆盖(测试用)。
 class TuiDi {
+  /// 测试注入的假 Agent 服务(ui_test 用,避免发送测试触发真实网络)。
+  /// 为 null 时 _build 构造真实 [AgentService]。
+  final AgentService? agentServiceOverride;
+
+  late final String _homeDir;
+
+  late final Directory _dataDir;
+
+  late final String _workspace;
+
+  /// 启动时从 setting.yaml 导入的持久化模型 modelId(null = 未配置)。
+  String? currentModelId;
+
+  // Repositories
+  late final ChatRepository chatRepo;
+
+  late final MessageRepository messageRepo;
+
+  late final ModelRepository modelRepo;
+  late final ProviderRepository providerRepo;
+  late final SentinelRepository sentinelRepo;
+  late final ExperienceRepository experienceRepo;
+  // Storage
+  late final FileStorage storage;
+  late final UserSettingsStore userSettings;
+
+  late final File userSettingsFile;
+  // Agent 基础
+  late final AgentSettings agentSettings;
+  late final PermissionService permissionService;
+
+  late final SkillRegistry skillRegistry;
+  late final ToolRegistry toolRegistry;
+  late final AgentService agentService;
+  // Services
+  late final ChatCompletionsService chatService;
+  late final ChatStore chatStore;
+
+  late final ChatMessageConverter messageService;
+  late final ChatUpdateService supportService;
+  late final ModelCatalogService modelCatalogService;
+  late final ModelResolver modelResolver;
+  // Bridge + Controller
+  late final TuiAgentBridge agentBridge;
+  late final ChatController chatController;
+
   TuiDi({
     String? dataDirectory,
     String? workspace,
@@ -51,55 +97,10 @@ class TuiDi {
     _workspace = workspace ?? Directory.current.path;
     _build();
   }
-
-  /// 测试注入的假 Agent 服务(ui_test 用,避免发送测试触发真实网络)。
-  /// 为 null 时 _build 构造真实 [AgentService]。
-  final AgentService? agentServiceOverride;
-
-  late final String _homeDir;
-
-  late final Directory _dataDir;
-  late final String _workspace;
-
-  /// 启动时从 setting.yaml 导入的持久化模型 modelId(null = 未配置)。
-  String? currentModelId;
+  Directory get dataDir => _dataDir;
 
   /// 当前工作区目录(Agent 工具的工作根目录)。
   String get workspace => _workspace;
-
-  // Repositories
-  late final ChatRepository chatRepo;
-  late final MessageRepository messageRepo;
-  late final ModelRepository modelRepo;
-  late final ProviderRepository providerRepo;
-  late final SentinelRepository sentinelRepo;
-  late final ExperienceRepository experienceRepo;
-
-  // Storage
-  late final FileStorage storage;
-  late final UserSettingsStore userSettings;
-  late final File userSettingsFile;
-
-  // Agent 基础
-  late final AgentSettings agentSettings;
-  late final PermissionService permissionService;
-  late final SkillRegistry skillRegistry;
-  late final ToolRegistry toolRegistry;
-  late final AgentService agentService;
-
-  // Services
-  late final ChatCompletionsService chatService;
-  late final ChatStore chatStore;
-  late final ChatMessageConverter messageService;
-  late final ChatUpdateService supportService;
-  late final ModelCatalogService modelCatalogService;
-  late final ModelResolver modelResolver;
-
-  // Bridge + Controller
-  late final TuiAgentBridge agentBridge;
-  late final ChatController chatController;
-
-  Directory get dataDir => _dataDir;
 
   /// 启动初始化:加载持久化状态、首次种子、同步 models.dev 模型目录。
   /// 在 runApp 前 await。
@@ -126,19 +127,6 @@ class TuiDi {
       } catch (e) {
         LoggerUtil.w('Model catalog sync timeout: $e');
       }
-    }
-  }
-
-  /// 启动时加载用户配置:读取持久化的默认模型 modelId,供 ChatController
-  /// 启动时选中(provider 由 YamlProviderRepository 直接读 yaml)。
-  Future<void> _importUserSettings() async {
-    try {
-      currentModelId = await userSettings.loadModelId();
-      // ChatController 在 _build(构造)时创建,此时 yaml 尚未读;
-      // 导入完成后注入默认模型
-      chatController.setDefaultModelId(currentModelId);
-    } catch (e) {
-      LoggerUtil.w('Import user settings failed: $e');
     }
   }
 
@@ -263,5 +251,18 @@ class TuiDi {
       // 直接持久化到 providers/ 下的单文件)
       onModelSwitched: persistCurrentModelId,
     );
+  }
+
+  /// 启动时加载用户配置:读取持久化的默认模型 modelId,供 ChatController
+  /// 启动时选中(provider 由 YamlProviderRepository 直接读 yaml)。
+  Future<void> _importUserSettings() async {
+    try {
+      currentModelId = await userSettings.loadModelId();
+      // ChatController 在 _build(构造)时创建,此时 yaml 尚未读;
+      // 导入完成后注入默认模型
+      chatController.setDefaultModelId(currentModelId);
+    } catch (e) {
+      LoggerUtil.w('Import user settings failed: $e');
+    }
   }
 }

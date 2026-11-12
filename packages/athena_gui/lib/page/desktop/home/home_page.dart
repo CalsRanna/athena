@@ -5,31 +5,28 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
-import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/component/chat_error_dialog_listener.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
+import 'package:athena_gui/page/desktop/component/context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
+import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
 import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_selector.dart';
-
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
-import 'package:athena_gui/page/desktop/component/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
-
 import 'package:flutter/widgets.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 @RoutePage()
 class DesktopHomePage extends StatefulWidget {
@@ -54,6 +51,18 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   final modelViewModel = GetIt.instance<ModelViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   final settingViewModel = GetIt.instance<SettingViewModel>();
+
+  Future<void> batchDestroyChats(List<ChatEntity> chats) async {
+    final result = await AthenaDialog.confirm(
+      'Do you want to delete ${chats.length} sessions?',
+    );
+    if (result == true) {
+      scrollController.followBottom();
+      await chatViewModel.deleteChats(chats);
+    }
+    chatViewModel.clearSelection();
+    _syncComposerDraft();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,39 +89,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  /// 侧栏 "New session" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
-  ///
-  /// 新对话只是一个空页面，会话文件与侧栏条目要等首条
-  /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
-  /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话——
-  /// 但焦点照样放回输入框，这样在草稿页按快捷键也等于"回到输入框"。
-  ///
-  /// 从某条对话点进来时把它的角色与工作文件夹带进草稿（见
-  /// `ChatViewModel.prepareNewChatDraft`）。先取快照：prepareNewChatDraft
-  /// 一进去就会把 `currentChat` 置空。
-  Future<void> startNewChat() async {
-    final source = chatViewModel.currentChat.value;
-    // 草稿槽的切换不能等到 await 回来：这段 IO 期间用户可能已经在输入框里
-    // 打字，晚一步恢复出来的草稿会把刚敲进去的字冲掉（见 [_restoreComposerDraft]）
-    final preparing = source == null
-        ? null
-        : chatViewModel.prepareNewChatDraft(inheritFrom: source);
-    _restoreComposerDraft(null);
-    await preparing;
-    if (!mounted) return;
-    composerFocusNode.requestFocus();
-  }
-
-  Future<void> batchDestroyChats(List<ChatEntity> chats) async {
-    final result = await AthenaDialog.confirm(
-      'Do you want to delete ${chats.length} sessions?',
-    );
-    if (result == true) {
-      scrollController.followBottom();
-      await chatViewModel.deleteChats(chats);
+  /// 清除本会话的工作文件夹，回到默认（shell 用用户主目录）。
+  /// 没有选中对话时改的是草稿：落盘时就不带工作文件夹。
+  Future<void> clearWorkspaceFolder() async {
+    final chat = chatViewModel.currentChat.value;
+    if (chat == null) {
+      chatViewModel.updateCurrentWorkspacePath(null);
+      return;
     }
-    chatViewModel.clearSelection();
-    _syncComposerDraft();
+    await chatViewModel.updateWorkspacePath(null, chat: chat);
   }
 
   Future<void> destroyChat(ChatEntity chat) async {
@@ -152,6 +137,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
   }
 
+  /// 选择本会话的工作文件夹（目录选择器在 ViewModel 层弹；取消不改变现状）。
+  Future<void> pickWorkspaceFolder() => chatViewModel.pickWorkspaceFolder();
+
   Future<void> rewindMessage(MessageEntity message) async {
     if (chatViewModel.isRewindingChat(message.chatId)) return;
     final result = await chatViewModel.rewindMessage(message);
@@ -174,33 +162,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     unawaited(chatViewModel.selectChat(chat));
     _restoreComposerDraft(chat.id);
   }
-
-  /// 把输入框内容对齐到 [key] 那条对话的草稿：当前文字存回它所属的对话，再取出
-  /// [key] 的草稿填进输入框（null = 还没落盘的"新对话"槽）。
-  ///
-  /// 每个会换 `ChatViewModel.currentChat` 的入口都要调一次（侧栏选中、新建对话、
-  /// 删除当前对话后回草稿、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
-  /// B。切换要在**发出切换动作的同一帧内**做完：等 IO 回来再换，这段延迟里用户
-  /// 敲进去的字会被恢复出来的草稿覆盖。
-  void _restoreComposerDraft(String? key) {
-    if (key == _composerKey) return;
-    // 原对话已经被删掉就不再留草稿：那个槽再也回不去（chat id 不复用）
-    if (_composerKey == null ||
-        chatViewModel.chats.value.any((chat) => chat.id == _composerKey)) {
-      chatViewModel.saveComposerDraft(_composerKey, controller.text);
-    }
-    _composerKey = key;
-    final draft = chatViewModel.takeComposerDraft(key);
-    controller.value = TextEditingValue(
-      text: draft,
-      selection: TextSelection.collapsed(offset: draft.length),
-    );
-  }
-
-  /// 按当前选中的对话对齐输入框：删除当前对话后回草稿、首条消息把草稿
-  /// 落盘成对话时用（这两种情况的目标对话事先不知道）。
-  void _syncComposerDraft() =>
-      _restoreComposerDraft(chatViewModel.currentChat.value?.id);
 
   Future<void> sendMessage() async {
     final sourceChatId = chatViewModel.currentChat.value?.id;
@@ -252,18 +213,43 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
   }
 
+  /// 侧栏 "New session" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
+  ///
+  /// 新对话只是一个空页面，会话文件与侧栏条目要等首条
+  /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
+  /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话——
+  /// 但焦点照样放回输入框，这样在草稿页按快捷键也等于"回到输入框"。
+  ///
+  /// 从某条对话点进来时把它的角色与工作文件夹带进草稿（见
+  /// `ChatViewModel.prepareNewChatDraft`）。先取快照：prepareNewChatDraft
+  /// 一进去就会把 `currentChat` 置空。
+  Future<void> startNewChat() async {
+    final source = chatViewModel.currentChat.value;
+    // 草稿槽的切换不能等到 await 回来：这段 IO 期间用户可能已经在输入框里
+    // 打字，晚一步恢复出来的草稿会把刚敲进去的字冲掉（见 [_restoreComposerDraft]）
+    final preparing = source == null
+        ? null
+        : chatViewModel.prepareNewChatDraft(inheritFrom: source);
+    _restoreComposerDraft(null);
+    await preparing;
+    if (!mounted) return;
+    composerFocusNode.requestFocus();
+  }
+
   void terminateStreaming() {
     final chat = chatViewModel.currentChat.value;
     if (chat != null) chatViewModel.stopGenerating(chat.id!);
   }
 
-  Future<void> updateRetention(int retention) async {
+  /// 切换本会话的审批档位。没有选中对话时改的是草稿：
+  /// 首条消息发送时随草稿一起落盘。
+  Future<void> updateApprovalMode(ApprovalMode mode) async {
     final chat = chatViewModel.currentChat.value;
     if (chat == null) {
-      chatViewModel.updateCurrentRetention(retention);
+      chatViewModel.updateCurrentApprovalMode(mode);
       return;
     }
-    await chatViewModel.updateRetention(retention, chat: chat);
+    await chatViewModel.updateApprovalMode(mode, chat: chat);
   }
 
   void updateImage(List<String> images) {
@@ -281,17 +267,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
   }
 
-  Future<void> updateSentinel(SentinelEntity newSentinel) async {
-    final chat = chatViewModel.currentChat.value;
-    if (chat != null) {
-      // 有选中的对话，更新对话的哨兵
-      await chatViewModel.updateSentinel(newSentinel, chat: chat);
-    } else {
-      // 没有选中对话，只更新当前状态
-      chatViewModel.updateCurrentSentinel(newSentinel);
-    }
-  }
-
   Future<void> updateReasoningEffort(String effort) async {
     final chat = chatViewModel.currentChat.value;
     if (chat == null) {
@@ -301,29 +276,24 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateReasoningEffort(effort, chat: chat);
   }
 
-  /// 选择本会话的工作文件夹（目录选择器在 ViewModel 层弹；取消不改变现状）。
-  Future<void> pickWorkspaceFolder() => chatViewModel.pickWorkspaceFolder();
-
-  /// 清除本会话的工作文件夹，回到默认（shell 用用户主目录）。
-  /// 没有选中对话时改的是草稿：落盘时就不带工作文件夹。
-  Future<void> clearWorkspaceFolder() async {
+  Future<void> updateRetention(int retention) async {
     final chat = chatViewModel.currentChat.value;
     if (chat == null) {
-      chatViewModel.updateCurrentWorkspacePath(null);
+      chatViewModel.updateCurrentRetention(retention);
       return;
     }
-    await chatViewModel.updateWorkspacePath(null, chat: chat);
+    await chatViewModel.updateRetention(retention, chat: chat);
   }
 
-  /// 切换本会话的审批档位。没有选中对话时改的是草稿：
-  /// 首条消息发送时随草稿一起落盘。
-  Future<void> updateApprovalMode(ApprovalMode mode) async {
+  Future<void> updateSentinel(SentinelEntity newSentinel) async {
     final chat = chatViewModel.currentChat.value;
-    if (chat == null) {
-      chatViewModel.updateCurrentApprovalMode(mode);
-      return;
+    if (chat != null) {
+      // 有选中的对话，更新对话的哨兵
+      await chatViewModel.updateSentinel(newSentinel, chat: chat);
+    } else {
+      // 没有选中对话，只更新当前状态
+      chatViewModel.updateCurrentSentinel(newSentinel);
     }
-    await chatViewModel.updateApprovalMode(mode, chat: chat);
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -448,4 +418,31 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       DesktopSentinelMenu(anchor: anchor, onSelected: updateSentinel),
     );
   }
+
+  /// 把输入框内容对齐到 [key] 那条对话的草稿：当前文字存回它所属的对话，再取出
+  /// [key] 的草稿填进输入框（null = 还没落盘的"新对话"槽）。
+  ///
+  /// 每个会换 `ChatViewModel.currentChat` 的入口都要调一次（侧栏选中、新建对话、
+  /// 删除当前对话后回草稿、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
+  /// B。切换要在**发出切换动作的同一帧内**做完：等 IO 回来再换，这段延迟里用户
+  /// 敲进去的字会被恢复出来的草稿覆盖。
+  void _restoreComposerDraft(String? key) {
+    if (key == _composerKey) return;
+    // 原对话已经被删掉就不再留草稿：那个槽再也回不去（chat id 不复用）
+    if (_composerKey == null ||
+        chatViewModel.chats.value.any((chat) => chat.id == _composerKey)) {
+      chatViewModel.saveComposerDraft(_composerKey, controller.text);
+    }
+    _composerKey = key;
+    final draft = chatViewModel.takeComposerDraft(key);
+    controller.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
+  }
+
+  /// 按当前选中的对话对齐输入框：删除当前对话后回草稿、首条消息把草稿
+  /// 落盘成对话时用（这两种情况的目标对话事先不知道）。
+  void _syncComposerDraft() =>
+      _restoreComposerDraft(chatViewModel.currentChat.value?.id);
 }

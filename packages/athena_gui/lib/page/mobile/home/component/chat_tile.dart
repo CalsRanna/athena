@@ -1,15 +1,14 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
+import 'package:athena_gui/extension/athena_theme_context.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
-
-import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:athena_gui/extension/athena_theme_context.dart';
 
 class ChatTile extends StatelessWidget {
   final ChatHistoryEntity chatHistory;
@@ -58,10 +57,6 @@ class ChatTile extends StatelessWidget {
     );
   }
 
-  void handlePressed(BuildContext context) async {
-    MobileChatRoute(chat: chat).push<void>(context);
-  }
-
   void handleLongPress(BuildContext context) {
     HapticFeedback.heavyImpact();
     final renameTile = AthenaBottomSheetTile(
@@ -89,6 +84,10 @@ class ChatTile extends StatelessWidget {
       child: column,
     );
     AthenaDialog.show(SafeArea(child: padding));
+  }
+
+  void handlePressed(BuildContext context) async {
+    MobileChatRoute(chat: chat).push<void>(context);
   }
 
   Future<void> _deleteChat(

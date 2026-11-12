@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "103.0.0"
+  analysis_server_lib:
+    dependency: "direct dev"
+    description:
+      name: analysis_server_lib
+      sha256: b2376eed26c183d8c9790444384082ba637aa87cd9b28bb9a84801e7fe37ea40
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.5"
   analyzer:
     dependency: transitive
     description:

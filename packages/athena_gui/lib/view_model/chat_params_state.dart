@@ -22,16 +22,6 @@ import 'package:signals/signals.dart';
 ///   审批档位与推理强度，加上会话默认（保留策略、温度）。只有工作文件夹与角色会从
 ///   来源对话继承——审批档位刻意不继承（见 [resetToDraftDefaults]）。
 class ChatParamsState {
-  ChatParamsState({
-    required SettingViewModel settingViewModel,
-    required ModelViewModel modelViewModel,
-    required SentinelViewModel sentinelViewModel,
-    required ChatUpdateService supportService,
-  }) : _settingViewModel = settingViewModel,
-       _modelViewModel = modelViewModel,
-       _sentinelViewModel = sentinelViewModel,
-       _supportService = supportService;
-
   /// 新对话的默认上下文保留策略。-1 = 自动管理（compact）。
   static const int defaultDraftRetention = -1;
 
@@ -39,11 +29,12 @@ class ChatParamsState {
   static const double defaultDraftTemperature = 1.0;
 
   final SettingViewModel _settingViewModel;
+
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
   final ChatUpdateService _supportService;
-
   final currentModel = signal<ModelEntity?>(null);
+
   final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
   final currentRetention = signal(defaultDraftRetention);
@@ -53,40 +44,15 @@ class ChatParamsState {
   );
   final currentWorkspacePath = signal<String?>(null);
   final currentApprovalMode = signal(ApprovalMode.defaultMode);
-
-  /// 会话里存的角色 id 在该会话上的显示形态。
-  ///
-  /// 显式「不用角色」与「解析不到角色」是两件事：前者要显示成 directChatSentinel
-  /// （用户选的），后者才回退默认。
-  static SentinelEntity? displaySentinel(
-    ChatEntity chat,
-    SentinelEntity? sentinel,
-  ) => chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
-
-  /// 切到某条已落盘的对话：八个值一次换齐。
-  void setFromChat(
-    ChatEntity chat, {
-    required ModelEntity? model,
-    required ProviderEntity? provider,
-    required SentinelEntity? sentinel,
-  }) {
-    currentModel.value = model;
-    currentProvider.value = provider;
-    currentSentinel.value = displaySentinel(chat, sentinel);
-    currentRetention.value = chat.retention;
-    currentTemperature.value = chat.temperature;
-    currentReasoningEffort.value = chat.reasoningEffort;
-    currentWorkspacePath.value = chat.workspacePath;
-    currentApprovalMode.value = chat.approvalMode;
-  }
-
-  /// 只换模型与它对应的 provider（用户改档、或草稿初值）。
-  Future<void> setModel(ModelEntity model) async {
-    currentModel.value = model;
-    currentProvider.value = await _supportService.getProviderForModel(
-      model.providerId,
-    );
-  }
+  ChatParamsState({
+    required SettingViewModel settingViewModel,
+    required ModelViewModel modelViewModel,
+    required SentinelViewModel sentinelViewModel,
+    required ChatUpdateService supportService,
+  }) : _settingViewModel = settingViewModel,
+       _modelViewModel = modelViewModel,
+       _sentinelViewModel = sentinelViewModel,
+       _supportService = supportService;
 
   /// 把「还没有当前模型」补成第一个可用模型。
   ///
@@ -104,20 +70,6 @@ class ChatParamsState {
     if (candidate == null) return;
     await setModel(candidate);
   }
-
-  void setSentinel(SentinelEntity sentinel) => currentSentinel.value = sentinel;
-
-  void setRetention(int retention) => currentRetention.value = retention;
-
-  void setTemperature(double temperature) =>
-      currentTemperature.value = temperature;
-
-  void setReasoningEffort(String effort) =>
-      currentReasoningEffort.value = effort;
-
-  void setWorkspacePath(String? path) => currentWorkspacePath.value = path;
-
-  void setApprovalMode(ApprovalMode mode) => currentApprovalMode.value = mode;
 
   /// 进入草稿态：把八个值重置成「下一条对话的起点」。
   ///
@@ -157,6 +109,45 @@ class ChatParamsState {
     currentApprovalMode.value = _settingViewModel.newChatApprovalMode.value;
   }
 
+  void setApprovalMode(ApprovalMode mode) => currentApprovalMode.value = mode;
+
+  /// 切到某条已落盘的对话：八个值一次换齐。
+  void setFromChat(
+    ChatEntity chat, {
+    required ModelEntity? model,
+    required ProviderEntity? provider,
+    required SentinelEntity? sentinel,
+  }) {
+    currentModel.value = model;
+    currentProvider.value = provider;
+    currentSentinel.value = displaySentinel(chat, sentinel);
+    currentRetention.value = chat.retention;
+    currentTemperature.value = chat.temperature;
+    currentReasoningEffort.value = chat.reasoningEffort;
+    currentWorkspacePath.value = chat.workspacePath;
+    currentApprovalMode.value = chat.approvalMode;
+  }
+
+  /// 只换模型与它对应的 provider（用户改档、或草稿初值）。
+  Future<void> setModel(ModelEntity model) async {
+    currentModel.value = model;
+    currentProvider.value = await _supportService.getProviderForModel(
+      model.providerId,
+    );
+  }
+
+  void setReasoningEffort(String effort) =>
+      currentReasoningEffort.value = effort;
+
+  void setRetention(int retention) => currentRetention.value = retention;
+
+  void setSentinel(SentinelEntity sentinel) => currentSentinel.value = sentinel;
+
+  void setTemperature(double temperature) =>
+      currentTemperature.value = temperature;
+
+  void setWorkspacePath(String? path) => currentWorkspacePath.value = path;
+
   Future<SentinelEntity?> _inheritedSentinel(ChatEntity chat) async {
     if (!chat.hasSentinel) return SentinelViewModel.directChatSentinel;
     final listed = _sentinelViewModel.sentinels.value
@@ -164,4 +155,13 @@ class ChatParamsState {
         .firstOrNull;
     return listed ?? await _sentinelViewModel.getSentinelById(chat.sentinelId!);
   }
+
+  /// 会话里存的角色 id 在该会话上的显示形态。
+  ///
+  /// 显式「不用角色」与「解析不到角色」是两件事：前者要显示成 directChatSentinel
+  /// （用户选的），后者才回退默认。
+  static SentinelEntity? displaySentinel(
+    ChatEntity chat,
+    SentinelEntity? sentinel,
+  ) => chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
 }

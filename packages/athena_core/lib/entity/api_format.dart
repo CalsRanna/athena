@@ -5,9 +5,9 @@ enum ApiFormat {
   responses('responses'),
   messages('messages');
 
-  const ApiFormat(this.value);
-
   final String value;
+
+  const ApiFormat(this.value);
 
   static ApiFormat? tryParse(Object? value) {
     for (final format in values) {

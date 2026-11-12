@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/compaction_step.dart';
-import 'package:athena_tui/ui/widgets/compaction_card.dart';
 import 'package:athena_core/agent/tool/tool_args_formatter.dart';
+import 'package:athena_core/entity/compaction_step.dart';
+import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
+import 'package:athena_tui/ui/widgets/compaction_card.dart';
 import 'package:athena_tui/ui/widgets/message_card.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
@@ -20,14 +20,14 @@ import 'package:nocterm/nocterm.dart';
 /// 边框必须是纯色(不透明):nocterm 的 `_blendStyle` 会对半透明颜色做
 /// alpha 混合,多行换行处边框段叠色会发暗。纯色则连续无接缝。
 class MessageItem extends StatelessComponent {
+  final MessageEntity message;
+
+  final ChatController controller;
   const MessageItem({
     super.key,
     required this.message,
     required this.controller,
   });
-
-  final MessageEntity message;
-  final ChatController controller;
 
   @override
   Component build(BuildContext context) {
@@ -191,15 +191,15 @@ class MessageItem extends StatelessComponent {
 /// 消息卡片:左侧彩色竖条区分消息类型,颜色由消息类型决定。
 /// 卡片间距由外层 margin 精确控制(竖条方案无边框占位)。
 class _Card extends StatelessComponent {
+  final Color color;
+
+  final BoxBorderStyle borderStyle;
+  final Component child;
   const _Card({
     required this.color,
     required this.child,
     this.borderStyle = BoxBorderStyle.solid,
   });
-
-  final Color color;
-  final BoxBorderStyle borderStyle;
-  final Component child;
 
   @override
   Component build(BuildContext context) {
@@ -212,10 +212,10 @@ class _Card extends StatelessComponent {
 /// 推理卡片:黄色左边框,内容弱化(灰);流式刚开始、内容未到时
 /// 显示黄色省略号表示思考中。内容始终展示(终端无点击展开交互)。
 class _ReasoningCard extends StatelessComponent {
-  const _ReasoningCard({required this.content, required this.reasoning});
-
   final String content;
+
   final bool reasoning;
+  const _ReasoningCard({required this.content, required this.reasoning});
 
   @override
   Component build(BuildContext context) {
